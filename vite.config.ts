@@ -4,6 +4,10 @@ import react from '@vitejs/plugin-react'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  server: {
+    //remover en BUILD
+    allowedHosts: true
+  },
   plugins: [react(), VitePWA({
     registerType: 'prompt',
     injectRegister: false,
