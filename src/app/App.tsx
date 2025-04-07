@@ -1,13 +1,19 @@
-import PWABadge from '../PWABadge.tsx'
 import './App.css'
-import Navbar from '../components/Navbar.tsx'
+import { BrowserRouter, Routes, Route } from 'react-router';
+import Page from './pages/demo/page';
+import Home from './pages/Home/Home';
+import GeneradorFormularios from './pages/GeneradorFormularios/generadorFormularios';
 
 function App() {
   return (
     <>
-      <Navbar />
-      <div>Home</div>
-      <PWABadge />
+      <BrowserRouter>
+        <Routes>
+          <Route path='/' element={<Home />} />
+          <Route path='/demo' element={<Page />} />
+          <Route path='/generadorFormularios' element={<GeneradorFormularios />} />
+        </Routes>
+      </BrowserRouter>
     </>
   )
 }

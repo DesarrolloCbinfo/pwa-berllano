@@ -11,15 +11,16 @@ import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
 import Tooltip from '@mui/material/Tooltip';
 import MenuItem from '@mui/material/MenuItem';
-import AdbIcon from '@mui/icons-material/Adb';
 import Drawer from '@mui/material/Drawer'
 import { Accordion, AccordionDetails, AccordionSummary, Divider, List, ListItem, ListItemButton, ListItemText } from '@mui/material';
 import { ArrowDownward } from '@mui/icons-material';
+import { NavLink } from 'react-router';
+import BerllanoLogo from '../assets/berllano-logo.jpg'
 
 const pages = [
   {
-    name: 'Pricing',
-    url: '/'
+    name: 'Generar Formularios',
+    url: '/generadorFormularios'
   },
   {
     name: 'Blog',
@@ -94,9 +95,17 @@ export default function Navbar() {
 
   const drawerContent = (
     <Box sx={{ textAlign: 'center' }}>
-      <Typography variant='h6' sx={{ my: 2}}>
-        Berllano
-      </Typography>
+      <Box 
+        component='img'
+        sx={{
+          maxHeight: 100,
+          maxWidth: 100,
+          mx: 'auto',
+          my: 2
+        }}
+        alt="Berllano logo"
+        src={BerllanoLogo}
+      />
       <Divider />
       <List>
         {pagesAccordion.map((page) => (
@@ -125,38 +134,35 @@ export default function Navbar() {
           </Accordion>
         ))}
         {pages.map((page) => (
-          <ListItem key={page.name} disablePadding>
-            <ListItemButton sx={{ textAlign: 'left' }}>
-              <ListItemText primary={page.name} />
-            </ListItemButton>
-          </ListItem>
+          <NavLink to={page.url} style={{ textDecoration: 'none', color: 'black' }}>
+            <ListItem key={page.name} disablePadding>
+              <ListItemButton sx={{ textAlign: 'left' }}>
+                <ListItemText primary={page.name} />
+              </ListItemButton>
+            </ListItem>
+          </NavLink>
         ))}
       </List>
     </Box>
   )
 
   return (
-    <AppBar position="static">
+    <AppBar position="static" sx={{ backgroundColor: 'white' }}>
       <Container maxWidth="xl">
         <Toolbar disableGutters>
-          <AdbIcon sx={{ display: { xs: 'none', md: 'flex' }, mr: 1 }} />
-          <Typography
-            variant="h6"
-            noWrap
-            component="a"
-            href="#app-bar-with-responsive-menu"
-            sx={{
-              mr: 2,
-              display: { xs: 'none', md: 'flex' },
-              fontFamily: 'monospace',
-              fontWeight: 700,
-              letterSpacing: '.3rem',
-              color: 'inherit',
-              textDecoration: 'none',
-            }}
-          >
-            LOGO
-          </Typography>
+          <NavLink to={'/'} style={{ textDecoration: 'none' }}>
+            <Box sx={{ color: 'white', display: { xs: 'none', md: 'flex' }}}>
+              <Box 
+                component='img'
+                sx={{
+                  maxHeight: 100,
+                  maxWidth: 100,
+                }}
+                alt="Berllano logo"
+                src={BerllanoLogo}
+              />
+            </Box>
+          </NavLink>
 
           <Box sx={{ flexGrow: 1, display: { xs: 'flex', md: 'none' } }}>
             <IconButton
@@ -165,7 +171,7 @@ export default function Navbar() {
               aria-controls="menu-appbar"
               aria-haspopup="true"
               onClick={handleOpenNavMenu}
-              color="inherit"
+              sx={{ color: 'black' }}
             >
               <MenuIcon />
             </IconButton>
@@ -186,40 +192,38 @@ export default function Navbar() {
               </Drawer>
             </nav>
           </Box>
-          <AdbIcon sx={{ display: { xs: 'flex', md: 'none' }, mr: 1 }} />
-          <Typography
-            variant="h5"
-            noWrap
-            component="a"
-            href="#app-bar-with-responsive-menu"
-            sx={{
-              mr: 2,
-              display: { xs: 'flex', md: 'none' },
-              flexGrow: 1,
-              fontFamily: 'monospace',
-              fontWeight: 700,
-              letterSpacing: '.3rem',
-              color: 'inherit',
-              textDecoration: 'none',
-            }}
-          >
-            LOGO
-          </Typography>
+          <Box sx={{ color: 'white', display: { xs: 'flex', md: 'none' }, flexGrow: 1}}>
+            <NavLink to={'/'} style={{ textDecoration: 'none', color: 'white' }}>
+              <Box 
+                component='img'
+                sx={{
+                  maxHeight: 100,
+                  maxWidth: 100,
+                }}
+                alt="Berllano logo"
+                src={BerllanoLogo}
+              />
+            </NavLink>
+          </Box>
           <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }}>
             {pages.map((page) => (
-              <Button
-                key={page.name}
-                onClick={handleCloseNavMenu}
-                sx={{ my: 2, color: 'white', display: 'block' }}
-              >
-                {page.name}
-              </Button>
+              <Box sx={{ my: 2 }}>
+                <NavLink to={page.url}>
+                  <Button
+                    key={page.name}
+                    onClick={handleCloseNavMenu}
+                    sx={{ color: 'black' }}
+                  >
+                    {page.name}
+                  </Button>
+                </NavLink>
+              </Box>
             ))}
           </Box>
           <Box sx={{ flexGrow: 0 }}>
             <Tooltip title="Open settings">
               <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
-                <Avatar alt="Remy Sharp" src="/static/images/avatar/2.jpg" />
+                <Avatar alt="Remy Sharp" src={BerllanoLogo} />
               </IconButton>
             </Tooltip>
             <Menu
