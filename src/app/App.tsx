@@ -2,7 +2,7 @@ import './App.css'
 import { BrowserRouter, Routes, Route } from 'react-router';
 import Page from './pages/demo/page';
 import Home from './pages/Home/Home';
-import GeneradorFormularios from './pages/GeneradorFormularios/generadorFormularios';
+import GeneradorFormularios from './pages/GeneradorFormularios/GeneradorFormularios';
 
 function App() {
   return (
