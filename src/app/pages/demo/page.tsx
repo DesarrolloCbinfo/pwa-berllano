@@ -4,13 +4,14 @@ import useConsumoApi from "../../../hooks/useConsumoApi";
 import { Demo } from "./apis/demo";
 import { useEffect, useState } from "react";
 import { FichaResponse, PreguntaResponse, SeccionResponse } from "./interfaces/IFicha";
-import { DomainRounded } from "@mui/icons-material";
+
 interface Form {
   fichaId: number | null;
   seccionId: number | null;
   preguntaId: number | null;
   opcionId: number | null;
 }
+
 export default function Page() {
   const { consumoApi } = useConsumoApi();
   const [fichaData, setFichaData] = useState<FichaResponse[]>([]);
@@ -28,6 +29,7 @@ export default function Page() {
       setFichaData(res.data);
     });
   }, []);
+
   useEffect(() => {
     if (form.fichaId) {
       consumoApi.get(Demo.getSeccion(form.fichaId)).then((res) => {
@@ -35,6 +37,7 @@ export default function Page() {
       });
     }
   }, [form.fichaId]);
+
   useEffect(() => {
     if (form.seccionId) {
       consumoApi.get(Demo.getPregunta(form.seccionId)).then((res) => {
@@ -47,6 +50,7 @@ export default function Page() {
       setPreguntaData([]);
     }
   }, [form.seccionId]);
+
   return (
     <>
       <Navbar />
@@ -114,8 +118,6 @@ export default function Page() {
             )}
           </>
         )}
-        <br />
-        <br />
       </Container>
     </>
   );

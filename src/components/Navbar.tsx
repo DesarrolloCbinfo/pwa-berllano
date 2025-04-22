@@ -26,62 +26,62 @@ import { ArrowDownward } from "@mui/icons-material";
 import { NavLink } from "react-router";
 import BerllanoLogo from "../assets/berllano-logo.jpg";
 
-const pages = [
-  {
-    name: "Generar Formularios",
-    url: "/generadorFormularios",
-  },
-  {
-    name: "Blog",
-    url: "/",
-  },
-  {
-    name: "Demo",
-    url: "/demo",
-  },
+type Page = {
+  name: string
+  url: string
+}
+
+type Header = {
+  name: string
+  pages: Page[]
+}
+
+type PageAccordion = {
+  name: string
+  headers: Header[]
+}
+
+function createPage(name: string, url: string): Page {
+  return {
+    name,
+    url
+  }
+}
+
+function createHeader(name: string, pages: Page[]): Header {
+  return {
+    name,
+    pages
+  }
+}
+
+function createPageAccordion(name: string, headers: Header[]): PageAccordion {
+  return {
+    name,
+    headers
+  }
+}
+
+const pages: Page[] = [
+  createPage("Generar Formularios", "/generadorFormularios"),
+  createPage("Demo", "/demo"),
+  createPage("Demo Stepper", "/demoStepper"),
 ];
 
-const pagesAccordion = [
-  {
-    name: "Catalagos",
-    headers: [
-      {
-        name: "header 1",
-        pages: [
-          {
-            name: "sub header 1",
-            url: "/",
-          },
-          {
-            name: "sub header 2",
-            url: "/",
-          },
-          {
-            name: "sub header 3",
-            url: "/",
-          },
-        ],
-      },
-      {
-        name: "header 2",
-        pages: [
-          {
-            name: "sub header 1",
-            url: "/",
-          },
-        ],
-      },
-      {
-        name: "header 3",
-        pages: [
-          {
-            name: "sub header 1",
-            url: "/",
-          },
-        ],
-      },
-    ],
-  },
+const pagesAccordion: PageAccordion[] = [
+  createPageAccordion("Catálogos", [
+    createHeader("Catálogo 1", [
+      createPage("Subcatálogo 1", "/"),
+      createPage("Subcatálogo 2", "/"),
+      createPage("Subcatálogo 3", "/"),
+    ]),
+    createHeader("Catálogo 2", [
+      createPage("Subcatálogo 1", "/"),
+    ]),
+    createHeader("Catálogo 3", [
+      createPage("Subcatálogo 1", "/"),
+    ])
+  ]),
 ];
 
 const settings = ["Profile", "Account", "Dashboard", "Logout"];
