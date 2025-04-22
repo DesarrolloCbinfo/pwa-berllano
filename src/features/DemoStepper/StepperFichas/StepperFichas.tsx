@@ -5,20 +5,52 @@ import Step from '@mui/material/Step';
 import StepLabel from '@mui/material/StepLabel';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
+import { TextField } from '@mui/material';
 
-const secciones = [
-  {
-    id: "demo",
-    nombre: "demo"
-  },
-  {
-    id: "demo2",
-    nombre: "demo2"
-  },
-  {
-    id: "demo3",
-    nombre: "demo3"
+type Pregunta = {
+  nombre: string
+}
+
+type Secciones = {
+  id: number,
+  nombre: string,
+  preguntas: Pregunta[]
+}
+
+function createPregunta(nombre: string): Pregunta {
+  return {
+    nombre
   }
+}
+
+function createSecciones(id: number, nombre: string, preguntas: Pregunta[]): Secciones {
+  return {
+    id,
+    nombre,
+    preguntas
+  }
+}
+
+const secciones: Secciones[] = [
+  createSecciones(1, "Sección 1", [
+    createPregunta("Pregunta 1"),
+    createPregunta("Pregunta 2"),
+    createPregunta("Pregunta 3"),
+    createPregunta("Pregunta 4"),
+    createPregunta("Pregunta 5"),
+  ]),
+  createSecciones(2, "Sección 2", [
+    createPregunta("Pregunta 1"),
+  ]),
+  createSecciones(3, "Sección 3", [
+    createPregunta("Pregunta 1"),
+    createPregunta("Pregunta 2"),
+    createPregunta("Pregunta 3"),
+  ]),
+  createSecciones(4, "Sección 4", [
+    createPregunta("Pregunta 1"),
+    createPregunta("Pregunta 2"),
+  ]),
 ]
 
 export default function StepperFichas() {
@@ -27,7 +59,7 @@ export default function StepperFichas() {
 
   const isStepOptional = (step: number) => {
     //agregar secciones opcionales
-    return step === 999;
+    return step === 1;
   };
 
   const isStepSkipped = (step: number) => {
@@ -105,7 +137,11 @@ export default function StepperFichas() {
       ) : (
         <React.Fragment>
           <Typography sx={{ mt: 2, mb: 1 }}>{ secciones[activeStep]?.nombre }</Typography>
-          <Box>{ secciones[activeStep]?.nombre }</Box>
+          {
+            secciones[activeStep]?.preguntas.map((pregunta, index) => (
+              <TextField id={index.toString()} label={pregunta.nombre} variant="outlined" sx={{ mx: 2 }} />
+            ))
+          }
           <Box sx={{ display: 'flex', flexDirection: 'row', pt: 2 }}>
             <Button
               color="inherit"
