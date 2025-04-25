@@ -5,7 +5,7 @@ import Step from '@mui/material/Step';
 import StepLabel from '@mui/material/StepLabel';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
-import { TextField } from '@mui/material';
+import { FormControl, InputLabel, MenuItem, Select, TextField, Stack } from '@mui/material';
 import { FichaStepper } from '../../../app/pages/DemoStepper/types/DemoStepperTypes';
 
 type Props = {
@@ -90,17 +90,37 @@ export default function StepperFichas({ fichaStepper }: Props) {
           </Typography>
           <Box sx={{ display: 'flex', flexDirection: 'row', pt: 2 }}>
             <Box sx={{ flex: '1 1 auto' }} />
-            <Button onClick={handleReset}>Reset</Button>
+            <Button onClick={handleReset}>Reiniciar</Button>
           </Box>
         </React.Fragment>
       ) : (
         <React.Fragment>
           <Typography sx={{ mt: 2, mb: 1 }}>{ fichaStepper.secciones[activeStep]?.nombre }</Typography>
-          {
-            fichaStepper.secciones[activeStep]?.preguntas.map((pregunta, index) => (
-              <TextField id={index.toString()} label={pregunta.label} variant="outlined" sx={{ mx: 2 }} />
-            ))
-          }
+          <Stack
+            spacing={2}
+          >
+            {
+              fichaStepper.secciones[activeStep]?.preguntas.map((pregunta, index) => (
+                <TextField id={index.toString()} label={pregunta.label} variant="outlined" sx={{ mx: 2 }} />
+              ))
+            }
+            {
+              fichaStepper.secciones[activeStep]?.preguntasSelect.map((preguntaSelect) => (
+                <FormControl fullWidth>
+                  <InputLabel id={preguntaSelect.label}>{preguntaSelect.label}</InputLabel>
+                  <Select
+                    labelId={preguntaSelect.label}
+                    id={preguntaSelect.preguntaSelectId.toString()}
+                    label={preguntaSelect.label}
+                  >
+                    {preguntaSelect.opciones.map((opcion) => (
+                      <MenuItem value={opcion.value}>{opcion.text}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              ))
+            }
+          </Stack>
           <Box sx={{ display: 'flex', flexDirection: 'row', pt: 2 }}>
             <Button
               color="inherit"
