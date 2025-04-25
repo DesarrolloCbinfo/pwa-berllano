@@ -6,60 +6,19 @@ import StepLabel from '@mui/material/StepLabel';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import { TextField } from '@mui/material';
+import { FichaStepper } from '../../../app/pages/DemoStepper/types/DemoStepperTypes';
 
-type Pregunta = {
-  nombre: string
+type Props = {
+  fichaStepper: FichaStepper
 }
 
-type Secciones = {
-  id: number,
-  nombre: string,
-  preguntas: Pregunta[]
-}
-
-function createPregunta(nombre: string): Pregunta {
-  return {
-    nombre
-  }
-}
-
-function createSecciones(id: number, nombre: string, preguntas: Pregunta[]): Secciones {
-  return {
-    id,
-    nombre,
-    preguntas
-  }
-}
-
-const secciones: Secciones[] = [
-  createSecciones(1, "Sección 1", [
-    createPregunta("Pregunta 1"),
-    createPregunta("Pregunta 2"),
-    createPregunta("Pregunta 3"),
-    createPregunta("Pregunta 4"),
-    createPregunta("Pregunta 5"),
-  ]),
-  createSecciones(2, "Sección 2", [
-    createPregunta("Pregunta 1"),
-  ]),
-  createSecciones(3, "Sección 3", [
-    createPregunta("Pregunta 1"),
-    createPregunta("Pregunta 2"),
-    createPregunta("Pregunta 3"),
-  ]),
-  createSecciones(4, "Sección 4", [
-    createPregunta("Pregunta 1"),
-    createPregunta("Pregunta 2"),
-  ]),
-]
-
-export default function StepperFichas() {
+export default function StepperFichas({ fichaStepper }: Props) {
   const [activeStep, setActiveStep] = React.useState(0);
   const [skipped, setSkipped] = React.useState(new Set<number>());
 
   const isStepOptional = (step: number) => {
     //agregar secciones opcionales
-    return step === 1;
+    return step === 999;
   };
 
   const isStepSkipped = (step: number) => {
@@ -102,9 +61,9 @@ export default function StepperFichas() {
   };
 
   return (
-    <Box sx={{ width: '100%' }}>
+    <Box sx={{ width: '100%', my: 8 }}>
       <Stepper activeStep={activeStep}>
-        {secciones.map((seccion, index) => {
+        {fichaStepper.secciones.map((seccion, index) => {
           const stepProps: { completed?: boolean } = {};
           const labelProps: {
             optional?: React.ReactNode;
@@ -118,13 +77,13 @@ export default function StepperFichas() {
             stepProps.completed = false;
           }
           return (
-            <Step key={seccion.id} {...stepProps}>
+            <Step key={seccion.seccionId} {...stepProps}>
               <StepLabel {...labelProps}>{seccion.nombre}</StepLabel>
             </Step>
           );
         })}
       </Stepper>
-      {activeStep === secciones.length ? (
+      {activeStep === fichaStepper.secciones.length ? (
         <React.Fragment>
           <Typography sx={{ mt: 2, mb: 1 }}>
             Ficha Finalizada
@@ -136,10 +95,10 @@ export default function StepperFichas() {
         </React.Fragment>
       ) : (
         <React.Fragment>
-          <Typography sx={{ mt: 2, mb: 1 }}>{ secciones[activeStep]?.nombre }</Typography>
+          <Typography sx={{ mt: 2, mb: 1 }}>{ fichaStepper.secciones[activeStep]?.nombre }</Typography>
           {
-            secciones[activeStep]?.preguntas.map((pregunta, index) => (
-              <TextField id={index.toString()} label={pregunta.nombre} variant="outlined" sx={{ mx: 2 }} />
+            fichaStepper.secciones[activeStep]?.preguntas.map((pregunta, index) => (
+              <TextField id={index.toString()} label={pregunta.label} variant="outlined" sx={{ mx: 2 }} />
             ))
           }
           <Box sx={{ display: 'flex', flexDirection: 'row', pt: 2 }}>
@@ -158,7 +117,7 @@ export default function StepperFichas() {
               </Button>
             )}
             <Button onClick={handleNext}>
-              {activeStep === secciones.length - 1 ? 'Finalizar' : 'Siguiente'}
+              {activeStep === fichaStepper.secciones.length - 1 ? 'Finalizar' : 'Siguiente'}
             </Button>
           </Box>
         </React.Fragment>

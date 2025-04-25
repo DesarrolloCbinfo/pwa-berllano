@@ -1,32 +1,27 @@
 import Navbar from "../../../components/Navbar"
-import SelectFicha from "../../../features/DemoStepper/SelectFicha/SelectFicha";
 import StepperFichas from "../../../features/DemoStepper/StepperFichas/StepperFichas";
-import useFetchData from "../../../hooks/useFetchData";
 import Container from '@mui/material/Container';
 import { DemoStepperApis } from "./apis/DemoStepperApis";
-import { Ficha } from "./types/DemoStepperTypes";
-import { useState } from "react";
+import { FichaStepper, initialDataFichaStepper } from "./types/DemoStepperTypes";
+import { useQuery } from "@tanstack/react-query";
+import useConsumoApi from "../../../hooks/useConsumoApi";
 
 export default function DemoStepper() {
-  const fichaData = useFetchData<Ficha>(DemoStepperApis.getFicha(1));
-  const [ficha, setFicha] = useState(fichaData[0]);
+  const { consumoApi } = useConsumoApi();
 
-  const handleFichaChange = (ficha: Ficha) => {
-    setFicha(ficha)
-  }
+  const { data: fichaStepper = initialDataFichaStepper } = useQuery<FichaStepper>({ 
+    queryKey: ['fichaStepper'],
+    queryFn: async () => await consumoApi.get(DemoStepperApis.getFichaStepper(2)).then((res) => res.data)
+  });
 
-  console.log("Fichas Data")
-  console.log(fichaData)
-
-  console.log("Current Ficha")
-  console.log(ficha)
+  console.log("Ficha Stepper")
+  console.log(fichaStepper)
 
   return (
     <>
       <Navbar />
       <Container maxWidth="xl">
-        <SelectFicha fichaData={fichaData} handleFichaChange={handleFichaChange} />
-        <StepperFichas />
+        <StepperFichas fichaStepper={fichaStepper} />
       </Container>
     </>
   )

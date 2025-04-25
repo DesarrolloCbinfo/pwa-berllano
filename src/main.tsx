@@ -7,13 +7,16 @@ import "@fontsource/roboto/500.css";
 import "@fontsource/roboto/700.css";
 import App from "./app/App.tsx";
 import { AuthProvider } from "./context/AuthContext.tsx";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <AuthProvider>
-      {" "}
-      {/* Proveedor de autenticación */}
-      <App />
-    </AuthProvider>
+    <QueryClientProvider client={new QueryClient()}>
+      <AuthProvider>
+        {" "}
+        {/* Proveedor de autenticación */}
+        <App />
+      </AuthProvider>
+    </QueryClientProvider>
   </StrictMode>
 );
