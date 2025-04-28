@@ -62,7 +62,7 @@ export default function StepperFichas({ fichaStepper }: Props) {
 
   return (
     <Box sx={{ width: '100%', my: 8 }}>
-      <Stepper activeStep={activeStep}>
+      <Stepper activeStep={activeStep} sx={{ display: 'flex', flexWrap: 'wrap', rowGap: 2 }}>
         {fichaStepper.secciones.map((seccion, index) => {
           const stepProps: { completed?: boolean } = {};
           const labelProps: {
