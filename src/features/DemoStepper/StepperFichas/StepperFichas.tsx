@@ -162,6 +162,7 @@ export default function StepperFichas({ fichaStepper, usuario, refetchFichaStepp
                       }
 
                       setPreguntasPendientes((prevPreguntasPendientes) => prevPreguntasPendientes.filter((preguntaPendiente) => preguntaPendiente.preguntaId !== pregunta.preguntaId))
+                      refetchFichaStepper()
                     }}
                   />
                   {
@@ -181,6 +182,7 @@ export default function StepperFichas({ fichaStepper, usuario, refetchFichaStepp
                           }
 
                           upsertFomularioRespuesta(respuesta)
+                          refetchFichaStepper()
                         }}
                       />
                     )
