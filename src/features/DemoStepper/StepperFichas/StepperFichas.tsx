@@ -16,9 +16,10 @@ import { useState, useEffect } from 'react';
 type Props = {
   fichaStepper: FichaStepper
   usuario: number
+  refetchFichaStepper: () => void
 }
 
-export default function StepperFichas({ fichaStepper, usuario }: Props) {
+export default function StepperFichas({ fichaStepper, usuario, refetchFichaStepper }: Props) {
   const [activeStep, setActiveStep] = React.useState(0);
   const [skipped, setSkipped] = React.useState(new Set<number>());
 
@@ -67,10 +68,12 @@ export default function StepperFichas({ fichaStepper, usuario }: Props) {
 
     setActiveStep((prevActiveStep) => prevActiveStep + 1);
     setSkipped(newSkipped);
+    refetchFichaStepper()
   };
 
   const handleBack = () => {
     setActiveStep((prevActiveStep) => prevActiveStep - 1);
+    refetchFichaStepper()
   };
 
   const handleSkip = () => {
@@ -132,15 +135,15 @@ export default function StepperFichas({ fichaStepper, usuario }: Props) {
             spacing={2}
           >
             {
-              fichaStepper.secciones[activeStep]?.preguntas?.map((pregunta, index) => (
-                <Box key={index} sx={{ m: 0, p: 0, display: 'flex', flexDirection: 'row', alignItems: 'baseline' }}>
+              fichaStepper.secciones[activeStep]?.preguntas?.map((pregunta) => (
+                <Box key={pregunta.preguntaId} sx={{ m: 0, p: 0, display: 'flex', flexDirection: 'row', alignItems: 'baseline' }}>
                   <TextField 
-                    id={index.toString()} 
+                    id={pregunta.preguntaId.toString()} 
                     label={pregunta.label} 
                     variant="outlined" 
                     sx={{ mx: 2, flex: '1 1 auto' }} 
-                    required={pregunta.requerido}
-                    defaultValue={pregunta.respuestaPlaceholder}
+                    required={pregunta?.requerido}
+                    defaultValue={pregunta?.respuestaPlaceholder}
                     error={preguntasPendientes?.includes(pregunta)}
                     onChange={(e) => {
                       const respuesta: FormularioRespuesta = {

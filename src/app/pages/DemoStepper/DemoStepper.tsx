@@ -16,10 +16,12 @@ export default function DemoStepper() {
   const ficha = 2;
 
   //conseguir ficha con get de fichas asignadas a algun usuario
-  const { data: fichaStepper = initialDataFichaStepper } = useQuery<FichaStepper>({ 
+  const { data: fichaStepper = initialDataFichaStepper, refetch: refetchFichaStepper } = useQuery<FichaStepper>({ 
     queryKey: ['fichaStepper'],
     queryFn: async () => await consumoApi.get(DemoStepperApis.getFichaStepper(ficha, usuario)).then((res) => res.data)
   });
+
+  //Hacer refetch de la ficha cuando se cambie la seccion y conservar en que seccion se quedo el usuario
 
   console.log("Ficha Stepper")
   console.log(fichaStepper)
@@ -28,7 +30,7 @@ export default function DemoStepper() {
     <>
       <Navbar />
       <Container maxWidth="xl">
-        <StepperFichas fichaStepper={fichaStepper} usuario={usuario} />
+        <StepperFichas fichaStepper={fichaStepper} usuario={usuario} refetchFichaStepper={refetchFichaStepper} />
       </Container>
     </>
   )
