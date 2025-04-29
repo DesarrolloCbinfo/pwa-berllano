@@ -7,14 +7,25 @@ import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import { FormControl, InputLabel, MenuItem, Select, TextField, Stack } from '@mui/material';
 import { FichaStepper } from '../../../app/pages/DemoStepper/types/DemoStepperTypes';
+import { FormularioRespuesta } from './types/StepperFichasTypes';
+import { useMutation } from '@tanstack/react-query';
+import useConsumoApi from '../../../hooks/useConsumoApi';
+import { StepperFichasApis } from './apis/StepperFichasApis';
 
 type Props = {
   fichaStepper: FichaStepper
+  usuario: number
 }
 
-export default function StepperFichas({ fichaStepper }: Props) {
+export default function StepperFichas({ fichaStepper, usuario }: Props) {
   const [activeStep, setActiveStep] = React.useState(0);
   const [skipped, setSkipped] = React.useState(new Set<number>());
+
+  const { consumoApi } = useConsumoApi();
+
+  const { mutate: upsertFomularioRespuesta } = useMutation({
+    mutationFn: (data: FormularioRespuesta) => consumoApi.put(StepperFichasApis.upsertFormularioRespuesta(), data)
+  })
 
   const isStepOptional = (step: number) => {
     //agregar secciones opcionales
@@ -101,7 +112,29 @@ export default function StepperFichas({ fichaStepper }: Props) {
           >
             {
               fichaStepper.secciones[activeStep]?.preguntas.map((pregunta, index) => (
-                <TextField id={index.toString()} label={pregunta.label} variant="outlined" sx={{ mx: 2 }} />
+                <TextField 
+                  id={index.toString()} 
+                  label={pregunta.label} 
+                  variant="outlined" sx={{ mx: 2 }} 
+                  onChange={(e) => {
+                    const respuesta: FormularioRespuesta = {
+                      respuesta: e.target.value.trim(),
+                      pregunta: pregunta.preguntaId,
+                      usuario: usuario
+                    }
+
+                    upsertFomularioRespuesta(respuesta)
+
+                    console.log("Respuesta")
+                    console.log(respuesta)
+                    console.log("Valor")
+                    console.log(e.target.value)
+                    console.log("Pregunta")
+                    console.log(pregunta)
+                    console.log("usuario")
+                    console.log(usuario)
+                  }}
+                />
               ))
             }
             {

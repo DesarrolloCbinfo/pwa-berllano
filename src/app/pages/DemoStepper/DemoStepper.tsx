@@ -9,6 +9,10 @@ import useConsumoApi from "../../../hooks/useConsumoApi";
 export default function DemoStepper() {
   const { consumoApi } = useConsumoApi();
 
+  //conseguir usuario con get
+  const usuario = 999;
+
+  //conseguir ficha con get de fichas asignadas a algun usuario
   const { data: fichaStepper = initialDataFichaStepper } = useQuery<FichaStepper>({ 
     queryKey: ['fichaStepper'],
     queryFn: async () => await consumoApi.get(DemoStepperApis.getFichaStepper(2)).then((res) => res.data)
@@ -21,7 +25,7 @@ export default function DemoStepper() {
     <>
       <Navbar />
       <Container maxWidth="xl">
-        <StepperFichas fichaStepper={fichaStepper} />
+        <StepperFichas fichaStepper={fichaStepper} usuario={usuario} />
       </Container>
     </>
   )
