@@ -10,7 +10,7 @@ export default function DemoStepper() {
   const { consumoApi } = useConsumoApi();
 
   //conseguir usuario con get
-  const usuario = 999;
+  const usuario = crypto.randomUUID();
 
   //conseguir ficha con usuario y get
   const ficha = 2;

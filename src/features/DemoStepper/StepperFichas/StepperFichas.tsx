@@ -15,7 +15,7 @@ import { useState, useEffect } from 'react';
 
 type Props = {
   fichaStepper: FichaStepper
-  usuario: number
+  usuario: string
   refetchFichaStepper: () => void
 }
 
