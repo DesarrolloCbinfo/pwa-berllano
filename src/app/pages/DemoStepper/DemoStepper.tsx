@@ -12,10 +12,13 @@ export default function DemoStepper() {
   //conseguir usuario con get
   const usuario = 999;
 
+  //conseguir ficha con usuario y get
+  const ficha = 2;
+
   //conseguir ficha con get de fichas asignadas a algun usuario
   const { data: fichaStepper = initialDataFichaStepper } = useQuery<FichaStepper>({ 
     queryKey: ['fichaStepper'],
-    queryFn: async () => await consumoApi.get(DemoStepperApis.getFichaStepper(2)).then((res) => res.data)
+    queryFn: async () => await consumoApi.get(DemoStepperApis.getFichaStepper(ficha, usuario)).then((res) => res.data)
   });
 
   console.log("Ficha Stepper")

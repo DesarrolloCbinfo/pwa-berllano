@@ -6,11 +6,12 @@ import StepLabel from '@mui/material/StepLabel';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import { FormControl, InputLabel, MenuItem, Select, TextField, Stack } from '@mui/material';
-import { FichaStepper } from '../../../app/pages/DemoStepper/types/DemoStepperTypes';
+import { FichaStepper, PreguntasStepper } from '../../../app/pages/DemoStepper/types/DemoStepperTypes';
 import { FormularioRespuesta } from './types/StepperFichasTypes';
 import { useMutation } from '@tanstack/react-query';
 import useConsumoApi from '../../../hooks/useConsumoApi';
 import { StepperFichasApis } from './apis/StepperFichasApis';
+import { useState, useEffect } from 'react';
 
 type Props = {
   fichaStepper: FichaStepper
@@ -21,11 +22,26 @@ export default function StepperFichas({ fichaStepper, usuario }: Props) {
   const [activeStep, setActiveStep] = React.useState(0);
   const [skipped, setSkipped] = React.useState(new Set<number>());
 
+  const [preguntasPendientes, setPreguntasPendientes] = useState<PreguntasStepper[]>([])
+
   const { consumoApi } = useConsumoApi();
 
   const { mutate: upsertFomularioRespuesta } = useMutation({
     mutationFn: (data: FormularioRespuesta) => consumoApi.put(StepperFichasApis.upsertFormularioRespuesta(), data)
   })
+
+  console.log(preguntasPendientes)
+
+  useEffect(() => {
+    setPreguntasPendientes(fichaStepper.secciones[activeStep]?.preguntas.filter((pregunta) => {
+      if (!pregunta.requerido) return
+
+      if (!pregunta.respuestaPlaceholder?.trim()) {
+        return pregunta
+      }
+    }))
+
+  }, [setPreguntasPendientes, activeStep, fichaStepper.secciones])
 
   const isStepOptional = (step: number) => {
     //agregar secciones opcionales
@@ -37,6 +53,11 @@ export default function StepperFichas({ fichaStepper, usuario }: Props) {
   };
 
   const handleNext = () => {
+
+    if (preguntasPendientes.length > 0) {
+      return
+    }
+
     let newSkipped = skipped;
 
     if (isStepSkipped(activeStep)) {
@@ -111,40 +132,65 @@ export default function StepperFichas({ fichaStepper, usuario }: Props) {
             spacing={2}
           >
             {
-              fichaStepper.secciones[activeStep]?.preguntas.map((pregunta, index) => (
-                <TextField 
-                  key={index}
-                  id={index.toString()} 
-                  label={pregunta.label} 
-                  variant="outlined" sx={{ mx: 2 }} 
-                  onChange={(e) => {
-                    const respuesta: FormularioRespuesta = {
-                      respuesta: e.target.value.trim(),
-                      pregunta: pregunta.preguntaId,
-                      usuario: usuario,
-                      comentario: "",
-                      fecha: new Date(),
-                      sucursal: 0
-                    }
+              fichaStepper.secciones[activeStep]?.preguntas?.map((pregunta, index) => (
+                <Box key={index} sx={{ m: 0, p: 0, display: 'flex', flexDirection: 'row', alignItems: 'baseline' }}>
+                  <TextField 
+                    id={index.toString()} 
+                    label={pregunta.label} 
+                    variant="outlined" 
+                    sx={{ mx: 2, flex: '1 1 auto' }} 
+                    required={pregunta.requerido}
+                    defaultValue={pregunta.respuestaPlaceholder}
+                    error={preguntasPendientes?.includes(pregunta)}
+                    onChange={(e) => {
+                      const respuesta: FormularioRespuesta = {
+                        respuesta: e.target.value.trim(),
+                        pregunta: pregunta.preguntaId,
+                        usuario: usuario,
+                        comentario: pregunta.comentarioPlaceholder,
+                        sucursal: 0
+                      }
 
-                    upsertFomularioRespuesta(respuesta)
+                      upsertFomularioRespuesta(respuesta)
 
-                    console.log("Respuesta")
-                    console.log(respuesta)
-                    console.log("Valor")
-                    console.log(e.target.value)
-                    console.log("Pregunta")
-                    console.log(pregunta)
-                    console.log("usuario")
-                    console.log(usuario)
-                  }}
-                />
+                      if (!e.target.value.trim()) {
+                        setPreguntasPendientes((prevPreguntasPendientes) => [...prevPreguntasPendientes, pregunta])
+                        return
+                      }
+
+                      setPreguntasPendientes((prevPreguntasPendientes) => prevPreguntasPendientes.filter((preguntaPendiente) => preguntaPendiente.preguntaId !== pregunta.preguntaId))
+                    }}
+                  />
+                  {
+                    pregunta.comentario && (
+                      <TextField
+                        label="Comentario"
+                        variant="outlined"
+                        sx={{ mx: 2, flex: '1 1 auto' }} 
+                        defaultValue={pregunta.comentarioPlaceholder}
+                        onChange={(e) => {
+                          const respuesta: FormularioRespuesta = {
+                            respuesta: pregunta.respuestaPlaceholder,
+                            pregunta: pregunta.preguntaId,
+                            usuario: usuario,
+                            comentario: e.target.value.trim(),
+                            sucursal: 0
+                          }
+
+                          upsertFomularioRespuesta(respuesta)
+                        }}
+                      />
+                    )
+                  }
+                </Box>
               ))
             }
             {
               fichaStepper.secciones[activeStep]?.preguntasSelect.map((preguntaSelect, index) => (
                 <FormControl fullWidth key={index}>
-                  <InputLabel id={preguntaSelect.label}>{preguntaSelect.label}</InputLabel>
+                  <InputLabel id={preguntaSelect.label}>
+                    {preguntaSelect.label}
+                  </InputLabel>
                   <Select
                     labelId={preguntaSelect.label}
                     id={preguntaSelect.preguntaSelectId.toString()}

@@ -36,9 +36,12 @@ export type PreguntasStepper = {
   preguntaId: number
   label: string
   orden: number
+  comentario: boolean
   requerido: boolean
   name: string
   type: string
+  respuestaPlaceholder?: string
+  comentarioPlaceholder?: string
 }
 
 export type PreguntasSelectStepper = {
@@ -47,7 +50,10 @@ export type PreguntasSelectStepper = {
   label: string
   name: string
   orden: number
+  comentario: boolean
   requerido: boolean
+  respuestaPlaceholder?: string
+  comentarioPlaceholder?: string
   opciones: OptionStepper[]
 }
 
