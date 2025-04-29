@@ -113,6 +113,7 @@ export default function StepperFichas({ fichaStepper, usuario }: Props) {
             {
               fichaStepper.secciones[activeStep]?.preguntas.map((pregunta, index) => (
                 <TextField 
+                  key={index}
                   id={index.toString()} 
                   label={pregunta.label} 
                   variant="outlined" sx={{ mx: 2 }} 
@@ -120,7 +121,10 @@ export default function StepperFichas({ fichaStepper, usuario }: Props) {
                     const respuesta: FormularioRespuesta = {
                       respuesta: e.target.value.trim(),
                       pregunta: pregunta.preguntaId,
-                      usuario: usuario
+                      usuario: usuario,
+                      comentario: "",
+                      fecha: new Date(),
+                      sucursal: 0
                     }
 
                     upsertFomularioRespuesta(respuesta)
@@ -138,16 +142,16 @@ export default function StepperFichas({ fichaStepper, usuario }: Props) {
               ))
             }
             {
-              fichaStepper.secciones[activeStep]?.preguntasSelect.map((preguntaSelect) => (
-                <FormControl fullWidth>
+              fichaStepper.secciones[activeStep]?.preguntasSelect.map((preguntaSelect, index) => (
+                <FormControl fullWidth key={index}>
                   <InputLabel id={preguntaSelect.label}>{preguntaSelect.label}</InputLabel>
                   <Select
                     labelId={preguntaSelect.label}
                     id={preguntaSelect.preguntaSelectId.toString()}
                     label={preguntaSelect.label}
                   >
-                    {preguntaSelect.opciones.map((opcion) => (
-                      <MenuItem value={opcion.value}>{opcion.text}</MenuItem>
+                    {preguntaSelect.opciones.map((opcion, index) => (
+                      <MenuItem key={index} value={opcion.value}>{opcion.text}</MenuItem>
                     ))}
                   </Select>
                 </FormControl>
