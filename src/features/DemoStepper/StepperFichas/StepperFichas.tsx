@@ -8,7 +8,7 @@ import Typography from '@mui/material/Typography';
 import { FormControl, InputLabel, MenuItem, Select, TextField, Stack } from '@mui/material';
 import { FichaStepper, PreguntasStepper } from '../../../app/pages/DemoStepper/types/DemoStepperTypes';
 import { FormularioRespuesta } from './types/StepperFichasTypes';
-import { useMutation } from '@tanstack/react-query';
+import { QueryObserverResult, useMutation } from '@tanstack/react-query';
 import useConsumoApi from '../../../hooks/useConsumoApi';
 import { StepperFichasApis } from './apis/StepperFichasApis';
 import { useState, useEffect } from 'react';
@@ -16,10 +16,11 @@ import { useState, useEffect } from 'react';
 type Props = {
   fichaStepper: FichaStepper
   usuario: string
-  refetchFichaStepper: () => void
+  createNewUser: () => void
+  refetchFichaStepper: () => Promise<QueryObserverResult<FichaStepper, Error>>
 }
 
-export default function StepperFichas({ fichaStepper, usuario, refetchFichaStepper }: Props) {
+export default function StepperFichas({ fichaStepper, usuario, createNewUser, refetchFichaStepper }: Props) {
   const [activeStep, setActiveStep] = React.useState(0);
   const [skipped, setSkipped] = React.useState(new Set<number>());
 
@@ -92,7 +93,9 @@ export default function StepperFichas({ fichaStepper, usuario, refetchFichaStepp
   };
 
   const handleReset = () => {
-    setActiveStep(0);
+    createNewUser()
+    refetchFichaStepper()
+    setActiveStep(0)
   };
 
   return (
@@ -136,25 +139,29 @@ export default function StepperFichas({ fichaStepper, usuario, refetchFichaStepp
           >
             {
               fichaStepper.secciones[activeStep]?.preguntas?.map((pregunta) => (
-                <Box key={pregunta.preguntaId} sx={{ m: 0, p: 0, display: 'flex', flexDirection: 'row', alignItems: 'baseline' }}>
+                <Box key={pregunta?.preguntaId} sx={{ m: 0, p: 0, display: 'flex', flexDirection: 'row', alignItems: 'baseline' }}>
                   <TextField 
-                    id={pregunta.preguntaId.toString()} 
-                    label={pregunta.label} 
+                    id={pregunta?.preguntaId.toString()} 
+                    label={pregunta?.label} 
                     variant="outlined" 
                     sx={{ mx: 2, flex: '1 1 auto' }} 
                     required={pregunta?.requerido}
                     defaultValue={pregunta?.respuestaPlaceholder}
                     error={preguntasPendientes?.includes(pregunta)}
                     onChange={(e) => {
-                      const respuesta: FormularioRespuesta = {
-                        respuesta: e.target.value.trim(),
-                        pregunta: pregunta.preguntaId,
-                        usuario: usuario,
-                        comentario: pregunta.comentarioPlaceholder,
-                        sucursal: 0
-                      }
+                      refetchFichaStepper().then((res) => {
+                        const fetchedPregunta = res.data?.secciones[activeStep]?.preguntas?.find((newPregunta) => newPregunta.preguntaId === pregunta.preguntaId)
 
-                      upsertFomularioRespuesta(respuesta)
+                        const respuesta: FormularioRespuesta = {
+                          respuesta: e.target.value.trim(),
+                          pregunta: fetchedPregunta?.preguntaId,
+                          usuario: usuario,
+                          comentario: fetchedPregunta?.comentarioPlaceholder,
+                          sucursal: 0
+                        }
+
+                        upsertFomularioRespuesta(respuesta)
+                      })
 
                       if (!e.target.value.trim()) {
                         setPreguntasPendientes((prevPreguntasPendientes) => [...prevPreguntasPendientes, pregunta])
@@ -162,27 +169,29 @@ export default function StepperFichas({ fichaStepper, usuario, refetchFichaStepp
                       }
 
                       setPreguntasPendientes((prevPreguntasPendientes) => prevPreguntasPendientes.filter((preguntaPendiente) => preguntaPendiente.preguntaId !== pregunta.preguntaId))
-                      refetchFichaStepper()
                     }}
                   />
                   {
-                    pregunta.comentario && (
+                    pregunta?.comentario && (
                       <TextField
                         label="Comentario"
                         variant="outlined"
                         sx={{ mx: 2, flex: '1 1 auto' }} 
-                        defaultValue={pregunta.comentarioPlaceholder}
+                        defaultValue={pregunta?.comentarioPlaceholder}
                         onChange={(e) => {
-                          const respuesta: FormularioRespuesta = {
-                            respuesta: pregunta.respuestaPlaceholder,
-                            pregunta: pregunta.preguntaId,
-                            usuario: usuario,
-                            comentario: e.target.value.trim(),
-                            sucursal: 0
-                          }
+                          refetchFichaStepper().then((res) => {
+                            const fetchedPregunta = res.data?.secciones[activeStep]?.preguntas?.find((newPregunta) => newPregunta.preguntaId === pregunta.preguntaId)
 
-                          upsertFomularioRespuesta(respuesta)
-                          refetchFichaStepper()
+                            const respuesta: FormularioRespuesta = {
+                              respuesta: fetchedPregunta?.respuestaPlaceholder,
+                              pregunta: fetchedPregunta?.preguntaId,
+                              usuario: usuario,
+                              comentario: e.target.value.trim(),
+                              sucursal: 0
+                            }
+
+                            upsertFomularioRespuesta(respuesta)
+                          })
                         }}
                       />
                     )

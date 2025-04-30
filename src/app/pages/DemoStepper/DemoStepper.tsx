@@ -6,11 +6,18 @@ import { FichaStepper, initialDataFichaStepper } from "./types/DemoStepperTypes"
 import { useQuery } from "@tanstack/react-query";
 import useConsumoApi from "../../../hooks/useConsumoApi";
 
+let usuario = crypto.randomUUID();
+
+function createNewUser() {
+  usuario = crypto.randomUUID();
+}
+
 export default function DemoStepper() {
   const { consumoApi } = useConsumoApi();
 
   //conseguir usuario con get
-  const usuario = crypto.randomUUID();
+  console.log("UUID Usuario")
+  console.log(usuario)
 
   //conseguir ficha con usuario y get
   const ficha = 2;
@@ -30,7 +37,12 @@ export default function DemoStepper() {
     <>
       <Navbar />
       <Container maxWidth="xl">
-        <StepperFichas fichaStepper={fichaStepper} usuario={usuario} refetchFichaStepper={refetchFichaStepper} />
+        <StepperFichas
+          fichaStepper={fichaStepper} 
+          usuario={usuario} 
+          createNewUser={createNewUser} 
+          refetchFichaStepper={refetchFichaStepper} 
+        />
       </Container>
     </>
   )
