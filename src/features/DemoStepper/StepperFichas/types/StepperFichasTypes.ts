@@ -5,5 +5,6 @@ export type FormularioRespuesta = {
   fecha?: Date
   sucursal?: number
   pregunta?: number
+  pregunta_select?: number
   usuario?: string
 }

@@ -5,7 +5,7 @@ import Step from '@mui/material/Step';
 import StepLabel from '@mui/material/StepLabel';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
-import { FormControl, InputLabel, MenuItem, Select, TextField, Stack } from '@mui/material';
+import { FormControl, InputLabel, MenuItem, Select, TextField, Stack, SelectChangeEvent } from '@mui/material';
 import { FichaStepper, PreguntasStepper } from '../../../app/pages/DemoStepper/types/DemoStepperTypes';
 import { FormularioRespuesta } from './types/StepperFichasTypes';
 import { QueryObserverResult, useMutation } from '@tanstack/react-query';
@@ -29,7 +29,8 @@ export default function StepperFichas({ fichaStepper, usuario, createNewUser, re
   const { consumoApi } = useConsumoApi();
 
   const { mutate: upsertFomularioRespuesta } = useMutation({
-    mutationFn: (data: FormularioRespuesta) => consumoApi.put(StepperFichasApis.upsertFormularioRespuesta(), data)
+    mutationFn: (data: FormularioRespuesta) => consumoApi.put(StepperFichasApis.upsertFormularioRespuesta(), data),
+    onSuccess: () => refetchFichaStepper()
   })
 
   console.log(preguntasPendientes)
@@ -210,6 +211,21 @@ export default function StepperFichas({ fichaStepper, usuario, createNewUser, re
                     labelId={preguntaSelect.label}
                     id={preguntaSelect.preguntaSelectId.toString()}
                     label={preguntaSelect.label}
+                    onChange={(e: SelectChangeEvent<string>) => {
+                      refetchFichaStepper().then((res) => {
+                        const fetchedPreguntaSelect = res.data?.secciones[activeStep]?.preguntasSelect?.find((newPreguntaSelect) => newPreguntaSelect.preguntaSelectId === preguntaSelect.preguntaSelectId)
+
+                        const respuesta: FormularioRespuesta = {
+                          respuesta: e.target.value,
+                          pregunta_select: fetchedPreguntaSelect?.preguntaSelectId,
+                          usuario: usuario,
+                          comentario: fetchedPreguntaSelect?.comentarioPlaceholder,
+                          sucursal: 0
+                        }
+
+                        upsertFomularioRespuesta(respuesta)
+                      })
+                    }}
                   >
                     {preguntaSelect.opciones.map((opcion, index) => (
                       <MenuItem key={index} value={opcion.value}>{opcion.text}</MenuItem>
