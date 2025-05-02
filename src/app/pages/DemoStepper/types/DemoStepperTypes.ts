@@ -29,11 +29,20 @@ export type SeccionStepper = {
   requerido: boolean
   descripcion: string
   preguntas: PreguntasStepper[]
-  preguntasSelect: PreguntasSelectStepper[]
+}
+
+export type BasePreguntasStepper = {
+  id: number
+  label: string
+  orden: number
+  comentario: boolean
+  requerido: boolean
+  respuestaPlaceholder?: string
+  comentarioPlaceholder?: string
 }
 
 export type PreguntasStepper = {
-  preguntaId: number
+  id: number
   label: string
   orden: number
   comentario: boolean
@@ -42,10 +51,12 @@ export type PreguntasStepper = {
   type: string
   respuestaPlaceholder?: string
   comentarioPlaceholder?: string
+  es_multiple: boolean
+  opciones: OptionStepper[]
 }
 
 export type PreguntasSelectStepper = {
-  preguntaSelectId: number
+  id: number
   es_multiple: boolean
   label: string
   name: string

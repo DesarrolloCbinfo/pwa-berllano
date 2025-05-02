@@ -5,7 +5,7 @@ import Step from '@mui/material/Step';
 import StepLabel from '@mui/material/StepLabel';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
-import { FormControl, InputLabel, MenuItem, Select, TextField, Stack, SelectChangeEvent } from '@mui/material';
+import { TextField, Stack } from '@mui/material';
 import { FichaStepper, PreguntasStepper } from '../../../app/pages/DemoStepper/types/DemoStepperTypes';
 import { FormularioRespuesta } from './types/StepperFichasTypes';
 import { QueryObserverResult, useMutation } from '@tanstack/react-query';
@@ -139,10 +139,10 @@ export default function StepperFichas({ fichaStepper, usuario, createNewUser, re
             spacing={2}
           >
             {
-              fichaStepper.secciones[activeStep]?.preguntas?.map((pregunta) => (
-                <Box key={pregunta?.preguntaId} sx={{ m: 0, p: 0, display: 'flex', flexDirection: 'row', alignItems: 'baseline' }}>
+              fichaStepper.secciones[activeStep]?.preguntas?.map((pregunta, index) => (
+                <Box key={index} sx={{ m: 0, p: 0, display: 'flex', flexDirection: 'row', alignItems: 'baseline' }}>
                   <TextField 
-                    id={pregunta?.preguntaId.toString()} 
+                    id={index.toString()} 
                     label={pregunta?.label} 
                     variant="outlined" 
                     type={pregunta?.type}
@@ -152,11 +152,11 @@ export default function StepperFichas({ fichaStepper, usuario, createNewUser, re
                     error={preguntasPendientes?.includes(pregunta)}
                     onChange={(e) => {
                       refetchFichaStepper().then((res) => {
-                        const fetchedPregunta = res.data?.secciones[activeStep]?.preguntas?.find((newPregunta) => newPregunta.preguntaId === pregunta.preguntaId)
+                        const fetchedPregunta = res.data?.secciones[activeStep]?.preguntas?.find((newPregunta) => newPregunta.id === pregunta.id)
 
                         const respuesta: FormularioRespuesta = {
                           respuesta: e.target.value.trim(),
-                          pregunta: fetchedPregunta?.preguntaId,
+                          pregunta: fetchedPregunta?.id,
                           usuario: usuario,
                           comentario: fetchedPregunta?.comentarioPlaceholder,
                           sucursal: 0
@@ -170,7 +170,7 @@ export default function StepperFichas({ fichaStepper, usuario, createNewUser, re
                         return
                       }
 
-                      setPreguntasPendientes((prevPreguntasPendientes) => prevPreguntasPendientes.filter((preguntaPendiente) => preguntaPendiente.preguntaId !== pregunta.preguntaId))
+                      setPreguntasPendientes((prevPreguntasPendientes) => prevPreguntasPendientes.filter((preguntaPendiente) => preguntaPendiente.id !== pregunta.id))
                     }}
                   />
                   {
@@ -182,11 +182,11 @@ export default function StepperFichas({ fichaStepper, usuario, createNewUser, re
                         defaultValue={pregunta?.comentarioPlaceholder}
                         onChange={(e) => {
                           refetchFichaStepper().then((res) => {
-                            const fetchedPregunta = res.data?.secciones[activeStep]?.preguntas?.find((newPregunta) => newPregunta.preguntaId === pregunta.preguntaId)
+                            const fetchedPregunta = res.data?.secciones[activeStep]?.preguntas?.find((newPregunta) => newPregunta.id === pregunta.id)
 
                             const respuesta: FormularioRespuesta = {
                               respuesta: fetchedPregunta?.respuestaPlaceholder,
-                              pregunta: fetchedPregunta?.preguntaId,
+                              pregunta: fetchedPregunta?.id,
                               usuario: usuario,
                               comentario: e.target.value.trim(),
                               sucursal: 0
@@ -199,39 +199,6 @@ export default function StepperFichas({ fichaStepper, usuario, createNewUser, re
                     )
                   }
                 </Box>
-              ))
-            }
-            {
-              fichaStepper.secciones[activeStep]?.preguntasSelect.map((preguntaSelect, index) => (
-                <FormControl fullWidth key={index}>
-                  <InputLabel id={preguntaSelect.label}>
-                    {preguntaSelect.label}
-                  </InputLabel>
-                  <Select
-                    labelId={preguntaSelect.label}
-                    id={preguntaSelect.preguntaSelectId.toString()}
-                    label={preguntaSelect.label}
-                    onChange={(e: SelectChangeEvent<string>) => {
-                      refetchFichaStepper().then((res) => {
-                        const fetchedPreguntaSelect = res.data?.secciones[activeStep]?.preguntasSelect?.find((newPreguntaSelect) => newPreguntaSelect.preguntaSelectId === preguntaSelect.preguntaSelectId)
-
-                        const respuesta: FormularioRespuesta = {
-                          respuesta: e.target.value,
-                          pregunta_select: fetchedPreguntaSelect?.preguntaSelectId,
-                          usuario: usuario,
-                          comentario: fetchedPreguntaSelect?.comentarioPlaceholder,
-                          sucursal: 0
-                        }
-
-                        upsertFomularioRespuesta(respuesta)
-                      })
-                    }}
-                  >
-                    {preguntaSelect.opciones.map((opcion, index) => (
-                      <MenuItem key={index} value={opcion.value}>{opcion.text}</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
               ))
             }
           </Stack>

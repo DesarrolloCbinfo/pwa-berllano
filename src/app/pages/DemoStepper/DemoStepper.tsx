@@ -16,8 +16,8 @@ export default function DemoStepper() {
   const { consumoApi } = useConsumoApi();
 
   //conseguir usuario con get
-  console.log("UUID Usuario")
-  console.log(usuario)
+//  console.log("UUID Usuario")
+//  console.log(usuario)
 
   //conseguir ficha con usuario y get
   const ficha = 2;
