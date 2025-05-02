@@ -144,6 +144,7 @@ export default function StepperFichas({ fichaStepper, usuario, createNewUser, re
                     id={pregunta?.preguntaId.toString()} 
                     label={pregunta?.label} 
                     variant="outlined" 
+                    type={pregunta?.type}
                     sx={{ mx: 2, flex: '1 1 auto' }} 
                     required={pregunta?.requerido}
                     defaultValue={pregunta?.respuestaPlaceholder}
