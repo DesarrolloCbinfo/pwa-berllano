@@ -233,16 +233,30 @@ export default function StepperFichas({ fichaStepper, usuario, createNewUser, re
                     : pregunta?.type === 'radio' ?
                     (
                       <FormControl>
-                        <FormLabel id={pregunta?.preguntaId.toString()}>{pregunta?.label}</FormLabel>
+                        <FormLabel id={pregunta?.preguntaId.toString()} sx={{ fontFamily: "'Courier Prime', monospace" }}>{pregunta?.label}</FormLabel>
                         <RadioGroup
                           aria-labelledby={pregunta?.label}
                           defaultValue={pregunta?.respuestaPlaceholder || ''}
                           name={pregunta?.label}
                           onChange={(e) => handleChangeRespuesta(e, pregunta)}
                         >
-                          <FormControlLabel value="female" control={<Radio />} label="Female" />
-                          <FormControlLabel value="male" control={<Radio />} label="Male" />
-                          <FormControlLabel value="other" control={<Radio />} label="Other" />
+                          {
+                            pregunta?.opciones?.map((opcion) => (
+                              <FormControlLabel
+                                key={opcion.opcion_id}
+                                value={opcion.valor}
+                                control={<Radio />}
+                                label={opcion.valor} 
+                                sx={{ 
+                                  flex: '1 1 auto',
+                                  fontFamily: "'Courier Prime', monospace",
+                                  "& .MuiFormControlLabel-label": {
+                                    fontFamily: "'Courier Prime', monospace"
+                                  }
+                                }}
+                              />
+                            ))
+                          }
                         </RadioGroup>
                       </FormControl>
                     )

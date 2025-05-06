@@ -39,12 +39,19 @@ export type PreguntasStepper = {
   requerido: boolean
   type: "text" | "number" | "select" | "radio"
   spOrigenDato: number | null
-  opcionesSelect: OptionStepper[]
+  opcionesSelect: OptionSelectStepper[]
+  opciones: OptionStepper[]
   respuestaPlaceholder?: string
   comentarioPlaceholder?: string
 }
 
-export type OptionStepper = {
+export type OptionSelectStepper = {
   id: number
   text: string
+}
+
+export type OptionStepper = {
+  opcion_id: number
+  pregunta_id: number
+  valor: string
 }
