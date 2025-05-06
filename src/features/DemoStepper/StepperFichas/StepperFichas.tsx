@@ -5,10 +5,18 @@ import Step from '@mui/material/Step';
 import StepLabel from '@mui/material/StepLabel';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
+import InputLabel from '@mui/material/InputLabel';
+import MenuItem from '@mui/material/MenuItem';
+import FormControl from '@mui/material/FormControl';
+import Radio from '@mui/material/Radio';
+import RadioGroup from '@mui/material/RadioGroup';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import FormLabel from '@mui/material/FormLabel';
+import Select, { SelectChangeEvent } from '@mui/material/Select';
 import { TextField, Stack } from '@mui/material';
 import { FichaStepper, PreguntasStepper } from '../../../app/pages/DemoStepper/types/DemoStepperTypes';
 import { FormularioRespuesta } from './types/StepperFichasTypes';
-import { QueryObserverResult, useMutation } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import useConsumoApi from '../../../hooks/useConsumoApi';
 import { StepperFichasApis } from './apis/StepperFichasApis';
 import { useState, useEffect } from 'react';
@@ -17,7 +25,7 @@ type Props = {
   fichaStepper: FichaStepper
   usuario: string
   createNewUser: () => void
-  refetchFichaStepper: () => Promise<QueryObserverResult<FichaStepper, Error>>
+  refetchFichaStepper: () => void
 }
 
 export default function StepperFichas({ fichaStepper, usuario, createNewUser, refetchFichaStepper }: Props) {
@@ -32,8 +40,6 @@ export default function StepperFichas({ fichaStepper, usuario, createNewUser, re
     mutationFn: (data: FormularioRespuesta) => consumoApi.put(StepperFichasApis.upsertFormularioRespuesta(), data),
     onSuccess: () => refetchFichaStepper()
   })
-
-  console.log(preguntasPendientes)
 
   useEffect(() => {
     setPreguntasPendientes(fichaStepper.secciones[activeStep]?.preguntas.filter((pregunta) => {
@@ -99,101 +105,198 @@ export default function StepperFichas({ fichaStepper, usuario, createNewUser, re
     setActiveStep(0)
   };
 
+  const handleChangeRespuesta = (e: SelectChangeEvent | React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>, pregunta: PreguntasStepper) => {
+    const respuesta: FormularioRespuesta = {
+      respuesta: e.target.value.trim(),
+      pregunta: pregunta?.preguntaId,
+      usuario: usuario,
+      sucursal: 0
+    }
+
+    upsertFomularioRespuesta(respuesta)
+
+    if (!e.target.value.trim()) {
+      setPreguntasPendientes((prevPreguntasPendientes) => [...prevPreguntasPendientes, pregunta])
+      return
+    }
+
+    setPreguntasPendientes((prevPreguntasPendientes) => prevPreguntasPendientes.filter((preguntaPendiente) => preguntaPendiente.preguntaId !== pregunta.preguntaId))
+  }
+
   return (
-    <Box sx={{ width: '100%', my: 8 }}>
+    <Box sx={{ width: '100%', my: 8, fontFamily: "'Courier Prime', monospace" }}>
       <Stepper activeStep={activeStep} sx={{ display: 'flex', flexWrap: 'wrap', rowGap: 2 }}>
         {fichaStepper.secciones.map((seccion, index) => {
           const stepProps: { completed?: boolean } = {};
           const labelProps: {
             optional?: React.ReactNode;
           } = {};
+
           if (isStepOptional(index)) {
             labelProps.optional = (
-              <Typography variant="caption">Opcional</Typography>
+              <Typography variant="caption" sx={{ fontFamily: "'Courier Prime', monospace" }}>Opcional</Typography>
             );
           }
+
           if (isStepSkipped(index)) {
             stepProps.completed = false;
           }
+
           return (
-            <Step key={seccion.seccionId} {...stepProps}>
-              <StepLabel {...labelProps}>{seccion.nombre}</StepLabel>
+            <Step 
+              key={seccion.seccionId} 
+              {...stepProps} 
+              sx={{ 
+                fontFamily: "'Courier Prime', monospace",
+                '& .MuiStep-root': {
+                  fontFamily: "'Courier Prime', monospace"
+                },
+                '& .MuiStep-horizontal': {
+                  fontFamily: "'Courier Prime', monospace"
+                },
+                '& .MuiStepIcon-text': {
+                  fontFamily: "'Courier Prime', monospace"
+                },
+              }}
+            >
+              <StepLabel 
+                {...labelProps} 
+                sx={{ 
+                  fontFamily: "'Courier Prime', monospace",
+                  '& .MuiStepLabel-root': {
+                    fontFamily: "'Courier Prime', monospace"
+                  },
+                  '& .MuiStepLabel-label': {
+                    fontFamily: "'Courier Prime', monospace"
+                  },
+                }}
+              >
+                {seccion.nombre}
+              </StepLabel>
             </Step>
           );
         })}
       </Stepper>
       {activeStep === fichaStepper.secciones.length ? (
         <React.Fragment>
-          <Typography sx={{ mt: 2, mb: 1 }}>
+          <Typography sx={{ mt: 2, mb: 1, fontFamily: "'Courier Prime', monospace" }}>
             Ficha Finalizada
           </Typography>
           <Box sx={{ display: 'flex', flexDirection: 'row', pt: 2 }}>
             <Box sx={{ flex: '1 1 auto' }} />
-            <Button onClick={handleReset}>Reiniciar</Button>
+            <Button onClick={handleReset} sx={{ fontFamily: "'Courier Prime', monospace" }}>Reiniciar</Button>
           </Box>
         </React.Fragment>
       ) : (
         <React.Fragment>
-          <Typography sx={{ mt: 2, mb: 1 }}>{ fichaStepper.secciones[activeStep]?.nombre }</Typography>
+          <Typography sx={{ mt: 2, mb: 1, fontFamily: "'Courier Prime', monospace" }}>{ fichaStepper.secciones[activeStep]?.nombre }</Typography>
           <Stack
             spacing={2}
           >
             {
-              fichaStepper.secciones[activeStep]?.preguntas?.map((pregunta, index) => (
-                <Box key={index} sx={{ m: 0, p: 0, display: 'flex', flexDirection: 'row', alignItems: 'baseline' }}>
-                  <TextField 
-                    id={index.toString()} 
-                    label={pregunta?.label} 
-                    variant="outlined" 
-                    type={pregunta?.type}
-                    sx={{ mx: 2, flex: '1 1 auto' }} 
-                    required={pregunta?.requerido}
-                    defaultValue={pregunta?.respuestaPlaceholder}
-                    error={preguntasPendientes?.includes(pregunta)}
-                    onChange={(e) => {
-                      refetchFichaStepper().then((res) => {
-                        const fetchedPregunta = res.data?.secciones[activeStep]?.preguntas?.find((newPregunta) => newPregunta.id === pregunta.id)
-
-                        const respuesta: FormularioRespuesta = {
-                          respuesta: e.target.value.trim(),
-                          pregunta: fetchedPregunta?.id,
-                          usuario: usuario,
-                          comentario: fetchedPregunta?.comentarioPlaceholder,
-                          sucursal: 0
-                        }
-
-                        upsertFomularioRespuesta(respuesta)
-                      })
-
-                      if (!e.target.value.trim()) {
-                        setPreguntasPendientes((prevPreguntasPendientes) => [...prevPreguntasPendientes, pregunta])
-                        return
-                      }
-
-                      setPreguntasPendientes((prevPreguntasPendientes) => prevPreguntasPendientes.filter((preguntaPendiente) => preguntaPendiente.id !== pregunta.id))
-                    }}
-                  />
+              fichaStepper.secciones[activeStep]?.preguntas?.map((pregunta) => (
+                <Box key={pregunta?.preguntaId} sx={{ m: 0, p: 0, display: 'flex', flexDirection: 'row', alignItems: 'baseline' }}>
+                  {
+                    pregunta?.type === 'select' ? 
+                    (
+                      <FormControl fullWidth>
+                        <InputLabel id={pregunta?.label} sx={{ ml: 2, fontFamily: "'Courier Prime', monospace" }}>{pregunta?.label}</InputLabel>
+                        <Select
+                          labelId={pregunta?.label}
+                          id={pregunta?.preguntaId.toString()}
+                          error={preguntasPendientes?.includes(pregunta)}
+                          label={pregunta?.label}
+                          onChange={(e: SelectChangeEvent) => handleChangeRespuesta(e, pregunta)}
+                          sx={{ 
+                            mx: 2,
+                            flex: '1 1 auto',
+                            fontFamily: "'Courier Prime', monospace",
+                            '& .MuiInputLabel-root': {
+                              fontFamily: "'Courier Prime', monospace"
+                            },
+                            '& .MuiInputBase-input': {
+                              fontFamily: "'Courier Prime', monospace"
+                            }
+                          }}
+                          defaultValue={pregunta?.respuestaPlaceholder || ''}
+                        >
+                          {
+                            pregunta?.opcionesSelect?.map((opcion, index) => (
+                              <MenuItem key={index} value={opcion.text} sx={{ fontFamily: "'Courier Prime', monospace" }}>
+                                {opcion.text}
+                              </MenuItem>
+                            ))
+                          }
+                        </Select>
+                      </FormControl>
+                    )
+                    : pregunta?.type === 'radio' ?
+                    (
+                      <FormControl>
+                        <FormLabel id={pregunta?.preguntaId.toString()}>{pregunta?.label}</FormLabel>
+                        <RadioGroup
+                          aria-labelledby={pregunta?.label}
+                          defaultValue={pregunta?.respuestaPlaceholder || ''}
+                          name={pregunta?.label}
+                          onChange={(e) => handleChangeRespuesta(e, pregunta)}
+                        >
+                          <FormControlLabel value="female" control={<Radio />} label="Female" />
+                          <FormControlLabel value="male" control={<Radio />} label="Male" />
+                          <FormControlLabel value="other" control={<Radio />} label="Other" />
+                        </RadioGroup>
+                      </FormControl>
+                    )
+                    :
+                    (
+                      <TextField 
+                        id={pregunta?.preguntaId.toString()}
+                        label={pregunta?.label} 
+                        variant="outlined" 
+                        type={pregunta?.type}
+                        sx={{ 
+                          mx: 2, 
+                          flex: '1 1 auto', 
+                          fontFamily: "'Courier Prime', monospace",
+                          '& .MuiInputLabel-root': {
+                            fontFamily: "'Courier Prime', monospace"
+                          },
+                          '& .MuiInputBase-input': {
+                            fontFamily: "'Courier Prime', monospace"
+                          }
+                        }} 
+                        required={pregunta?.requerido}
+                        defaultValue={pregunta?.respuestaPlaceholder || ''}
+                        error={preguntasPendientes?.includes(pregunta)}
+                        onChange={(e) => handleChangeRespuesta(e, pregunta)}
+                      />
+                    )
+                  }
                   {
                     pregunta?.comentario && (
                       <TextField
                         label="Comentario"
                         variant="outlined"
-                        sx={{ mx: 2, flex: '1 1 auto' }} 
+                        sx={{ 
+                          mx: 2, 
+                          flex: '1 1 auto', 
+                          fontFamily: "'Courier Prime', monospace",
+                          '& .MuiInputLabel-root': {
+                            fontFamily: "'Courier Prime', monospace"
+                          },
+                          '& .MuiInputBase-input': {
+                            fontFamily: "'Courier Prime', monospace"
+                          }
+                        }} 
                         defaultValue={pregunta?.comentarioPlaceholder}
                         onChange={(e) => {
-                          refetchFichaStepper().then((res) => {
-                            const fetchedPregunta = res.data?.secciones[activeStep]?.preguntas?.find((newPregunta) => newPregunta.id === pregunta.id)
+                          const respuesta: FormularioRespuesta = {
+                            comentario: e.target.value.trim(),
+                            pregunta: pregunta.preguntaId,
+                            usuario: usuario,
+                            sucursal: 0
+                          }
 
-                            const respuesta: FormularioRespuesta = {
-                              respuesta: fetchedPregunta?.respuestaPlaceholder,
-                              pregunta: fetchedPregunta?.id,
-                              usuario: usuario,
-                              comentario: e.target.value.trim(),
-                              sucursal: 0
-                            }
-
-                            upsertFomularioRespuesta(respuesta)
-                          })
+                          upsertFomularioRespuesta(respuesta)
                         }}
                       />
                     )
@@ -207,17 +310,17 @@ export default function StepperFichas({ fichaStepper, usuario, createNewUser, re
               color="inherit"
               disabled={activeStep === 0}
               onClick={handleBack}
-              sx={{ mr: 1 }}
+              sx={{ mr: 1, fontFamily: "'Courier Prime', monospace" }}
             >
               Anterior
             </Button>
             <Box sx={{ flex: '1 1 auto' }} />
             {isStepOptional(activeStep) && (
-              <Button color="inherit" onClick={handleSkip} sx={{ mr: 1 }}>
+              <Button color="inherit" onClick={handleSkip} sx={{ mr: 1, fontFamily: "'Courier Prime', monospace" }}>
                 Omitir
               </Button>
             )}
-            <Button onClick={handleNext}>
+            <Button onClick={handleNext} sx={{ fontFamily: "'Courier Prime', monospace" }}>
               {activeStep === fichaStepper.secciones.length - 1 ? 'Finalizar' : 'Siguiente'}
             </Button>
           </Box>
