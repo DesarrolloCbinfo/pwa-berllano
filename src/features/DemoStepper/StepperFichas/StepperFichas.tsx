@@ -149,13 +149,16 @@ export default function StepperFichas({ fichaStepper, usuario, createNewUser, re
               sx={{ 
                 fontFamily: "'Courier Prime', monospace",
                 '& .MuiStep-root': {
-                  fontFamily: "'Courier Prime', monospace"
+                  fontFamily: "'Courier Prime', monospace",
+                  cursor: 'pointer'
                 },
                 '& .MuiStep-horizontal': {
-                  fontFamily: "'Courier Prime', monospace"
+                  fontFamily: "'Courier Prime', monospace",
+                  cursor: 'pointer'
                 },
                 '& .MuiStepIcon-text': {
-                  fontFamily: "'Courier Prime', monospace"
+                  fontFamily: "'Courier Prime', monospace",
+                  cursor: 'pointer'
                 },
               }}
             >
@@ -164,11 +167,17 @@ export default function StepperFichas({ fichaStepper, usuario, createNewUser, re
                 sx={{ 
                   fontFamily: "'Courier Prime', monospace",
                   '& .MuiStepLabel-root': {
-                    fontFamily: "'Courier Prime', monospace"
+                    fontFamily: "'Courier Prime', monospace",
+                    cursor: 'pointer'
                   },
                   '& .MuiStepLabel-label': {
-                    fontFamily: "'Courier Prime', monospace"
+                    fontFamily: "'Courier Prime', monospace",
+                    cursor: 'pointer'
                   },
+                }}
+                onClick={() => {
+                  if (preguntasPendientes.length > 0) return
+                  setActiveStep(index)
                 }}
               >
                 {seccion.nombre}
