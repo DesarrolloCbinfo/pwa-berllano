@@ -7,4 +7,5 @@ export type FormularioRespuesta = {
   pregunta?: number
   pregunta_select?: number
   usuario?: string
+  tipo: "respuesta" | "comentario"
 }

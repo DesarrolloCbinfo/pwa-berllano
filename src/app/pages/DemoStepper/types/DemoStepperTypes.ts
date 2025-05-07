@@ -37,7 +37,7 @@ export type PreguntasStepper = {
   orden: number
   comentario: boolean
   requerido: boolean
-  type: "text" | "number" | "select" | "radio"
+  type: "text" | "number" | "select" | "radio" | "checkbox"
   spOrigenDato: number | null
   opcionesSelect: OptionSelectStepper[]
   opciones: OptionStepper[]

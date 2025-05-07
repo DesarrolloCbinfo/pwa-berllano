@@ -12,6 +12,8 @@ import Radio from '@mui/material/Radio';
 import RadioGroup from '@mui/material/RadioGroup';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormLabel from '@mui/material/FormLabel';
+import FormGroup from '@mui/material/FormGroup';
+import Checkbox from '@mui/material/Checkbox';
 import Select, { SelectChangeEvent } from '@mui/material/Select';
 import { TextField, Stack } from '@mui/material';
 import { FichaStepper, PreguntasStepper } from '../../../app/pages/DemoStepper/types/DemoStepperTypes';
@@ -110,7 +112,8 @@ export default function StepperFichas({ fichaStepper, usuario, createNewUser, re
       respuesta: e.target.value.trim(),
       pregunta: pregunta?.preguntaId,
       usuario: usuario,
-      sucursal: 0
+      sucursal: 0,
+      tipo: 'respuesta'
     }
 
     upsertFomularioRespuesta(respuesta)
@@ -269,6 +272,53 @@ export default function StepperFichas({ fichaStepper, usuario, createNewUser, re
                         </RadioGroup>
                       </FormControl>
                     )
+                    : pregunta?.type === 'checkbox' ?
+                    (
+                      <FormControl>
+                        <FormLabel id={pregunta?.preguntaId.toString()} sx={{ fontFamily: "'Courier Prime', monospace" }}>{pregunta?.label}</FormLabel>
+                        <FormGroup>
+                          {pregunta?.opciones?.map((opcion) => (
+                            <FormControlLabel
+                              key={opcion.opcion_id}
+                              value={opcion.valor}
+                              control={
+                                <Checkbox 
+                                  checked={pregunta.respuestaPlaceholder?.split(',').includes(opcion.valor)}
+                                  onChange={(e) => {
+                                    const currentValues = pregunta.respuestaPlaceholder?.split(',').filter(Boolean) || [];
+                                    let newValues: string[];
+
+                                    if (e.target.checked) {
+                                      newValues = [...currentValues, opcion.valor];
+                                    } else {
+                                      newValues = currentValues.filter(value => value !== opcion.valor);
+                                    }
+
+                                    const respuesta: FormularioRespuesta = {
+                                      respuesta: newValues.join(','),
+                                      pregunta: pregunta?.preguntaId,
+                                      usuario: usuario,
+                                      sucursal: 0,
+                                      tipo: 'respuesta'
+                                    };
+                                    
+                                    upsertFomularioRespuesta(respuesta);
+                                  }}
+                                />
+                              }
+                              label={opcion.valor}
+                              sx={{ 
+                                flex: '1 1 auto',
+                                fontFamily: "'Courier Prime', monospace",
+                                "& .MuiFormControlLabel-label": {
+                                  fontFamily: "'Courier Prime', monospace"
+                                }
+                              }}
+                            />
+                          ))}
+                        </FormGroup>
+                      </FormControl>
+                    )
                     :
                     (
                       <TextField 
@@ -316,7 +366,8 @@ export default function StepperFichas({ fichaStepper, usuario, createNewUser, re
                             comentario: e.target.value.trim(),
                             pregunta: pregunta.preguntaId,
                             usuario: usuario,
-                            sucursal: 0
+                            sucursal: 0,
+                            tipo: 'comentario'
                           }
 
                           upsertFomularioRespuesta(respuesta)
