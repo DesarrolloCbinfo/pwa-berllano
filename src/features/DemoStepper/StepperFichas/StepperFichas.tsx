@@ -14,6 +14,8 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import FormLabel from '@mui/material/FormLabel';
 import FormGroup from '@mui/material/FormGroup';
 import Checkbox from '@mui/material/Checkbox';
+import DialogTitle from '@mui/material/DialogTitle';
+import { DialogActions, Dialog } from '@mui/material';
 import Select, { SelectChangeEvent } from '@mui/material/Select';
 import { TextField, Stack } from '@mui/material';
 import { FichaStepper, PreguntasStepper } from '../../../app/pages/DemoStepper/types/DemoStepperTypes';
@@ -32,7 +34,9 @@ type Props = {
 
 export default function StepperFichas({ fichaStepper, usuario, createNewUser, refetchFichaStepper }: Props) {
   const [activeStep, setActiveStep] = React.useState(0);
+  const [indexStep, setIndexStep] = React.useState(0);
   const [skipped, setSkipped] = React.useState(new Set<number>());
+  const [openDialog, setOpenDialog] = React.useState(false);
 
   const [preguntasPendientes, setPreguntasPendientes] = useState<PreguntasStepper[]>([])
 
@@ -66,6 +70,7 @@ export default function StepperFichas({ fichaStepper, usuario, createNewUser, re
   const handleNext = () => {
 
     if (preguntasPendientes.length > 0) {
+      setOpenDialog(true)
       return
     }
 
@@ -127,138 +132,208 @@ export default function StepperFichas({ fichaStepper, usuario, createNewUser, re
   }
 
   return (
-    <Box sx={{ width: '100%', my: 8, fontFamily: "'Courier Prime', monospace" }}>
-      <Stepper activeStep={activeStep} sx={{ display: 'flex', flexWrap: 'wrap', rowGap: 2 }}>
-        {fichaStepper.secciones.map((seccion, index) => {
-          const stepProps: { completed?: boolean } = {};
-          const labelProps: {
-            optional?: React.ReactNode;
-          } = {};
+    <>
+      <Dialog open={openDialog} onClose={() => setOpenDialog((prev) => !prev)}>
+        <DialogTitle>
+          Sección {indexStep} Requerida. por favor completar las preguntas requeridas resaltadas en rojo
+        </DialogTitle>
+        <DialogActions>
+          <Button variant='contained' onClick={() => setOpenDialog((prev) => !prev)}>Cerrar</Button>
+        </DialogActions>
+      </Dialog>
+      <Box sx={{ width: '100%', my: 8, fontFamily: "'Courier Prime', monospace" }}>
+        <Stepper activeStep={activeStep} sx={{ display: 'flex', flexWrap: 'wrap', rowGap: 2 }}>
+          {fichaStepper.secciones.map((seccion, index) => {
+            const stepProps: { completed?: boolean } = {};
+            const labelProps: {
+              optional?: React.ReactNode;
+            } = {};
 
-          if (isStepOptional(index)) {
-            labelProps.optional = (
-              <Typography variant="caption" sx={{ fontFamily: "'Courier Prime', monospace" }}>Opcional</Typography>
-            );
-          }
+            if (isStepOptional(index)) {
+              labelProps.optional = (
+                <Typography variant="caption" sx={{ fontFamily: "'Courier Prime', monospace" }}>Opcional</Typography>
+              );
+            }
 
-          if (isStepSkipped(index)) {
-            stepProps.completed = false;
-          }
+            if (isStepSkipped(index)) {
+              stepProps.completed = false;
+            }
 
-          return (
-            <Step 
-              key={seccion.seccionId} 
-              {...stepProps} 
-              sx={{ 
-                fontFamily: "'Courier Prime', monospace",
-                '& .MuiStep-root': {
-                  fontFamily: "'Courier Prime', monospace",
-                  cursor: 'pointer'
-                },
-                '& .MuiStep-horizontal': {
-                  fontFamily: "'Courier Prime', monospace",
-                  cursor: 'pointer'
-                },
-                '& .MuiStepIcon-text': {
-                  fontFamily: "'Courier Prime', monospace",
-                  cursor: 'pointer'
-                },
-              }}
-            >
-              <StepLabel 
-                {...labelProps} 
+            return (
+              <Step 
+                key={seccion.seccionId} 
+                {...stepProps} 
                 sx={{ 
                   fontFamily: "'Courier Prime', monospace",
-                  '& .MuiStepLabel-root': {
+                  '& .MuiStep-root': {
                     fontFamily: "'Courier Prime', monospace",
                     cursor: 'pointer'
                   },
-                  '& .MuiStepLabel-label': {
+                  '& .MuiStep-horizontal': {
                     fontFamily: "'Courier Prime', monospace",
                     cursor: 'pointer'
                   },
-                }}
-                onClick={() => {
-                  if (preguntasPendientes.length > 0) return
-                  setActiveStep(index)
+                  '& .MuiStepIcon-text': {
+                    fontFamily: "'Courier Prime', monospace",
+                    cursor: 'pointer'
+                  },
                 }}
               >
-                {seccion.nombre}
-              </StepLabel>
-            </Step>
-          );
-        })}
-      </Stepper>
-      {activeStep === fichaStepper.secciones.length ? (
-        <React.Fragment>
-          <Typography sx={{ mt: 2, mb: 1, fontFamily: "'Courier Prime', monospace" }}>
-            Ficha Finalizada
-          </Typography>
-          <Box sx={{ display: 'flex', flexDirection: 'row', pt: 2 }}>
-            <Box sx={{ flex: '1 1 auto' }} />
-            <Button onClick={handleReset} sx={{ fontFamily: "'Courier Prime', monospace" }}>Reiniciar</Button>
-          </Box>
-        </React.Fragment>
-      ) : (
-        <React.Fragment>
-          <Typography sx={{ mt: 2, mb: 1, fontFamily: "'Courier Prime', monospace" }}>{ fichaStepper.secciones[activeStep]?.nombre }</Typography>
-          <Stack
-            spacing={2}
-          >
-            {
-              fichaStepper.secciones[activeStep]?.preguntas?.map((pregunta) => (
-                <Box key={pregunta?.preguntaId} sx={{ m: 0, p: 0, display: 'flex', flexDirection: 'row', alignItems: 'baseline' }}>
-                  {
-                    pregunta?.type === 'select' ? 
-                    (
-                      <FormControl fullWidth>
-                        <InputLabel id={pregunta?.label} sx={{ ml: 2, fontFamily: "'Courier Prime', monospace" }}>{pregunta?.label}</InputLabel>
-                        <Select
-                          labelId={pregunta?.label}
-                          id={pregunta?.preguntaId.toString()}
-                          error={preguntasPendientes?.includes(pregunta)}
-                          label={pregunta?.label}
-                          onChange={(e: SelectChangeEvent) => handleChangeRespuesta(e, pregunta)}
-                          sx={{ 
-                            mx: 2,
-                            flex: '1 1 auto',
-                            fontFamily: "'Courier Prime', monospace",
-                            '& .MuiInputLabel-root': {
-                              fontFamily: "'Courier Prime', monospace"
-                            },
-                            '& .MuiInputBase-input': {
-                              fontFamily: "'Courier Prime', monospace"
+                <StepLabel 
+                  {...labelProps} 
+                  sx={{ 
+                    fontFamily: "'Courier Prime', monospace",
+                    '& .MuiStepLabel-root': {
+                      fontFamily: "'Courier Prime', monospace",
+                      cursor: 'pointer'
+                    },
+                    '& .MuiStepLabel-label': {
+                      fontFamily: "'Courier Prime', monospace",
+                      cursor: 'pointer'
+                    },
+                  }}
+                  onClick={() => {
+                    if (preguntasPendientes.length > 0 && index > activeStep) {
+                      setOpenDialog(true)
+                      setIndexStep(activeStep + 1)
+                      return
+                    }
+
+                    for (let i = 0; i < index; i++) {
+                      if (fichaStepper.secciones[i]?.preguntas?.filter((pregunta) => pregunta.requerido).filter((pregunta) =>!pregunta.respuestaPlaceholder?.trim()).length > 0) {
+                        setOpenDialog(true)
+                        setIndexStep(i + 1)
+                        return
+                      }
+                    }
+
+                    setActiveStep(index)
+                  }}
+                >
+                  {seccion.nombre}
+                </StepLabel>
+              </Step>
+            );
+          })}
+        </Stepper>
+        {activeStep === fichaStepper.secciones.length ? (
+          <React.Fragment>
+            <Typography sx={{ mt: 2, mb: 1, fontFamily: "'Courier Prime', monospace" }}>
+              Ficha Finalizada
+            </Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'row', pt: 2 }}>
+              <Box sx={{ flex: '1 1 auto' }} />
+              <Button onClick={handleReset} sx={{ fontFamily: "'Courier Prime', monospace" }}>Reiniciar</Button>
+            </Box>
+          </React.Fragment>
+        ) : (
+          <React.Fragment>
+            <Typography sx={{ mt: 2, mb: 1, fontFamily: "'Courier Prime', monospace" }}>{ fichaStepper.secciones[activeStep]?.nombre }</Typography>
+            <Stack
+              spacing={2}
+            >
+              {
+                fichaStepper.secciones[activeStep]?.preguntas?.map((pregunta) => (
+                  <Box key={pregunta?.preguntaId} sx={{ m: 0, p: 0, display: 'flex', flexDirection: 'row', alignItems: 'baseline' }}>
+                    {
+                      pregunta?.type === 'select' ? 
+                      (
+                        <FormControl fullWidth>
+                          <InputLabel id={pregunta?.label} sx={{ ml: 2, fontFamily: "'Courier Prime', monospace" }}>{pregunta?.label}</InputLabel>
+                          <Select
+                            labelId={pregunta?.label}
+                            id={pregunta?.preguntaId.toString()}
+                            error={preguntasPendientes?.includes(pregunta)}
+                            label={pregunta?.label}
+                            onChange={(e: SelectChangeEvent) => handleChangeRespuesta(e, pregunta)}
+                            sx={{ 
+                              mx: 2,
+                              flex: '1 1 auto',
+                              fontFamily: "'Courier Prime', monospace",
+                              '& .MuiInputLabel-root': {
+                                fontFamily: "'Courier Prime', monospace"
+                              },
+                              '& .MuiInputBase-input': {
+                                fontFamily: "'Courier Prime', monospace"
+                              }
+                            }}
+                            defaultValue={pregunta?.respuestaPlaceholder || ''}
+                          >
+                            {
+                              pregunta?.opcionesSelect?.map((opcion, index) => (
+                                <MenuItem key={index} value={opcion.text} sx={{ fontFamily: "'Courier Prime', monospace" }}>
+                                  {opcion.text}
+                                </MenuItem>
+                              ))
                             }
-                          }}
-                          defaultValue={pregunta?.respuestaPlaceholder || ''}
-                        >
-                          {
-                            pregunta?.opcionesSelect?.map((opcion, index) => (
-                              <MenuItem key={index} value={opcion.text} sx={{ fontFamily: "'Courier Prime', monospace" }}>
-                                {opcion.text}
-                              </MenuItem>
-                            ))
-                          }
-                        </Select>
-                      </FormControl>
-                    )
-                    : pregunta?.type === 'radio' ?
-                    (
-                      <FormControl>
-                        <FormLabel id={pregunta?.preguntaId.toString()} sx={{ fontFamily: "'Courier Prime', monospace" }}>{pregunta?.label}</FormLabel>
-                        <RadioGroup
-                          aria-labelledby={pregunta?.label}
-                          defaultValue={pregunta?.respuestaPlaceholder || ''}
-                          name={pregunta?.label}
-                          onChange={(e) => handleChangeRespuesta(e, pregunta)}
-                        >
-                          {
-                            pregunta?.opciones?.map((opcion) => (
+                          </Select>
+                        </FormControl>
+                      )
+                      : pregunta?.type === 'radio' ?
+                      (
+                        <FormControl>
+                          <FormLabel id={pregunta?.preguntaId.toString()} sx={{ fontFamily: "'Courier Prime', monospace" }}>{pregunta?.label}</FormLabel>
+                          <RadioGroup
+                            aria-labelledby={pregunta?.label}
+                            defaultValue={pregunta?.respuestaPlaceholder || ''}
+                            name={pregunta?.label}
+                            onChange={(e) => handleChangeRespuesta(e, pregunta)}
+                          >
+                            {
+                              pregunta?.opciones?.map((opcion) => (
+                                <FormControlLabel
+                                  key={opcion.opcion_id}
+                                  value={opcion.valor}
+                                  control={<Radio />}
+                                  label={opcion.valor} 
+                                  sx={{ 
+                                    flex: '1 1 auto',
+                                    fontFamily: "'Courier Prime', monospace",
+                                    "& .MuiFormControlLabel-label": {
+                                      fontFamily: "'Courier Prime', monospace"
+                                    }
+                                  }}
+                                />
+                              ))
+                            }
+                          </RadioGroup>
+                        </FormControl>
+                      )
+                      : pregunta?.type === 'checkbox' ?
+                      (
+                        <FormControl>
+                          <FormLabel id={pregunta?.preguntaId.toString()} sx={{ fontFamily: "'Courier Prime', monospace" }}>{pregunta?.label}</FormLabel>
+                          <FormGroup>
+                            {pregunta?.opciones?.map((opcion) => (
                               <FormControlLabel
                                 key={opcion.opcion_id}
                                 value={opcion.valor}
-                                control={<Radio />}
-                                label={opcion.valor} 
+                                control={
+                                  <Checkbox 
+                                    checked={pregunta.respuestaPlaceholder?.split(',').includes(opcion.valor)}
+                                    onChange={(e) => {
+                                      const currentValues = pregunta.respuestaPlaceholder?.split(',').filter(Boolean) || [];
+                                      let newValues: string[];
+
+                                      if (e.target.checked) {
+                                        newValues = [...currentValues, opcion.valor];
+                                      } else {
+                                        newValues = currentValues.filter(value => value !== opcion.valor);
+                                      }
+
+                                      const respuesta: FormularioRespuesta = {
+                                        respuesta: newValues.join(','),
+                                        pregunta: pregunta?.preguntaId,
+                                        usuario: usuario,
+                                        sucursal: 0,
+                                        tipo: 'respuesta'
+                                      };
+                                      
+                                      upsertFomularioRespuesta(respuesta);
+                                    }}
+                                  />
+                                }
+                                label={opcion.valor}
                                 sx={{ 
                                   flex: '1 1 auto',
                                   fontFamily: "'Courier Prime', monospace",
@@ -267,139 +342,92 @@ export default function StepperFichas({ fichaStepper, usuario, createNewUser, re
                                   }
                                 }}
                               />
-                            ))
-                          }
-                        </RadioGroup>
-                      </FormControl>
-                    )
-                    : pregunta?.type === 'checkbox' ?
-                    (
-                      <FormControl>
-                        <FormLabel id={pregunta?.preguntaId.toString()} sx={{ fontFamily: "'Courier Prime', monospace" }}>{pregunta?.label}</FormLabel>
-                        <FormGroup>
-                          {pregunta?.opciones?.map((opcion) => (
-                            <FormControlLabel
-                              key={opcion.opcion_id}
-                              value={opcion.valor}
-                              control={
-                                <Checkbox 
-                                  checked={pregunta.respuestaPlaceholder?.split(',').includes(opcion.valor)}
-                                  onChange={(e) => {
-                                    const currentValues = pregunta.respuestaPlaceholder?.split(',').filter(Boolean) || [];
-                                    let newValues: string[];
+                            ))}
+                          </FormGroup>
+                        </FormControl>
+                      )
+                      :
+                      (
+                        <TextField 
+                          id={pregunta?.preguntaId.toString()}
+                          label={pregunta?.label} 
+                          variant="outlined" 
+                          type={pregunta?.type}
+                          sx={{ 
+                            mx: 2, 
+                            flex: '1 1 auto', 
+                            fontFamily: "'Courier Prime', monospace",
+                            '& .MuiInputLabel-root': {
+                              fontFamily: "'Courier Prime', monospace"
+                            },
+                            '& .MuiInputBase-input': {
+                              fontFamily: "'Courier Prime', monospace"
+                            }
+                          }} 
+                          required={pregunta?.requerido}
+                          defaultValue={pregunta?.respuestaPlaceholder || ''}
+                          error={preguntasPendientes?.includes(pregunta)}
+                          onChange={(e) => handleChangeRespuesta(e, pregunta)}
+                        />
+                      )
+                    }
+                    {
+                      pregunta?.comentario && (
+                        <TextField
+                          label="Comentario"
+                          variant="outlined"
+                          sx={{ 
+                            mx: 2, 
+                            flex: '1 1 auto', 
+                            fontFamily: "'Courier Prime', monospace",
+                            '& .MuiInputLabel-root': {
+                              fontFamily: "'Courier Prime', monospace"
+                            },
+                            '& .MuiInputBase-input': {
+                              fontFamily: "'Courier Prime', monospace"
+                            }
+                          }} 
+                          defaultValue={pregunta?.comentarioPlaceholder}
+                          onChange={(e) => {
+                            const respuesta: FormularioRespuesta = {
+                              comentario: e.target.value.trim(),
+                              pregunta: pregunta.preguntaId,
+                              usuario: usuario,
+                              sucursal: 0,
+                              tipo: 'comentario'
+                            }
 
-                                    if (e.target.checked) {
-                                      newValues = [...currentValues, opcion.valor];
-                                    } else {
-                                      newValues = currentValues.filter(value => value !== opcion.valor);
-                                    }
-
-                                    const respuesta: FormularioRespuesta = {
-                                      respuesta: newValues.join(','),
-                                      pregunta: pregunta?.preguntaId,
-                                      usuario: usuario,
-                                      sucursal: 0,
-                                      tipo: 'respuesta'
-                                    };
-                                    
-                                    upsertFomularioRespuesta(respuesta);
-                                  }}
-                                />
-                              }
-                              label={opcion.valor}
-                              sx={{ 
-                                flex: '1 1 auto',
-                                fontFamily: "'Courier Prime', monospace",
-                                "& .MuiFormControlLabel-label": {
-                                  fontFamily: "'Courier Prime', monospace"
-                                }
-                              }}
-                            />
-                          ))}
-                        </FormGroup>
-                      </FormControl>
-                    )
-                    :
-                    (
-                      <TextField 
-                        id={pregunta?.preguntaId.toString()}
-                        label={pregunta?.label} 
-                        variant="outlined" 
-                        type={pregunta?.type}
-                        sx={{ 
-                          mx: 2, 
-                          flex: '1 1 auto', 
-                          fontFamily: "'Courier Prime', monospace",
-                          '& .MuiInputLabel-root': {
-                            fontFamily: "'Courier Prime', monospace"
-                          },
-                          '& .MuiInputBase-input': {
-                            fontFamily: "'Courier Prime', monospace"
-                          }
-                        }} 
-                        required={pregunta?.requerido}
-                        defaultValue={pregunta?.respuestaPlaceholder || ''}
-                        error={preguntasPendientes?.includes(pregunta)}
-                        onChange={(e) => handleChangeRespuesta(e, pregunta)}
-                      />
-                    )
-                  }
-                  {
-                    pregunta?.comentario && (
-                      <TextField
-                        label="Comentario"
-                        variant="outlined"
-                        sx={{ 
-                          mx: 2, 
-                          flex: '1 1 auto', 
-                          fontFamily: "'Courier Prime', monospace",
-                          '& .MuiInputLabel-root': {
-                            fontFamily: "'Courier Prime', monospace"
-                          },
-                          '& .MuiInputBase-input': {
-                            fontFamily: "'Courier Prime', monospace"
-                          }
-                        }} 
-                        defaultValue={pregunta?.comentarioPlaceholder}
-                        onChange={(e) => {
-                          const respuesta: FormularioRespuesta = {
-                            comentario: e.target.value.trim(),
-                            pregunta: pregunta.preguntaId,
-                            usuario: usuario,
-                            sucursal: 0,
-                            tipo: 'comentario'
-                          }
-
-                          upsertFomularioRespuesta(respuesta)
-                        }}
-                      />
-                    )
-                  }
-                </Box>
-              ))
-            }
-          </Stack>
-          <Box sx={{ display: 'flex', flexDirection: 'row', pt: 2 }}>
-            <Button
-              color="inherit"
-              disabled={activeStep === 0}
-              onClick={handleBack}
-              sx={{ mr: 1, fontFamily: "'Courier Prime', monospace" }}
-            >
-              Anterior
-            </Button>
-            <Box sx={{ flex: '1 1 auto' }} />
-            {isStepOptional(activeStep) && (
-              <Button color="inherit" onClick={handleSkip} sx={{ mr: 1, fontFamily: "'Courier Prime', monospace" }}>
-                Omitir
+                            upsertFomularioRespuesta(respuesta)
+                          }}
+                        />
+                      )
+                    }
+                  </Box>
+                ))
+              }
+            </Stack>
+            <Box sx={{ display: 'flex', flexDirection: 'row', pt: 2 }}>
+              <Button
+                color="inherit"
+                disabled={activeStep === 0}
+                onClick={handleBack}
+                sx={{ mr: 1, fontFamily: "'Courier Prime', monospace" }}
+              >
+                Anterior
               </Button>
-            )}
-            <Button onClick={handleNext} sx={{ fontFamily: "'Courier Prime', monospace" }}>
-              {activeStep === fichaStepper.secciones.length - 1 ? 'Finalizar' : 'Siguiente'}
-            </Button>
-          </Box>
-        </React.Fragment>
-      )}
-    </Box>
+              <Box sx={{ flex: '1 1 auto' }} />
+              {isStepOptional(activeStep) && (
+                <Button color="inherit" onClick={handleSkip} sx={{ mr: 1, fontFamily: "'Courier Prime', monospace" }}>
+                  Omitir
+                </Button>
+              )}
+              <Button onClick={handleNext} sx={{ fontFamily: "'Courier Prime', monospace" }}>
+                {activeStep === fichaStepper.secciones.length - 1 ? 'Finalizar' : 'Siguiente'}
+              </Button>
+            </Box>
+          </React.Fragment>
+        )}
+      </Box>
+    </>
   );
 }
