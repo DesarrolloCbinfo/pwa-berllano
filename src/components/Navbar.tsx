@@ -25,6 +25,8 @@ import {
 import { ArrowDownward } from "@mui/icons-material";
 import { NavLink } from "react-router";
 import BerllanoLogo from "../assets/berllano-logo.jpg";
+import { useAuth } from "../context/AuthContext";
+import { useNavigate } from "react-router";
 
 type Page = {
   name: string
@@ -90,6 +92,10 @@ const drawerWidth = 240;
 export default function Navbar() {
   const [anchorElNav, setAnchorElNav] = React.useState<null | HTMLElement>(null);
   const [anchorElUser, setAnchorElUser] = React.useState<null | HTMLElement>(null);
+
+  const { logout } = useAuth();
+
+  const navigate = useNavigate();
 
   const handleOpenNavMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorElNav(event.currentTarget);
@@ -254,6 +260,12 @@ export default function Navbar() {
                   <Typography sx={{ textAlign: "center" }}>{setting}</Typography>
                 </MenuItem>
               ))}
+              <MenuItem onClick={() => {
+                logout()
+                navigate("/login")
+              }}>
+                <Typography sx={{ textAlign: "center" }}>Cerrar Sesión</Typography>
+              </MenuItem>
             </Menu>
           </Box>
         </Toolbar>

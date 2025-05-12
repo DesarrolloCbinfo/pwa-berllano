@@ -5,6 +5,7 @@ interface AuthContextProps {
   setAuthToken: (newToken: string | null) => void;
   setToken: React.Dispatch<React.SetStateAction<string | null>>;
   logout: () => void; // Agregamos la función logout al contexto
+  isAuthenticated: () => boolean;
 }
 
 interface AuthProviderProps {
@@ -14,7 +15,7 @@ interface AuthProviderProps {
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
 
 const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [token, setToken] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(localStorage.getItem("token") || null);
 
   const setAuthToken = (newToken: string | null) => {
     setToken(newToken);
@@ -24,7 +25,12 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Lógica para cerrar la sesión
     // Por ejemplo, limpiar el token en localStorage
     localStorage.removeItem("token");
+    setToken(null);
     // O realizar otras acciones necesarias para cerrar la sesión
+  };
+
+  const isAuthenticated = () => {
+    return !!token;
   };
 
   const contextValue: AuthContextProps = {
@@ -32,6 +38,7 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setAuthToken,
     setToken,
     logout,
+    isAuthenticated,
   };
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;

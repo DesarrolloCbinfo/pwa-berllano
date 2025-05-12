@@ -1,5 +1,4 @@
-import { Container, Input, MenuItem, Select, Typography } from "@mui/material";
-import Navbar from "../../../components/Navbar";
+import { Input, MenuItem, Select, Typography } from "@mui/material";
 import useConsumoApi from "../../../hooks/useConsumoApi";
 import { Demo } from "./apis/demo";
 import { useEffect, useState } from "react";
@@ -53,8 +52,6 @@ export default function Page() {
 
   return (
     <>
-      <Navbar />
-      <Container maxWidth="xl">
         {/* seleccione una ficha a visualizar */}
         <Typography variant="h5">Seleccione una ficha a visualizar</Typography>
         <Select
@@ -118,7 +115,6 @@ export default function Page() {
             )}
           </>
         )}
-      </Container>
     </>
   );
 }

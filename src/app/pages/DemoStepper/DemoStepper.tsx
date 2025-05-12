@@ -1,6 +1,4 @@
-import Navbar from "../../../components/Navbar"
 import StepperFichas from "../../../features/DemoStepper/StepperFichas/StepperFichas";
-import Container from '@mui/material/Container';
 import { DemoStepperApis } from "./apis/DemoStepperApis";
 import { FichaStepper, initialDataFichaStepper } from "./types/DemoStepperTypes";
 import { useQuery } from "@tanstack/react-query";
@@ -33,15 +31,12 @@ export default function DemoStepper() {
 
   return (
     <>
-      <Navbar />
-      <Container maxWidth="xl">
-        <StepperFichas
-          fichaStepper={fichaStepper} 
-          usuario={usuario} 
-          createNewUser={createNewUser} 
-          refetchFichaStepper={refetchFichaStepper} 
-        />
-      </Container>
+      <StepperFichas
+        fichaStepper={fichaStepper} 
+        usuario={usuario} 
+        createNewUser={createNewUser} 
+        refetchFichaStepper={refetchFichaStepper} 
+      />
     </>
   )
 }

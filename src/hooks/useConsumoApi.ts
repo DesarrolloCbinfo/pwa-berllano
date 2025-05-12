@@ -8,7 +8,7 @@ const useConsumoApi = () => {
   // Separate initialization code for tokenTemp
   const getInitialTokenTemp = () => {
     const item = localStorage.getItem("token");
-    return item ? JSON.parse(item) : null;
+    return item ? item : null;
   };
 
   const [tokenTemp, setTokenTemp] = useState<string | null>(getInitialTokenTemp);
