@@ -1,0 +1,85 @@
+import * as React from 'react';
+import TextField from '@mui/material/TextField';
+import Autocomplete from '@mui/material/Autocomplete';
+import CircularProgress from '@mui/material/CircularProgress';
+import useConsumoApi from '../../../hooks/useConsumoApi';
+import { useQuery } from '@tanstack/react-query';
+import { AutocompleteClienteApis } from './apis/AutocompleteClienteApis';
+import { Cliente } from './types/AutocompleteClienteTypes';
+import { useEffect } from 'react';
+
+export default function AutocompleteCliente() {
+  const [open, setOpen] = React.useState(false);
+  const [options, setOptions] = React.useState<Cliente[]>([]);
+  const [nombre, setNombre] = React.useState('a'); // Add this line to manage the input value
+
+  const { consumoApi } = useConsumoApi();
+
+  const { data: clientes = [], refetch: refetchClientes, isLoading } = useQuery({
+    queryKey: ['clientes', nombre],
+    queryFn: async () => await consumoApi.get(AutocompleteClienteApis.get(nombre)).then((res) => res.data),
+  });
+
+  useEffect(() => {
+    refetchClientes().then(() => setOptions(clientes));
+  }, [nombre, refetchClientes, clientes]);
+
+  const handleOpen = () => {
+    setOpen(true);
+    (async () => {
+      refetchClientes();
+      
+      setOptions(clientes);
+    })();
+  };
+
+  const handleClose = () => {
+    setOpen(false);
+    setOptions([]);
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputValue = e.target.value.trim();
+
+    const valueWithoutSpaces = inputValue.replace(/\s/g, '');
+
+    if (valueWithoutSpaces.length === 0) {
+      setNombre('a')
+      return;
+    }
+
+    setNombre(valueWithoutSpaces);
+  }
+
+  return (
+    <Autocomplete
+      sx={{ width: 300 }}
+      filterOptions={(x) => x}
+      open={open}
+      onOpen={handleOpen}
+      onClose={handleClose}
+      isOptionEqualToValue={(option, value) => option.noCliente === value.noCliente}
+      getOptionLabel={(option) => `${option.nombre.trim()} ${option.apPaterno.trim()} ${option.apMaterno.trim()} ${option.noCliente}`}
+      options={options}
+      loading={isLoading}
+      onInput={handleChange}
+      renderInput={(params) => (
+        <TextField
+          {...params}
+          label="Cliente"
+          slotProps={{
+            input: {
+              ...params.InputProps,
+              endAdornment: (
+                <React.Fragment>
+                  {isLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                  {params.InputProps.endAdornment}
+                </React.Fragment>
+              ),
+            },
+          }}
+        />
+      )}
+    />
+  );
+}

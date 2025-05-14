@@ -1,4 +1,5 @@
 import StepperFichas from "../../../features/DemoStepper/StepperFichas/StepperFichas";
+import AutocompleteCliente from "../../../features/DemoStepper/AutocompleteCliente/AutocompleteCliente";
 import { DemoStepperApis } from "./apis/DemoStepperApis";
 import { FichaStepper, initialDataFichaStepper } from "./types/DemoStepperTypes";
 import { useQuery } from "@tanstack/react-query";
@@ -31,6 +32,7 @@ export default function DemoStepper() {
 
   return (
     <>
+      <AutocompleteCliente />
       <StepperFichas
         fichaStepper={fichaStepper} 
         usuario={usuario} 
