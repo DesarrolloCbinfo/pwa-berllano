@@ -5,14 +5,27 @@ import { FichaStepper, initialDataFichaStepper } from "./types/DemoStepperTypes"
 import { useQuery } from "@tanstack/react-query";
 import useConsumoApi from "../../../hooks/useConsumoApi";
 import { useState } from 'react';
+import BuscadorFichas from "../../../features/DemoStepper/BuscadorFichas/BuscadorFichas";
+import { Button } from "@mui/material";
 
 export default function DemoStepper() {
   const { consumoApi } = useConsumoApi();
-  const [usuario, setUsuario] = useState(crypto.randomUUID()); // Add state for usuario
+  const [usuario, setUsuario] = useState<string>(crypto.randomUUID()); // Add state for usuario
   const [idCliente, setIdcliente] = useState('')
+
+  const [dialogBuscador, setDialogBuscador] = useState(false)
 
   const createNewUser = () => { // Define createNewUser inside component
     setUsuario(crypto.randomUUID());
+  };
+
+  const handleCloseDialogBuscador = () => {
+    setDialogBuscador(false);
+  };
+
+  const handleSetUsuario = (newUsuario: string) => {
+    setUsuario(newUsuario);
+    refetchFichaStepper();
   };
 
   //conseguir usuario con get
@@ -36,7 +49,15 @@ export default function DemoStepper() {
 
   return (
     <>
-      <AutocompleteCliente setIdcliente={setIdcliente} />
+      <Button variant="contained" onClick={() => setDialogBuscador(true)} sx={{ width: 'fit-content' }}>Abrir Buscador de Formularios</Button>
+      <BuscadorFichas
+        open={dialogBuscador} 
+        onClose={handleCloseDialogBuscador} 
+        handleSetUsuario={handleSetUsuario} 
+      />
+      <AutocompleteCliente
+        setIdcliente={setIdcliente} 
+      />
       <StepperFichas
         fichaStepper={fichaStepper} 
         usuario={usuario} 
