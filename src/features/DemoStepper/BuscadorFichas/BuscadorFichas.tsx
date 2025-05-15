@@ -6,7 +6,6 @@ import {
   DialogActions,
   Button,
   TextField,
-  Typography,
 } from "@mui/material";
 import AutocompleteCliente from "../AutocompleteCliente/AutocompleteCliente";
 import { useState, useMemo, useEffect } from "react";
@@ -58,7 +57,7 @@ export default function BuscadorFichas({
   }, [idCliente, fechas]);
 
   const columns = useMemo<
-    MRT_ColumnDef<{ nombre: string; fecha: Date; usuario: string }>[]
+    MRT_ColumnDef<{ nombre: string; fecha: string; usuario: string }>[]
   >(
     () => [
       {

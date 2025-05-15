@@ -78,7 +78,13 @@ export default function DemoStepper() {
       </Typography>
       <Box sx={{ display: "flex", gap: 2 }}>
         <AutocompleteCliente setIdcliente={setIdcliente} />
-        <Button variant="contained" onClick={() => setModoFicha("nueva")}>
+        <Button
+          variant="contained"
+          onClick={() => {
+            setModoFicha("nueva")
+            createNewUser()
+          }}
+        >
           Nuevo Registro
         </Button>
       </Box>
