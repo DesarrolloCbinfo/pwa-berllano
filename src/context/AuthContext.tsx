@@ -1,13 +1,13 @@
 import React, { createContext, useContext, useState, ReactNode } from "react";
 
 type token = {
-  claveDepartamento: number,
-  clavePerfiles: number,
-  contra: string,
-  mensaje: string,
-  nombre: string,
-  usuario: string
-}
+  claveDepartamento: number;
+  clavePerfiles: number;
+  contra: string;
+  mensaje: string;
+  nombre: string;
+  usuario: string;
+};
 
 interface AuthContextProps {
   token: token | null;
@@ -25,11 +25,30 @@ const AuthContext = createContext<AuthContextProps | undefined>(undefined);
 
 const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [token, setToken] = useState<token | null>(() => {
-    const storedToken = localStorage.getItem("token");
-    return storedToken ? JSON.parse(storedToken) : null;
+    try {
+      const storedToken = localStorage.getItem("token");
+      if (!storedToken) return null;
+
+      const parsedToken = JSON.parse(storedToken);
+      // Validate that the parsed token has the expected structure
+      if (typeof parsedToken === "object" && parsedToken !== null) {
+        return parsedToken;
+      }
+      return null;
+    } catch (error) {
+      // If there's an error parsing the token, remove the invalid token
+      console.error("Error parsing stored token:", error);
+      localStorage.removeItem("token");
+      return null;
+    }
   });
 
   const setAuthToken = (newToken: token | null) => {
+    if (newToken) {
+      localStorage.setItem("token", JSON.stringify(newToken));
+    } else {
+      localStorage.removeItem("token");
+    }
     setToken(newToken);
   };
 
