@@ -7,11 +7,13 @@ import useConsumoApi from "../../../hooks/useConsumoApi";
 import { useState } from 'react';
 import BuscadorFichas from "../../../features/DemoStepper/BuscadorFichas/BuscadorFichas";
 import { Button } from "@mui/material";
+import { Typography, Box } from "@mui/material";
 
 export default function DemoStepper() {
   const { consumoApi } = useConsumoApi();
   const [usuario, setUsuario] = useState<string>(crypto.randomUUID()); // Add state for usuario
   const [idCliente, setIdcliente] = useState('')
+  const [modoFicha, setModoFicha] = useState<"nueva" | "lectura">("nueva")
 
   const [dialogBuscador, setDialogBuscador] = useState(false)
 
@@ -27,6 +29,10 @@ export default function DemoStepper() {
     setUsuario(newUsuario);
     refetchFichaStepper();
   };
+
+  const handleSetModoFichaLectura = () => {
+    setModoFicha("lectura")
+  }
 
   //conseguir usuario con get
 //  console.log("UUID Usuario")
@@ -49,21 +55,29 @@ export default function DemoStepper() {
 
   return (
     <>
-      <Button variant="contained" onClick={() => setDialogBuscador(true)} sx={{ width: 'fit-content' }}>Abrir Buscador de Formularios</Button>
+      <Button variant="contained" onClick={() => setDialogBuscador(true)} sx={{ width: 'fit-content', mb: 2 }}>Abrir Buscador de Formularios</Button>
       <BuscadorFichas
         open={dialogBuscador} 
         onClose={handleCloseDialogBuscador} 
         handleSetUsuario={handleSetUsuario} 
+        handleModoFichaLectura={handleSetModoFichaLectura}
       />
-      <AutocompleteCliente
-        setIdcliente={setIdcliente} 
-      />
+      <Typography variant="h6" sx={{ mb: 2 }}>
+        Cliente a registrar en formulario
+      </Typography>
+      <Box sx={{ display: 'flex', gap: 2 }}>
+        <AutocompleteCliente
+          setIdcliente={setIdcliente} 
+        />
+        <Button variant="contained" onClick={() => setModoFicha("nueva")}>Nuevo Registro</Button>
+      </Box>
       <StepperFichas
         fichaStepper={fichaStepper} 
         usuario={usuario} 
         cliente={idCliente}
         createNewUser={createNewUser} 
         refetchFichaStepper={refetchFichaStepper} 
+        modoFicha={modoFicha}
       />
     </>
   )

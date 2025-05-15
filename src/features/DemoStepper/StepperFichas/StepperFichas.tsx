@@ -32,9 +32,10 @@ type Props = {
   cliente: string
   createNewUser: () => void
   refetchFichaStepper: () => void
+  modoFicha: "nueva" | "lectura"
 }
 
-export default function StepperFichas({ fichaStepper, usuario, cliente, createNewUser, refetchFichaStepper }: Props) {
+export default function StepperFichas({ fichaStepper, usuario, cliente, createNewUser, refetchFichaStepper, modoFicha }: Props) {
   const [activeStep, setActiveStep] = React.useState(0);
   const [indexStep, setIndexStep] = React.useState(0);
   const [skipped, setSkipped] = React.useState(new Set<number>());
@@ -283,6 +284,7 @@ export default function StepperFichas({ fichaStepper, usuario, cliente, createNe
                               }
                             }}
                             defaultValue={pregunta?.respuestaPlaceholder || ''}
+                            disabled={modoFicha === 'lectura'}
                           >
                             {
                               pregunta?.opcionesSelect?.map((opcion, index) => (
@@ -309,7 +311,11 @@ export default function StepperFichas({ fichaStepper, usuario, cliente, createNe
                                 <FormControlLabel
                                   key={opcion.opcion_id}
                                   value={opcion.valor}
-                                  control={<Radio />}
+                                  control={
+                                    <Radio 
+                                      disabled={modoFicha === 'lectura'}
+                                    />
+                                  }
                                   label={opcion.valor} 
                                   sx={{ 
                                     flex: '1 1 auto',
@@ -335,6 +341,7 @@ export default function StepperFichas({ fichaStepper, usuario, cliente, createNe
                                 value={opcion.valor}
                                 control={
                                   <Checkbox 
+                                    disabled={modoFicha === 'lectura'}
                                     checked={pregunta.respuestaPlaceholder?.split(',').includes(opcion.valor)}
                                     onChange={(e) => {
                                       const currentValues = pregunta.respuestaPlaceholder?.split(',').filter(Boolean) || [];
@@ -378,6 +385,7 @@ export default function StepperFichas({ fichaStepper, usuario, cliente, createNe
                           label={pregunta?.label} 
                           variant="outlined" 
                           type={pregunta?.type}
+                          disabled={modoFicha === 'lectura'}
                           sx={{ 
                             mx: 2, 
                             flex: '1 1 auto', 
@@ -413,6 +421,7 @@ export default function StepperFichas({ fichaStepper, usuario, cliente, createNe
                             }
                           }} 
                           defaultValue={pregunta?.comentarioPlaceholder}
+                          disabled={modoFicha === 'lectura'}
                           onChange={(e) => {
                             const respuesta: FormularioRespuesta = {
                               comentario: e.target.value.trim(),

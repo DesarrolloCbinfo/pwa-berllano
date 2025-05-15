@@ -1,6 +1,6 @@
 import { Dialog, DialogTitle, DialogContent, Box, DialogActions, Button, TextField } from "@mui/material"
 import AutocompleteCliente from "../AutocompleteCliente/AutocompleteCliente"
-import React, { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { MaterialReactTable, useMaterialReactTable, MRT_ColumnDef } from 'material-react-table'
 import { useQuery } from "@tanstack/react-query"
 import useConsumoApi from "../../../hooks/useConsumoApi"
@@ -10,16 +10,21 @@ type Props = {
   onClose: () => void;
   open: boolean;
   handleSetUsuario: (newUsuario: string) => void;
+  handleModoFichaLectura: () => void;
 }
 
-export default function BuscadorFichas({ onClose, open, handleSetUsuario }: Props) {
+export default function BuscadorFichas({ onClose, open, handleSetUsuario, handleModoFichaLectura }: Props) {
   const { consumoApi } = useConsumoApi()
-  const [idCliente, setIdcliente] = useState('')
+  const [idCliente, setIdcliente] = useState('a')
 
-  const { data = [] } = useQuery({
+  const { data = [], refetch } = useQuery({
     queryKey: ['fichas'],
-    queryFn: async () => consumoApi.get(BuscadorFichasApis.getFormularioCliente(idCliente, 'f', '1/1/2025', '12/12/2025')).then(res => res.data),
+    queryFn: async () => consumoApi.get(BuscadorFichasApis.getFormularioCliente(idCliente, '%', '1/1/2025', '12/12/2025')).then(res => res.data),
   })
+
+  useEffect(() => {
+    refetch()
+  }, [idCliente])
 
   const columns = useMemo<MRT_ColumnDef<{ nombre: string, fecha: Date, usuario: string }>[]>(
     () => [
@@ -30,7 +35,13 @@ export default function BuscadorFichas({ onClose, open, handleSetUsuario }: Prop
         Cell: ({ row }) => {
           return (
             <Box>
-              <Button variant="contained" onClick={() => handleSetUsuario(row.original.usuario)}>Ver Ficha</Button>
+              <Button variant="contained" onClick={() => {
+                handleSetUsuario(row.original.usuario)
+                handleModoFichaLectura()
+                onClose()
+              }}>
+                Ver Ficha
+              </Button>
             </Box>
           )
         }
