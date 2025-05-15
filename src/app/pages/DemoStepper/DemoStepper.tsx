@@ -9,6 +9,7 @@ import { useState } from 'react';
 export default function DemoStepper() {
   const { consumoApi } = useConsumoApi();
   const [usuario, setUsuario] = useState(crypto.randomUUID()); // Add state for usuario
+  const [idCliente, setIdcliente] = useState('')
 
   const createNewUser = () => { // Define createNewUser inside component
     setUsuario(crypto.randomUUID());
@@ -30,12 +31,16 @@ export default function DemoStepper() {
   console.log("Ficha Stepper")
   console.log(fichaStepper)
 
+  console.log("Id Cliente")
+  console.log(idCliente)
+
   return (
     <>
-      <AutocompleteCliente />
+      <AutocompleteCliente setIdcliente={setIdcliente} />
       <StepperFichas
         fichaStepper={fichaStepper} 
         usuario={usuario} 
+        cliente={idCliente}
         createNewUser={createNewUser} 
         refetchFichaStepper={refetchFichaStepper} 
       />

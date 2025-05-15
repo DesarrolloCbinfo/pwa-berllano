@@ -8,7 +8,11 @@ import { AutocompleteClienteApis } from './apis/AutocompleteClienteApis';
 import { Cliente } from './types/AutocompleteClienteTypes';
 import { useEffect } from 'react';
 
-export default function AutocompleteCliente() {
+type Props = {
+  setIdcliente: React.Dispatch<React.SetStateAction<string>>,
+}
+
+export default function AutocompleteCliente({ setIdcliente }: Props) {
   const [open, setOpen] = React.useState(false);
   const [options, setOptions] = React.useState<Cliente[]>([]);
   const [nombre, setNombre] = React.useState('a'); // Add this line to manage the input value
@@ -63,6 +67,11 @@ export default function AutocompleteCliente() {
       options={options}
       loading={isLoading}
       onInput={handleChange}
+      onChange={(_: React.SyntheticEvent, value: Cliente | null) => {
+        if (value) {
+          setIdcliente(value.noCliente);
+        }
+      }}
       renderInput={(params) => (
         <TextField
           {...params}

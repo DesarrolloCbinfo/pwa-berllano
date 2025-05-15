@@ -30,7 +30,7 @@ const Login: React.FC = () => {
       const response = await consumoApi.get(`/api/Login?usuario=${usuario}&password=${password}`).then((res) => res.data);
 
       if (response.mensaje !== "Claves incorrectas") {
-        localStorage.setItem('token', response);
+        localStorage.setItem('token', JSON.stringify(response));
         setAuthToken(response);
         navigate('/');
       } else {

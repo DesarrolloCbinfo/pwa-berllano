@@ -1,9 +1,18 @@
 import React, { createContext, useContext, useState, ReactNode } from "react";
 
+type token = {
+  claveDepartamento: number,
+  clavePerfiles: number,
+  contra: string,
+  mensaje: string,
+  nombre: string,
+  usuario: string
+}
+
 interface AuthContextProps {
-  token: string | null;
-  setAuthToken: (newToken: string | null) => void;
-  setToken: React.Dispatch<React.SetStateAction<string | null>>;
+  token: token | null;
+  setAuthToken: (newToken: token | null) => void;
+  setToken: React.Dispatch<React.SetStateAction<token | null>>;
   logout: () => void; // Agregamos la función logout al contexto
   isAuthenticated: () => boolean;
 }
@@ -15,9 +24,12 @@ interface AuthProviderProps {
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
 
 const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [token, setToken] = useState<string | null>(localStorage.getItem("token") || null);
+  const [token, setToken] = useState<token | null>(() => {
+    const storedToken = localStorage.getItem("token");
+    return storedToken ? JSON.parse(storedToken) : null;
+  });
 
-  const setAuthToken = (newToken: string | null) => {
+  const setAuthToken = (newToken: token | null) => {
     setToken(newToken);
   };
 

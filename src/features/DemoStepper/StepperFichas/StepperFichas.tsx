@@ -24,15 +24,17 @@ import { useMutation } from '@tanstack/react-query';
 import useConsumoApi from '../../../hooks/useConsumoApi';
 import { StepperFichasApis } from './apis/StepperFichasApis';
 import { useState, useEffect } from 'react';
+import { useAuth } from '../../../context/AuthContext';
 
 type Props = {
   fichaStepper: FichaStepper
   usuario: string
+  cliente: string
   createNewUser: () => void
   refetchFichaStepper: () => void
 }
 
-export default function StepperFichas({ fichaStepper, usuario, createNewUser, refetchFichaStepper }: Props) {
+export default function StepperFichas({ fichaStepper, usuario, cliente, createNewUser, refetchFichaStepper }: Props) {
   const [activeStep, setActiveStep] = React.useState(0);
   const [indexStep, setIndexStep] = React.useState(0);
   const [skipped, setSkipped] = React.useState(new Set<number>());
@@ -40,11 +42,17 @@ export default function StepperFichas({ fichaStepper, usuario, createNewUser, re
 
   const [preguntasPendientes, setPreguntasPendientes] = useState<PreguntasStepper[]>([])
 
+  const { token } = useAuth()
+
   const { consumoApi } = useConsumoApi();
 
   const { mutate: upsertFomularioRespuesta } = useMutation({
     mutationFn: (data: FormularioRespuesta) => consumoApi.put(StepperFichasApis.upsertFormularioRespuesta(), data),
     onSuccess: () => refetchFichaStepper()
+  })
+
+  const { mutate: postFormularioCliente } = useMutation({
+    mutationFn: (data: { idCliente: string, idTrabajador: string, fecha: Date, idFicha: number, uuidFicha: string }) => consumoApi.post(StepperFichasApis.postFormularioCliente(), data)
   })
 
   useEffect(() => {
@@ -79,6 +87,23 @@ export default function StepperFichas({ fichaStepper, usuario, createNewUser, re
     if (isStepSkipped(activeStep)) {
       newSkipped = new Set(newSkipped.values());
       newSkipped.delete(activeStep);
+    }
+
+
+    console.log("TOKEN")
+    // Properly log the token object without stringifying it
+    console.log(token)
+
+    if (activeStep === fichaStepper.secciones.length - 1) {
+      const idTrabajador = token?.usuario || ''
+
+      postFormularioCliente({
+        idCliente: cliente,
+        idTrabajador: idTrabajador,
+        fecha: new Date(),
+        idFicha: fichaStepper.fichaId,
+        uuidFicha: usuario
+      })
     }
 
     setActiveStep((prevActiveStep) => prevActiveStep + 1);
