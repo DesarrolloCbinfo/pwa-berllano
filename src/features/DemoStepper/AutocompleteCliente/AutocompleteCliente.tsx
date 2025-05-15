@@ -1,39 +1,55 @@
-import * as React from 'react';
-import TextField from '@mui/material/TextField';
-import Autocomplete from '@mui/material/Autocomplete';
-import CircularProgress from '@mui/material/CircularProgress';
-import useConsumoApi from '../../../hooks/useConsumoApi';
-import { useQuery } from '@tanstack/react-query';
-import { AutocompleteClienteApis } from './apis/AutocompleteClienteApis';
-import { Cliente } from './types/AutocompleteClienteTypes';
-import { useEffect } from 'react';
+import * as React from "react";
+import TextField from "@mui/material/TextField";
+import Autocomplete from "@mui/material/Autocomplete";
+import CircularProgress from "@mui/material/CircularProgress";
+import useConsumoApi from "../../../hooks/useConsumoApi";
+import { useQuery } from "@tanstack/react-query";
+import { AutocompleteClienteApis } from "./apis/AutocompleteClienteApis";
+import { Cliente } from "./types/AutocompleteClienteTypes";
+import { useEffect } from "react";
 
 type Props = {
-  setIdcliente: React.Dispatch<React.SetStateAction<string>>,
-}
+  setIdcliente: React.Dispatch<React.SetStateAction<string>>;
+};
 
 export default function AutocompleteCliente({ setIdcliente }: Props) {
   const [open, setOpen] = React.useState(false);
   const [options, setOptions] = React.useState<Cliente[]>([]);
-  const [nombre, setNombre] = React.useState('a'); // Add this line to manage the input value
+  const [nombre, setNombre] = React.useState("a"); // Add this line to manage the input value
+
+  // Static client that will always be available
+  const staticClient: Partial<Cliente> = {
+    noCliente: "%",
+    nombre: "Seleccione un cliente",
+    apPaterno: "",
+    apMaterno: "",
+  } as Cliente; // Type assertion to Cliente since we're only using these properties
 
   const { consumoApi } = useConsumoApi();
 
-  const { data: clientes = [], refetch: refetchClientes, isLoading } = useQuery({
-    queryKey: ['clientes', nombre],
-    queryFn: async () => await consumoApi.get(AutocompleteClienteApis.get(nombre)).then((res) => res.data),
+  const {
+    data: clientes = [],
+    refetch: refetchClientes,
+    isLoading,
+  } = useQuery({
+    queryKey: ["clientes", nombre],
+    queryFn: async () =>
+      await consumoApi.get(AutocompleteClienteApis.get(nombre)).then((res) => res.data),
   });
 
   useEffect(() => {
-    refetchClientes().then(() => setOptions(clientes));
+    refetchClientes().then(() => {
+      // Add the static client to the beginning of the options array
+      setOptions([staticClient, ...clientes]);
+    });
   }, [nombre, refetchClientes, clientes]);
 
   const handleOpen = () => {
     setOpen(true);
     (async () => {
       refetchClientes();
-      
-      setOptions(clientes);
+
+      setOptions([staticClient, ...clientes]);
     })();
   };
 
@@ -45,15 +61,15 @@ export default function AutocompleteCliente({ setIdcliente }: Props) {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputValue = e.target.value.trim();
 
-    const valueWithoutSpaces = inputValue.replace(/\s/g, '');
+    const valueWithoutSpaces = inputValue.replace(/\s/g, "");
 
     if (valueWithoutSpaces.length === 0) {
-      setNombre('a')
+      setNombre("a");
       return;
     }
 
     setNombre(valueWithoutSpaces);
-  }
+  };
 
   return (
     <Autocomplete
@@ -63,7 +79,13 @@ export default function AutocompleteCliente({ setIdcliente }: Props) {
       onOpen={handleOpen}
       onClose={handleClose}
       isOptionEqualToValue={(option, value) => option.noCliente === value.noCliente}
-      getOptionLabel={(option) => `${option.nombre.trim()} ${option.apPaterno.trim()} ${option.apMaterno.trim()} ${option.noCliente}`}
+      getOptionLabel={(option) =>
+        option.noCliente === "%"
+          ? option.nombre
+          : `${option.nombre.trim()} ${option.apPaterno.trim()} ${option.apMaterno.trim()} ${
+              option.noCliente
+            }`
+      }
       options={options}
       loading={isLoading}
       onInput={handleChange}
