@@ -42,6 +42,9 @@ export default function StepperFichas({ fichaStepper, usuario, cliente, createNe
   const [openDialog, setOpenDialog] = React.useState(false);
 
   const [preguntasPendientes, setPreguntasPendientes] = useState<PreguntasStepper[]>([])
+  
+  // Track the previous usuario to detect changes
+  const [prevUsuario, setPrevUsuario] = useState<string>(usuario);
 
   const { token } = useAuth()
 
@@ -49,13 +52,28 @@ export default function StepperFichas({ fichaStepper, usuario, cliente, createNe
 
   const { mutate: upsertFomularioRespuesta } = useMutation({
     mutationFn: (data: FormularioRespuesta) => consumoApi.put(StepperFichasApis.upsertFormularioRespuesta(), data),
-    onSuccess: () => refetchFichaStepper()
+    onSuccess: () => {
+      // Ensure data is refreshed after each form update
+      refetchFichaStepper();
+    }
   })
 
   const { mutate: postFormularioCliente } = useMutation({
     mutationFn: (data: { idCliente: string, idTrabajador: string, fecha: Date, idFicha: number, uuidFicha: string }) => consumoApi.post(StepperFichasApis.postFormularioCliente(), data)
   })
 
+  // Reset active step when usuario changes (new form or loading existing form)
+  useEffect(() => {
+    console.log("Usuario effect")
+    console.log(usuario)
+    if (prevUsuario !== usuario) {
+      console.log("Usuario changed")
+      setActiveStep(0);
+      setPrevUsuario(usuario);
+    }
+  }, [usuario, prevUsuario]);
+
+  // Update pending questions when active step or form data changes
   useEffect(() => {
     setPreguntasPendientes(fichaStepper.secciones[activeStep]?.preguntas.filter((pregunta) => {
       if (!pregunta.requerido) return
@@ -107,13 +125,21 @@ export default function StepperFichas({ fichaStepper, usuario, cliente, createNe
       })
     }
 
+    // First update the step
     setActiveStep((prevActiveStep) => prevActiveStep + 1);
     setSkipped(newSkipped);
+    
+    // Then refetch data to ensure we have the latest state
+    // This ensures the next step has the most up-to-date data
     refetchFichaStepper()
   };
 
   const handleBack = () => {
+    // First update the step
     setActiveStep((prevActiveStep) => prevActiveStep - 1);
+    
+    // Then refetch data to ensure we have the latest state
+    // This ensures the previous step has the most up-to-date data
     refetchFichaStepper()
   };
 
@@ -133,28 +159,47 @@ export default function StepperFichas({ fichaStepper, usuario, cliente, createNe
   };
 
   const handleReset = () => {
-    createNewUser()
-    refetchFichaStepper()
-    setActiveStep(0)
+    // Reset the active step first
+    setActiveStep(0);
+    
+    // Create a new user which will generate a new UUID
+    createNewUser();
+    
+    // The refetch will happen automatically when usuario changes
+    // due to the useEffect we added, but we'll call it explicitly
+    // to ensure the data is refreshed immediately
+    refetchFichaStepper();
   };
 
   const handleChangeRespuesta = (e: SelectChangeEvent | React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>, pregunta: PreguntasStepper) => {
+    const value = e.target.value.trim();
+    
     const respuesta: FormularioRespuesta = {
-      respuesta: e.target.value.trim(),
+      respuesta: value,
       pregunta: pregunta?.preguntaId,
       usuario: usuario,
       sucursal: 0,
       tipo: 'respuesta'
     }
 
+    // Update the form data on the server
     upsertFomularioRespuesta(respuesta)
 
-    if (!e.target.value.trim()) {
-      setPreguntasPendientes((prevPreguntasPendientes) => [...prevPreguntasPendientes, pregunta])
-      return
+    // Update the local pending questions state
+    if (!value) {
+      // If the field is now empty, add it to pending questions if not already there
+      setPreguntasPendientes((prevPreguntasPendientes) => {
+        if (!prevPreguntasPendientes.some(p => p.preguntaId === pregunta.preguntaId)) {
+          return [...prevPreguntasPendientes, pregunta];
+        }
+        return prevPreguntasPendientes;
+      });
+    } else {
+      // If the field now has a value, remove it from pending questions
+      setPreguntasPendientes((prevPreguntasPendientes) => 
+        prevPreguntasPendientes.filter((p) => p.preguntaId !== pregunta.preguntaId)
+      );
     }
-
-    setPreguntasPendientes((prevPreguntasPendientes) => prevPreguntasPendientes.filter((preguntaPendiente) => preguntaPendiente.preguntaId !== pregunta.preguntaId))
   }
 
   return (

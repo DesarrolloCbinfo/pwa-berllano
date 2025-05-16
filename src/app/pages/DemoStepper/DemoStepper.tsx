@@ -27,7 +27,11 @@ export default function DemoStepper() {
   };
 
   const handleSetUsuario = (newUsuario: string) => {
+    // First update the usuario state
     setUsuario(newUsuario);
+    
+    // The refetch will be triggered by the queryKey dependency change
+    // but we'll call it explicitly to ensure immediate data refresh
     refetchFichaStepper();
   };
 
