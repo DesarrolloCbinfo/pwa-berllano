@@ -29,45 +29,45 @@ import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router";
 
 type Page = {
-  name: string
-  url: string
-}
+  name: string;
+  url: string;
+};
 
 type Header = {
-  name: string
-  pages: Page[]
-}
+  name: string;
+  pages: Page[];
+};
 
 type PageAccordion = {
-  name: string
-  headers: Header[]
-}
+  name: string;
+  headers: Header[];
+};
 
 function createPage(name: string, url: string): Page {
   return {
     name,
-    url
-  }
+    url,
+  };
 }
 
 function createHeader(name: string, pages: Page[]): Header {
   return {
     name,
-    pages
-  }
+    pages,
+  };
 }
 
 function createPageAccordion(name: string, headers: Header[]): PageAccordion {
   return {
     name,
-    headers
-  }
+    headers,
+  };
 }
 
 const pages: Page[] = [
-  createPage("Generar Formularios", "/generadorFormularios"),
-  createPage("Demo", "/demo"),
-  createPage("Demo Stepper", "/demoStepper"),
+  // createPage("Generar Formularios", "/generadorFormularios"),
+  // createPage("Demo", "/demo"),
+  createPage("Formularios", "/demoStepper"),
 ];
 
 const pagesAccordion: PageAccordion[] = [
@@ -77,12 +77,8 @@ const pagesAccordion: PageAccordion[] = [
       createPage("Subcatálogo 2", "/"),
       createPage("Subcatálogo 3", "/"),
     ]),
-    createHeader("Catálogo 2", [
-      createPage("Subcatálogo 1", "/"),
-    ]),
-    createHeader("Catálogo 3", [
-      createPage("Subcatálogo 1", "/"),
-    ])
+    createHeader("Catálogo 2", [createPage("Subcatálogo 1", "/")]),
+    createHeader("Catálogo 3", [createPage("Subcatálogo 1", "/")]),
   ]),
 ];
 
@@ -90,22 +86,24 @@ const settings = ["Profile", "Account", "Dashboard", "Logout"];
 const drawerWidth = 240;
 
 export default function Navbar() {
-  const [anchorElNav, setAnchorElNav] = React.useState<null | HTMLElement>(null);
+  const [mobileOpen, setMobileOpen] = React.useState(false);
   const [anchorElUser, setAnchorElUser] = React.useState<null | HTMLElement>(null);
 
   const { logout } = useAuth();
 
   const navigate = useNavigate();
 
-  const handleOpenNavMenu = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorElNav(event.currentTarget);
+  const handleDrawerToggle = () => {
+    console.log("Toggle drawer:", !mobileOpen);
+    setMobileOpen(!mobileOpen);
   };
+
   const handleOpenUserMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorElUser(event.currentTarget);
   };
 
   const handleCloseNavMenu = () => {
-    setAnchorElNav(null);
+    setMobileOpen(false);
   };
 
   const handleCloseUserMenu = () => {
@@ -113,7 +111,7 @@ export default function Navbar() {
   };
 
   const drawerContent = (
-    <Box sx={{ textAlign: "center" }}>
+    <Box sx={{ textAlign: "center", width: drawerWidth }}>
       <Box
         component="img"
         sx={{
@@ -128,13 +126,17 @@ export default function Navbar() {
       <Divider />
       <List>
         {pagesAccordion.map((page) => (
-          <Accordion>
-            <AccordionSummary expandIcon={<ArrowDownward />} aria-controls={page.name} id={page.name}>
+          <Accordion key={page.name}>
+            <AccordionSummary
+              expandIcon={<ArrowDownward />}
+              aria-controls={page.name}
+              id={page.name}
+            >
               <Typography>{page.name}</Typography>
             </AccordionSummary>
             <AccordionDetails>
-              {page.headers.map((header) => (
-                <>
+              {page.headers.map((header, headerIndex) => (
+                <React.Fragment key={headerIndex}>
                   <Typography variant="subtitle2" sx={{ textAlign: "left" }}>
                     {header.name}
                   </Typography>
@@ -145,14 +147,18 @@ export default function Navbar() {
                       </ListItemButton>
                     </ListItem>
                   ))}
-                </>
+                </React.Fragment>
               ))}
             </AccordionDetails>
           </Accordion>
         ))}
         {pages.map((page) => (
-          <NavLink to={page.url} style={{ textDecoration: "none", color: "black" }}>
-            <ListItem key={page.name} disablePadding>
+          <NavLink
+            to={page.url}
+            style={{ textDecoration: "none", color: "black" }}
+            key={page.name}
+          >
+            <ListItem disablePadding>
               <ListItemButton sx={{ textAlign: "left" }}>
                 <ListItemText primary={page.name} />
               </ListItemButton>
@@ -187,27 +193,30 @@ export default function Navbar() {
               aria-label="account of current user"
               aria-controls="menu-appbar"
               aria-haspopup="true"
-              onClick={handleOpenNavMenu}
+              onClick={handleDrawerToggle}
               sx={{ color: "black" }}
             >
               <MenuIcon />
             </IconButton>
-            <nav>
-              <Drawer
-                variant="temporary"
-                open={Boolean(anchorElNav)}
-                onClose={handleCloseNavMenu}
-                ModalProps={{
-                  keepMounted: true,
-                }}
-                sx={{
-                  display: { xs: "block", sm: "none" },
-                  "& .MuiDrawer-paper": { boxSizing: "border-box", width: drawerWidth },
-                }}
-              >
-                {drawerContent}
-              </Drawer>
-            </nav>
+            <Drawer
+              container={window.document.body}
+              variant="temporary"
+              open={mobileOpen}
+              onClose={handleCloseNavMenu}
+              ModalProps={{
+                keepMounted: true,
+              }}
+              sx={{
+                display: { xs: "block", md: "none" },
+                "& .MuiDrawer-paper": {
+                  boxSizing: "border-box",
+                  width: drawerWidth,
+                  zIndex: (theme) => theme.zIndex.appBar + 1,
+                },
+              }}
+            >
+              {drawerContent}
+            </Drawer>
           </Box>
           <Box sx={{ color: "white", display: { xs: "flex", md: "none" }, flexGrow: 1 }}>
             <NavLink to={"/"} style={{ textDecoration: "none", color: "white" }}>
@@ -224,9 +233,13 @@ export default function Navbar() {
           </Box>
           <Box sx={{ flexGrow: 1, display: { xs: "none", md: "flex" } }}>
             {pages.map((page) => (
-              <Box sx={{ my: 2 }}>
+              <Box sx={{ my: 2 }} key={page.name}>
                 <NavLink to={page.url}>
-                  <Button key={page.name} onClick={handleCloseNavMenu} sx={{ color: "black" }}>
+                  <Button
+                    key={page.name}
+                    onClick={handleCloseNavMenu}
+                    sx={{ color: "black" }}
+                  >
                     {page.name}
                   </Button>
                 </NavLink>
@@ -260,10 +273,12 @@ export default function Navbar() {
                   <Typography sx={{ textAlign: "center" }}>{setting}</Typography>
                 </MenuItem>
               ))}
-              <MenuItem onClick={() => {
-                logout()
-                navigate("/login")
-              }}>
+              <MenuItem
+                onClick={() => {
+                  logout();
+                  navigate("/login");
+                }}
+              >
                 <Typography sx={{ textAlign: "center" }}>Cerrar Sesión</Typography>
               </MenuItem>
             </Menu>
