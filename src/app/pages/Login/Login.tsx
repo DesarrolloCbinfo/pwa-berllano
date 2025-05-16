@@ -111,7 +111,7 @@ const Login: React.FC = () => {
       <Container component="main" maxWidth="xs" sx={{ mt: 8 }}>
         <figure style={{ width: "100%" }}>
           <img
-            src="/public/berllano-logo.jpg"
+            src="/berllano-logo.jpg"
             style={{
               width: "100%",
               height: "100%",
