@@ -2,16 +2,26 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 
+type token = {
+  claveDepartamento: number;
+  clavePerfiles: number;
+  contra: string;
+  mensaje: string;
+  nombre: string;
+  usuario: string;
+};
+
 const useConsumoApi = () => {
   const { token } = useAuth();
 
   // Separate initialization code for tokenTemp
   const getInitialTokenTemp = () => {
-    const item = localStorage.getItem("token");
+    const storedToken = localStorage.getItem("token");
+    const item = storedToken ? JSON.parse(storedToken) : null;
     return item ? item : null;
   };
 
-  const [tokenTemp, setTokenTemp] = useState<string | null>(getInitialTokenTemp);
+  const [tokenTemp, setTokenTemp] = useState<token | null>(getInitialTokenTemp);
 
   useEffect(() => {
     setTokenTemp(token);
@@ -21,7 +31,8 @@ const useConsumoApi = () => {
     setrTempToken(tokenTemp);
   }, [tokenTemp]);
 
-  const setrTempToken = (newToken: string | null) => {
+  const setrTempToken = (newToken: token | null) => {
+    return newToken;
     // Perform actions with the new token here
     //    console.log("New token:", newToken);
   };
