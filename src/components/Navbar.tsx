@@ -29,45 +29,45 @@ import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router";
 
 type Page = {
-  name: string
-  url: string
-}
+  name: string;
+  url: string;
+};
 
 type Header = {
-  name: string
-  pages: Page[]
-}
+  name: string;
+  pages: Page[];
+};
 
 type PageAccordion = {
-  name: string
-  headers: Header[]
-}
+  name: string;
+  headers: Header[];
+};
 
 function createPage(name: string, url: string): Page {
   return {
     name,
-    url
-  }
+    url,
+  };
 }
 
 function createHeader(name: string, pages: Page[]): Header {
   return {
     name,
-    pages
-  }
+    pages,
+  };
 }
 
 function createPageAccordion(name: string, headers: Header[]): PageAccordion {
   return {
     name,
-    headers
-  }
+    headers,
+  };
 }
 
 const pages: Page[] = [
-  createPage("Generar Formularios", "/generadorFormularios"),
-  createPage("Demo", "/demo"),
-  createPage("Demo Stepper", "/demoStepper"),
+  // createPage("Generar Formularios", "/generadorFormularios"),
+  // createPage("Demo", "/demo"),
+  createPage("Formularios", "/demoStepper"),
 ];
 
 const pagesAccordion: PageAccordion[] = [
@@ -77,12 +77,8 @@ const pagesAccordion: PageAccordion[] = [
       createPage("Subcatálogo 2", "/"),
       createPage("Subcatálogo 3", "/"),
     ]),
-    createHeader("Catálogo 2", [
-      createPage("Subcatálogo 1", "/"),
-    ]),
-    createHeader("Catálogo 3", [
-      createPage("Subcatálogo 1", "/"),
-    ])
+    createHeader("Catálogo 2", [createPage("Subcatálogo 1", "/")]),
+    createHeader("Catálogo 3", [createPage("Subcatálogo 1", "/")]),
   ]),
 ];
 
@@ -98,10 +94,10 @@ export default function Navbar() {
   const navigate = useNavigate();
 
   const handleDrawerToggle = () => {
-    console.log('Toggle drawer:', !mobileOpen);
+    console.log("Toggle drawer:", !mobileOpen);
     setMobileOpen(!mobileOpen);
   };
-  
+
   const handleOpenUserMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorElUser(event.currentTarget);
   };
@@ -131,7 +127,11 @@ export default function Navbar() {
       <List>
         {pagesAccordion.map((page) => (
           <Accordion key={page.name}>
-            <AccordionSummary expandIcon={<ArrowDownward />} aria-controls={page.name} id={page.name}>
+            <AccordionSummary
+              expandIcon={<ArrowDownward />}
+              aria-controls={page.name}
+              id={page.name}
+            >
               <Typography>{page.name}</Typography>
             </AccordionSummary>
             <AccordionDetails>
@@ -153,7 +153,11 @@ export default function Navbar() {
           </Accordion>
         ))}
         {pages.map((page) => (
-          <NavLink to={page.url} style={{ textDecoration: "none", color: "black" }} key={page.name}>
+          <NavLink
+            to={page.url}
+            style={{ textDecoration: "none", color: "black" }}
+            key={page.name}
+          >
             <ListItem disablePadding>
               <ListItemButton sx={{ textAlign: "left" }}>
                 <ListItemText primary={page.name} />
@@ -204,8 +208,8 @@ export default function Navbar() {
               }}
               sx={{
                 display: { xs: "block", md: "none" },
-                "& .MuiDrawer-paper": { 
-                  boxSizing: "border-box", 
+                "& .MuiDrawer-paper": {
+                  boxSizing: "border-box",
                   width: drawerWidth,
                   zIndex: (theme) => theme.zIndex.appBar + 1,
                 },
@@ -231,7 +235,11 @@ export default function Navbar() {
             {pages.map((page) => (
               <Box sx={{ my: 2 }} key={page.name}>
                 <NavLink to={page.url}>
-                  <Button key={page.name} onClick={handleCloseNavMenu} sx={{ color: "black" }}>
+                  <Button
+                    key={page.name}
+                    onClick={handleCloseNavMenu}
+                    sx={{ color: "black" }}
+                  >
                     {page.name}
                   </Button>
                 </NavLink>
@@ -265,10 +273,12 @@ export default function Navbar() {
                   <Typography sx={{ textAlign: "center" }}>{setting}</Typography>
                 </MenuItem>
               ))}
-              <MenuItem onClick={() => {
-                logout()
-                navigate("/login")
-              }}>
+              <MenuItem
+                onClick={() => {
+                  logout();
+                  navigate("/login");
+                }}
+              >
                 <Typography sx={{ textAlign: "center" }}>Cerrar Sesión</Typography>
               </MenuItem>
             </Menu>
