@@ -29,7 +29,7 @@ export default function DemoStepper() {
   const handleSetUsuario = (newUsuario: string) => {
     // First update the usuario state
     setUsuario(newUsuario);
-    
+
     // The refetch will be triggered by the queryKey dependency change
     // but we'll call it explicitly to ensure immediate data refresh
     refetchFichaStepper();
@@ -78,21 +78,21 @@ export default function DemoStepper() {
         handleModoFichaLectura={handleSetModoFichaLectura}
       />
       <Typography variant="h6" sx={{ mb: 2 }}>
-        Cliente a registrar en formulario
+        Cliente a registrar en formulario {idCliente}
       </Typography>
       <Box sx={{ display: "flex", gap: 2 }}>
         <AutocompleteCliente setIdcliente={setIdcliente} />
         <Button
           variant="contained"
           onClick={() => {
-            setModoFicha("nueva")
-            createNewUser()
+            setModoFicha("nueva");
+            createNewUser();
           }}
         >
           Nuevo Registro
         </Button>
       </Box>
-      {idCliente !== "%" && idCliente !== "a" && (
+      {idCliente !== "%" && idCliente !== "a" && idCliente !== "" && (
         <StepperFichas
           fichaStepper={fichaStepper}
           usuario={usuario}
