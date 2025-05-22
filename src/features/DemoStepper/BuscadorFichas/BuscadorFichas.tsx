@@ -22,18 +22,16 @@ import { useFormularioStore } from "../../../app/pages/DemoStepper/store/useForm
 type Props = {
   onClose: () => void;
   open: boolean;
-  handleSetUsuario: (newUsuario: string) => void;
   handleModoFichaLectura: () => void;
 };
 
 export default function BuscadorFichas({
   onClose,
   open,
-  handleSetUsuario,
   handleModoFichaLectura,
 }: Props) {
   const { consumoApi } = useConsumoApi();
-  const { idCliente } = useFormularioStore();
+  const { idCliente, setIdCliente, setUsuarioUUID, setNombreCliente } = useFormularioStore();
   const [fechas, setFechas] = useState({
     fechaInicial: "1/1/2025",
     fechaFinal: "12/12/2025",
@@ -60,7 +58,7 @@ export default function BuscadorFichas({
   }, [idCliente, fechas]);
 
   const columns = useMemo<
-    MRT_ColumnDef<{ nombre: string; fecha: string; usuario: string }>[]
+    MRT_ColumnDef<{ nombre: string; fecha: string; cliente: string; usuario: string; idCliente: string }>[]
   >(
     () => [
       {
@@ -73,7 +71,9 @@ export default function BuscadorFichas({
               <Button
                 variant="contained"
                 onClick={() => {
-                  handleSetUsuario(row.original.usuario);
+                  setUsuarioUUID(row.original.usuario);
+                  setIdCliente(row.original.idCliente);
+                  setNombreCliente(row.original.cliente.trim());
                   handleModoFichaLectura();
                   onClose();
                 }}
@@ -100,7 +100,7 @@ export default function BuscadorFichas({
         },
       },
     ],
-    [handleSetUsuario]
+    [handleModoFichaLectura, onClose, setIdCliente, setUsuarioUUID]
   );
 
   const table = useMaterialReactTable({

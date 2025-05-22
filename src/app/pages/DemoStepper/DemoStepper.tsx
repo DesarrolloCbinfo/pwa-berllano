@@ -12,7 +12,7 @@ import { useFormularioStore } from "./store/useFormularioStore";
 
 export default function DemoStepper() {
   const { consumoApi } = useConsumoApi();
-  const { usuarioUUID, createNewUsuarioUUID, setUsuarioUUID, idCliente, nombreCliente } = useFormularioStore();
+  const { usuarioUUID, createNewUsuarioUUID, idCliente, nombreCliente } = useFormularioStore();
   // const [usuario, setUsuario] = useState<string>(crypto.randomUUID()); // Add state for usuario
   // const [idCliente, setIdcliente] = useState("");
   const [modoFicha, setModoFicha] = useState<"nueva" | "lectura">("nueva");
@@ -76,7 +76,6 @@ export default function DemoStepper() {
       <BuscadorFichas
         open={dialogBuscador}
         onClose={handleCloseDialogBuscador}
-        handleSetUsuario={setUsuarioUUID}
         handleModoFichaLectura={handleSetModoFichaLectura}
       />
       <Typography variant="h6" sx={{ mb: 2 }}>
