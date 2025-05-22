@@ -36,8 +36,7 @@ export default function BuscadorFichas({
     fechaInicial: "1/1/2025",
     fechaFinal: "12/12/2025",
   });
-  console.log("Buscador")
-  console.log(idCliente)
+
   const { data = [], refetch } = useQuery({
     queryKey: ["fichas"],
     queryFn: async () =>

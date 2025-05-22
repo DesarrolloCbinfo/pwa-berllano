@@ -305,7 +305,15 @@ export default function StepperFichas({ fichaStepper, usuario, cliente, createNe
             >
               {
                 fichaStepper.secciones[activeStep]?.preguntas?.map((pregunta) => (
-                  <Box key={pregunta?.preguntaId} sx={{ m: 0, p: 0, display: 'flex', flexDirection: 'row', alignItems: 'baseline' }}>
+                  <Box key={pregunta?.preguntaId} sx={{ m: 0, p: 0, display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
+                    {
+                      pregunta?.nombreImagen.length > 0 &&
+                      (
+                        <figure style={{ maxWidth: "250px" }}>
+                          <img src={`https://cbinfo.no-ip.info:8079/api/Archivos/${pregunta.nombreImagen}`} style={{ width: "100%", height: "100%", objectFit: "contain"}} />
+                        </figure>
+                      )
+                    }
                     {
                       pregunta?.type === 'select' ? 
                       (

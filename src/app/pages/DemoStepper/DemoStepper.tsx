@@ -13,37 +13,17 @@ import { useFormularioStore } from "./store/useFormularioStore";
 export default function DemoStepper() {
   const { consumoApi } = useConsumoApi();
   const { usuarioUUID, createNewUsuarioUUID, idCliente, nombreCliente } = useFormularioStore();
-  // const [usuario, setUsuario] = useState<string>(crypto.randomUUID()); // Add state for usuario
-  // const [idCliente, setIdcliente] = useState("");
   const [modoFicha, setModoFicha] = useState<"nueva" | "lectura">("nueva");
 
   const [dialogBuscador, setDialogBuscador] = useState(false);
-
-  // const createNewUser = () => {
-  //   // Define createNewUser inside component
-  //   setUsuario(crypto.randomUUID());
-  // };
 
   const handleCloseDialogBuscador = () => {
     setDialogBuscador(false);
   };
 
-  // const handleSetUsuario = (newUsuario: string) => {
-  //   // First update the usuario state
-  //   setUsuario(newUsuario);
-
-  //   // The refetch will be triggered by the queryKey dependency change
-  //   // but we'll call it explicitly to ensure immediate data refresh
-  //   refetchFichaStepper();
-  // };
-
   const handleSetModoFichaLectura = () => {
     setModoFicha("lectura");
   };
-
-  //conseguir usuario con get
-  //  console.log("UUID Usuario")
-  //  console.log(usuario)
 
   //conseguir ficha con get
   const ficha = 2;
@@ -60,9 +40,6 @@ export default function DemoStepper() {
 
   console.log("Ficha Stepper");
   console.log(fichaStepper);
-
-  console.log("Id Cliente");
-  console.log(idCliente);
 
   return (
     <>
