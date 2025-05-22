@@ -17,6 +17,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import useConsumoApi from "../../../hooks/useConsumoApi";
 import { BuscadorFichasApis } from "./apis/BuscadorFichasApis";
+import { useFormularioStore } from "../../../app/pages/DemoStepper/store/useFormularioStore";
 
 type Props = {
   onClose: () => void;
@@ -32,11 +33,13 @@ export default function BuscadorFichas({
   handleModoFichaLectura,
 }: Props) {
   const { consumoApi } = useConsumoApi();
-  const [idCliente, setIdcliente] = useState("%");
+  const { idCliente } = useFormularioStore();
   const [fechas, setFechas] = useState({
     fechaInicial: "1/1/2025",
     fechaFinal: "12/12/2025",
   });
+  console.log("Buscador")
+  console.log(idCliente)
   const { data = [], refetch } = useQuery({
     queryKey: ["fichas"],
     queryFn: async () =>
@@ -111,7 +114,7 @@ export default function BuscadorFichas({
         <DialogTitle>Buscador de fichas</DialogTitle>
         <DialogContent>
           <Box sx={{ display: "flex", gap: 2, py: 2 }}>
-            <AutocompleteCliente setIdcliente={setIdcliente} />
+            <AutocompleteCliente />
             <TextField
               id="f1"
               variant="outlined"

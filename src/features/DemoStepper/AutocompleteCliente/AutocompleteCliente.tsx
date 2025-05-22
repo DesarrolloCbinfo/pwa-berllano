@@ -7,12 +7,10 @@ import { useQuery } from "@tanstack/react-query";
 import { AutocompleteClienteApis } from "./apis/AutocompleteClienteApis";
 import { Cliente } from "./types/AutocompleteClienteTypes";
 import { useEffect } from "react";
+import { useFormularioStore } from "../../../app/pages/DemoStepper/store/useFormularioStore";
 
-type Props = {
-  setIdcliente: React.Dispatch<React.SetStateAction<string>>;
-};
-
-export default function AutocompleteCliente({ setIdcliente }: Props) {
+export default function AutocompleteCliente() {
+  const { idCliente, setIdCliente, nombreCliente, setNombreCliente } = useFormularioStore();
   const [open, setOpen] = React.useState(false);
   const [options, setOptions] = React.useState<Cliente[]>([]);
   const [nombre, setNombre] = React.useState("a"); // Add this line to manage the input value
@@ -91,13 +89,15 @@ export default function AutocompleteCliente({ setIdcliente }: Props) {
       onInput={handleChange}
       onChange={(_: React.SyntheticEvent, value: Cliente | null) => {
         if (value) {
-          setIdcliente(value.noCliente);
+          setIdCliente(value.noCliente);
+          setNombreCliente(`${value.nombre.trim()} ${value.apPaterno.trim()} ${value.apMaterno.trim()}`);
         }
       }}
+      defaultValue={options.find((option) => option.noCliente === idCliente)}
       renderInput={(params) => (
         <TextField
           {...params}
-          label="Cliente"
+          label={nombreCliente.length === 0 ? "Buscar cliente" : nombreCliente}
           slotProps={{
             input: {
               ...params.InputProps,
