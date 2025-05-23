@@ -305,71 +305,121 @@ export default function StepperFichas({ fichaStepper, usuario, cliente, createNe
             >
               {
                 fichaStepper.secciones[activeStep]?.preguntas?.map((pregunta) => (
-                  <Box key={pregunta?.preguntaId} sx={{ m: 0, p: 0, display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
+                  <Box key={pregunta?.preguntaId} sx={{ m: 0, p: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                     {
                       pregunta?.nombreImagen.length > 0 &&
                       (
-                        <figure style={{ maxWidth: "250px" }}>
+                        <figure style={{ maxWidth: "500px" }}>
                           <img src={`https://cbinfo.no-ip.info:8079/api/Archivos/${pregunta.nombreImagen}`} style={{ width: "100%", height: "100%", objectFit: "contain"}} />
                         </figure>
                       )
                     }
-                    {
-                      pregunta?.type === 'select' ? 
-                      (
-                        <FormControl fullWidth>
-                          <InputLabel id={pregunta?.label} sx={{ ml: 2, fontFamily: "'Courier Prime', monospace" }}>{pregunta?.label}</InputLabel>
-                          <Select
-                            labelId={pregunta?.label}
-                            id={pregunta?.preguntaId.toString()}
-                            error={preguntasPendientes?.includes(pregunta)}
-                            label={pregunta?.label}
-                            onChange={(e: SelectChangeEvent) => handleChangeRespuesta(e, pregunta)}
-                            sx={{ 
-                              mx: 2,
-                              flex: '1 1 auto',
-                              fontFamily: "'Courier Prime', monospace",
-                              '& .MuiInputLabel-root': {
-                                fontFamily: "'Courier Prime', monospace"
-                              },
-                              '& .MuiInputBase-input': {
-                                fontFamily: "'Courier Prime', monospace"
+                    <Box sx={{ m: 0, p: 0, display: 'flex', flexDirection: 'row', width: "100%"}}>
+                      {
+                        pregunta?.type === 'select' ? 
+                        (
+                          <FormControl sx={{ minWidth: "50%" }}>
+                            <InputLabel id={pregunta?.label} sx={{ ml: 2, fontFamily: "'Courier Prime', monospace" }}>{pregunta?.label}</InputLabel>
+                            <Select
+                              labelId={pregunta?.label}
+                              id={pregunta?.preguntaId.toString()}
+                              error={preguntasPendientes?.includes(pregunta)}
+                              label={pregunta?.label}
+                              onChange={(e: SelectChangeEvent) => handleChangeRespuesta(e, pregunta)}
+                              sx={{ 
+                                mx: 2,
+                                flex: '1 1 auto',
+                                fontFamily: "'Courier Prime', monospace",
+                                '& .MuiInputLabel-root': {
+                                  fontFamily: "'Courier Prime', monospace"
+                                },
+                                '& .MuiInputBase-input': {
+                                  fontFamily: "'Courier Prime', monospace"
+                                }
+                              }}
+                              defaultValue={pregunta?.respuestaPlaceholder || ''}
+                              disabled={modoFicha === 'lectura'}
+                            >
+                              {
+                                pregunta?.opcionesSelect?.map((opcion, index) => (
+                                  <MenuItem key={index} value={opcion.text} sx={{ fontFamily: "'Courier Prime', monospace" }}>
+                                    {opcion.text}
+                                  </MenuItem>
+                                ))
                               }
-                            }}
-                            defaultValue={pregunta?.respuestaPlaceholder || ''}
-                            disabled={modoFicha === 'lectura'}
-                          >
-                            {
-                              pregunta?.opcionesSelect?.map((opcion, index) => (
-                                <MenuItem key={index} value={opcion.text} sx={{ fontFamily: "'Courier Prime', monospace" }}>
-                                  {opcion.text}
-                                </MenuItem>
-                              ))
-                            }
-                          </Select>
-                        </FormControl>
-                      )
-                      : pregunta?.type === 'radio' ?
-                      (
-                        <FormControl>
-                          <FormLabel id={pregunta?.preguntaId.toString()} sx={{ fontFamily: "'Courier Prime', monospace" }}>{pregunta?.label}</FormLabel>
-                          <RadioGroup
-                            aria-labelledby={pregunta?.label}
-                            defaultValue={pregunta?.respuestaPlaceholder || ''}
-                            name={pregunta?.label}
-                            onChange={(e) => handleChangeRespuesta(e, pregunta)}
-                          >
-                            {
-                              pregunta?.opciones?.map((opcion) => (
+                            </Select>
+                          </FormControl>
+                        )
+                        : pregunta?.type === 'radio' ?
+                        (
+                          <FormControl>
+                            <FormLabel id={pregunta?.preguntaId.toString()} sx={{ fontFamily: "'Courier Prime', monospace" }}>{pregunta?.label}</FormLabel>
+                            <RadioGroup
+                              aria-labelledby={pregunta?.label}
+                              defaultValue={pregunta?.respuestaPlaceholder || ''}
+                              name={pregunta?.label}
+                              onChange={(e) => handleChangeRespuesta(e, pregunta)}
+                            >
+                              {
+                                pregunta?.opciones?.map((opcion) => (
+                                  <FormControlLabel
+                                    key={opcion.opcion_id}
+                                    value={opcion.valor}
+                                    control={
+                                      <Radio 
+                                        disabled={modoFicha === 'lectura'}
+                                      />
+                                    }
+                                    label={opcion.valor} 
+                                    sx={{ 
+                                      flex: '1 1 auto',
+                                      fontFamily: "'Courier Prime', monospace",
+                                      "& .MuiFormControlLabel-label": {
+                                        fontFamily: "'Courier Prime', monospace"
+                                      }
+                                    }}
+                                  />
+                                ))
+                              }
+                            </RadioGroup>
+                          </FormControl>
+                        )
+                        : pregunta?.type === 'checkbox' ?
+                        (
+                          <FormControl>
+                            <FormLabel id={pregunta?.preguntaId.toString()} sx={{ fontFamily: "'Courier Prime', monospace" }}>{pregunta?.label}</FormLabel>
+                            <FormGroup>
+                              {pregunta?.opciones?.map((opcion) => (
                                 <FormControlLabel
                                   key={opcion.opcion_id}
                                   value={opcion.valor}
                                   control={
-                                    <Radio 
+                                    <Checkbox 
                                       disabled={modoFicha === 'lectura'}
+                                      checked={pregunta.respuestaPlaceholder?.split(',').includes(opcion.valor)}
+                                      onChange={(e) => {
+                                        const currentValues = pregunta.respuestaPlaceholder?.split(',').filter(Boolean) || [];
+                                        let newValues: string[];
+
+                                        if (e.target.checked) {
+                                          newValues = [...currentValues, opcion.valor];
+                                        } else {
+                                          newValues = currentValues.filter(value => value !== opcion.valor);
+                                        }
+
+                                        const respuesta: FormularioRespuesta = {
+                                          respuesta: newValues.join(','),
+                                          pregunta: pregunta?.preguntaId,
+                                          usuario: usuario,
+                                          sucursal: 0,
+                                          tipo: 'respuesta'
+                                        };
+                                        
+                                        upsertFomularioRespuesta(respuesta);
+                                      }}
                                     />
                                   }
-                                  label={opcion.valor} 
+                                  label={opcion.valor}
                                   sx={{ 
                                     flex: '1 1 auto',
                                     fontFamily: "'Courier Prime', monospace",
@@ -378,117 +428,69 @@ export default function StepperFichas({ fichaStepper, usuario, cliente, createNe
                                     }
                                   }}
                                 />
-                              ))
-                            }
-                          </RadioGroup>
-                        </FormControl>
-                      )
-                      : pregunta?.type === 'checkbox' ?
-                      (
-                        <FormControl>
-                          <FormLabel id={pregunta?.preguntaId.toString()} sx={{ fontFamily: "'Courier Prime', monospace" }}>{pregunta?.label}</FormLabel>
-                          <FormGroup>
-                            {pregunta?.opciones?.map((opcion) => (
-                              <FormControlLabel
-                                key={opcion.opcion_id}
-                                value={opcion.valor}
-                                control={
-                                  <Checkbox 
-                                    disabled={modoFicha === 'lectura'}
-                                    checked={pregunta.respuestaPlaceholder?.split(',').includes(opcion.valor)}
-                                    onChange={(e) => {
-                                      const currentValues = pregunta.respuestaPlaceholder?.split(',').filter(Boolean) || [];
-                                      let newValues: string[];
+                              ))}
+                            </FormGroup>
+                          </FormControl>
+                        )
+                        :
+                        (
+                          <TextField 
+                            id={pregunta?.preguntaId.toString()}
+                            label={pregunta?.label} 
+                            variant="outlined" 
+                            type={pregunta?.type}
+                            disabled={modoFicha === 'lectura'}
+                            sx={{ 
+                              mx: 2, 
+                              flex: '1 1 auto', 
+                              fontFamily: "'Courier Prime', monospace",
+                              '& .MuiInputLabel-root': {
+                                fontFamily: "'Courier Prime', monospace"
+                              },
+                              '& .MuiInputBase-input': {
+                                fontFamily: "'Courier Prime', monospace"
+                              }
+                            }} 
+                            required={pregunta?.requerido}
+                            defaultValue={pregunta?.respuestaPlaceholder || ''}
+                            error={preguntasPendientes?.includes(pregunta)}
+                            onChange={(e) => handleChangeRespuesta(e, pregunta)}
+                          />
+                        )
+                      }
+                      {
+                        pregunta?.comentario && (
+                          <TextField
+                            label="Comentario"
+                            variant="outlined"
+                            sx={{ 
+                              mx: 2, 
+                              flex: '1 1 auto', 
+                              fontFamily: "'Courier Prime', monospace",
+                              '& .MuiInputLabel-root': {
+                                fontFamily: "'Courier Prime', monospace"
+                              },
+                              '& .MuiInputBase-input': {
+                                fontFamily: "'Courier Prime', monospace"
+                              }
+                            }} 
+                            defaultValue={pregunta?.comentarioPlaceholder}
+                            disabled={modoFicha === 'lectura'}
+                            onChange={(e) => {
+                              const respuesta: FormularioRespuesta = {
+                                comentario: e.target.value.trim(),
+                                pregunta: pregunta.preguntaId,
+                                usuario: usuario,
+                                sucursal: 0,
+                                tipo: 'comentario'
+                              }
 
-                                      if (e.target.checked) {
-                                        newValues = [...currentValues, opcion.valor];
-                                      } else {
-                                        newValues = currentValues.filter(value => value !== opcion.valor);
-                                      }
-
-                                      const respuesta: FormularioRespuesta = {
-                                        respuesta: newValues.join(','),
-                                        pregunta: pregunta?.preguntaId,
-                                        usuario: usuario,
-                                        sucursal: 0,
-                                        tipo: 'respuesta'
-                                      };
-                                      
-                                      upsertFomularioRespuesta(respuesta);
-                                    }}
-                                  />
-                                }
-                                label={opcion.valor}
-                                sx={{ 
-                                  flex: '1 1 auto',
-                                  fontFamily: "'Courier Prime', monospace",
-                                  "& .MuiFormControlLabel-label": {
-                                    fontFamily: "'Courier Prime', monospace"
-                                  }
-                                }}
-                              />
-                            ))}
-                          </FormGroup>
-                        </FormControl>
-                      )
-                      :
-                      (
-                        <TextField 
-                          id={pregunta?.preguntaId.toString()}
-                          label={pregunta?.label} 
-                          variant="outlined" 
-                          type={pregunta?.type}
-                          disabled={modoFicha === 'lectura'}
-                          sx={{ 
-                            mx: 2, 
-                            flex: '1 1 auto', 
-                            fontFamily: "'Courier Prime', monospace",
-                            '& .MuiInputLabel-root': {
-                              fontFamily: "'Courier Prime', monospace"
-                            },
-                            '& .MuiInputBase-input': {
-                              fontFamily: "'Courier Prime', monospace"
-                            }
-                          }} 
-                          required={pregunta?.requerido}
-                          defaultValue={pregunta?.respuestaPlaceholder || ''}
-                          error={preguntasPendientes?.includes(pregunta)}
-                          onChange={(e) => handleChangeRespuesta(e, pregunta)}
-                        />
-                      )
-                    }
-                    {
-                      pregunta?.comentario && (
-                        <TextField
-                          label="Comentario"
-                          variant="outlined"
-                          sx={{ 
-                            mx: 2, 
-                            flex: '1 1 auto', 
-                            fontFamily: "'Courier Prime', monospace",
-                            '& .MuiInputLabel-root': {
-                              fontFamily: "'Courier Prime', monospace"
-                            },
-                            '& .MuiInputBase-input': {
-                              fontFamily: "'Courier Prime', monospace"
-                            }
-                          }} 
-                          defaultValue={pregunta?.comentarioPlaceholder}
-                          disabled={modoFicha === 'lectura'}
-                          onChange={(e) => {
-                            const respuesta: FormularioRespuesta = {
-                              comentario: e.target.value.trim(),
-                              pregunta: pregunta.preguntaId,
-                              usuario: usuario,
-                              sucursal: 0,
-                              tipo: 'comentario'
-                            }
-
-                            upsertFomularioRespuesta(respuesta)
-                          }}
-                        />
-                      )
-                    }
+                              upsertFomularioRespuesta(respuesta)
+                            }}
+                          />
+                        )
+                      }
+                    </Box>
                   </Box>
                 ))
               }
