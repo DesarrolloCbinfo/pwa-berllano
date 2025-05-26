@@ -56,4 +56,5 @@ export type OptionStepper = {
   opcion_id: number
   pregunta_id: number
   valor: string
+  nombre_imagen: string
 }

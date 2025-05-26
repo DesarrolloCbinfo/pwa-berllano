@@ -362,23 +362,32 @@ export default function StepperFichas({ fichaStepper, usuario, cliente, createNe
                             >
                               {
                                 pregunta?.opciones?.map((opcion) => (
-                                  <FormControlLabel
-                                    key={opcion.opcion_id}
-                                    value={opcion.valor}
-                                    control={
-                                      <Radio 
-                                        disabled={modoFicha === 'lectura'}
+                                  <Box sx={{ display: 'flex' }}>
+                                    {
+                                      opcion?.nombre_imagen.length > 0 &&
+                                      <img
+                                        src={`https://cbinfo.no-ip.info:8079/api/Archivos/${opcion.nombre_imagen}`}
+                                        style={{ width: "100%", height: "100%", objectFit: "contain", maxWidth: "400px"}}
                                       />
                                     }
-                                    label={opcion.valor} 
-                                    sx={{ 
-                                      flex: '1 1 auto',
-                                      fontFamily: "'Courier Prime', monospace",
-                                      "& .MuiFormControlLabel-label": {
-                                        fontFamily: "'Courier Prime', monospace"
+                                    <FormControlLabel
+                                      key={opcion.opcion_id}
+                                      value={opcion.valor}
+                                      control={
+                                        <Radio 
+                                          disabled={modoFicha === 'lectura'}
+                                        />
                                       }
-                                    }}
-                                  />
+                                      label={opcion.valor} 
+                                      sx={{ 
+                                        flex: '1 1 auto',
+                                        fontFamily: "'Courier Prime', monospace",
+                                        "& .MuiFormControlLabel-label": {
+                                          fontFamily: "'Courier Prime', monospace"
+                                        }
+                                      }}
+                                    />
+                                  </Box>
                                 ))
                               }
                             </RadioGroup>
@@ -390,44 +399,53 @@ export default function StepperFichas({ fichaStepper, usuario, cliente, createNe
                             <FormLabel id={pregunta?.preguntaId.toString()} sx={{ fontFamily: "'Courier Prime', monospace" }}>{pregunta?.label}</FormLabel>
                             <FormGroup>
                               {pregunta?.opciones?.map((opcion) => (
-                                <FormControlLabel
-                                  key={opcion.opcion_id}
-                                  value={opcion.valor}
-                                  control={
-                                    <Checkbox 
-                                      disabled={modoFicha === 'lectura'}
-                                      checked={pregunta.respuestaPlaceholder?.split(',').includes(opcion.valor)}
-                                      onChange={(e) => {
-                                        const currentValues = pregunta.respuestaPlaceholder?.split(',').filter(Boolean) || [];
-                                        let newValues: string[];
-
-                                        if (e.target.checked) {
-                                          newValues = [...currentValues, opcion.valor];
-                                        } else {
-                                          newValues = currentValues.filter(value => value !== opcion.valor);
-                                        }
-
-                                        const respuesta: FormularioRespuesta = {
-                                          respuesta: newValues.join(','),
-                                          pregunta: pregunta?.preguntaId,
-                                          usuario: usuario,
-                                          sucursal: 0,
-                                          tipo: 'respuesta'
-                                        };
-                                        
-                                        upsertFomularioRespuesta(respuesta);
-                                      }}
+                                <Box sx={{ display: 'flex' }}>
+                                  {
+                                    opcion?.nombre_imagen.length > 0 &&
+                                    <img
+                                      src={`https://cbinfo.no-ip.info:8079/api/Archivos/${opcion.nombre_imagen}`}
+                                      style={{ width: "100%", height: "100%", objectFit: "contain", maxWidth: "400px"}}
                                     />
                                   }
-                                  label={opcion.valor}
-                                  sx={{ 
-                                    flex: '1 1 auto',
-                                    fontFamily: "'Courier Prime', monospace",
-                                    "& .MuiFormControlLabel-label": {
-                                      fontFamily: "'Courier Prime', monospace"
+                                  <FormControlLabel
+                                    key={opcion.opcion_id}
+                                    value={opcion.valor}
+                                    control={
+                                      <Checkbox 
+                                        disabled={modoFicha === 'lectura'}
+                                        checked={pregunta.respuestaPlaceholder?.split(',').includes(opcion.valor)}
+                                        onChange={(e) => {
+                                          const currentValues = pregunta.respuestaPlaceholder?.split(',').filter(Boolean) || [];
+                                          let newValues: string[];
+
+                                          if (e.target.checked) {
+                                            newValues = [...currentValues, opcion.valor];
+                                          } else {
+                                            newValues = currentValues.filter(value => value !== opcion.valor);
+                                          }
+
+                                          const respuesta: FormularioRespuesta = {
+                                            respuesta: newValues.join(','),
+                                            pregunta: pregunta?.preguntaId,
+                                            usuario: usuario,
+                                            sucursal: 0,
+                                            tipo: 'respuesta'
+                                          };
+                                          
+                                          upsertFomularioRespuesta(respuesta);
+                                        }}
+                                      />
                                     }
-                                  }}
-                                />
+                                    label={opcion.valor}
+                                    sx={{ 
+                                      flex: '1 1 auto',
+                                      fontFamily: "'Courier Prime', monospace",
+                                      "& .MuiFormControlLabel-label": {
+                                        fontFamily: "'Courier Prime', monospace"
+                                      }
+                                    }}
+                                  />
+                                </Box>
                               ))}
                             </FormGroup>
                           </FormControl>
