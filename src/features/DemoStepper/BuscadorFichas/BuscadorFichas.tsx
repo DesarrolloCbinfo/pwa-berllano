@@ -25,13 +25,10 @@ type Props = {
   handleModoFichaLectura: () => void;
 };
 
-export default function BuscadorFichas({
-  onClose,
-  open,
-  handleModoFichaLectura,
-}: Props) {
+export default function BuscadorFichas({ onClose, open, handleModoFichaLectura }: Props) {
   const { consumoApi } = useConsumoApi();
-  const { idCliente, setIdCliente, setUsuarioUUID, setNombreCliente } = useFormularioStore();
+  const { idCliente, setIdCliente, setUsuarioUUID, setNombreCliente } =
+    useFormularioStore();
   const [fechas, setFechas] = useState({
     fechaInicial: "1/1/2025",
     fechaFinal: "12/12/2025",
@@ -57,7 +54,13 @@ export default function BuscadorFichas({
   }, [idCliente, fechas]);
 
   const columns = useMemo<
-    MRT_ColumnDef<{ nombre: string; fecha: string; cliente: string; usuario: string; idCliente: string }>[]
+    MRT_ColumnDef<{
+      nombre: string;
+      fecha: string;
+      cliente: string;
+      usuario: string;
+      idCliente: string;
+    }>[]
   >(
     () => [
       {
@@ -95,7 +98,13 @@ export default function BuscadorFichas({
         accessorKey: "fecha",
         header: "Fecha",
         Cell: ({ row }) => {
-          return row.original.fecha.split("T")[0];
+          // Format date with hours and minutes but no seconds
+          const dateTimeStr = row.original.fecha;
+          const [datePart, timePart] = dateTimeStr.split("T");
+          const timeWithoutSeconds = timePart
+            ? timePart.split(":").slice(0, 2).join(":")
+            : "";
+          return `${datePart} ${timeWithoutSeconds}`;
         },
       },
     ],
