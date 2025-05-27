@@ -8,10 +8,10 @@ import { AutocompleteClienteApis } from "./apis/AutocompleteClienteApis";
 import { Cliente } from "./types/AutocompleteClienteTypes";
 import { useEffect } from "react";
 import { useFormularioStore } from "../../../app/pages/DemoStepper/store/useFormularioStore";
-interface props {
-  createNewUsuarioUUID: () => void;
-}
-export default function AutocompleteCliente({ createNewUsuarioUUID }: props) {
+// interface props {
+//   createNewUsuarioUUID: () => void;
+// }
+export default function AutocompleteCliente() {
   const { idCliente, setIdCliente, nombreCliente, setNombreCliente } = useFormularioStore();
   const [open, setOpen] = React.useState(false);
   const [options, setOptions] = React.useState<Cliente[]>([]);

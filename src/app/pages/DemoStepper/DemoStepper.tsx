@@ -52,7 +52,7 @@ export default function DemoStepper() {
         Cliente a registrar en formulario {nombreCliente}
       </Typography>
       <Box sx={{ display: "flex", gap: 2 }}>
-        <AutocompleteCliente createNewUsuarioUUID={createNewUsuarioUUID} />
+        <AutocompleteCliente />
         <Button
           variant="contained"
           onClick={() => {
