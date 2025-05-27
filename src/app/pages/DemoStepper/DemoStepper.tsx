@@ -62,7 +62,7 @@ export default function DemoStepper() {
         </Button>
       </Box>
       <SelectFicha />
-      {idCliente !== "%" && idCliente !== "a" && idCliente !== "" && (
+      {idCliente !== "%" && idCliente !== "a" && idCliente !== "" && idFicha !== "" && (
         <StepperFichas
           fichaStepper={fichaStepper}
           usuario={usuarioUUID}
