@@ -1,14 +1,5 @@
 import React, { useState } from "react";
-import {
-  Box,
-  Button,
-  Container,
-  TextField,
-  Typography,
-  Paper,
-  InputAdornment,
-  IconButton,
-} from "@mui/material";
+import { Box, Button, Container, TextField, Typography, Paper, InputAdornment, IconButton } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { useNavigate } from "react-router";
 import { useAuth } from "../../../context/AuthContext";
@@ -39,8 +30,7 @@ const Login: React.FC = () => {
       const response = await consumoApi
         .get(`/api/Login?usuario=${usuario}&password=${password}`)
         .then((res) => res.data);
-
-      if (response.mensaje !== "Usuario o contraseña incorrectos") {
+      if (response.mensaje !== "Usuario o contraseña incorrectos" && response.mensaje !== "Claves incorrectas") {
         localStorage.setItem("token", JSON.stringify(response));
         setAuthToken(response);
         navigate("/");
@@ -182,11 +172,7 @@ const Login: React.FC = () => {
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
-                    <IconButton
-                      aria-label="toggle password visibility"
-                      onClick={togglePasswordVisibility}
-                      edge="end"
-                    >
+                    <IconButton aria-label="toggle password visibility" onClick={togglePasswordVisibility} edge="end">
                       {showPassword ? <VisibilityOff /> : <Visibility />}
                     </IconButton>
                   </InputAdornment>
