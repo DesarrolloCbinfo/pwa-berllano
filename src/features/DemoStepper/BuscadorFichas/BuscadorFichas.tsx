@@ -27,8 +27,7 @@ type Props = {
 
 export default function BuscadorFichas({ onClose, open, handleModoFichaLectura }: Props) {
   const { consumoApi } = useConsumoApi();
-  const { idCliente, setIdCliente, setUsuarioUUID, setNombreCliente } =
-    useFormularioStore();
+  const { idCliente, setIdCliente, setUsuarioUUID, setNombreCliente, setIdFicha } = useFormularioStore();
   const [fechas, setFechas] = useState({
     fechaInicial: "1/1/2025",
     fechaFinal: "12/12/2025",
@@ -60,6 +59,7 @@ export default function BuscadorFichas({ onClose, open, handleModoFichaLectura }
       cliente: string;
       usuario: string;
       idCliente: string;
+      idFicha: string;
     }>[]
   >(
     () => [
@@ -73,6 +73,7 @@ export default function BuscadorFichas({ onClose, open, handleModoFichaLectura }
               <Button
                 variant="contained"
                 onClick={() => {
+                  setIdFicha(row.original.idFicha);
                   setUsuarioUUID(row.original.usuario);
                   setIdCliente(row.original.idCliente);
                   setNombreCliente(row.original.cliente.trim());

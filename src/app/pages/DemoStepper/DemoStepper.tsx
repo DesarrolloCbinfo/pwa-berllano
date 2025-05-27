@@ -9,10 +9,11 @@ import BuscadorFichas from "../../../features/DemoStepper/BuscadorFichas/Buscado
 import { Button } from "@mui/material";
 import { Typography, Box } from "@mui/material";
 import { useFormularioStore } from "./store/useFormularioStore";
+import SelectFicha from "../../../features/DemoStepper/SelectFicha/SelectFicha";
 
 export default function DemoStepper() {
   const { consumoApi } = useConsumoApi();
-  const { usuarioUUID, createNewUsuarioUUID, idCliente, nombreCliente } = useFormularioStore();
+  const { usuarioUUID, createNewUsuarioUUID, idCliente, nombreCliente, idFicha } = useFormularioStore();
   const [modoFicha, setModoFicha] = useState<"nueva" | "lectura">("nueva");
 
   const [dialogBuscador, setDialogBuscador] = useState(false);
@@ -25,14 +26,11 @@ export default function DemoStepper() {
     setModoFicha("lectura");
   };
 
-  //conseguir ficha con get
-  const ficha = 4;
-
   //conseguir ficha con get de fichas asignadas a algun usuario
   const { data: fichaStepper = initialDataFichaStepper, refetch: refetchFichaStepper } = useQuery<FichaStepper>({
-    queryKey: ["fichaStepper", ficha, usuarioUUID], // Include ficha and usuario in queryKey
+    queryKey: ["fichaStepper", idFicha, usuarioUUID], // Include ficha and usuario in queryKey
     queryFn: async () =>
-      await consumoApi.get(DemoStepperApis.getFichaStepper(ficha, usuarioUUID)).then((res) => res.data),
+      await consumoApi.get(DemoStepperApis.getFichaStepper(idFicha, usuarioUUID)).then((res) => res.data),
   });
 
   console.log("Ficha Stepper");
@@ -63,6 +61,7 @@ export default function DemoStepper() {
           Nuevo Registro
         </Button>
       </Box>
+      <SelectFicha />
       {idCliente !== "%" && idCliente !== "a" && idCliente !== "" && (
         <StepperFichas
           fichaStepper={fichaStepper}

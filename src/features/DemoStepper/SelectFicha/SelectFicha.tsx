@@ -1,19 +1,26 @@
-import { FormControl, InputLabel, Select, MenuItem, SelectChangeEvent } from "@mui/material"
-import { Ficha } from "../../../app/pages/DemoStepper/types/DemoStepperTypes"
-import { useState } from "react"
+import { FormControl, InputLabel, Select, MenuItem } from "@mui/material"
+import { useQuery } from "@tanstack/react-query"
+import useConsumoApi from "../../../hooks/useConsumoApi"
+import { SelectFichaApis } from "./apis/SelectFichaApis"
+import { useFormularioStore } from "../../../app/pages/DemoStepper/store/useFormularioStore"
 
-type Props = {
-  fichaData: Ficha[]
-  handleFichaChange: (ficha: Ficha) => void
+type Ficha = {
+  id: number,
+  cia: number,
+  nombre: string,
+  descripcion: string,
+  sucursalId: number
 }
 
-export default function SelectFicha({ fichaData, handleFichaChange }: Props) {
-  const [fichaId, setFichaId] = useState('');
+export default function SelectFicha() {
+  const { consumoApi } = useConsumoApi()
+  const { idFicha, setIdFicha } = useFormularioStore()
 
-  const handleChange = (event: SelectChangeEvent) => {
-    setFichaId(event.target.value)
-    handleFichaChange(fichaData.find(ficha => ficha.id === Number(event.target.value))!)
-  }
+  const { data: fichas } = useQuery<Ficha[]>({
+    queryKey: ["fichasSelector"],
+    queryFn: async () =>
+      await consumoApi.get(SelectFichaApis.getFichas('1')).then((res) => res.data)
+  })
 
   return (
     <FormControl sx={{ width: "400px", my: 4 }}>
@@ -22,12 +29,14 @@ export default function SelectFicha({ fichaData, handleFichaChange }: Props) {
         labelId="ficha"
         id="ficha"
         label="Ficha"
-        value={fichaId}
-        onChange={handleChange}
+        value={idFicha}
+        onChange={(e) => setIdFicha(e.target.value)}
       >
-        { fichaData.map((ficha) => (
-          <MenuItem key={ficha.id} value={ficha.id}>{ ficha.nombre }</MenuItem>
-        ))}
+        { 
+          fichas?.map((ficha) => (
+            <MenuItem key={ficha.id} value={ficha.id}>{ ficha.nombre }</MenuItem>
+          ))
+        }
       </Select>
     </FormControl>
   )
