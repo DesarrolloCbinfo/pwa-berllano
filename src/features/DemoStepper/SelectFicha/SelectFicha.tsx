@@ -23,7 +23,7 @@ export default function SelectFicha() {
   })
 
   return (
-    <FormControl sx={{ width: "400px", my: 4 }}>
+    <FormControl sx={{ width: "400px", mt: 4 }}>
       <InputLabel id="ficha">Ficha</InputLabel>
       <Select
         labelId="ficha"

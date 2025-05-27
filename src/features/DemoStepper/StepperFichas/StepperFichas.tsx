@@ -63,11 +63,9 @@ export default function StepperFichas({ fichaStepper, usuario, cliente, createNe
   })
 
   // Reset active step when usuario changes (new form or loading existing form)
+  //CHECAR ESTA PARTE
   useEffect(() => {
-    console.log("Usuario effect")
-    console.log(usuario)
     if (prevUsuario !== usuario) {
-      console.log("Usuario changed")
       setActiveStep(0);
       setPrevUsuario(usuario);
     }
@@ -95,7 +93,6 @@ export default function StepperFichas({ fichaStepper, usuario, cliente, createNe
   };
 
   const handleNext = () => {
-
     if (preguntasPendientes.length > 0) {
       setOpenDialog(true)
       return
@@ -108,23 +105,6 @@ export default function StepperFichas({ fichaStepper, usuario, cliente, createNe
       newSkipped.delete(activeStep);
     }
 
-
-    console.log("TOKEN")
-    // Properly log the token object without stringifying it
-    console.log(token)
-
-    if (activeStep === fichaStepper.secciones.length - 1) {
-      const idTrabajador = token?.usuario || ''
-
-      postFormularioCliente({
-        idCliente: cliente,
-        idTrabajador: idTrabajador,
-        fecha: new Date(),
-        idFicha: fichaStepper.fichaId,
-        uuidFicha: usuario
-      })
-    }
-
     // First update the step
     setActiveStep((prevActiveStep) => prevActiveStep + 1);
     setSkipped(newSkipped);
@@ -133,6 +113,25 @@ export default function StepperFichas({ fichaStepper, usuario, cliente, createNe
     // This ensures the next step has the most up-to-date data
     refetchFichaStepper()
   };
+
+  const handleFinish = () => {
+    if (preguntasPendientes.length > 0) {
+      setOpenDialog(true)
+      return
+    }
+
+    setActiveStep(fichaStepper.secciones.length);
+
+    const idTrabajador = token?.usuario || ''
+
+    postFormularioCliente({
+      idCliente: cliente,
+      idTrabajador: idTrabajador,
+      fecha: new Date(),
+      idFicha: fichaStepper.fichaId,
+      uuidFicha: usuario
+    })
+  }
 
   const handleBack = () => {
     // First update the step
@@ -212,7 +211,7 @@ export default function StepperFichas({ fichaStepper, usuario, cliente, createNe
           <Button variant='contained' onClick={() => setOpenDialog((prev) => !prev)}>Cerrar</Button>
         </DialogActions>
       </Dialog>
-      <Box sx={{ width: '100%', my: 8, fontFamily: "'Courier Prime', monospace" }}>
+      <Box sx={{ width: '100%', my: 6, fontFamily: "'Courier Prime', monospace" }}>
         <Stepper activeStep={activeStep} sx={{ display: 'flex', flexWrap: 'wrap', rowGap: 2 }}>
           {fichaStepper.secciones.map((seccion, index) => {
             const stepProps: { completed?: boolean } = {};
@@ -264,7 +263,7 @@ export default function StepperFichas({ fichaStepper, usuario, cliente, createNe
                     },
                   }}
                   onClick={() => {
-                    if (preguntasPendientes.length > 0 && index > activeStep) {
+                    if (preguntasPendientes?.length > 0 && index > activeStep) {
                       setOpenDialog(true)
                       setIndexStep(activeStep + 1)
                       return
@@ -289,9 +288,28 @@ export default function StepperFichas({ fichaStepper, usuario, cliente, createNe
         </Stepper>
         {activeStep === fichaStepper.secciones.length ? (
           <React.Fragment>
-            <Typography sx={{ mt: 2, mb: 1, fontFamily: "'Courier Prime', monospace" }}>
-              Ficha Finalizada
+            <Typography sx={{ mt: 2, mb: 1, fontFamily: "'Courier Prime', monospace" }} variant='h5'>
+              Ficha Finalizada. Resumen de Respuestas Registradas
             </Typography>
+            <Stack spacing={2}>
+              {
+                fichaStepper.secciones.map((seccion) => (
+                  <>
+                    {
+                      seccion.preguntas.map((pregunta) => (
+                        <>
+                          { pregunta.respuestaPlaceholder &&
+                            <Typography key={pregunta?.preguntaId} sx={{ fontFamily: "'Courier Prime', monospace" }}>
+                              { seccion.nombre } - { pregunta.label }: <b>{ pregunta.respuestaPlaceholder }</b>
+                            </Typography>
+                          }
+                        </>
+                      ))
+                    }
+                  </>
+                ))
+              }
+            </Stack>
             <Box sx={{ display: 'flex', flexDirection: 'row', pt: 2 }}>
               <Box sx={{ flex: '1 1 auto' }} />
               <Button onClick={handleReset} sx={{ fontFamily: "'Courier Prime', monospace" }}>Reiniciar</Button>
@@ -528,8 +546,11 @@ export default function StepperFichas({ fichaStepper, usuario, cliente, createNe
                   Omitir
                 </Button>
               )}
+              <Button onClick={handleFinish} sx={{ mr: 2, fontFamily: "'Courier Prime', monospace" }}>
+                Finalizar
+              </Button>
               <Button onClick={handleNext} sx={{ fontFamily: "'Courier Prime', monospace" }}>
-                {activeStep === fichaStepper.secciones.length - 1 ? 'Finalizar' : 'Siguiente'}
+                Siguiente
               </Button>
             </Box>
           </React.Fragment>
