@@ -29,25 +29,18 @@ export default function DemoStepper() {
   const ficha = 2;
 
   //conseguir ficha con get de fichas asignadas a algun usuario
-  const { data: fichaStepper = initialDataFichaStepper, refetch: refetchFichaStepper } =
-    useQuery<FichaStepper>({
-      queryKey: ["fichaStepper", ficha, usuarioUUID], // Include ficha and usuario in queryKey
-      queryFn: async () =>
-        await consumoApi
-          .get(DemoStepperApis.getFichaStepper(ficha, usuarioUUID))
-          .then((res) => res.data),
-    });
+  const { data: fichaStepper = initialDataFichaStepper, refetch: refetchFichaStepper } = useQuery<FichaStepper>({
+    queryKey: ["fichaStepper", ficha, usuarioUUID], // Include ficha and usuario in queryKey
+    queryFn: async () =>
+      await consumoApi.get(DemoStepperApis.getFichaStepper(ficha, usuarioUUID)).then((res) => res.data),
+  });
 
   console.log("Ficha Stepper");
   console.log(fichaStepper);
 
   return (
     <>
-      <Button
-        variant="contained"
-        onClick={() => setDialogBuscador(true)}
-        sx={{ width: "fit-content", mb: 2 }}
-      >
+      <Button variant="contained" onClick={() => setDialogBuscador(true)} sx={{ width: "fit-content", mb: 2 }}>
         Abrir Buscador de Formularios
       </Button>
       <BuscadorFichas
@@ -59,7 +52,7 @@ export default function DemoStepper() {
         Cliente a registrar en formulario {nombreCliente}
       </Typography>
       <Box sx={{ display: "flex", gap: 2 }}>
-        <AutocompleteCliente />
+        <AutocompleteCliente createNewUsuarioUUID={createNewUsuarioUUID} />
         <Button
           variant="contained"
           onClick={() => {

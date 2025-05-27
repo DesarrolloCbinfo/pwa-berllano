@@ -8,8 +8,10 @@ import { AutocompleteClienteApis } from "./apis/AutocompleteClienteApis";
 import { Cliente } from "./types/AutocompleteClienteTypes";
 import { useEffect } from "react";
 import { useFormularioStore } from "../../../app/pages/DemoStepper/store/useFormularioStore";
-
-export default function AutocompleteCliente() {
+interface props {
+  createNewUsuarioUUID: () => void;
+}
+export default function AutocompleteCliente({ createNewUsuarioUUID }: props) {
   const { idCliente, setIdCliente, nombreCliente, setNombreCliente } = useFormularioStore();
   const [open, setOpen] = React.useState(false);
   const [options, setOptions] = React.useState<Cliente[]>([]);
@@ -31,8 +33,7 @@ export default function AutocompleteCliente() {
     isLoading,
   } = useQuery({
     queryKey: ["clientes", nombre],
-    queryFn: async () =>
-      await consumoApi.get(AutocompleteClienteApis.get(nombre)).then((res) => res.data),
+    queryFn: async () => await consumoApi.get(AutocompleteClienteApis.get(nombre)).then((res) => res.data),
   });
 
   useEffect(() => {
@@ -65,7 +66,6 @@ export default function AutocompleteCliente() {
       setNombre("a");
       return;
     }
-
     setNombre(valueWithoutSpaces);
   };
 
@@ -80,15 +80,17 @@ export default function AutocompleteCliente() {
       getOptionLabel={(option) =>
         option.noCliente === "%"
           ? option.nombre
-          : `${option.nombre.trim()} ${option.apPaterno.trim()} ${option.apMaterno.trim()} ${
-              option.noCliente
-            }`
+          : `${option.nombre.trim()} ${option.apPaterno.trim()} ${option.apMaterno.trim()} ${option.noCliente}`
       }
       options={options}
       loading={isLoading}
       onInput={handleChange}
       onChange={(_: React.SyntheticEvent, value: Cliente | null) => {
         if (value) {
+          // If a client is selected and it's different from the current one, call createNewUsuarioUUID
+          if (value.noCliente !== idCliente) {
+            // createNewUsuarioUUID();
+          }
           setIdCliente(value.noCliente);
           setNombreCliente(`${value.nombre.trim()} ${value.apPaterno.trim()} ${value.apMaterno.trim()}`);
         }
