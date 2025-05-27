@@ -26,7 +26,7 @@ export default function DemoStepper() {
   };
 
   //conseguir ficha con get
-  const ficha = 2;
+  const ficha = 4;
 
   //conseguir ficha con get de fichas asignadas a algun usuario
   const { data: fichaStepper = initialDataFichaStepper, refetch: refetchFichaStepper } =
