@@ -20,9 +20,9 @@ export const useFormularioStore = create<Store>()(
       createNewUsuarioUUID: () => set({ usuarioUUID: crypto.randomUUID() }),
       setUsuarioUUID: (usuarioUUID: string) => set({ usuarioUUID }),
       idCliente: "",
-      setIdCliente: (idCliente: string) => set({ idCliente }),
+      setIdCliente: (idCliente: string) => set({ idCliente, usuarioUUID: crypto.randomUUID()  }),
       nombreCliente: "",
-      setNombreCliente: (nombreCliente: string) => set({ nombreCliente }),
+      setNombreCliente: (nombreCliente: string) => set({ nombreCliente, usuarioUUID: crypto.randomUUID() }),
       idFicha: "",
       setIdFicha: (idFicha: string) => set({ idFicha })
     }),
