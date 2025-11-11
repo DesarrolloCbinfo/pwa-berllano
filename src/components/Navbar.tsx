@@ -68,6 +68,7 @@ const pages: Page[] = [
   // createPage("Generar Formularios", "/generadorFormularios"),
   // createPage("Demo", "/demo"),
   createPage("Formularios", "/demoStepper"),
+  createPage("Recepción", "/recepcion"),
 ];
 
 const pagesAccordion: PageAccordion[] = [
@@ -155,7 +156,7 @@ export default function Navbar() {
         {pages.map((page) => (
           <NavLink
             to={page.url}
-            style={{ textDecoration: "none", color: "black" }}
+            style={{ textDecoration: "none", color: "inherit" }}
             key={page.name}
           >
             <ListItem disablePadding>
@@ -170,7 +171,7 @@ export default function Navbar() {
   );
 
   return (
-    <AppBar position="static" sx={{ backgroundColor: "white" }}>
+    <AppBar position="static" color="primary">
       <Container maxWidth="xl">
         <Toolbar disableGutters>
           <NavLink to={"/"} style={{ textDecoration: "none" }}>
@@ -194,7 +195,7 @@ export default function Navbar() {
               aria-controls="menu-appbar"
               aria-haspopup="true"
               onClick={handleDrawerToggle}
-              sx={{ color: "black" }}
+              color="inherit"
             >
               <MenuIcon />
             </IconButton>
@@ -238,7 +239,7 @@ export default function Navbar() {
                   <Button
                     key={page.name}
                     onClick={handleCloseNavMenu}
-                    sx={{ color: "black" }}
+                    color="inherit"
                   >
                     {page.name}
                   </Button>
