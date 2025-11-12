@@ -44,7 +44,11 @@ export default function AddProductoDialog({
   const [costoUnitario, setCostoUnitario] = useState<number>(row?.costoUnitario ?? 0);
   const [tasaIva, setTasaIva] = useState<number>(row?.tasaIva ?? 0);
   const [loadingDesc, setLoadingDesc] = useState<boolean>(false);
-  const [notif, setNotif] = useState<{ open: boolean; severity: "success" | "error"; message: string }>({
+  const [notif, setNotif] = useState<{
+    open: boolean;
+    severity: "success" | "error";
+    message: string;
+  }>({
     open: false,
     severity: "success",
     message: "",
@@ -66,7 +70,9 @@ export default function AddProductoDialog({
     setLoadingDesc(true);
     try {
       // Intento de endpoint para obtener descripción por clave
-      const { data } = await consumoApi.get(`/api/CatClientesSuc/producto/${encodeURIComponent(claveProd)}`);
+      const { data } = await consumoApi.get(
+        `/api/CatClientesSuc/producto/${encodeURIComponent(claveProd)}`
+      );
       // El API puede regresar arreglo u objeto; manejamos ambos
       const item = Array.isArray(data) ? data[0] : data;
       setDescripcion(item?.descripcion_corta || item?.descripcion || "");
@@ -74,7 +80,11 @@ export default function AddProductoDialog({
       setTasaIva(item?.tasaIva || 0);
     } catch (e: any) {
       // Si el endpoint no existe, permitimos captura manual
-      setNotif({ open: true, severity: "error", message: "No se pudo obtener la descripción automáticamente" });
+      setNotif({
+        open: true,
+        severity: "error",
+        message: "No se pudo obtener la descripción automáticamente",
+      });
     } finally {
       setLoadingDesc(false);
     }
@@ -83,6 +93,7 @@ export default function AddProductoDialog({
   const crear = useMutation({
     mutationFn: async () => {
       const payload: TemporalRMRow & { usuario: string; usuarioPedido: string } = {
+        id: 0,
         folioPedido,
         folioRecepcion: 0,
         numeroFactura: "",
@@ -98,12 +109,17 @@ export default function AddProductoDialog({
         costoUnitario: costoUnitario,
         tasaIva: tasaIva,
       };
-      const { data } = await consumoApi.post(`/api/TemporalData/sp_temporal_rm_create`, payload);
+      const { data } = await consumoApi.post(
+        `/api/TemporalData/sp_temporal_rm_create`,
+        payload
+      );
       return data as { codigo?: number; mensaje?: string };
     },
     onSuccess: (res) => {
       const ok = (res as any)?.codigo === 1 || !("codigo" in (res || {}));
-      onSuccess((res?.mensaje as string) || (ok ? "Producto agregado" : "Operación realizada"));
+      onSuccess(
+        (res?.mensaje as string) || (ok ? "Producto agregado" : "Operación realizada")
+      );
     },
     onError: (e: any) => onError(e?.message || "Error al agregar"),
   });
@@ -120,12 +136,17 @@ export default function AddProductoDialog({
         tasaIva,
         usuario,
       } as any;
-      const { data } = await consumoApi.put(`/api/TemporalData/sp_tempral_rm_update/${row.id}`, payload);
+      const { data } = await consumoApi.put(
+        `/api/TemporalData/sp_tempral_rm_update/${row.id}`,
+        payload
+      );
       return data as { codigo?: number; mensaje?: string };
     },
     onSuccess: (res) => {
       const ok = (res as any)?.codigo === 1 || !("codigo" in (res || {}));
-      onSuccess((res?.mensaje as string) || (ok ? "Producto actualizado" : "Operación realizada"));
+      onSuccess(
+        (res?.mensaje as string) || (ok ? "Producto actualizado" : "Operación realizada")
+      );
     },
     onError: (e: any) => onError(e?.message || "Error al actualizar"),
   });
@@ -138,13 +159,15 @@ export default function AddProductoDialog({
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle sx={{ 
-        bgcolor: 'primary.main', 
-        color: 'white',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 1
-      }}>
+      <DialogTitle
+        sx={{
+          bgcolor: "primary.main",
+          color: "white",
+          display: "flex",
+          alignItems: "center",
+          gap: 1,
+        }}
+      >
         {row ? "✏️ Editar producto" : "➕ Agregar producto"}
       </DialogTitle>
       <DialogContent sx={{ mt: 2 }}>
@@ -173,7 +196,7 @@ export default function AddProductoDialog({
             value={cantidad || ""}
             onChange={(e) => setCantidad(Number(e.target.value))}
           />
-          <Stack direction="row" spacing={2}>
+          {/* <Stack direction="row" spacing={2}>
             <TextField
               label="Costo unitario"
               type="number"
@@ -195,7 +218,7 @@ export default function AddProductoDialog({
               inputProps={{ step: 0.01, min: 0, max: 1 }}
               fullWidth
             />
-          </Stack>
+          </Stack> */}
         </Stack>
       </DialogContent>
       <DialogActions>
@@ -211,8 +234,16 @@ export default function AddProductoDialog({
         </Button>
       </DialogActions>
 
-      <Snackbar open={notif.open} autoHideDuration={4000} onClose={() => setNotif((s) => ({ ...s, open: false }))}>
-        <Alert severity={notif.severity} variant="outlined" onClose={() => setNotif((s) => ({ ...s, open: false }))}>
+      <Snackbar
+        open={notif.open}
+        autoHideDuration={4000}
+        onClose={() => setNotif((s) => ({ ...s, open: false }))}
+      >
+        <Alert
+          severity={notif.severity}
+          variant="outlined"
+          onClose={() => setNotif((s) => ({ ...s, open: false }))}
+        >
           {notif.message}
         </Alert>
       </Snackbar>

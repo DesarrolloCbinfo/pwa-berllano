@@ -10,6 +10,7 @@ import {
   Divider,
   IconButton,
   InputAdornment,
+  MenuItem,
   Snackbar,
   Stack,
   Table,
@@ -34,7 +35,7 @@ import AddProductoDialog from "../../../features/RecepcionMercancia/AddProductoD
 import CargosVariosDialog from "../../../features/RecepcionMercancia/CargosVariosDialog";
 
 export type TemporalRMRow = {
-  id?: number;
+  id: number;
   folioPedido: number;
   folioRecepcion?: number;
   numeroFactura?: string;
@@ -69,7 +70,11 @@ export default function RecepcionMercancia() {
   const [selectedRow, setSelectedRow] = useState<TemporalRMRow | undefined>(undefined);
 
   // Notificaciones
-  const [notif, setNotif] = useState<{ open: boolean; severity: "success" | "error"; message: string }>({
+  const [notif, setNotif] = useState<{
+    open: boolean;
+    severity: "success" | "error";
+    message: string;
+  }>({
     open: false,
     severity: "success",
     message: "",
@@ -85,7 +90,10 @@ export default function RecepcionMercancia() {
   }, []);
 
   // ==================== QUERIES ====================
-  const queryKey = useMemo(() => ["temporal_rm", folioPedido, sucursal], [folioPedido, sucursal]);
+  const queryKey = useMemo(
+    () => ["temporal_rm", folioPedido, sucursal],
+    [folioPedido, sucursal]
+  );
 
   // Query de productos del pedido
   const {
@@ -95,7 +103,9 @@ export default function RecepcionMercancia() {
   } = useQuery<TemporalRMRow[]>({
     queryKey,
     queryFn: async () => {
-      const { data } = await consumoApi.get(`/api/TemporalData/sp_temporal_rm_get/${folioPedido}/${sucursal}`);
+      const { data } = await consumoApi.get(
+        `/api/TemporalData/sp_temporal_rm_get/${folioPedido}/${sucursal}`
+      );
       return data;
     },
     enabled: false,
@@ -105,7 +115,9 @@ export default function RecepcionMercancia() {
   const { data: cargos } = useQuery({
     queryKey: ["temporal_cargos", folioPedido, sucursal],
     queryFn: async () => {
-      const { data } = await consumoApi.get(`/api/TemporalData/sp_temporal_cargos_get/${folioPedido}/${sucursal}`);
+      const { data } = await consumoApi.get(
+        `/api/TemporalData/sp_temporal_cargos_get/${folioPedido}/${sucursal}`
+      );
       return data as Array<{ id: number; total: number }>;
     },
     enabled: !!(folioPedido && sucursal && listado && listado.length > 0),
@@ -114,17 +126,27 @@ export default function RecepcionMercancia() {
   // ==================== MUTATIONS ====================
   const delRow = useMutation({
     mutationFn: async (id: number) => {
-      const { data } = await consumoApi.delete(`/api/TemporalData/sp_temporal_rm_delete/${id}/1`);
+      const { data } = await consumoApi.delete(
+        `/api/TemporalData/sp_temporal_rm_delete/${id}/1`
+      );
       return data as { codigo: number; mensaje: string };
     },
     onSuccess: (res) => {
       const isSuccess = res.codigo === 1;
-      setNotif({ open: true, severity: isSuccess ? "success" : "error", message: res.mensaje || "" });
+      setNotif({
+        open: true,
+        severity: isSuccess ? "success" : "error",
+        message: res.mensaje || "",
+      });
       qc.invalidateQueries({ queryKey });
       refetch();
     },
     onError: (e: any) => {
-      setNotif({ open: true, severity: "error", message: e?.message || "Error al eliminar" });
+      setNotif({
+        open: true,
+        severity: "error",
+        message: e?.message || "Error al eliminar",
+      });
     },
   });
 
@@ -137,7 +159,7 @@ export default function RecepcionMercancia() {
     return {
       numeroFactura: primerProducto?.numeroFactura ?? "",
       totalFactura: primerProducto?.totalFactura ?? 0,
-      proveedor: primerProducto?.nombre ?? primerProducto?.proveedor ?? "",
+      proveedor: primerProducto?.nombreProveedor ?? primerProducto?.nombreProveedor ?? "",
       fechaPedido: primerProducto?.fechaPedido ?? "",
     };
   }, [listado]);
@@ -198,6 +220,24 @@ export default function RecepcionMercancia() {
   const hasData = listado && listado.length >= 0;
   const cantidadProductos = listado?.length || 0;
 
+  // Verificar si el primer registro tiene factura
+  const primerRegistro = listado && listado.length > 0 ? listado[0] : null;
+  const sinFactura =
+    primerRegistro &&
+    (primerRegistro.numeroFactura == "SIN DATO" ||
+      primerRegistro.numeroFactura?.toLowerCase() == "sin dato");
+  console.log(listado);
+  const puedeAgregarProductos = hasData && !sinFactura;
+  const dataSucursales: any[] = [
+    { id_sucursal: 1, nombre: "Araucarias" },
+    { id_sucursal: 2, nombre: "Plaza 1" },
+    { id_sucursal: 3, nombre: "Plaza 2" },
+    { id_sucursal: 4, nombre: "Veracruz" },
+    { id_sucursal: 5, nombre: "Dorado" },
+    { id_sucursal: 6, nombre: "Andamar" },
+    { id_sucursal: 7, nombre: "Juguete" },
+    { id_sucursal: 203, nombre: "Oficina" },
+  ];
   return (
     <Stack spacing={3}>
       {/* HEADER CARD - Consulta */}
@@ -211,24 +251,38 @@ export default function RecepcionMercancia() {
               </Typography>
             </Box>
 
-            <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ xs: "stretch", md: "center" }}>
+            <Stack
+              direction={{ xs: "column", md: "row" }}
+              spacing={2}
+              alignItems={{ xs: "stretch", md: "center" }}
+            >
               <TextField
                 label="Folio pedido"
                 type="number"
                 value={folioPedido || ""}
                 onChange={(e) => setFolioPedido(Number(e.target.value))}
-                InputProps={{ startAdornment: <InputAdornment position="start">#</InputAdornment> }}
+                InputProps={{
+                  startAdornment: <InputAdornment position="start">#</InputAdornment>,
+                }}
                 sx={{ width: 200 }}
                 size="small"
               />
               <TextField
                 label="Sucursal"
+                disabled
                 type="number"
                 value={sucursal || ""}
                 onChange={(e) => setSucursal(Number(e.target.value))}
                 sx={{ width: 150 }}
                 size="small"
-              />
+                select
+              >
+                {dataSucursales.map((sucursal) => (
+                  <MenuItem key={sucursal.id_sucursal} value={sucursal.id_sucursal}>
+                    {sucursal.nombre}
+                  </MenuItem>
+                ))}
+              </TextField>
               <Button
                 variant="contained"
                 startIcon={<SearchIcon />}
@@ -240,11 +294,25 @@ export default function RecepcionMercancia() {
               </Button>
             </Stack>
 
+            {/* ALERTA SIN FACTURA */}
+            {sinFactura && (
+              <Alert severity="warning" sx={{ mt: 2 }}>
+                <strong>No se puede agregar productos ni cargos:</strong> El pedido no
+                tiene número de factura registrado.
+              </Alert>
+            )}
+
             {/* INFO CHIPS */}
             {hasData && (
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} flexWrap="wrap">
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={1.5}
+                flexWrap="wrap"
+              >
                 <Chip
-                  avatar={<Avatar sx={{ bgcolor: "primary.main", color: "white" }}>U</Avatar>}
+                  avatar={
+                    <Avatar sx={{ bgcolor: "primary.main", color: "white" }}>U</Avatar>
+                  }
                   label={`Usuario: ${token?.usuario ?? ""}`}
                   variant="outlined"
                   sx={{ fontWeight: 500 }}
@@ -252,11 +320,13 @@ export default function RecepcionMercancia() {
                 <Chip
                   label={`No. Factura: ${encabezado.numeroFactura || "Sin factura"}`}
                   variant="outlined"
-                  color="secondary"
+                  color={sinFactura ? "warning" : "secondary"}
                   sx={{ fontWeight: 500 }}
                 />
                 <Chip
-                  label={`Total Factura: $${Number(encabezado.totalFactura || 0).toFixed(2)}`}
+                  label={`Total Factura: $${Number(encabezado.totalFactura || 0).toFixed(
+                    2
+                  )}`}
                   variant="filled"
                   color="primary"
                   sx={{ fontWeight: 600 }}
@@ -277,19 +347,32 @@ export default function RecepcionMercancia() {
         <Card elevation={0} sx={{ border: "2px solid", borderColor: "divider" }}>
           <CardContent>
             <Stack spacing={2}>
-              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  mb: 2,
+                }}
+              >
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                   <AddIcon sx={{ color: "primary.main" }} />
                   <Typography variant="h6" sx={{ fontWeight: 600 }}>
                     Productos del pedido
                   </Typography>
-                  <Chip label={`${cantidadProductos} items`} size="small" color="primary" sx={{ ml: 1 }} />
+                  <Chip
+                    label={`${cantidadProductos} items`}
+                    size="small"
+                    color="primary"
+                    sx={{ ml: 1 }}
+                  />
                 </Box>
                 <Button
                   variant="contained"
                   startIcon={<AddIcon />}
                   onClick={() => setOpenAdd(true)}
                   size="small"
+                  disabled={!puedeAgregarProductos}
                   sx={{ textTransform: "none" }}
                 >
                   Agregar producto
@@ -339,50 +422,72 @@ export default function RecepcionMercancia() {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {(listado ?? []).map((row) => (
-                      <TableRow key={`${row.claveProd}-${row.id ?? Math.random()}`}>
-                        <TableCell>
-                          <Stack direction="row" spacing={0.5}>
-                            <IconButton
-                              size="small"
-                              color="primary"
-                              onClick={() => handleEditProducto(row)}
-                              sx={{ "&:hover": { bgcolor: "primary.light", color: "white" } }}
-                            >
-                              <EditIcon fontSize="small" />
-                            </IconButton>
-                            <IconButton
-                              onClick={() => handleDeleteProducto(row.id)}
-                              size="small"
-                              color="error"
-                              disabled={row.id == null || delRow.isPending}
-                              sx={{ "&:hover": { bgcolor: "error.light", color: "white" } }}
-                            >
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          </Stack>
-                        </TableCell>
-                        <TableCell>
-                          <Chip label={row.claveProd} size="small" variant="outlined" />
-                        </TableCell>
-                        <TableCell sx={{ maxWidth: 300 }}>{row.descripcion}</TableCell>
-                        <TableCell align="right">
-                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                            {row.cantidad}
-                          </Typography>
-                        </TableCell>
-                        <TableCell align="right">
-                          <Typography variant="body2" color="text.secondary">
-                            ${row.costoUnitario?.toFixed?.(2) ?? "-"}
-                          </Typography>
-                        </TableCell>
-                        <TableCell align="right">
-                          <Typography variant="body2" sx={{ fontWeight: 600, color: "primary.main" }}>
-                            ${((row.cantidad || 0) * (row.costoUnitario || 0)).toFixed(2)}
-                          </Typography>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {(listado ?? []).map(
+                      (row) =>
+                        row.id > 0 && (
+                          <TableRow key={`${row.claveProd}-${row.id ?? Math.random()}`}>
+                            <TableCell>
+                              <Stack direction="row" spacing={0.5}>
+                                <IconButton
+                                  size="small"
+                                  color="primary"
+                                  onClick={() => handleEditProducto(row)}
+                                  sx={{
+                                    "&:hover": {
+                                      bgcolor: "primary.light",
+                                      color: "white",
+                                    },
+                                  }}
+                                >
+                                  <EditIcon fontSize="small" />
+                                </IconButton>
+                                <IconButton
+                                  onClick={() => handleDeleteProducto(row.id)}
+                                  size="small"
+                                  color="error"
+                                  disabled={row.id == null || delRow.isPending}
+                                  sx={{
+                                    "&:hover": { bgcolor: "error.light", color: "white" },
+                                  }}
+                                >
+                                  <DeleteIcon fontSize="small" />
+                                </IconButton>
+                              </Stack>
+                            </TableCell>
+                            <TableCell>
+                              <Chip
+                                label={row.claveProd}
+                                size="small"
+                                variant="outlined"
+                              />
+                            </TableCell>
+                            <TableCell sx={{ maxWidth: 300 }}>
+                              {row.descripcion}
+                            </TableCell>
+                            <TableCell align="right">
+                              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                {row.cantidad}
+                              </Typography>
+                            </TableCell>
+                            <TableCell align="right">
+                              <Typography variant="body2" color="text.secondary">
+                                ${row.costoUnitario?.toFixed?.(2) ?? "-"}
+                              </Typography>
+                            </TableCell>
+                            <TableCell align="right">
+                              <Typography
+                                variant="body2"
+                                sx={{ fontWeight: 600, color: "primary.main" }}
+                              >
+                                $
+                                {((row.cantidad || 0) * (row.costoUnitario || 0)).toFixed(
+                                  2
+                                )}
+                              </Typography>
+                            </TableCell>
+                          </TableRow>
+                        )
+                    )}
                   </TableBody>
                 </Table>
               </TableContainer>
@@ -403,19 +508,39 @@ export default function RecepcionMercancia() {
                 }}
               >
                 <Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ display: "block", mb: 0.5 }}
+                  >
                     Total del pedido
                   </Typography>
-                  <Typography variant="h4" sx={{ fontWeight: 700, color: "primary.main" }}>
-                    {totalPedido.toLocaleString(undefined, { style: "currency", currency: "MXN" })}
+                  <Typography
+                    variant="h4"
+                    sx={{ fontWeight: 700, color: "primary.main" }}
+                  >
+                    {totalPedido.toLocaleString(undefined, {
+                      style: "currency",
+                      currency: "MXN",
+                    })}
                   </Typography>
                 </Box>
                 <Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ display: "block", mb: 0.5 }}
+                  >
                     Total del cargo
                   </Typography>
-                  <Typography variant="h4" sx={{ fontWeight: 700, color: "primary.main" }}>
-                    {totalCargo.toLocaleString(undefined, { style: "currency", currency: "MXN" })}
+                  <Typography
+                    variant="h4"
+                    sx={{ fontWeight: 700, color: "primary.main" }}
+                  >
+                    {totalCargo.toLocaleString(undefined, {
+                      style: "currency",
+                      currency: "MXN",
+                    })}
                   </Typography>
                 </Box>
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
@@ -423,6 +548,7 @@ export default function RecepcionMercancia() {
                     variant="outlined"
                     startIcon={<PaymentsIcon />}
                     onClick={() => setOpenCargos(true)}
+                    disabled={!puedeAgregarProductos}
                     sx={{ textTransform: "none", fontWeight: 600 }}
                   >
                     Cargos varios
@@ -465,7 +591,12 @@ export default function RecepcionMercancia() {
 
       {/* NOTIFICACIONES */}
       <Snackbar open={notif.open} autoHideDuration={4000} onClose={handleCloseNotif}>
-        <Alert onClose={handleCloseNotif} severity={notif.severity} variant="outlined" sx={{ width: "100%" }}>
+        <Alert
+          onClose={handleCloseNotif}
+          severity={notif.severity}
+          variant="outlined"
+          sx={{ width: "100%" }}
+        >
           {notif.message}
         </Alert>
       </Snackbar>
