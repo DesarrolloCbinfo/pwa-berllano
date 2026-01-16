@@ -64,11 +64,17 @@ function createPageAccordion(name: string, headers: Header[]): PageAccordion {
   };
 }
 
+
+
+
+
+
 const pages: Page[] = [
   // createPage("Generar Formularios", "/generadorFormularios"),
   // createPage("Demo", "/demo"),
   createPage("Formularios", "/demoStepper"),
   createPage("Recepción", "/recepcion"),
+  createPage("Catalogos", "/catalogos"),
 ];
 
 const pagesAccordion: PageAccordion[] = [
