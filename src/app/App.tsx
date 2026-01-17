@@ -12,6 +12,9 @@ import Layout from '../components/Layout';
 import RecepcionMercancia from './pages/RecepcionMercancia/RecepcionMercancia';
 import Catalogos from './pages/catalogos/page';
 import CatAreas from './pages/cat_Areas/page';
+import CatTipoDescuentos from './pages/cat_Tipo_Descuento/page';
+import CatCompradores from './pages/cat_Compradores/page';
+
 
 function App() {
   return (
@@ -27,7 +30,9 @@ function App() {
           <Route path='/recepcion' element={<Layout><RecepcionMercancia /></Layout>} />
           <Route path='/catalogos' element={<Layout><Catalogos /></Layout>} />
           <Route path='/cat_Areas' element={<Layout><CatAreas/></Layout>} />
-          
+         <Route path='/cat_Tipo_Descuento' element={<Layout><CatTipoDescuentos/></Layout>} />
+         <Route path='/cat_Compradores' element={<Layout><CatCompradores/></Layout>} />
+
         </Routes>
       </BrowserRouter>
     </ThemeProvider>
