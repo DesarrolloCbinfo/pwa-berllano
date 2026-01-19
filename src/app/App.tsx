@@ -1,4 +1,4 @@
-import './App.css'
+import './App.css';
 import { BrowserRouter, Routes, Route } from 'react-router';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -12,8 +12,13 @@ import Layout from '../components/Layout';
 import RecepcionMercancia from './pages/RecepcionMercancia/RecepcionMercancia';
 import Catalogos from './pages/catalogos/page';
 import CatAreas from './pages/cat_Areas/page';
+
 import CatTipoDescuentos from './pages/cat_Tipo_Descuento/page';
 import CatCompradores from './pages/cat_Compradores/page';
+
+
+import CatMarcas from './pages/cat_Marcas/page';
+import CatSucursales from './pages/cat_Sucursales/page';
 
 
 function App() {
@@ -23,6 +28,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path='/login' element={<Login />} />
+
           <Route path='/' element={<Layout><Home /></Layout>} />
           <Route path='/demo' element={<Layout><Page /></Layout>} />
           <Route path='/demoStepper' element={<Layout><DemoStepper /></Layout>} />
@@ -33,10 +39,84 @@ function App() {
          <Route path='/cat_Tipo_Descuento' element={<Layout><CatTipoDescuentos/></Layout>} />
          <Route path='/cat_Compradores' element={<Layout><CatCompradores/></Layout>} />
 
+
+          <Route
+            path='/'
+            element={
+              <Layout>
+                <Home />
+              </Layout>
+            }
+          />
+          <Route
+            path='/demo'
+            element={
+              <Layout>
+                <Page />
+              </Layout>
+            }
+          />
+          <Route
+            path='/demoStepper'
+            element={
+              <Layout>
+                <DemoStepper />
+              </Layout>
+            }
+          />
+          <Route
+            path='/generadorFormularios'
+            element={
+              <Layout>
+                <GeneradorFormularios />
+              </Layout>
+            }
+          />
+          <Route
+            path='/recepcion'
+            element={
+              <Layout>
+                <RecepcionMercancia />
+              </Layout>
+            }
+          />
+          <Route
+            path='/catalogos'
+            element={
+              <Layout>
+                <Catalogos />
+              </Layout>
+            }
+          />
+          <Route
+            path='/cat_Areas'
+            element={
+              <Layout>
+                <CatAreas />
+              </Layout>
+            }
+          />
+          <Route
+            path='/cat_Marcas'
+            element={
+              <Layout>
+                <CatMarcas />
+              </Layout>
+            }
+          />
+          <Route
+            path='/cat_Sucursales'
+            element={
+              <Layout>
+                <CatSucursales />
+              </Layout>
+            }
+          />
+
         </Routes>
       </BrowserRouter>
     </ThemeProvider>
-  )
+  );
 }
 
-export default App
+export default App;
