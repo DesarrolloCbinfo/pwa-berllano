@@ -18,10 +18,9 @@ interface CatProveedor {
   ciudad: string | null; estado: string | null; cp: string | null;
   contacto: string | null; fax: string | null; email: string | null;
   observaciones: string | null; nombre_fiscal: string | null;
-  dias_financiamiento: number; descuento_general: number;
-  fecha_alta: string | null; persona_fisica: boolean;
+  dias_financiamiento: number; descuento_general: number; persona_fisica: boolean;
   cuenta_contable: string | null; sucursal_origen: number;
-  version: string | null; fecha_act: string | null; Surte_Tienda: boolean;
+  version: string | null;  Surte_Tienda: boolean;
 }
 
 export default function CatProveedores() {
@@ -40,9 +39,8 @@ export default function CatProveedores() {
     cve_prov: '', nombre: '', rfc: '', curp: '', calle: '', colonia: '',
     telefono: '', ciudad: '', estado: '', cp: '', contacto: '', fax: '',
     email: '', observaciones: '', nombre_fiscal: '', dias_financiamiento: 0,
-    descuento_general: 0, fecha_alta: new Date().toISOString(),
-    persona_fisica: true, cuenta_contable: '', sucursal_origen: 0,
-    version: '1', fecha_act: new Date().toISOString(), Surte_Tienda: false
+    descuento_general: 0, persona_fisica: true, cuenta_contable: '', sucursal_origen: 0,
+    version: '1', Surte_Tienda: false
   }
 
   const [formData, setFormData] = useState<CatProveedor>(initialFormState)
@@ -90,8 +88,6 @@ export default function CatProveedores() {
       
       const payload = {
         ...formData,
-        fecha_alta: formData.fecha_alta?.replace('T', ' ').substring(0, 19),
-        fecha_act: new Date().toISOString().replace('T', ' ').substring(0, 19),
         dias_financiamiento: Number(formData.dias_financiamiento) || 0,
         descuento_general: Number(formData.descuento_general) || 0,
         sucursal_origen: Number(formData.sucursal_origen) || 0,
