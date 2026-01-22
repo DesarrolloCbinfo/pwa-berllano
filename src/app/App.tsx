@@ -12,13 +12,12 @@ import Layout from '../components/Layout';
 import RecepcionMercancia from './pages/RecepcionMercancia/RecepcionMercancia';
 import Catalogos from './pages/catalogos/page';
 import CatAreas from './pages/cat_Areas/page';
-
 import CatTipoDescuentos from './pages/cat_Tipo_Descuento/page';
 import CatCompradores from './pages/cat_Compradores/page';
-
-
 import CatMarcas from './pages/cat_Marcas/page';
 import CatSucursales from './pages/cat_Sucursales/page';
+import CatProveedor from './pages/cat_Proveedores/page';
+import CatCliente from './pages/cat_Clientes/page';
 
 
 function App() {
@@ -38,6 +37,9 @@ function App() {
           <Route path='/cat_Areas' element={<Layout><CatAreas/></Layout>} />
          <Route path='/cat_Tipo_Descuento' element={<Layout><CatTipoDescuentos/></Layout>} />
          <Route path='/cat_Compradores' element={<Layout><CatCompradores/></Layout>} />
+         <Route path='/cat_Proveedores' element={<Layout><CatProveedor/></Layout>} />
+         <Route path='/cat_Clientes' element={<Layout><CatCliente/></Layout>} />
+         
 
 
           <Route
