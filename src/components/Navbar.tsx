@@ -75,6 +75,8 @@ const pages: Page[] = [
   createPage("Formularios", "/demoStepper"),
   createPage("Recepción", "/recepcion"),
   createPage("Catalogos", "/catalogos"),
+  // Acceso rápido al módulo de Punto de Venta
+  createPage("Punto de Venta", "/pos"),
 ];
 
 const pagesAccordion: PageAccordion[] = [
