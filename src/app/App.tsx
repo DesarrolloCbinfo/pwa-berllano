@@ -1,9 +1,10 @@
 import './App.css';
-import { BrowserRouter, Routes, Route } from 'react-router';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import theme from '../theme/theme';
 import Page from './pages/demo/page';
+import POS from '../pages/POS';
 import Home from './pages/Home/Home';
 import GeneradorFormularios from './pages/GeneradorFormularios/GeneradorFormularios';
 import DemoStepper from './pages/DemoStepper/DemoStepper';
@@ -27,6 +28,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path='/login' element={<Login />} />
+          <Route path="/pos" element={<Layout><POS /></Layout>} />
 
           <Route path='/' element={<Layout><Home /></Layout>} />
           <Route path='/demo' element={<Layout><Page /></Layout>} />
