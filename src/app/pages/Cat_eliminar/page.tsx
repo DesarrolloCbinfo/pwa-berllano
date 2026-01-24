@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+/*import { useEffect, useState } from 'react'
 import { DataGrid, GridColDef } from '@mui/x-data-grid'
 import { Box, CircularProgress, Alert, Typography } from '@mui/material'
 import useConsumoApi from '../../../hooks/useConsumoApi'
@@ -432,3 +432,4 @@ const handleDelete = async () => {
     </>
   )
 }
+*/

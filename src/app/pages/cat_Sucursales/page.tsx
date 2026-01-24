@@ -18,29 +18,30 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import PWABadge from '../../../PWABadge';
 
 interface CatSucursal {
+  cia: number;
   cve_sucursal: number;
   nombre: string;
   direccion: string | null;
-  version: string | null;
   fecha_alta: string | null;
   fecha_act: string | null;
   es_ruta?: boolean | number;
   es_bodega?: boolean | number;
-  dias_devolucion?: string | number;
+  dias_devolucion: number;
   en_linea?: boolean | number;
-  supervisor?: string | number;
+  version: string;
+  supervisor: number;
   validar_tx?: boolean | number;
   validar_rm?: boolean | number;
-  min_records_val_tx?: string | number;
-  min_records_val_rm?: string | number;
-  clave_timbrador?: string | number;
+  min_records_val_tx: number;
+  min_records_val_rm: number;
+  clave_timbrador: number;
   recibe_fv?: string;
-  recibe_prov_all?: string | number;
+  recibe_prov_all?: boolean | number;
   edita_costos_rm?: boolean | number;
   nocturna?: boolean | number;
   credito?: boolean | number;
-  vencimiento_deposito?: boolean | number;
-  tolerancia_existencia?: boolean | number;
+  vencimiento_deposito: number;
+  tolerancia_existencia: number;
   control_traspasos?: boolean | number;
   bancomer_online?: boolean | number;
   afiliacion_bancomer?: string;
@@ -82,12 +83,12 @@ export default function CatSucursales() {
   const [min_records_val_rm, setMin_records_val_rm] = useState('');
   const [clave_timbrador, setClave_timbrador] = useState('');
   const [recibe_fv, setRecibe_fv] = useState('');
-  const [recibe_prov_all, setRecibe_prov_all] = useState('');
+  const [recibe_prov_all, setRecibe_prov_all] = useState(false);
   const [edita_costos_rm, setEdita_costos_rm] = useState(false);
   const [nocturna, setNocturna] = useState(false);
   const [credito, setCredito] = useState(false);
-  const [vencimiento_deposito, setVencimiento_deposito] = useState(false);
-  const [tolerancia_existencia, setToleranoia_existencia] = useState(false);
+  const [vencimiento_deposito, setVencimiento_deposito] = useState('');
+  const [tolerancia_existencia, setToleranoia_existencia] = useState('');
   const [control_traspasos, setControl_traspasos] = useState(false);
   const [bancomer_online, setBancomer_online] = useState(false);
   const [afiliacion_bancomer, setAfiliacion_bancomer] = useState('');
@@ -109,7 +110,7 @@ export default function CatSucursales() {
   // Elementos para editar sucursal
   const [openEdit, setOpenEdit] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
-  const [editCia, setEditCia] = useState('1');
+  const [editCia, setEditCia] = useState('1'); //Cia no se edita
   const [editCveSucursal, setEditCveSucursal] = useState('');
   const [editNombre, setEditNombre] = useState('');
   const [editDireccion, setEditDireccion] = useState('');
@@ -125,13 +126,12 @@ export default function CatSucursales() {
   const [editMinRecordsValRm, setEditMinRecordsValRm] = useState('');
   const [editClaveTimbrador, setEditClaveTimbrador] = useState('');
   const [editRecibeFv, setEditRecibeFv] = useState('');
-  const [editRecipeProvAll, setEditRecipeProvAll] = useState('');
+  const [editRecipeProvAll, setEditRecipeProvAll] = useState(false);
   const [editEditaCostosRm, setEditEditaCostosRm] = useState(false);
   const [editNocturna, setEditNocturna] = useState(false);
   const [editCredito, setEditCredito] = useState(false);
-  const [editVencimientoDeposito, setEditVencimientoDeposito] = useState(false);
-  const [editToleranciaExistencia, setEditToleranciaExistencia] =
-    useState(false);
+  const [editVencimientoDeposito, setEditVencimientoDeposito] = useState('');
+  const [editToleranciaExistencia, setEditToleranciaExistencia] = useState('');
   const [editControlTraspasos, setEditControlTraspasos] = useState(false);
   const [editBancomerOnline, setEditBancomerOnline] = useState(false);
   const [editAfiliacionBancomer, setEditAfiliacionBancomer] = useState('');
@@ -220,24 +220,22 @@ export default function CatSucursales() {
     setEditDireccion(row.direccion || '');
     setEditEsRuta((row.es_ruta as boolean) || false);
     setEditEsBodega((row.es_bodega as boolean) || false);
-    setEditDiasDevolucion(row.dias_devolucion?.toString() || '0');
+    setEditDiasDevolucion(row.dias_devolucion?.toString() || '');
     setEditEnLinea((row.en_linea as boolean) || false);
-    setEditSupervisor(row.supervisor?.toString() || '1');
-    setEditVersion(row.version || 'gt');
+    setEditSupervisor(row.supervisor?.toString() || '');
+    setEditVersion(row.version || '');
     setEditValidarTx((row.validar_tx as boolean) || false);
     setEditValidarRm((row.validar_rm as boolean) || false);
-    setEditMinRecordsValTx(row.min_records_val_tx?.toString() || '1');
-    setEditMinRecordsValRm(row.min_records_val_rm?.toString() || '1');
-    setEditClaveTimbrador(row.clave_timbrador?.toString() || '1');
+    setEditMinRecordsValTx(row.min_records_val_tx?.toString() || '');
+    setEditMinRecordsValRm(row.min_records_val_rm?.toString() || '');
+    setEditClaveTimbrador(row.clave_timbrador?.toString() || '');
     setEditRecibeFv(row.recibe_fv || '');
-    setEditRecipeProvAll((row.recibe_prov_all?.toString() || '') as any);
+    setEditRecipeProvAll((row.recibe_prov_all as boolean) || false);
     setEditEditaCostosRm((row.edita_costos_rm as boolean) || false);
     setEditNocturna((row.nocturna as boolean) || false);
     setEditCredito((row.credito as boolean) || false);
-    setEditVencimientoDeposito((row.vencimiento_deposito as boolean) || false);
-    setEditToleranciaExistencia(
-      (row.tolerancia_existencia as boolean) || false,
-    );
+    setEditVencimientoDeposito(row.vencimiento_deposito?.toString() || '');
+    setEditToleranciaExistencia(row.tolerancia_existencia.toString());
     setEditControlTraspasos((row.control_traspasos as boolean) || false);
     setEditBancomerOnline((row.bancomer_online as boolean) || false);
     setEditAfiliacionBancomer(row.afiliacion_bancomer || '');
@@ -246,14 +244,14 @@ export default function CatSucursales() {
     setEditAplicaCinetix((row.aplica_cinetix as boolean) || false);
     setEditAreaDeposito(row.area_deposito || '');
     setEditDeptoDeposito(row.depto_deposito || '');
-    setEditLimiteSobrante(row.limite_sobrante?.toString() || '0');
-    setEditLimiteFaltante(row.limite_faltante?.toString() || '0');
-    setEditImporteRetiros(row.importe_retiros?.toString() || '3000');
-    setEditFondo(row.fondo?.toString() || '2000');
-    setEditMontoAviso(row.montoAviso?.toString() || '0');
-    setEditNumeroAvisos(row.numeroAvisos?.toString() || '0');
+    setEditLimiteSobrante(row.limite_sobrante?.toString() || '');
+    setEditLimiteFaltante(row.limite_faltante?.toString() || '');
+    setEditImporteRetiros(row.importe_retiros?.toString() || '');
+    setEditFondo(row.fondo?.toString() || '');
+    setEditMontoAviso(row.montoAviso?.toString() || '');
+    setEditNumeroAvisos(row.numeroAvisos?.toString() || '');
     setEditImporteCajaDespuesRetiros(
-      row.importeCajaDespuesRetiros?.toString() || '520',
+      row.importeCajaDespuesRetiros?.toString() || '',
     );
     setOpenEdit(true);
   };
@@ -319,8 +317,8 @@ export default function CatSucursales() {
             EDITA_COSTOS_RM: edita_costos_rm ? 1 : 0,
             NOCTURNA: nocturna ? 1 : 0,
             CREDITO: credito ? 1 : 0,
-            VENCIMIENTO_DEPOSITO: vencimiento_deposito ? 1 : 0,
-            TOLERANCIA_EXISTENCIA: tolerancia_existencia ? 1 : 0,
+            VENCIMIENTO_DEPOSITO: vencimiento_deposito || '',
+            TOLERANCIA_EXISTENCIA: tolerancia_existencia || 1,
             CONTROL_TRASPASOS: control_traspasos ? 1 : 0,
             BANCOMER_ONLINE: bancomer_online ? 1 : 0,
             AFILIACION_BANCOMER: afiliacion_bancomer,
@@ -364,11 +362,11 @@ export default function CatSucursales() {
       setMin_records_val_rm('1');
       setClave_timbrador('1');
       setRecibe_fv('');
-      setRecibe_prov_all('00');
+      setRecibe_prov_all(false);
       setEdita_costos_rm(false);
       setNocturna(false);
       setCredito(false);
-      setVencimiento_deposito(true);
+      setVencimiento_deposito('');
       setToleranoia_existencia(true);
       setControl_traspasos(true);
       setBancomer_online(false);
@@ -385,7 +383,7 @@ export default function CatSucursales() {
       setMontoAviso('0');
       setNumeroAvisos('0');
       setImporteCajaDespuesRetiros('');
-      fetchSucursales(); // 🔁 refresca grid
+      fetchSucursales();
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Error desconocido');
     } finally {
@@ -418,18 +416,18 @@ export default function CatSucursales() {
             dias_devolucion: editDiasDevolucion || 0,
             en_linea: editEnLinea ? 1 : 0,
             supervisor: editSupervisor || 1,
-            version: editVersion || 'gt',
+            version: editVersion || '',
             VALIDAR_TX: editValidarTx ? 1 : 0,
             VALIDAR_RM: editValidarRm ? 1 : 0,
             MIN_RECORDS_VAL_TX: editMinRecordsValTx || 1,
             MIN_RECORDS_VAL_RM: editMinRecordsValRm || 1,
             clave_timbrador: editClaveTimbrador || 1,
-            RECIBE_FV: editRecibeFv,
+            RECIBE_FV: editRecibeFv ? 1 : 0,
             RECIBE_PROV_ALL: editRecipeProvAll ? 1 : 0,
             EDITA_COSTOS_RM: editEditaCostosRm ? 1 : 0,
             NOCTURNA: editNocturna ? 1 : 0,
             CREDITO: editCredito ? 1 : 0,
-            VENCIMIENTO_DEPOSITO: editVencimientoDeposito ? 1 : 0,
+            VENCIMIENTO_DEPOSITO: editVencimientoDeposito,
             TOLERANCIA_EXISTENCIA: editToleranciaExistencia ? 1 : 0,
             CONTROL_TRASPASOS: editControlTraspasos ? 1 : 0,
             BANCOMER_ONLINE: editBancomerOnline ? 1 : 0,
@@ -458,7 +456,7 @@ export default function CatSucursales() {
 
       setOpenEdit(false);
       setEditId(null);
-      fetchSucursales(); // 🔄 refrescar grid
+      fetchSucursales(); //
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Error desconocido');
     } finally {
@@ -490,7 +488,7 @@ export default function CatSucursales() {
       setOpenDelete(false);
       setDeleteId(null);
       setDeleteNombre(null);
-      fetchSucursales(); // 🔄 refresca grid
+      fetchSucursales(); //
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Error desconocido');
     } finally {
@@ -759,11 +757,12 @@ export default function CatSucursales() {
                   fullWidth
                 />
               </Grid>
+
               <Grid item xs={12} sm={6}>
                 <TextField
-                  label='Recibe Prov All'
-                  value={recibe_prov_all}
-                  onChange={(e) => setRecibe_prov_all(e.target.value)}
+                  label='Vencimiento Depósito'
+                  value={vencimiento_deposito}
+                  onChange={(e) => setVencimiento_deposito(e.target.value)}
                   size='small'
                   fullWidth
                 />
@@ -811,6 +810,16 @@ export default function CatSucursales() {
                     onChange={(e) => setEsRuta(e.target.checked)}
                   />
                   <label>Es Ruta</label>
+                </Box>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <input
+                    type='checkbox'
+                    checked={recibe_prov_all}
+                    onChange={(e) => setRecibe_prov_all(e.target.checked)}
+                  />
+                  <label>Recibe Proveedor All</label>
                 </Box>
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -887,16 +896,6 @@ export default function CatSucursales() {
                 </Box>
               </Grid>
 
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <input
-                    type='checkbox'
-                    checked={vencimiento_deposito}
-                    onChange={(e) => setVencimiento_deposito(e.target.checked)}
-                  />
-                  <label>Vencimiento Depósito</label>
-                </Box>
-              </Grid>
               <Grid item xs={12} sm={6}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <input
@@ -1231,19 +1230,6 @@ export default function CatSucursales() {
                         variant='subtitle2'
                         sx={{ fontWeight: 'bold' }}
                       >
-                        Recibe Prov All
-                      </Typography>
-                      <Typography>
-                        {viewData.recibe_prov_all ? 'Sí' : 'No'}
-                      </Typography>
-                    </Box>
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <Box sx={{ mb: 2 }}>
-                      <Typography
-                        variant='subtitle2'
-                        sx={{ fontWeight: 'bold' }}
-                      >
                         Edita Costos RM
                       </Typography>
                       <Typography>
@@ -1285,10 +1271,10 @@ export default function CatSucursales() {
                         variant='subtitle2'
                         sx={{ fontWeight: 'bold' }}
                       >
-                        Vencimiento Depósito
+                        RECIBE_PROV_ALL
                       </Typography>
                       <Typography>
-                        {viewData.vencimiento_deposito ? 'Sí' : 'No'}
+                        {viewData.recibe_prov_all ? 'Sí' : 'No'}
                       </Typography>
                     </Box>
                   </Grid>
@@ -1532,7 +1518,7 @@ export default function CatSucursales() {
               <Grid item xs={12} sm={6}>
                 <TextField
                   label='Cia'
-                  value={editCia}
+                  value={viewData?.cia ?? '1'}
                   disabled
                   size='small'
                   fullWidth
@@ -1779,6 +1765,17 @@ export default function CatSucursales() {
               </Grid>
             </Grid>
 
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label='Vencimiento Depósito'
+                value={editVencimientoDeposito}
+                onChange={(e) => setEditVencimientoDeposito(e.target.value)}
+                type='number'
+                size='small'
+                fullWidth
+              />
+            </Grid>
+
             {/* Checkboxes - Grid Layout */}
             <Grid container spacing={2} sx={{ mt: 1 }}>
               <Grid item xs={12} sm={6}>
@@ -1854,6 +1851,7 @@ export default function CatSucursales() {
                   <label>Nocturna</label>
                 </Box>
               </Grid>
+
               <Grid item xs={12} sm={6}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <input
@@ -1865,18 +1863,6 @@ export default function CatSucursales() {
                 </Box>
               </Grid>
 
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <input
-                    type='checkbox'
-                    checked={editVencimientoDeposito}
-                    onChange={(e) =>
-                      setEditVencimientoDeposito(e.target.checked)
-                    }
-                  />
-                  <label>Vencimiento Depósito</label>
-                </Box>
-              </Grid>
               <Grid item xs={12} sm={6}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <input
