@@ -39,6 +39,8 @@ function App() {
           <Route path='/cat_Areas' element={<Layout><CatAreas/></Layout>} />
          <Route path='/cat_Tipo_Descuento' element={<Layout><CatTipoDescuentos/></Layout>} />
          <Route path='/cat_Compradores' element={<Layout><CatCompradores/></Layout>} />
+          <Route path='/cat_Marcas' element={<Layout><CatMarcas/></Layout>} />
+          <Route path='/cat_Sucursales' element={<Layout><CatSucursales/></Layout>} />
          <Route path='/cat_Proveedores' element={<Layout><CatProveedor/></Layout>} />
          <Route path='/cat_Clientes' element={<Layout><CatCliente/></Layout>} />
          
