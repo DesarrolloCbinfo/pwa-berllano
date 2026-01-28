@@ -22,20 +22,20 @@ interface CatSucursal {
   cve_sucursal: number;
   nombre: string;
   direccion: string | null;
-  fecha_alta: string | null;
-  fecha_act: string | null;
   es_ruta?: boolean | number;
   es_bodega?: boolean | number;
   dias_devolucion: number;
   en_linea?: boolean | number;
-  version: string;
   supervisor: number;
+  version: string;
+  fecha_alta: string | null;
+  fecha_act: string | null;
   validar_tx?: boolean | number;
   validar_rm?: boolean | number;
-  min_records_val_tx: number;
-  min_records_val_rm: number;
   clave_timbrador: number;
   recibe_fv?: string;
+  min_records_val_tx: number;
+  min_records_val_rm: number;
   recibe_prov_all?: boolean | number;
   edita_costos_rm?: boolean | number;
   nocturna?: boolean | number;
@@ -88,7 +88,7 @@ export default function CatSucursales() {
   const [nocturna, setNocturna] = useState(false);
   const [credito, setCredito] = useState(false);
   const [vencimiento_deposito, setVencimiento_deposito] = useState('');
-  const [tolerancia_existencia, setToleranoia_existencia] = useState('');
+  const [tolerancia_existencia, setTolerancia_existencia] = useState('');
   const [control_traspasos, setControl_traspasos] = useState(false);
   const [bancomer_online, setBancomer_online] = useState(false);
   const [afiliacion_bancomer, setAfiliacion_bancomer] = useState('');
@@ -214,28 +214,31 @@ export default function CatSucursales() {
   };
 
   const handleEditOpen = (row: CatSucursal) => {
+    console.log('Opening edit for row:', row);
     setEditId(row.cve_sucursal);
     setEditCveSucursal(row.cve_sucursal.toString());
     setEditNombre(row.nombre);
     setEditDireccion(row.direccion || '');
     setEditEsRuta((row.es_ruta as boolean) || false);
     setEditEsBodega((row.es_bodega as boolean) || false);
-    setEditDiasDevolucion(row.dias_devolucion?.toString() || '');
+    setEditDiasDevolucion(row.dias_devolucion?.toString() || '0');
     setEditEnLinea((row.en_linea as boolean) || false);
-    setEditSupervisor(row.supervisor?.toString() || '');
+    setEditSupervisor(row.supervisor?.toString() || '1');
     setEditVersion(row.version || '');
     setEditValidarTx((row.validar_tx as boolean) || false);
     setEditValidarRm((row.validar_rm as boolean) || false);
-    setEditMinRecordsValTx(row.min_records_val_tx?.toString() || '');
-    setEditMinRecordsValRm(row.min_records_val_rm?.toString() || '');
-    setEditClaveTimbrador(row.clave_timbrador?.toString() || '');
-    setEditRecibeFv(row.recibe_fv || '');
+    setEditMinRecordsValTx(row.min_records_val_tx?.toString() || '1');
+    setEditMinRecordsValRm(row.min_records_val_rm?.toString() || '1');
+    setEditClaveTimbrador(row.clave_timbrador?.toString() || '1');
+    setEditRecibeFv(row.recibe_fv ? row.recibe_fv.toString() : '');
     setEditRecipeProvAll((row.recibe_prov_all as boolean) || false);
     setEditEditaCostosRm((row.edita_costos_rm as boolean) || false);
     setEditNocturna((row.nocturna as boolean) || false);
     setEditCredito((row.credito as boolean) || false);
     setEditVencimientoDeposito(row.vencimiento_deposito?.toString() || '');
-    setEditToleranciaExistencia(row.tolerancia_existencia.toString());
+    setEditToleranciaExistencia(
+      row.tolerancia_existencia ? row.tolerancia_existencia.toString() : '0',
+    );
     setEditControlTraspasos((row.control_traspasos as boolean) || false);
     setEditBancomerOnline((row.bancomer_online as boolean) || false);
     setEditAfiliacionBancomer(row.afiliacion_bancomer || '');
@@ -253,7 +256,7 @@ export default function CatSucursales() {
     setEditImporteCajaDespuesRetiros(
       row.importeCajaDespuesRetiros?.toString() || '',
     );
-    setOpenEdit(true);
+    setTimeout(() => setOpenEdit(true), 0);
   };
 
   const handleDeleteOpen = (row: CatSucursal) => {
@@ -306,13 +309,13 @@ export default function CatSucursales() {
             dias_devolucion: dias_devolucion || 0,
             en_linea: en_linea ? 1 : 0,
             supervisor: supervisor || 1,
-            version: version || 'gt',
+            version: version || '',
             VALIDAR_TX: validar_tx ? 1 : 0,
             VALIDAR_RM: validar_rm ? 1 : 0,
             MIN_RECORDS_VAL_TX: min_records_val_tx || 1,
             MIN_RECORDS_VAL_RM: min_records_val_rm || 1,
             clave_timbrador: clave_timbrador || 1,
-            RECIBE_FV: recibe_fv,
+            RECIBE_FV: recibe_fv || '',
             RECIBE_PROV_ALL: recibe_prov_all ? 1 : 0,
             EDITA_COSTOS_RM: edita_costos_rm ? 1 : 0,
             NOCTURNA: nocturna ? 1 : 0,
@@ -327,10 +330,10 @@ export default function CatSucursales() {
             APLICA_CINETIX: aplica_cinetix ? 1 : 0,
             AREA_DEPOSITO: area_deposito,
             DEPTO_DEPOSITO: depto_deposito,
-            LIMITE_SOBRANTE: limite_sobrante || 0,
-            LIMITE_FALTANTE: limite_faltante || 0,
-            importe_retiros: importe_retiros || 3000,
-            fondo: fondo || 2000,
+            LIMITE_SOBRANTE: limite_sobrante,
+            LIMITE_FALTANTE: limite_faltante,
+            importe_retiros: importe_retiros,
+            fondo: fondo,
             montoAviso: montoAviso || 0,
             numeroAvisos: numeroAvisos || 0,
             importeCajaDespuesRetiros: importeCajaDespuesRetiros || 520,
@@ -367,7 +370,7 @@ export default function CatSucursales() {
       setNocturna(false);
       setCredito(false);
       setVencimiento_deposito('');
-      setToleranoia_existencia(true);
+      setTolerancia_existencia('');
       setControl_traspasos(true);
       setBancomer_online(false);
       setAfiliacion_bancomer('');
@@ -422,13 +425,13 @@ export default function CatSucursales() {
             MIN_RECORDS_VAL_TX: editMinRecordsValTx || 1,
             MIN_RECORDS_VAL_RM: editMinRecordsValRm || 1,
             clave_timbrador: editClaveTimbrador || 1,
-            RECIBE_FV: editRecibeFv ? 1 : 0,
+            RECIBE_FV: editRecibeFv || '',
             RECIBE_PROV_ALL: editRecipeProvAll ? 1 : 0,
             EDITA_COSTOS_RM: editEditaCostosRm ? 1 : 0,
             NOCTURNA: editNocturna ? 1 : 0,
             CREDITO: editCredito ? 1 : 0,
             VENCIMIENTO_DEPOSITO: editVencimientoDeposito,
-            TOLERANCIA_EXISTENCIA: editToleranciaExistencia ? 1 : 0,
+            TOLERANCIA_EXISTENCIA: editToleranciaExistencia,
             CONTROL_TRASPASOS: editControlTraspasos ? 1 : 0,
             BANCOMER_ONLINE: editBancomerOnline ? 1 : 0,
             AFILIACION_BANCOMER: editAfiliacionBancomer,
@@ -437,8 +440,8 @@ export default function CatSucursales() {
             APLICA_CINETIX: editAplicaCinetix ? 1 : 0,
             AREA_DEPOSITO: editAreaDeposito,
             DEPTO_DEPOSITO: editDeptoDeposito,
-            LIMITE_SOBRANTE: editLimiteSobrante || 0,
-            LIMITE_FALTANTE: editLimiteFaltante || 0,
+            LIMITE_SOBRANTE: editLimiteSobrante,
+            LIMITE_FALTANTE: editLimiteFaltante,
             importe_retiros: editImporteRetiros || 3000,
             fondo: editFondo || 2000,
             montoAviso: editMontoAviso || 0,
@@ -540,10 +543,9 @@ export default function CatSucursales() {
           fullWidth
         >
           <DialogTitle>Agregar Sucursal</DialogTitle>
-
           <DialogContent
             sx={{
-              mt: 0,
+              mt: 2,
               maxHeight: '70vh',
               overflowY: 'auto',
             }}
@@ -752,7 +754,17 @@ export default function CatSucursales() {
                 <TextField
                   label='Recibe FV'
                   value={recibe_fv}
-                  onChange={(e) => setRecibe_fv(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    //solo permitir 1 digito
+                    if (
+                      value === '' ||
+                      (/^\d$/.test(value) && value.length === 1)
+                    ) {
+                      setRecibe_fv(value);
+                    }
+                  }}
+                  inputProps={{ maxLength: 1 }}
                   size='small'
                   fullWidth
                 />
@@ -767,7 +779,15 @@ export default function CatSucursales() {
                   fullWidth
                 />
               </Grid>
-
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Tolerancia Existencia'
+                  value={tolerancia_existencia}
+                  onChange={(e) => setTolerancia_existencia(e.target.value)}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
               {/* Row 10 */}
               <Grid item xs={12} sm={6}>
                 <TextField
@@ -900,17 +920,6 @@ export default function CatSucursales() {
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <input
                     type='checkbox'
-                    checked={tolerancia_existencia}
-                    onChange={(e) => setToleranoia_existencia(e.target.checked)}
-                  />
-                  <label>Tolerancia Existencia</label>
-                </Box>
-              </Grid>
-
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <input
-                    type='checkbox'
                     checked={control_traspasos}
                     onChange={(e) => setControl_traspasos(e.target.checked)}
                   />
@@ -960,7 +969,6 @@ export default function CatSucursales() {
               </Grid>
             </Grid>
           </DialogContent>
-
           <DialogActions>
             <Button onClick={() => setOpenAdd(false)}>Cancelar</Button>
             <Button variant='contained' onClick={handleAdd} disabled={saving}>
@@ -1284,19 +1292,6 @@ export default function CatSucursales() {
                         variant='subtitle2'
                         sx={{ fontWeight: 'bold' }}
                       >
-                        Tolerancia Existencia
-                      </Typography>
-                      <Typography>
-                        {viewData.tolerancia_existencia ? 'Sí' : 'No'}
-                      </Typography>
-                    </Box>
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <Box sx={{ mb: 2 }}>
-                      <Typography
-                        variant='subtitle2'
-                        sx={{ fontWeight: 'bold' }}
-                      >
                         Control Traspasos
                       </Typography>
                       <Typography>
@@ -1518,7 +1513,7 @@ export default function CatSucursales() {
               <Grid item xs={12} sm={6}>
                 <TextField
                   label='Cia'
-                  value={viewData?.cia ?? '1'}
+                  value={editCia}
                   disabled
                   size='small'
                   fullWidth
@@ -1554,9 +1549,11 @@ export default function CatSucursales() {
                   inputProps={{ min: 0 }}
                   size='small'
                   fullWidth
-                  disabled //No se edita la clave sucursal
+                  disabled
                 />
               </Grid>
+
+              {/* Row 3 */}
               <Grid item xs={12} sm={6}>
                 <TextField
                   label='Versión'
@@ -1566,8 +1563,6 @@ export default function CatSucursales() {
                   fullWidth
                 />
               </Grid>
-
-              {/* Row 3 */}
               <Grid item xs={12} sm={6}>
                 <TextField
                   label='Supervisor'
@@ -1579,6 +1574,8 @@ export default function CatSucursales() {
                   fullWidth
                 />
               </Grid>
+
+              {/* Row 4 */}
               <Grid item xs={12} sm={6}>
                 <TextField
                   label='Días Devolución'
@@ -1590,8 +1587,6 @@ export default function CatSucursales() {
                   fullWidth
                 />
               </Grid>
-
-              {/* Row 4 */}
               <Grid item xs={12} sm={6}>
                 <TextField
                   label='Importe Retiros'
@@ -1603,6 +1598,8 @@ export default function CatSucursales() {
                   fullWidth
                 />
               </Grid>
+
+              {/* Row 5 */}
               <Grid item xs={12} sm={6}>
                 <TextField
                   label='Fondo'
@@ -1614,8 +1611,6 @@ export default function CatSucursales() {
                   fullWidth
                 />
               </Grid>
-
-              {/* Row 5 */}
               <Grid item xs={12} sm={6}>
                 <TextField
                   label='Monto Aviso'
@@ -1627,6 +1622,8 @@ export default function CatSucursales() {
                   fullWidth
                 />
               </Grid>
+
+              {/* Row 6 */}
               <Grid item xs={12} sm={6}>
                 <TextField
                   label='Número Avisos'
@@ -1638,8 +1635,6 @@ export default function CatSucursales() {
                   fullWidth
                 />
               </Grid>
-
-              {/* Row 6 */}
               <Grid item xs={12} sm={6}>
                 <TextField
                   label='Importe Caja Después Retiros'
@@ -1653,6 +1648,8 @@ export default function CatSucursales() {
                   fullWidth
                 />
               </Grid>
+
+              {/* Row 7 */}
               <Grid item xs={12} sm={6}>
                 <TextField
                   label='Límite Sobrante'
@@ -1664,8 +1661,6 @@ export default function CatSucursales() {
                   fullWidth
                 />
               </Grid>
-
-              {/* Row 7 */}
               <Grid item xs={12} sm={6}>
                 <TextField
                   label='Límite Faltante'
@@ -1677,6 +1672,8 @@ export default function CatSucursales() {
                   fullWidth
                 />
               </Grid>
+
+              {/* Row 8 */}
               <Grid item xs={12} sm={6}>
                 <TextField
                   label='Min Records Validar TX'
@@ -1688,8 +1685,6 @@ export default function CatSucursales() {
                   fullWidth
                 />
               </Grid>
-
-              {/* Row 8 */}
               <Grid item xs={12} sm={6}>
                 <TextField
                   label='Min Records Validar RM'
@@ -1701,6 +1696,8 @@ export default function CatSucursales() {
                   fullWidth
                 />
               </Grid>
+
+              {/* Row 9 */}
               <Grid item xs={12} sm={6}>
                 <TextField
                   label='Clave Timbrador'
@@ -1712,28 +1709,48 @@ export default function CatSucursales() {
                   fullWidth
                 />
               </Grid>
-
-              {/* Row 9 */}
               <Grid item xs={12} sm={6}>
                 <TextField
-                  label='Recibe FV'
+                  label='Recibe FV (String)'
                   value={editRecibeFv}
-                  onChange={(e) => setEditRecibeFv(e.target.value)}
-                  size='small'
-                  fullWidth
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  label='Recibe Prov All'
-                  value={editRecipeProvAll}
-                  onChange={(e) => setEditRecipeProvAll(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Solo permite dígitos de 1 carácter
+                    if (
+                      value === '' ||
+                      (/^\d$/.test(value) && value.length === 1)
+                    ) {
+                      setEditRecibeFv(value);
+                    }
+                  }}
+                  inputProps={{ maxLength: 1 }}
                   size='small'
                   fullWidth
                 />
               </Grid>
 
               {/* Row 10 */}
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Vencimiento Depósito'
+                  value={editVencimientoDeposito}
+                  onChange={(e) => setEditVencimientoDeposito(e.target.value)}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Tolerancia Existencia'
+                  value={editToleranciaExistencia}
+                  onChange={(e) => setEditToleranciaExistencia(e.target.value)}
+                  type='number'
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+
+              {/* Row 11 */}
               <Grid item xs={12} sm={6}>
                 <TextField
                   label='Área Depósito'
@@ -1753,7 +1770,7 @@ export default function CatSucursales() {
                 />
               </Grid>
 
-              {/* Row 11 */}
+              {/* Row 12 */}
               <Grid item xs={12} sm={6}>
                 <TextField
                   label='Afiliación Bancomer'
@@ -1763,169 +1780,132 @@ export default function CatSucursales() {
                   fullWidth
                 />
               </Grid>
-            </Grid>
 
-            <Grid item xs={12} sm={6}>
-              <TextField
-                label='Vencimiento Depósito'
-                value={editVencimientoDeposito}
-                onChange={(e) => setEditVencimientoDeposito(e.target.value)}
-                type='number'
-                size='small'
-                fullWidth
-              />
-            </Grid>
-
-            {/* Checkboxes - Grid Layout */}
-            <Grid container spacing={2} sx={{ mt: 1 }}>
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <input
-                    type='checkbox'
-                    checked={editEsRuta}
-                    onChange={(e) => setEditEsRuta(e.target.checked)}
-                  />
-                  <label>Es Ruta</label>
-                </Box>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <input
-                    type='checkbox'
-                    checked={editEsBodega}
-                    onChange={(e) => setEditEsBodega(e.target.checked)}
-                  />
-                  <label>Es Bodega</label>
-                </Box>
-              </Grid>
-
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <input
-                    type='checkbox'
-                    checked={editEnLinea}
-                    onChange={(e) => setEditEnLinea(e.target.checked)}
-                  />
-                  <label>En Línea</label>
-                </Box>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <input
-                    type='checkbox'
-                    checked={editValidarTx}
-                    onChange={(e) => setEditValidarTx(e.target.checked)}
-                  />
-                  <label>Validar TX</label>
-                </Box>
-              </Grid>
-
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <input
-                    type='checkbox'
-                    checked={editValidarRm}
-                    onChange={(e) => setEditValidarRm(e.target.checked)}
-                  />
-                  <label>Validar RM</label>
-                </Box>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <input
-                    type='checkbox'
-                    checked={editEditaCostosRm}
-                    onChange={(e) => setEditEditaCostosRm(e.target.checked)}
-                  />
-                  <label>Edita Costos RM</label>
-                </Box>
-              </Grid>
-
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <input
-                    type='checkbox'
-                    checked={editNocturna}
-                    onChange={(e) => setEditNocturna(e.target.checked)}
-                  />
-                  <label>Nocturna</label>
-                </Box>
-              </Grid>
-
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <input
-                    type='checkbox'
-                    checked={editCredito}
-                    onChange={(e) => setEditCredito(e.target.checked)}
-                  />
-                  <label>Crédito</label>
-                </Box>
-              </Grid>
-
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <input
-                    type='checkbox'
-                    checked={editToleranciaExistencia}
-                    onChange={(e) =>
-                      setEditToleranciaExistencia(e.target.checked)
-                    }
-                  />
-                  <label>Tolerancia Existencia</label>
-                </Box>
-              </Grid>
-
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <input
-                    type='checkbox'
-                    checked={editControlTraspasos}
-                    onChange={(e) => setEditControlTraspasos(e.target.checked)}
-                  />
-                  <label>Control Traspasos</label>
-                </Box>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <input
-                    type='checkbox'
-                    checked={editBancomerOnline}
-                    onChange={(e) => setEditBancomerOnline(e.target.checked)}
-                  />
-                  <label>Bancomer Online</label>
-                </Box>
-              </Grid>
-
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <input
-                    type='checkbox'
-                    checked={editServicioDomicilio}
-                    onChange={(e) => setEditServicioDomicilio(e.target.checked)}
-                  />
-                  <label>Servicio Domicilio</label>
-                </Box>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <input
-                    type='checkbox'
-                    checked={editAplicaCinepolis}
-                    onChange={(e) => setEditAplicaCinepolis(e.target.checked)}
-                  />
-                  <label>Aplica Cinépolis</label>
-                </Box>
-              </Grid>
-
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <input
-                    type='checkbox'
-                    checked={editAplicaCinetix}
-                    onChange={(e) => setEditAplicaCinetix(e.target.checked)}
-                  />
-                  <label>Aplica Cinetix</label>
+              {/* Checkboxes - Grid Layout */}
+              <Grid item xs={12}>
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(2, 1fr)',
+                    gap: 2,
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <input
+                      type='checkbox'
+                      checked={editEsRuta}
+                      onChange={(e) => setEditEsRuta(e.target.checked)}
+                    />
+                    <label>Es Ruta</label>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <input
+                      type='checkbox'
+                      checked={editEsBodega}
+                      onChange={(e) => setEditEsBodega(e.target.checked)}
+                    />
+                    <label>Es Bodega</label>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <input
+                      type='checkbox'
+                      checked={editEnLinea}
+                      onChange={(e) => setEditEnLinea(e.target.checked)}
+                    />
+                    <label>En Línea</label>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <input
+                      type='checkbox'
+                      checked={editValidarTx}
+                      onChange={(e) => setEditValidarTx(e.target.checked)}
+                    />
+                    <label>Validar TX</label>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <input
+                      type='checkbox'
+                      checked={editValidarRm}
+                      onChange={(e) => setEditValidarRm(e.target.checked)}
+                    />
+                    <label>Validar RM</label>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <input
+                      type='checkbox'
+                      checked={editRecipeProvAll}
+                      onChange={(e) => setEditRecipeProvAll(e.target.checked)}
+                    />
+                    <label>Recibe Prov All</label>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <input
+                      type='checkbox'
+                      checked={editEditaCostosRm}
+                      onChange={(e) => setEditEditaCostosRm(e.target.checked)}
+                    />
+                    <label>Edita Costos RM</label>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <input
+                      type='checkbox'
+                      checked={editNocturna}
+                      onChange={(e) => setEditNocturna(e.target.checked)}
+                    />
+                    <label>Nocturna</label>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <input
+                      type='checkbox'
+                      checked={editCredito}
+                      onChange={(e) => setEditCredito(e.target.checked)}
+                    />
+                    <label>Crédito</label>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <input
+                      type='checkbox'
+                      checked={editControlTraspasos}
+                      onChange={(e) =>
+                        setEditControlTraspasos(e.target.checked)
+                      }
+                    />
+                    <label>Control Traspasos</label>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <input
+                      type='checkbox'
+                      checked={editBancomerOnline}
+                      onChange={(e) => setEditBancomerOnline(e.target.checked)}
+                    />
+                    <label>Bancomer Online</label>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <input
+                      type='checkbox'
+                      checked={editServicioDomicilio}
+                      onChange={(e) =>
+                        setEditServicioDomicilio(e.target.checked)
+                      }
+                    />
+                    <label>Servicio Domicilio</label>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <input
+                      type='checkbox'
+                      checked={editAplicaCinepolis}
+                      onChange={(e) => setEditAplicaCinepolis(e.target.checked)}
+                    />
+                    <label>Aplica Cinépolis</label>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <input
+                      type='checkbox'
+                      checked={editAplicaCinetix}
+                      onChange={(e) => setEditAplicaCinetix(e.target.checked)}
+                    />
+                    <label>Aplica Cinetix</label>
+                  </Box>
                 </Box>
               </Grid>
             </Grid>
@@ -1942,7 +1922,6 @@ export default function CatSucursales() {
             </Button>
           </DialogActions>
         </Dialog>
-
         <Dialog open={openDelete} onClose={() => setOpenDelete(false)}>
           <DialogTitle>Eliminar Sucursal</DialogTitle>
 
