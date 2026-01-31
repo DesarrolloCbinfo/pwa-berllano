@@ -29,12 +29,10 @@
     nombre_fiscal: string | null
     dias_financiamiento: number
     descuento_general: number
-    fecha_alta: string | null
     persona_fisica: boolean
     cuenta_contable: string | null
     sucursal_origen: number
     version: string 
-    fecha_act: string | null
     Surte_Tienda: boolean
     
     
@@ -66,12 +64,10 @@
       nombre_fiscal: null,
       dias_financiamiento: 0,
       descuento_general: 0,
-      fecha_alta: null,
       persona_fisica: false,
       cuenta_contable: null,
       sucursal_origen: 0,
       version: '1.0',
-      fecha_act: null,
       Surte_Tienda: false,
     }
 
@@ -168,7 +164,6 @@ const handleAdd = async () => {
           nombre_fiscal: formData.nombre_fiscal,
           dias_financiamiento: formData.dias_financiamiento,
           descuento_general: formData.descuento_general,
-          fecha_alta: "20260101", // 🔑 formato válido
           persona_fisica: formData.persona_fisica,
           cuenta_contable: formData.cuenta_contable,
           sucursal_origen: formData.sucursal_origen,
@@ -222,7 +217,6 @@ const handleUpdate = async () => {
           nombre_fiscal: editFormData.nombre_fiscal,
           dias_financiamiento: editFormData.dias_financiamiento,
           descuento_general: editFormData.descuento_general,
-          fecha_act: '2026-01-01', // 🔑 evita SqlDateTime overflow
           persona_fisica: editFormData.persona_fisica,
           cuenta_contable: editFormData.cuenta_contable,
           sucursal_origen: editFormData.sucursal_origen,
