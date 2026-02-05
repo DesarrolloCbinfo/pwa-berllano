@@ -19,7 +19,7 @@ type Producto = {
 
 type Props = {
   data: Producto[];
-  onSelect: (clave_prod: string) => void;
+  onSelect: (producto: Producto) => void;
 };
 
 export default function ProductosTable({ data, onSelect }: Props) {
@@ -39,13 +39,14 @@ export default function ProductosTable({ data, onSelect }: Props) {
         <TableBody>
           {data.map((c) => (
             <TableRow key={c.clave_prod} hover>
+              <TableCell>{c.clave_prod}</TableCell>
               <TableCell>{c.descripcion}</TableCell>
               <TableCell>{c.Precio}</TableCell>
               <TableCell align="center">
                 <Button
                   size="small"
                   variant="contained"
-                  onClick={() => onSelect(c.clave_prod)}
+                  onClick={() => onSelect(c)}
                 >
                   Seleccionar
                 </Button>

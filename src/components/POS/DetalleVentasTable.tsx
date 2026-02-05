@@ -1,3 +1,4 @@
+
 import {
   Table,
   TableBody,
@@ -8,16 +9,25 @@ import {
   Button,
 } from "@mui/material";
 
-type Cliente = {
-  No_cliente: string;
-  nombre: string;
-  ap_paterno?: string | null;
-  ap_materno?: string | null;
+type DetalleVenta = {
+    id:string;
+  estilista: string;
+d_estilista: string;
+hora: string;
+clave_prod: string;
+d_producto: string;
+tiempo:string;
+Cant:number;
+precio:number;
+importe:number;
+descuento:number;
+auxiliar:string;
+d_auxiliar:string;
 };
 
 type Props = {
-  data: Cliente[];
-  onSelect: (cliente: Cliente) => void;
+  data: DetalleVenta[];
+  onSelect: (id: string) => void;
 };
 
 export default function ClientesTable({ data, onSelect }: Props) {
@@ -26,28 +36,32 @@ export default function ClientesTable({ data, onSelect }: Props) {
       <Table size="small">
         <TableHead>
           <TableRow>
+            <TableCell>Estilista</TableCell>
+            <TableCell>Hora</TableCell>
             <TableCell>Clave</TableCell>
-            <TableCell>Nombre</TableCell>
-            <TableCell>Paterno</TableCell>
-            <TableCell>Materno</TableCell>
+            <TableCell>Descripcion</TableCell>
+            <TableCell>Tiempo</TableCell>
+            <TableCell>Cantidad</TableCell>
+            <TableCell>Precio</TableCell>
+            <TableCell>Importe</TableCell>
+            <TableCell>Descuento</TableCell>
+            <TableCell>Auxiliar</TableCell>
             <TableCell align="center">Acción</TableCell>
           </TableRow>
         </TableHead>
 
         <TableBody>
           {data.map((c) => (
-            <TableRow key={c.No_cliente} hover>
-              <TableCell>{c.No_cliente}</TableCell>
-              <TableCell>{c.nombre}</TableCell>
-              <TableCell>{c.ap_paterno}</TableCell>
-              <TableCell>{c.ap_materno}</TableCell>
+            <TableRow key={c.id} hover>
+                
+         
               <TableCell align="center">
                 <Button
                   size="small"
                   variant="contained"
-                  onClick={() => onSelect(c)}
+                  onClick={() => onSelect(c.id)}
                 >
-                  Seleccionar
+                  X
                 </Button>
               </TableCell>
             </TableRow>

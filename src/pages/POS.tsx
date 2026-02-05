@@ -29,21 +29,27 @@ type Producto = {
   total_registros?: number;
 };
 
+type Auxiliar = {
+  clave_empleado: string;
+  nombre: string;
+};
+
 export default function POS() {
   const { consumoApi } = useConsumoApi();
   const [searchText, setSearchText] = React.useState("");
   const [modalClienteOpen, setModalClienteOpen] = React.useState(false);
 
-  const [productoSeleccionado, setProductoSeleccionado] = React.useState<string | null>(null);
+  const [productoSeleccionado, setProductoSeleccionado] = React.useState<Producto | null>(null);
   const [modalProductoOpen, setModalProductoOpen] = React.useState(false);
 
   const [clienteSeleccionado, setClienteSeleccionado] = React.useState<
-  string | null
+  Cliente | null
 >(null);
 
 const [estilistas, setEstilistas] = React.useState<Estilista[]>([]);
 const [estilistaSeleccionado, setEstilistaSeleccionado] = React.useState("");
-
+const [estilistaAuxiliar,setEstilistaAuxiliar] = React.useState<Auxiliar | null>(null);
+const [auxiliarSeleccionado,setAuxiliarSeleccionado] = React.useState<Auxiliar | null>(null);
 const [esInsumo, setEsInsumo] = React.useState(false);
 
   const fetchClientes = async ({ page, pageSize, search }: any) => {
@@ -67,6 +73,14 @@ const [esInsumo, setEsInsumo] = React.useState(false);
  };
 
 
+  const fetchAuxiliares = async () => {
+  const res = await consumoApi.get(`/api/PuntoDeVenta/sp_pos_auxiliar_listado?sucursal=1`);
+  setEstilistaAuxiliar(res.data ?? []);
+
+
+ };
+
+
  
 const fetchProductos = async ({ page, pageSize, search }: any) => {
   const res = await consumoApi.get(
@@ -83,7 +97,7 @@ const fetchProductos = async ({ page, pageSize, search }: any) => {
 
  useEffect(() => {
   fetchEstilistas();
-  
+  fetchAuxiliares();
  }, []);
 
   const {
@@ -114,8 +128,8 @@ const fetchProductos = async ({ page, pageSize, search }: any) => {
   <TextField
     size="small"
     label="Cliente"
-    value={clienteSeleccionado || ""}
-    disabled
+    value={clienteSeleccionado ? `${clienteSeleccionado.nombre} ${clienteSeleccionado.ap_paterno || ''} ${clienteSeleccionado.ap_materno || ''}`.trim() : ""}
+   
   />
 
   <Button
@@ -139,6 +153,8 @@ const fetchProductos = async ({ page, pageSize, search }: any) => {
 <Divider sx={{ my: 2 }} />
 
 
+{/* barra de agregar venta */}
+<Box>
 <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
   <Box>
 <FormControl size="small" fullWidth>
@@ -163,11 +179,11 @@ const fetchProductos = async ({ page, pageSize, search }: any) => {
 
     
   </Box>
-  <Box>
+<Box sx={{ display: "flex", gap: 0, alignItems: "center" }}>
    <TextField
     size="small"
     type="text"
-    value={productoSeleccionado || ""}
+    value={productoSeleccionado? `${productoSeleccionado.descripcion}  ` : ""}
     fullWidth
    />
    <Button size="small" variant="outlined" 
@@ -178,12 +194,42 @@ const fetchProductos = async ({ page, pageSize, search }: any) => {
   setModalProductoOpen(true);
 }}
    >
-    selecciona producto
+  prod
   </Button>
   </Box>
-  <Box>
+  
+
+  <Box sx={{ display: "flex", gap: 0, alignItems: "center" }}>
+<FormControl size="small" fullWidth>
+  <InputLabel id="estilista-label">Estilista auxiliar</InputLabel>
+  <Select
+    labelId="estilista-label"
+    label="Estilista"
+    value={auxiliarSeleccionado}
+    onChange={(e) => setAuxiliarSeleccionado (e.target.value)}
+  >
+    <MenuItem value="">
+      <em>Selecciona</em>
+    </MenuItem>
+    {estilistaAuxiliar?.map((est) => (
+      <MenuItem key={est.clave_empleado} value={est.clave_empleado}>
+        {est.nombre}
+      </MenuItem>
+    ))}
+  </Select>
+</FormControl>
+<Button size="small" variant="outlined">
+  registrar
+</Button>
+
   
   </Box>
+  
+
+
+
+
+</Box>
 </Box>
 
 
@@ -208,8 +254,8 @@ const fetchProductos = async ({ page, pageSize, search }: any) => {
 />
     <ClientesTable
       data={clients}
-      onSelect={(clave) => {
-        setClienteSeleccionado(clave);
+      onSelect={(cliente) => {
+        setClienteSeleccionado(cliente);
         setModalClienteOpen(false);
       }}
     />
@@ -238,8 +284,8 @@ const fetchProductos = async ({ page, pageSize, search }: any) => {
 
 <ProductosTable
   data={productos}
-  onSelect={(clave_prod) => {
-    setProductoSeleccionado(clave_prod);
+  onSelect={(producto) => {
+    setProductoSeleccionado(producto);
     setModalProductoOpen(false);
   }}
 />
