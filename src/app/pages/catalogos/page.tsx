@@ -14,9 +14,9 @@ export default function Catalogos() {
       <button onClick={() => (window.location.href = '/cat_Marcas')}>cat_Marcas</button>
       <button onClick={() => (window.location.href = '/cat_Sucursales')}>cat_Sucursales</button>
       <button onClick={() => (window.location.href = '/AsignacionHorarios')}>AsignacionHorarios</button>
-
-
-
+      <button onClick={() => (window.location.href = '/modulo-servicios-insumos')}>Modulo_Servicios_Insumos</button>
+      <button onClick={() => (window.location.href = '/modulo_porcentajes_puntos')}>Modulo_De_Administracion_De_Porcentajes_De_Puntos</button>
+      
       <PWABadge />
     </>
   );

@@ -21,6 +21,8 @@ import CatProveedor from './pages/cat_Proveedores/page';
 import CatCliente from './pages/cat_Clientes/page';
 import CatClientesForm from './pages/cat_Clientes/page2';
 import AsignacionHorarios from './pages/AsignacionHorarios/AsignacionHorarios';
+import AdministracionServiciosInsumos from './pages/Modulo _Administracion_Insumos/page';
+import AdministracionPorcentajesPuntos from './pages/Modulo_De_Administracion_De_Porcentajes_De_Puntos/page';
 
 function App() {
   return (
@@ -47,6 +49,8 @@ function App() {
          <Route path='/cat_Clientes' element={<Layout><CatCliente/></Layout>} />
          <Route path='/cat_Clientes_form' element={<Layout><CatClientesForm/></Layout>} />
          <Route path='/asignacion-horarios' element={<Layout><AsignacionHorarios/></Layout>} />
+         <Route path='/modulo-servicios-insumos' element={<Layout><AdministracionServiciosInsumos/></Layout>} />
+         <Route path='/modulo_porcentajes_puntos' element={<Layout><AdministracionPorcentajesPuntos/></Layout>} />
          
 
           <Route
@@ -235,6 +239,22 @@ function App() {
                 <CatSucursales />
               </Layout>
             }
+          />
+          <Route
+            path='/modulo-servicios-insumos'
+            element={
+              <Layout>
+                <AdministracionServiciosInsumos />
+              </Layout>
+            }
+          />
+          <Route
+          path='/modulo_porcentajes_puntos'
+          element={
+            <Layout>
+              <AdministracionPorcentajesPuntos />
+            </Layout>
+          }
           />
         </Routes>
       </BrowserRouter>
