@@ -17,12 +17,13 @@ import CatTipoDescuentos from './pages/cat_Tipo_Descuento/page';
 import CatCompradores from './pages/cat_Compradores/page';
 import CatMarcas from './pages/cat_Marcas/page';
 import CatSucursales from './pages/cat_Sucursales/page';
-import CatProveedor from './pages/cat_Proveedores/page';
 import CatCliente from './pages/cat_Clientes/page';
-import CatClientesForm from './pages/cat_Clientes/page2';
 import AsignacionHorarios from './pages/AsignacionHorarios/AsignacionHorarios';
+import Cat_MarcasFamilias from './pages/Cat_Marcas-Familias/page';
+import CatProveedores from './pages/cat_Proveedores/page';
 import AdministracionServiciosInsumos from './pages/Modulo _Administracion_Insumos/page';
 import AdministracionPorcentajesPuntos from './pages/Modulo_De_Administracion_De_Porcentajes_De_Puntos/page';
+
 
 function App() {
   return (
@@ -45,13 +46,14 @@ function App() {
          <Route path='/cat_Compradores' element={<Layout><CatCompradores/></Layout>} />
           <Route path='/cat_Marcas' element={<Layout><CatMarcas/></Layout>} />
           <Route path='/cat_Sucursales' element={<Layout><CatSucursales/></Layout>} />
-         <Route path='/cat_Proveedores' element={<Layout><CatProveedor/></Layout>} />
          <Route path='/cat_Clientes' element={<Layout><CatCliente/></Layout>} />
-         <Route path='/cat_Clientes_form' element={<Layout><CatClientesForm/></Layout>} />
-         <Route path='/asignacion-horarios' element={<Layout><AsignacionHorarios/></Layout>} />
+         <Route path='/AsignacionHorarios' element={<Layout><AsignacionHorarios/></Layout>} />
+         <Route path='/Cat_Marcas-Familias' element={<Layout><Cat_MarcasFamilias/></Layout>} />
+         <Route path='/Cat_Proveedores' element={<Layout><CatProveedores/></Layout>} />
          <Route path='/modulo-servicios-insumos' element={<Layout><AdministracionServiciosInsumos/></Layout>} />
          <Route path='/modulo_porcentajes_puntos' element={<Layout><AdministracionPorcentajesPuntos/></Layout>} />
          
+
 
           <Route
             path='/pos'
@@ -151,14 +153,7 @@ function App() {
               </Layout>
             }
           />
-          <Route
-            path='/cat_Proveedores'
-            element={
-              <Layout>
-                <CatProveedor />
-              </Layout>
-            }
-          />
+
           <Route
             path='/cat_Clientes'
             element={

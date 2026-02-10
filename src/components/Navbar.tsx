@@ -75,8 +75,6 @@ const pages: Page[] = [
   createPage("Formularios", "/demoStepper"),
   createPage("Recepción", "/recepcion"),
   createPage("Catalogos", "/catalogos"),
-  createPage("Catálogo Clientes", "/cat_Clientes_form"),
-  createPage("Asignación Horarios", "/asignacion-horarios"),
   // Acceso rápido al módulo de Punto de Venta
   createPage("Punto de Venta", "/pos"),
 ];
