@@ -1,13 +1,21 @@
 
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  Paper,
-  Button,
-} from "@mui/material";
+// import {
+//   Table,
+//   TableBody,
+//   TableCell,
+//   TableHead,
+//   TableRow,
+//   Paper,
+//   Button,
+//   Box,
+//   Typography,
+//   useTheme,
+//   useMediaQuery,
+// } from "@mui/material";
+
+import { MaterialReactTable, type MRT_ColumnDef } from "material-react-table";
+import { Button, Typography, useTheme, useMediaQuery, Box } from "@mui/material";
+import React, { useMemo } from "react";
 
 type DetalleVenta = {
     id:string;
@@ -23,6 +31,7 @@ importe:number;
 descuento:number;
 auxiliar:string;
 d_auxiliar:string;
+insumos?: DetalleVenta[]; // Insumos asociados
 };
 
 type Props = {
@@ -30,52 +39,229 @@ type Props = {
   onSelect: (id: string) => void;
 };
 
-export default function ClientesTable({ data, onSelect }: Props) {
-  return (
-    <Paper variant="outlined">
-      <Table size="small">
-        <TableHead>
-          <TableRow>
-            <TableCell>Estilista</TableCell>
-            <TableCell>Hora</TableCell>
-            <TableCell>Clave</TableCell>
-            <TableCell>Descripcion</TableCell>
-            <TableCell>Tiempo</TableCell>
-            <TableCell>Cantidad</TableCell>
-            <TableCell>Precio</TableCell>
-            <TableCell>Importe</TableCell>
-            <TableCell>Descuento</TableCell>
-            <TableCell>Auxiliar</TableCell>
-            <TableCell align="center">Acción</TableCell>
-          </TableRow>
-        </TableHead>
+export default function DetalleVentasTable({ data, onSelect }: Props) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-        <TableBody>
-          {data.map((c) => (
-            <TableRow key={c.id} hover>
-                
-         
-              <TableCell align="center">
-                <Button
-                  size="small"
-                  variant="contained"
-                  onClick={() => onSelect(c.id)}
-                >
-                  X
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
+  const columns = useMemo<MRT_ColumnDef<DetalleVenta>[]>(() => [
+    !isMobile && {
+      accessorKey: "d_estilista",
+      header: "Estilista",
+      size: 150,
+      minSize: 120,
+      maxSize: 200,
+    },
+    !isMobile && {
+      accessorKey: "hora",
+      header: "Hora",
+      size: 100,
+      minSize: 80,
+      maxSize: 120,
+    },
+    {
+      accessorKey: "clave_prod",
+      header: "Clave",
+      size: 80,
+      minSize: 60,
+      maxSize: 100,
+    },
+    {
+      accessorKey: "d_producto",
+      header: "Descripción",
+      size: 100,
+      minSize: 100,
+      maxSize: 150,
+      Cell: ({ cell }) => (
+        <Typography variant="body2" noWrap>
+          {cell.getValue<string>()}
+        </Typography>
+      ),
+    },
+    !isMobile && {
+      accessorKey: "tiempo",
+      header: "Tiempo",
+      size: 80,
+      minSize: 60,
+      maxSize: 100,
+    },
+    {
+      accessorKey: "Cant",
+      header: "Cant",
+      size: 60,
+      minSize: 50,
+      maxSize: 80,
+    },
+    {
+      accessorKey: "precio",
+      header: "Precio",
+      size: 100,
+      minSize: 80,
+      maxSize: 120,
+      Cell: ({ cell }) => `$${cell.getValue<number>().toFixed(2)}`,
+    },
+    {
+      accessorKey: "importe",
+      header: "Importe",
+      size: 100,
+      minSize: 80,
+      maxSize: 120,
+      Cell: ({ cell }) => (
+        <Typography fontWeight="medium">
+          ${cell.getValue<number>().toFixed(2)}
+        </Typography>
+      ),
+    },
+    !isMobile && {
+      accessorKey: "descuento",
+      header: "Descuento",
+      size: 100,
+      minSize: 80,
+      maxSize: 120,
+      Cell: ({ cell }) => `$${cell.getValue<number>().toFixed(2)}`,
+    },
+    !isMobile && {
+      accessorKey: "d_auxiliar",
+      header: "Auxiliar",
+      size: 120,
+      minSize: 100,
+      maxSize: 150,
+    },
+  ].filter(Boolean) as MRT_ColumnDef<DetalleVenta>[], [isMobile]);
 
-          {data.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={5} align="center">
-                Sin resultados
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-    </Paper>
+
+
+    return (
+    <MaterialReactTable
+      columns={columns}
+      data={data}
+      enablePagination={true}
+      enableColumnActions={false}
+      enableDensityToggle={false}
+      enableFullScreenToggle={false}
+      enableHiding={false}
+      enableColumnResizing={false}
+      enableColumnOrdering={false}
+      enableSorting={false}
+      enableFilters={false}
+      enableExpanding={true}
+      enableRowVirtualization={false}
+      positionActionsColumn="last"
+      displayColumnDefOptions={{
+        "mrt-row-actions": {
+          header: "Acción",
+          size: 60,
+          minSize: 50,
+          maxSize: 80,
+        },
+      }}
+      renderDetailPanel={({ row }) => {
+        const insumos = row.original.insumos || [];
+        if (insumos.length === 0) return null;
+        
+        return (
+          <Box sx={{ p: 2, backgroundColor: 'grey.50' }}>
+            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
+              Insumos asociados:
+            </Typography>
+            
+            {/* Headers de la tabla de insumos */}
+            <Box sx={{ 
+              display: 'flex', 
+              borderBottom: '2px solid #e0e0e0',
+              pb: 1,
+              mb: 1,
+              fontSize: '0.875rem',
+              fontWeight: 'medium'
+            }}>
+              <Box sx={{ flex: 1, minWidth: 150 }}>
+                Clave - Descripción
+              </Box>
+              <Box sx={{ minWidth: 80, textAlign: 'right' }}>
+                Precio
+              </Box>
+              <Box sx={{ minWidth: 50, textAlign: 'center' }}>
+                Cant
+              </Box>
+              <Box sx={{ minWidth: 90, textAlign: 'right', fontWeight: 'bold' }}>
+                Importe
+              </Box>
+            </Box>
+            
+            {insumos.map((insumo, index) => (
+              <Box key={insumo.id} sx={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                py: 0.75,
+                px: 2,
+                borderBottom: index < insumos.length - 1 ? '1px solid #e0e0e0' : 'none',
+                '&:hover': {
+                  backgroundColor: 'grey.100'
+                }
+              }}>
+                <Typography variant="body2" sx={{ flex: 1, fontSize: '0.875rem' }}>
+                  {insumo.clave_prod} - {insumo.d_producto}
+                </Typography>
+                <Typography variant="body2" sx={{ minWidth: 80, textAlign: 'right', fontSize: '0.875rem' }}>
+                  ${insumo.precio.toFixed(2)}
+                </Typography>
+                <Typography variant="body2" sx={{ minWidth: 50, textAlign: 'center', fontSize: '0.875rem' }}>
+                  {insumo.Cant}
+                </Typography>
+                <Typography variant="body2" sx={{ minWidth: 90, textAlign: 'right', fontWeight: 'medium', fontSize: '0.875rem' }}>
+                  ${insumo.importe.toFixed(2)}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+        );
+      }}
+      renderRowActions={({ row }) => (
+        <Button
+          color="error"
+          variant="contained"
+          size={isMobile ? "small" : "medium"}
+          onClick={() => onSelect(row.original.id)}
+        >
+          {isMobile ? "✕" : "X"}
+        </Button>
+      )}
+      localization={{
+        noRecordsToDisplay: "Sin resultados",
+      }}
+      muiTablePaperProps={{
+        variant: "outlined",
+        sx: {
+          '& .MuiTable-root': {
+            minWidth: { xs: 600, sm: 'auto' },
+          }
+        }
+      }}
+      muiTableContainerProps={{
+        sx: {
+          overflowX: 'auto',
+        }
+      }}
+      initialState={{
+        density: "compact",
+        columnSizing: {
+          clave_prod: 80,
+          d_producto: 100,
+          Cant: 60,
+          precio: 100,
+          importe: 100,
+        },
+      }}
+      state={{
+        columnSizing: {
+          clave_prod: 80,
+          d_producto: 100,
+          Cant: 60,
+          precio: 100,
+          importe: 100,
+        },
+      }}
+    />
   );
 }
+
