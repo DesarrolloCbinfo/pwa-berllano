@@ -14,6 +14,9 @@ export default function Catalogos() {
       <button onClick={() => (window.location.href = '/cat_Marcas')}>cat_Marcas</button>
       <button onClick={() => (window.location.href = '/cat_Sucursales')}>cat_Sucursales</button>
       <button onClick={() => (window.location.href = '/AsignacionHorarios')}>AsignacionHorarios</button>
+      <button onClick={() => (window.location.href = '/Cat_Marcas-Familias')}>Cat_Marcas-Familias</button>
+      <button onClick={() => (window.location.href = '/cat_clientes')}>Cat_Clientes</button>
+      <button onClick={() => (window.location.href = '/cat_Proveedores')}>Cat_Proveedores</button>
 
 
 

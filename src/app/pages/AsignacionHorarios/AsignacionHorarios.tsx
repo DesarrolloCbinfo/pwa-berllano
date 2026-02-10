@@ -29,6 +29,50 @@ import {
 
 import useConsumoApi from '../../../hooks/useConsumoApi'; 
 
+// --- ESTILOS BERLLANO ELEGANTE (TONALIDADES NEUTRAS) ---
+// 1. Estilo General (Altura fija de 50px con detalles elegantes)
+const commonProps = {
+  fullWidth: true,
+  size: "small" as const,
+  variant: "outlined" as const,
+  sx: {
+      '& .MuiInputBase-root': { 
+          height: '50px', 
+          alignItems: 'center',
+          borderRadius: '8px',
+          transition: 'all 0.3s ease',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+          '&:hover': {
+            boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+            borderColor: '#999'
+          }
+      },
+      '& .MuiInputLabel-root': { 
+          transform: 'translate(14px, 14px) scale(1)',
+          color: '#666',
+          fontWeight: 500
+      },
+      '& .MuiInputLabel-shrink': { 
+          transform: 'translate(14px, -9px) scale(0.75)',
+          color: '#333',
+          fontWeight: 600
+      },
+      '& .MuiOutlinedInput-notchedOutline': {
+          borderColor: '#e0e0e0',
+          borderWidth: '1.5px'
+      }
+  }
+};
+
+// 2. Estilo SOLO para Selects (Hereda el general pero agrega ancho mínimo)
+const selectProps = {
+  ...commonProps,
+  sx: {
+      ...commonProps.sx,
+      minWidth: '220px', // <--- ESTO FUERZA QUE SIEMPRE SEAN LARGOS
+  }
+};
+
 // --- Interfaces ---
 interface Empleado {
   clave_empleado: string;
@@ -263,35 +307,77 @@ const AsignacionHorarios: React.FC = () => {
 
   // --- RENDER ---
   return (
-    <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
+    <Box sx={{ p: 0, minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
       
       <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage(null)}>
         <Alert severity={message?.type} onClose={() => setMessage(null)}>{message?.text}</Alert>
       </Snackbar>
 
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h4" component="h1" gutterBottom align="center" sx={{ fontWeight: 'bold' }}>
-          Asignación de Horarios
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, p: 3 }}>
+        <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', color: '#333', display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ 
+            width: 40, 
+            height: 40, 
+            backgroundColor: '#333333', 
+            borderRadius: '50%', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            color: 'white',
+            boxShadow: '0 4px 8px rgba(51, 51, 51, 0.3)',
+            transition: 'all 0.3s ease'
+          }}>📅</Box>
+          ASIGNACIÓN DE HORARIOS
         </Typography>
+      </Box>
+
+      <Paper sx={{ 
+        p: 3, 
+        mb: 3, 
+        borderRadius: '12px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+        border: '1px solid #e0e0e0'
+      }}>
 
         {/* FILTRO SUCURSAL */}
-        <Box sx={{ mb: 3, p: 2, border: '1px dashed orange', borderRadius: 2, backgroundColor: '#fff8e1' }}>
-            <Typography variant="caption" sx={{ color: 'orange', fontWeight: 'bold' }}>FILTRO SUCURSAL</Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+        <Box sx={{ 
+          mb: 3, 
+          p: 2, 
+          border: '1.5px solid #e0e0e0', 
+          borderRadius: '8px', 
+          backgroundColor: '#fafafa',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+        }}>
+            <Typography variant="caption" sx={{ color: '#666', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 }}>Filtro Sucursal</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1 }}>
                 <TextField 
+                    {...commonProps}
                     label="ID Sucursal" 
                     type="number" 
-                    size="small" 
                     value={sucursalId}
                     onChange={(e) => setSucursalId(e.target.value)}
-                    sx={{ width: 150, backgroundColor: 'white' }}
+                    sx={{ ...commonProps.sx, width: 150 }}
                 />
                 <Button 
                     variant="contained" 
-                    color="warning" 
                     onClick={fetchEmpleados} 
                     disabled={loadingEmpleados}
                     startIcon={loadingEmpleados ? <CircularProgress size={20} color="inherit"/> : <SearchIcon />}
+                    sx={{ 
+                      backgroundColor: '#333333', 
+                      color: 'white', 
+                      borderRadius: '8px',
+                      fontWeight: 600,
+                      textTransform: 'none',
+                      padding: '10px 20px',
+                      boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)',
+                      transition: 'all 0.3s ease',
+                      '&:hover': { 
+                        backgroundColor: '#555555',
+                        boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)',
+                        transform: 'translateY(-1px)'
+                      }
+                    }}
                 >
                     {loadingEmpleados ? 'Cargando...' : 'Buscar'}
                 </Button>
@@ -302,17 +388,31 @@ const AsignacionHorarios: React.FC = () => {
           
           {/* SELECT EMPLEADO: AQUÍ SE SELECCIONA Y SE GUARDA EN EL ESTADO 'empleado' */}
           <Box sx={{ flex: { xs: 1, md: 0.4 }, width: '100%' }}>
-            <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'medium' }}>
+            <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'medium', color: '#333' }}>
               Empleado:
             </Typography>
             <FormControl fullWidth variant="outlined" size="small">
-              <InputLabel id="select-emp-label">Seleccione Empleado</InputLabel>
+              <InputLabel id="select-emp-label" sx={{ color: '#666', fontWeight: 500 }}>Seleccione Empleado</InputLabel>
               <Select
                 labelId="select-emp-label"
                 value={empleado}
                 label="Seleccione Empleado"
                 onChange={(e) => setEmpleado(e.target.value)} // <--- ESTO ACTUALIZA EL ESTADO GLOBAL
                 disabled={loadingEmpleados || listaEmpleados.length === 0}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '8px',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
+                    }
+                  },
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#e0e0e0',
+                    borderWidth: '1.5px'
+                  }
+                }}
               >
                 <MenuItem value="">
                     <em>{listaEmpleados.length === 0 ? '-- Sin empleados --' : '-- Seleccione --'}</em>
@@ -331,28 +431,72 @@ const AsignacionHorarios: React.FC = () => {
             <IconButton 
               onClick={handlePreviousWeek}
               disabled={loading}
-              sx={{ backgroundColor: '#1976d2', color: 'white', '&:hover': { backgroundColor: '#1565c0' } }}
+              sx={{ 
+                backgroundColor: '#333333', 
+                color: 'white', 
+                borderRadius: '8px',
+                boxShadow: '0 2px 8px rgba(51, 51, 51, 0.3)',
+                transition: 'all 0.3s ease',
+                '&:hover': { 
+                  backgroundColor: '#555555',
+                  boxShadow: '0 4px 12px rgba(51, 51, 51, 0.4)',
+                  transform: 'translateY(-1px)'
+                },
+                '& .MuiSvgIcon-root': {
+                  fontSize: '20px',
+                  filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))'
+                }
+              }}
             >
-              <ArrowBackIcon />
+              <ArrowBackIcon sx={{ color: 'white', fontWeight: 'bold' }} />
             </IconButton>
             
-            <Typography variant="h6" sx={{ fontWeight: 'medium', minWidth: 200, textAlign: 'center' }}>
+            <Typography variant="h6" sx={{ 
+              fontWeight: 'medium', 
+              minWidth: 200, 
+              textAlign: 'center',
+              color: '#333',
+              padding: '8px 16px',
+              borderRadius: '8px',
+              backgroundColor: '#fafafa',
+              border: '1px solid #e0e0e0'
+            }}>
               Semana: {getWeekRangeDisplay()}
             </Typography>
             
             <IconButton 
               onClick={handleNextWeek}
               disabled={loading}
-              sx={{ backgroundColor: '#1976d2', color: 'white', '&:hover': { backgroundColor: '#1565c0' } }}
+              sx={{ 
+                backgroundColor: '#333333', 
+                color: 'white', 
+                borderRadius: '8px',
+                boxShadow: '0 2px 8px rgba(51, 51, 51, 0.3)',
+                transition: 'all 0.3s ease',
+                '&:hover': { 
+                  backgroundColor: '#555555',
+                  boxShadow: '0 4px 12px rgba(51, 51, 51, 0.4)',
+                  transform: 'translateY(-1px)'
+                },
+                '& .MuiSvgIcon-root': {
+                  fontSize: '20px',
+                  filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))'
+                }
+              }}
             >
-              <ArrowForwardIcon />
+              <ArrowForwardIcon sx={{ color: 'white', fontWeight: 'bold' }} />
             </IconButton>
           </Box>
         </Box>
       </Paper>
 
       {/* GRID DE HORARIOS */}
-      <Paper sx={{ p: 3 }}>
+      <Paper sx={{ 
+        p: 3, 
+        borderRadius: '12px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+        border: '1px solid #e0e0e0'
+      }}>
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
             <CircularProgress />
@@ -361,13 +505,13 @@ const AsignacionHorarios: React.FC = () => {
           <TableContainer>
             <Table>
               <TableHead>
-                <TableRow sx={{ backgroundColor: '#e3f2fd' }}>
-                  <TableCell sx={{ fontWeight: 'bold', textAlign: 'center' }}>Día</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', textAlign: 'center' }}>H1</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', textAlign: 'center' }}>H1C</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', textAlign: 'center' }}>H2C</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', textAlign: 'center' }}>H2</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', textAlign: 'center' }}>Descanso</TableCell>
+                <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+                  <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', color: '#333', borderBottom: '2px solid #e0e0e0' }}>Día</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', color: '#333', borderBottom: '2px solid #e0e0e0' }}>H1</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', color: '#333', borderBottom: '2px solid #e0e0e0' }}>H1C</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', color: '#333', borderBottom: '2px solid #e0e0e0' }}>H2C</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', color: '#333', borderBottom: '2px solid #e0e0e0' }}>H2</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', color: '#333', borderBottom: '2px solid #e0e0e0' }}>Descanso</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -387,9 +531,7 @@ const AsignacionHorarios: React.FC = () => {
                       {['h1', 'h1c', 'h2c', 'h2'].map((field) => (
                         <TableCell key={field} sx={{ textAlign: 'center' }}>
                           <TextField
-                            variant="outlined"
-                            size="small"
-                            fullWidth
+                            {...commonProps}
                             placeholder="HH:MM"
                             value={row[field as keyof ScheduleRow]}
                             onChange={(e) => handleInputChange(index, field as keyof ScheduleRow, e.target.value)}
@@ -406,6 +548,12 @@ const AsignacionHorarios: React.FC = () => {
                                 const updatedRow = { ...row, descanso: e.target.checked };
                                 handleSaveRow(updatedRow); // GUARDA AL CAMBIAR CHECKBOX
                             }}
+                            sx={{
+                              color: '#333',
+                              '&.Mui-checked': {
+                                color: '#333'
+                              }
+                            }}
                         />
                       </TableCell>
                     </TableRow>
@@ -419,10 +567,31 @@ const AsignacionHorarios: React.FC = () => {
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 3 }}>
           <Button
             variant="contained"
-            color="primary"
-            sx={{ px: 3, py: 1 }}
             onClick={handleReplicar}
             disabled={replicating || !empleado}
+            sx={{
+              backgroundColor: '#333333', 
+              color: 'white', 
+              borderRadius: '8px',
+              fontWeight: 600,
+              textTransform: 'none',
+              padding: '10px 20px',
+              boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)',
+              transition: 'all 0.3s ease',
+              '&:hover': { 
+                backgroundColor: '#555555',
+                boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)',
+                transform: 'translateY(-1px)'
+              },
+              '&:disabled': {
+                backgroundColor: '#cccccc',
+                color: '#666666',
+                boxShadow: 'none',
+                '&:hover': {
+                  transform: 'none'
+                }
+              }
+            }}
           >
             {replicating ? 'Replicando...' : 'Replicar Horarios'}
           </Button>
