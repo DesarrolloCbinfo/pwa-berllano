@@ -6,6 +6,10 @@ import {
   TableRow,
   Paper,
   Button,
+  Box,
+  Typography,
+  useTheme,
+  useMediaQuery,
 } from "@mui/material";
 
 type Cliente = {
@@ -21,47 +25,73 @@ type Props = {
 };
 
 export default function ClientesTable({ data, onSelect }: Props) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   return (
-    <Paper variant="outlined">
-      <Table size="small">
-        <TableHead>
-          <TableRow>
-            <TableCell>Clave</TableCell>
-            <TableCell>Nombre</TableCell>
-            <TableCell>Paterno</TableCell>
-            <TableCell>Materno</TableCell>
-            <TableCell align="center">Acción</TableCell>
-          </TableRow>
-        </TableHead>
-
-        <TableBody>
-          {data.map((c) => (
-            <TableRow key={c.No_cliente} hover>
-              <TableCell>{c.No_cliente}</TableCell>
-              <TableCell>{c.nombre}</TableCell>
-              <TableCell>{c.ap_paterno}</TableCell>
-              <TableCell>{c.ap_materno}</TableCell>
-              <TableCell align="center">
-                <Button
-                  size="small"
-                  variant="contained"
-                  onClick={() => onSelect(c)}
-                >
-                  Seleccionar
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
-
-          {data.length === 0 && (
+    <Paper variant="outlined" sx={{ width: '100%', overflow: 'hidden' }}>
+      <Box sx={{ overflowX: 'auto' }}>
+        <Table size={isMobile ? "small" : "medium"}>
+          <TableHead>
             <TableRow>
-              <TableCell colSpan={5} align="center">
-                Sin resultados
+              <TableCell sx={{ minWidth: { xs: 80, sm: 100 } }}>Clave</TableCell>
+              <TableCell sx={{ minWidth: { xs: 120, sm: 200 } }}>Nombre</TableCell>
+              {!isMobile && (
+                <>
+                  <TableCell sx={{ minWidth: 150 }}>Paterno</TableCell>
+                  <TableCell sx={{ minWidth: 150 }}>Materno</TableCell>
+                </>
+              )}
+              <TableCell sx={{ minWidth: { xs: 100, sm: 120 } }} align="center">
+                Acción
               </TableCell>
             </TableRow>
-          )}
-        </TableBody>
-      </Table>
+          </TableHead>
+
+          <TableBody>
+            {data.map((c) => (
+              <TableRow key={c.No_cliente} hover>
+                <TableCell>{c.No_cliente}</TableCell>
+                <TableCell>
+                  <Typography variant="body2" noWrap>
+                    {c.nombre}
+                  </Typography>
+                </TableCell>
+                {!isMobile && (
+                  <>
+                    <TableCell>{c.ap_paterno}</TableCell>
+                    <TableCell>{c.ap_materno}</TableCell>
+                  </>
+                )}
+                <TableCell align="center">
+                  <Button
+                    size={isMobile ? "small" : "medium"}
+                    variant="contained"
+                    onClick={() => onSelect(c)}
+                    sx={{ minWidth: { xs: 60, sm: 80 } }}
+                  >
+                    {isMobile ? "✓" : "Seleccionar"}
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+
+            {data.length === 0 && (
+              <TableRow>
+                <TableCell 
+                  colSpan={isMobile ? 3 : 5} 
+                  align="center"
+                  sx={{ py: { xs: 2, sm: 3 } }}
+                >
+                  <Typography variant="body2" color="text.secondary">
+                    Sin resultados
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </Box>
     </Paper>
   );
 }
