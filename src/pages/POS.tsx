@@ -1,24 +1,12 @@
-import * as React from "react";
-import {
-  Box,
-  Paper,
-  Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody,
-  Button,
-  TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Typography,
-  Switch,
-  CircularProgress,
-} from "@mui/material";
-import Autocomplete from "@mui/material/Autocomplete";
+import React, { useEffect } from "react";
+import TextField from "@mui/material/TextField";
 import useConsumoApi from "../hooks/useConsumoApi";
+import { useServerTable } from "../hooks/useServerTable";
+import ClientesTable from "../components/POS/ClientesTable";
+import PaginationControls from "../components/POS/PaginationControl";
+import { Box, Button, Dialog, DialogContent, DialogTitle, Divider, FormControl, Input, InputLabel, MenuItem, Select, useTheme, useMediaQuery, Typography } from "@mui/material";
+import ProductosTable from "../components/POS/ProductosTable";
+import DetalleVentasTable from "../components/POS/DetalleVentasTable";
 
 type Cliente = {
   No_cliente: string;
@@ -28,334 +16,984 @@ type Cliente = {
   total_registros?: number;
 };
 
+type Estilista = {
+  clave_empleado: string;
+  nombre: string;
+};
+
 type Producto = {
   clave_prod: string;
   descripcion: string;
-  Precio?: number;
-  costo_unitario: number;
-  tasa_iva: number;
+  Precio?:number;
+  costo_unitario?: number;
+  tasa_iva?: number;
+  inventariable?: boolean;
+  es_insumo?: boolean;
+  es_servicio?: boolean;
+  es_producto?: boolean;
+  controlado?: boolean;
+  tiempo?: string;
   total_registros?: number;
+
 };
 
-type CartItem = {
+type Auxiliar = {
+  clave_empleado: string;
+  nombre: string;
+};
+
+type DetalleVenta = {
   id: string;
-  descripcion: string;
+  estilista: string;
+  d_estilista: string;
+  hora: string;
+  clave_prod: string;
+  d_producto: string;
+  tiempo: string;
+  Cant: number;
   precio: number;
-  cantidad: number;
+  importe: number;
+  descuento: number;
+  auxiliar: string;
+  d_auxiliar: string;
+  insumos?: DetalleVenta[]; // Insumos asociados
 };
 
 export default function POS() {
   const { consumoApi } = useConsumoApi();
-  const [searchInsumos, setSearchInsumos] = React.useState<boolean>(false);
-  // Clientes
-  const [clients, setClients] = React.useState<Cliente[]>([]);
-  const [selectedClient, setSelectedClient] = React.useState<string>("00001");
-  const [clientSearchQuery, setClientSearchQuery] = React.useState<string>("");
-  const [clientsLoading, setClientsLoading] = React.useState<boolean>(false);
-  // Stylists (POS) - datos traídos por API con paginación controlada en cliente
-  const getSucursalFromSession = (): number => {
-    try {
-      const v = sessionStorage.getItem("sucursal_pdv");
-      if (v) return Number(v);
-    } catch {
-      // ignore
-    }
-    // Valor por defecto si no se encuentra en sesion
-    return 5;
-  };
-  const [stylistsAll, setStylistsAll] = React.useState<{ clave_empleado: string; nombre: string }[]>([]);
-  const [stylistDisplayCount, setStylistDisplayCount] = React.useState<number>(10);
-  // Estilistas (desde API, con display controlado)
-  const [selectedStylist, setSelectedStylist] = React.useState<string>("Sin Estilista");
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  
+  const [searchText, setSearchText] = React.useState("");
+  const [modalClienteOpen, setModalClienteOpen] = React.useState(false);
 
-  // Productos
-  const [products, setProducts] = React.useState<Producto[]>([]);
-  const [productPage, setProductPage] = React.useState<number>(1);
-  const [productQuery, setProductQuery] = React.useState<string>("gel");
-  const [productsLoading, setProductsLoading] = React.useState<boolean>(false);
+  const [productoSeleccionado, setProductoSeleccionado] = React.useState<Producto | null>(null);
+  const [modalProductoOpen, setModalProductoOpen] = React.useState(false);
+  const [modalInsumosOpen, setModalInsumosOpen] = React.useState(false);
+  const [productoPrincipal, setProductoPrincipal] = React.useState<Producto | null>(null);
+  const [insumosSeleccionados, setInsumosSeleccionados] = React.useState<Array<{producto: Producto, cantidad: number}>>([]);
 
-  // Carrito
-  const [cart, setCart] = React.useState<CartItem[]>([]);
+  const [clienteSeleccionado, setClienteSeleccionado] = React.useState<
+  Cliente | null
+>(null);
 
-  // Carga inicial de clientes y productos
-  React.useEffect(() => {
-    fetchClients(1, 20, "%", true);
-  }, []);
+const [estilistas, setEstilistas] = React.useState<Estilista[]>([]);
+const [estilistaSeleccionado, setEstilistaSeleccionado] = React.useState("");
+const [estilistaAuxiliar,setEstilistaAuxiliar] = React.useState<Auxiliar[]>([]);
+const [auxiliarSeleccionado,setAuxiliarSeleccionado] = React.useState<string>("");
+const [esInsumo, setEsInsumo] = React.useState(false);
 
-  React.useEffect(() => {
-    if (clientSearchQuery.trim() === "") return;
-    const timer = setTimeout(() => {
-      fetchClients(1, 20, clientSearchQuery, true);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [clientSearchQuery]);
+const [detallesVenta, setDetallesVenta] = React.useState<DetalleVenta[]>([]);
 
-  React.useEffect(() => {
-    fetchProducts(productPage, 20, productQuery, false);
-  }, [productPage, productQuery]);
-
-  // Carga inicial de estilistas (desde API) y paginado local
-  React.useEffect(() => {
-    fetchStylistsAll();
-  }, []);
-
-  // Fetch helpers
-  async function fetchClients(page: number, perPage: number, search: string, _forceRefresh?: boolean) {
-    try {
-      setClientsLoading(true);
-      const url = `/api/PuntoDeVenta/sp_cat_clientes_suc_paginado?pagina=${page}&registros=${perPage}&Busqueda=${encodeURIComponent(search)}`;
-      const res = await consumoApi.get(url);
-      const data = res.data;
-      if (Array.isArray(data)) {
-        setClients((prev) => (page === 1 ? data : [...prev, ...data]));
+  // Función para cargar datos desde JSON (para desarrollo/pruebas)
+  const cargarDatosDesdeJSON = () => {
+    const datosEjemplo = [
+      {
+        id: "1",
+        estilista: "EMP001",
+        d_estilista: "Juan Pérez",
+        hora: "14:30",
+        clave_prod: "SERV001",
+        d_producto: "Corte de Cabello",
+        tiempo: "01:00",
+        Cant: 1,
+        precio: 150.00,
+        importe: 150.00,
+        descuento: 0,
+        auxiliar: "EMP003",
+        d_auxiliar: "María López",
+        insumos: [
+          {
+            id: "1-1",
+            estilista: "EMP001",
+            d_estilista: "Juan Pérez",
+            hora: "14:30",
+            clave_prod: "INS001",
+            d_producto: "Shampoo Profesional",
+            tiempo: "00:15",
+            Cant: 1,
+            precio: 25.00,
+            importe: 25.00,
+            descuento: 0,
+            auxiliar: "EMP003",
+            d_auxiliar: "María López"
+          },
+          {
+            id: "1-2",
+            estilista: "EMP001",
+            d_estilista: "Juan Pérez",
+            hora: "14:30",
+            clave_prod: "INS002",
+            d_producto: "Acondicionador",
+            tiempo: "00:10",
+            Cant: 2,
+            precio: 15.00,
+            importe: 30.00,
+            descuento: 0,
+            auxiliar: "EMP003",
+            d_auxiliar: "María López"
+          }
+        ]
+      },
+      {
+        id: "2",
+        estilista: "EMP002",
+        d_estilista: "Ana García",
+        hora: "15:00",
+        clave_prod: "SERV002",
+        d_producto: "Manicure",
+        tiempo: "00:45",
+        Cant: 1,
+        precio: 80.00,
+        importe: 80.00,
+        descuento: 0,
+        auxiliar: "",
+        d_auxiliar: ""
       }
-    } catch (e) {
-      console.error("Error cargando clientes", e);
-    } finally {
-      setClientsLoading(false);
-    }
-  }
-
-  async function fetchProducts(page: number, perPage: number, search: string, _isInsumo?: boolean) {
-    try {
-      setProductsLoading(true);
-      const url2 = `/api/PuntoDeVenta/sp_busca_productos_paginado?clave_desc=${encodeURIComponent(search)}&insumo=${searchInsumos ? 'true' : 'false'}&pagina=${page}&registros=${perPage}`;
-      const res = await consumoApi.get(url2);
-      const data = res.data;
-      if ( Array.isArray(data) ) {
-        setProducts((prev) => (page === 1 ? data : [...prev, ...data]));
-      }
-    } catch (e) {
-      console.error("Error cargando productos", e);
-    } finally {
-      setProductsLoading(false);
-    }
-  }
-
-  async function fetchStylistsAll() {
-    try {
-      const suc = getSucursalFromSession();
-      const url = `https://cbinfo.no-ip.info:8079/api/PuntoDeVenta/sp_pos_estilistas_listado?sucursal=${suc}`;
-      const res = await fetch(url, {
-        method: "GET",
-        headers: {
-          accept: "application/octet-stream",
-        },
-      });
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        // Guardar toda la lista y luego paginar en el cliente
-        setStylistsAll(data.map((u) => ({ clave_empleado: String(u.clave_empleado), nombre: u.nombre })));
-      }
-    } catch (e) {
-      console.error("Error cargando estilistas", e);
-    }
-  }
-
-  // Carrito
-  const addToCart = (p: Producto) => {
-    const unitPrice = p.Precio && p.Precio > 0 ? p.Precio : p.costo_unitario;
-    setCart((prev) => {
-      const found = prev.find((c) => c.id === p.clave_prod);
-      if (found) {
-        return prev.map((c) =>
-          c.id === p.clave_prod ? { ...c, cantidad: c.cantidad + 1 } : c
-        );
-      }
-      return [
-        ...prev,
-        {
-          id: p.clave_prod,
-          descripcion: p.descripcion,
-          precio: unitPrice,
-          cantidad: 1,
-        },
-      ];
-    });
+    ];
+    
+    setDetallesVenta(datosEjemplo);
   };
 
-  const updateQty = (id: string, delta: number) => {
-    setCart((prev) =>
-      prev
-        .map((c) => (c.id === id ? { ...c, cantidad: Math.max(1, c.cantidad + delta) } : c))
-        .filter((c) => c.cantidad > 0)
+  // Función para guardar datos en JSON
+  const guardarDatosEnJSON = () => {
+    try {
+      // Crear objeto con todos los datos
+      const datosCompletos = {
+        cliente: clienteSeleccionado ? {
+          No_cliente: clienteSeleccionado.No_cliente,
+          nombre: clienteSeleccionado.nombre,
+          ap_paterno: clienteSeleccionado.ap_paterno,
+          ap_materno: clienteSeleccionado.ap_materno
+        } : null,
+        detalles: detallesVenta,
+        fecha: new Date().toISOString(),
+        sucursal: 1,
+        total: detallesVenta.reduce((sum, detalle) => sum + detalle.importe, 0),
+        estilista: estilistaSeleccionado,
+        auxiliar: auxiliarSeleccionado
+      };
+
+      // Convertir a JSON string con formato bonito
+      const jsonString = JSON.stringify(datosCompletos, null, 2);
+      
+      // Crear blob y descargar
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      
+      // Crear enlace de descarga
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `venta_${new Date().toISOString().split('T')[0]}_${Date.now()}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      alert('Datos guardados exitosamente');
+    } catch (error) {
+      console.error('Error guardando datos:', error);
+      alert('Error al guardar los datos');
+    }
+  };
+
+  // Función para cargar desde archivo JSON externo
+  const cargarDatosDesdeArchivo = async () => {
+    try {
+      const response = await fetch('/datos-ejemplo.json');
+      const datos = await response.json();
+      setDetallesVenta(datos);
+    } catch (error) {
+      console.error('Error cargando datos:', error);
+      alert('Error al cargar los datos');
+    }
+  };
+
+  const handleRegistrar = () => {
+    // Validar que se hayan seleccionado los datos necesarios
+    if (!estilistaSeleccionado || !productoSeleccionado) {
+      alert('Por favor selecciona un estilista y un producto');
+      return;
+    }
+
+    // Verificar si el producto es controlado y es servicio
+    if (productoSeleccionado.controlado && productoSeleccionado.es_servicio) {
+      // Guardar el producto principal y abrir modal de insumos
+      setProductoPrincipal(productoSeleccionado);
+      setModalInsumosOpen(true);
+      return;
+    }
+
+    // Si no es controlado, proceder normalmente
+    registrarProducto(productoSeleccionado);
+  };
+
+  const registrarProducto = (producto: Producto, esInsumoAdicional = false) => {
+    // Obtener nombres del estilista y auxiliar
+    const estilistaNombre = estilistas.find((e: Estilista) => e.clave_empleado === estilistaSeleccionado)?.nombre || '';
+    const auxiliarNombre = auxiliarSeleccionado ? 
+      estilistaAuxiliar?.find((e: Auxiliar) => e.clave_empleado === auxiliarSeleccionado)?.nombre || '' : '';
+
+    // Crear nuevo detalle de venta
+    const nuevoDetalle: DetalleVenta = {
+      id: Date.now().toString(), // ID único temporal
+      estilista: estilistaSeleccionado,
+      d_estilista: estilistaNombre,
+      hora: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
+      clave_prod: producto.clave_prod,
+      d_producto: producto.descripcion,
+      tiempo: producto.tiempo || '00:00', // Usar tiempo del producto o por defecto
+      Cant: 1,
+      precio: producto.Precio || 0,
+      importe: producto.Precio || 0,
+      descuento: 0,
+      auxiliar: auxiliarSeleccionado || '',
+      d_auxiliar: auxiliarNombre,
+    };
+
+    // Agregar a la lista de detalles
+    setDetallesVenta(prev => [...prev, nuevoDetalle]);
+
+    // Limpiar selección de producto para poder agregar otro
+    setProductoSeleccionado(null);
+    
+    // Si era un insumo adicional, cerrar el modal
+    if (esInsumoAdicional) {
+      setModalInsumosOpen(false);
+      setProductoPrincipal(null);
+    }
+  };
+
+  const handleSeleccionarInsumo = (insumo: Producto) => {
+    // Verificar si el insumo ya está seleccionado
+    const existe = insumosSeleccionados.some(item => item.producto.clave_prod === insumo.clave_prod);
+    
+    if (existe) {
+      // Eliminar de la selección
+      setInsumosSeleccionados(prev => prev.filter(item => item.producto.clave_prod !== insumo.clave_prod));
+    } else {
+      // Agregar a la selección con cantidad 1
+      setInsumosSeleccionados(prev => [...prev, { producto: insumo, cantidad: 1 }]);
+    }
+  };
+
+  const handleCantidadInsumo = (clave_prod: string, cantidad: number) => {
+    setInsumosSeleccionados(prev => 
+      prev.map(item => 
+        item.producto.clave_prod === clave_prod 
+          ? { ...item, cantidad: Math.max(1, cantidad) }
+          : item
+      )
     );
   };
 
-  const removeFromCart = (id: string) => {
-    setCart((prev) => prev.filter((c) => c.id !== id));
+  const handleConfirmarInsumos = () => {
+    if (!productoPrincipal || insumosSeleccionados.length === 0) {
+      alert('Por favor selecciona al menos un insumo');
+      return;
+    }
+
+    // Primero registrar el producto principal si no está ya registrado
+    const productoYaRegistrado = detallesVenta.some(d => d.clave_prod === productoPrincipal.clave_prod);
+    
+    let productoActualizado: DetalleVenta;
+    if (!productoYaRegistrado) {
+      // Crear el producto principal con los insumos seleccionados
+      productoActualizado = {
+        id: Date.now().toString(),
+        estilista: estilistaSeleccionado,
+        d_estilista: estilistas.find((e: Estilista) => e.clave_empleado === estilistaSeleccionado)?.nombre || '',
+        hora: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
+        clave_prod: productoPrincipal.clave_prod,
+        d_producto: productoPrincipal.descripcion,
+        tiempo: productoPrincipal.tiempo || '00:00',
+        Cant: 1,
+        precio: productoPrincipal.Precio || 0,
+        importe: productoPrincipal.Precio || 0,
+        descuento: 0,
+        auxiliar: auxiliarSeleccionado || '',
+        d_auxiliar: auxiliarSeleccionado ? 
+          estilistaAuxiliar?.find((e: Auxiliar) => e.clave_empleado === auxiliarSeleccionado)?.nombre || '' : '',
+        insumos: insumosSeleccionados.map(item => ({
+          id: Date.now().toString() + Math.random(),
+          estilista: estilistaSeleccionado,
+          d_estilista: estilistas.find((e: Estilista) => e.clave_empleado === estilistaSeleccionado)?.nombre || '',
+          hora: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
+          clave_prod: item.producto.clave_prod,
+          d_producto: item.producto.descripcion,
+          tiempo: item.producto.tiempo || '00:00',
+          Cant: item.cantidad,
+          precio: item.producto.Precio || 0,
+          importe: (item.producto.Precio || 0) * item.cantidad,
+          descuento: 0,
+          auxiliar: auxiliarSeleccionado || '',
+          d_auxiliar: auxiliarSeleccionado ? 
+            estilistaAuxiliar?.find((e: Auxiliar) => e.clave_empleado === auxiliarSeleccionado)?.nombre || '' : '',
+        }))
+      };
+      
+      // Agregar el producto principal a la lista
+      setDetallesVenta(prev => [...prev, productoActualizado]);
+    } else {
+      // Encontrar el producto principal existente y agregarle los insumos
+      setDetallesVenta(prev => prev.map(detalle => {
+        if (detalle.clave_prod === productoPrincipal.clave_prod) {
+          const nuevosInsumos = insumosSeleccionados.map(item => ({
+            id: Date.now().toString() + Math.random(),
+            estilista: estilistaSeleccionado,
+            d_estilista: estilistas.find((e: Estilista) => e.clave_empleado === estilistaSeleccionado)?.nombre || '',
+            hora: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
+            clave_prod: item.producto.clave_prod,
+            d_producto: item.producto.descripcion,
+            tiempo: item.producto.tiempo || '00:00',
+            Cant: item.cantidad,
+            precio: item.producto.Precio || 0,
+            importe: (item.producto.Precio || 0) * item.cantidad,
+            descuento: 0,
+            auxiliar: auxiliarSeleccionado || '',
+            d_auxiliar: auxiliarSeleccionado ? 
+              estilistaAuxiliar?.find((e: Auxiliar) => e.clave_empleado === auxiliarSeleccionado)?.nombre || '' : '',
+          }));
+          
+          return {
+            ...detalle,
+            insumos: [...(detalle.insumos || []), ...nuevosInsumos]
+          };
+        }
+        return detalle;
+      }));
+    }
+    
+    // Cerrar el modal y limpiar estados
+    setModalInsumosOpen(false);
+    setProductoPrincipal(null);
+    setInsumosSeleccionados([]);
   };
 
-  // Totales
-  const subtotal = cart.reduce((sum, item) => sum + item.precio * item.cantidad, 0);
-  const taxRate = 0.16;
-  const tax = cart.reduce((sum, item) => sum + item.precio * item.cantidad * taxRate, 0);
-  const total = subtotal + tax;
+  const fetchClientes = async ({ page, pageSize, search }: any) => {
+    const res = await consumoApi.get(
+      `/api/PuntoDeVenta/sp_cat_clientes_suc_paginado?pagina=${page}&registros=${pageSize}&Busqueda=${encodeURIComponent(search)}`
+    );
 
-  const displayedStylists = stylistsAll.slice(0, stylistDisplayCount);
+    const data = res.data ?? [];
+    return {
+      data,
+      total: data[0]?.total_registros ?? 0,
+    };
+  };
+
+
+ const fetchEstilistas = async () => {
+  const res = await consumoApi.get(`/api/PuntoDeVenta/sp_pos_estilistas_listado?sucursal=1`);
+  setEstilistas(res.data ?? []);
+
+
+ };
+
+
+  const fetchAuxiliares = async () => {
+  const res = await consumoApi.get(`/api/PuntoDeVenta/sp_pos_auxiliar_listado?sucursal=1`);
+  setEstilistaAuxiliar(res.data ?? []);
+
+
+ };
+
+
+ 
+const fetchProductos = async ({ page, pageSize, search }: any) => {
+  const res = await consumoApi.get(
+    `/api/PuntoDeVenta/sp_busca_productos_paginado?clave_desc=${encodeURIComponent(search)}&insumo=${esInsumo ? 'true' : 'false'}&pagina=${page}&registros=${pageSize}`
+  );
+
+  const data = res.data ?? [];
+  return {
+    data,
+    total: data[0]?.total_registros ?? 0,
+  };
+};
+
+const fetchInsumos = async ({ page, pageSize, search }: any) => {
+  const res = await consumoApi.get(
+    `/api/PuntoDeVenta/sp_busca_productos_paginado?clave_desc=${encodeURIComponent(search)}&insumo=true&pagina=${page}&registros=${pageSize}`
+  );
+
+  const data = res.data ?? [];
+  return {
+    data,
+    total: data[0]?.total_registros ?? 0,
+  };
+};
+
+
+ useEffect(() => {
+  fetchEstilistas();
+  fetchAuxiliares();
+ }, []);
+
+  const {
+    data: clients,
+    page,
+    pageSize,
+    total,
+    setPage,
+    setSearch,
+  } = useServerTable<Cliente>(fetchClientes, 20);
+
+
+  const {
+  data: productos,
+  page: pageProductos,
+  pageSize: pageSizeProductos,
+  total: totalProductos,
+  setPage: setPageProductos,
+  setSearch: setSearchProductos,
+} = useServerTable<Producto>(fetchProductos, 10);
+
+const {
+  data: insumos,
+  page: pageInsumos,
+  pageSize: pageSizeInsumos,
+  total: totalInsumos,
+  setPage: setPageInsumos,
+  setSearch: setSearchInsumos,
+} = useServerTable<Producto>(fetchInsumos, 10);
 
   return (
-    <Box sx={{ padding: 2 }}>
-      {/* Header: clientes y estilistas */}
-      <Paper sx={{ padding: 2, mb: 2 }}>
-        <Box
-          sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr' }, gap: 2, alignItems: 'center' }}
-        >
-          <Box>
-            <Autocomplete
-              fullWidth
-              loading={clientsLoading}
-              value={clients.find(c => c.No_cliente === selectedClient) ?? null}
-              onChange={(_, newValue) => {
-                const v = newValue as Cliente | null;
-                setSelectedClient(v?.No_cliente ?? "");
-              }}
-              onInputChange={(_, value) => {
-                setClientSearchQuery(value);
-              }}
-              getOptionLabel={(option: any) => {
-                if (!option) return "";
-                const o = option as Cliente;
-                const ap = o.ap_paterno ? ` ${o.ap_paterno}` : "";
-                const am = o.ap_materno ? ` ${o.ap_materno}` : "";
-                return `${o.nombre}${ap}${am}`;
-              }}
-              isOptionEqualToValue={(o, v) => o?.No_cliente === v?.No_cliente}
-              options={clients as any}
-              renderInput={(params) => (
-                <TextField {...params} label="Cliente" placeholder="Buscar..." />
-              )}
-            />
-          </Box>
-          <Box>
-            <FormControl fullWidth>
-              <InputLabel id="estilista-label">Estilista</InputLabel>
-              <Select
-                labelId="estilista-label"
-                value={selectedStylist}
-                label="Estilista"
-                onChange={(e) => setSelectedStylist(e.target.value as string)}
-              >
-                {displayedStylists.map((s) => (
-                  <MenuItem key={s.clave_empleado} value={s.clave_empleado}>
-                    {s.nombre}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-              <Switch checked={searchInsumos} onChange={(e)=> setSearchInsumos(e.target.checked)} />
-              <Typography variant="body2">Buscar insumos</Typography>
-            </Box>
-            <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
-              <Button variant="outlined" onClick={() => setStylistDisplayCount((c) => Math.min(c + 10, stylistsAll.length))}>
-                Cargar más estilistas
-              </Button>
-            </Box>
-          </Box>
-        </Box>
-      </Paper>
+    <>
 
-      {/* Cuerpo: dos paneles */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '3fr 2fr' }, gap: 2 }}>
-        {/* Izquierda: tabla de productos */}
-        <Box>
-          <Paper sx={{ height: '60vh', overflow: 'auto', padding: 2 }}>
-            <Typography variant="h6" gutterBottom>Productos</Typography>
-            <Box sx={{ mb: 1 }}>
-              <TextField
-                label="Buscar producto"
-                value={productQuery}
-                onChange={(e) => {
-                  setProductQuery(e.target.value);
-                  setProductPage(1);
-                }}
-                size="small"
-              />
-              <Button sx={{ ml: 2 }} variant="outlined" onClick={() => setProductPage((p) => p + 1)}>
-                Cargar más
-              </Button>
-            </Box>
-            {productsLoading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '40vh' }}>
-                <CircularProgress />
-              </Box>
-            ) : (
-              <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Clave</TableCell>
-                  <TableCell>Descripción</TableCell>
-                  <TableCell>Precio</TableCell>
-                  <TableCell>Costo</TableCell>
-                  <TableCell>IVA</TableCell>
-                  <TableCell>Acciones</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {products.map((p) => {
-                  const unit = p.Precio && p.Precio > 0 ? p.Precio : p.costo_unitario;
-                  return (
-                    <TableRow key={p.clave_prod} hover>
-                      <TableCell>{p.clave_prod}</TableCell>
-                      <TableCell title={p.descripcion}>{p.descripcion}</TableCell>
-                      <TableCell>{unit.toFixed(2)}</TableCell>
-                      <TableCell>{p.costo_unitario.toFixed(2)}</TableCell>
-                      <TableCell>{(p.tasa_iva * 100).toFixed(0)}%</TableCell>
-                      <TableCell>
-                        <Button size="small" variant="contained" onClick={() => addToCart(p)}>
-                          Agregar
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-            )}
-          </Paper>
-        </Box>
-        {/* Derecha: carrito */}
-        <Box>
-          <Paper sx={{ padding: 2, height: '60vh', overflow: 'auto' }}>
-            <Typography variant="h6" gutterBottom>Carrito</Typography>
-            {cart.length === 0 ? (
-              <Typography variant="body2">Sin productos en el carrito.</Typography>
-            ) : (
-              <Box>
-                {cart.map((item) => (
-                  <Box key={item.id} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <Typography sx={{ flex: 1 }}>{item.descripcion}</Typography>
-                    <Button size="small" onClick={() => updateQty(item.id, -1)}>-</Button>
-                    <Typography sx={{ width: 40, textAlign: 'center' }}>{item.cantidad}</Typography>
-                    <Button size="small" onClick={() => updateQty(item.id, +1)}>+</Button>
-                    <Typography sx={{ width: 80, textAlign: 'right', ml: 1 }}>{(item.precio * item.cantidad).toFixed(2)}</Typography>
-                    <Button size="small" color="error" onClick={() => removeFromCart(item.id)}>Quitar</Button>
-                  </Box>
-                ))}
-              </Box>
-            )}
-          </Paper>
-        </Box>
+<Box sx={{ p: { xs: 2, sm: 3 } }}>
+  {/* Sección de cliente */}
+  <Box sx={{ 
+    display: 'flex', 
+    flexDirection: { xs: 'column', sm: 'row' },
+    gap: { xs: 2, sm: 2 }, 
+    alignItems: { xs: 'stretch', sm: 'center' },
+    mb: { xs: 3, sm: 4 }
+  }}>
+    <TextField
+      size={isMobile ? "medium" : "small"}
+      label="Cliente"
+      value={clienteSeleccionado ? `${clienteSeleccionado.nombre} ${clienteSeleccionado.ap_paterno || ''} ${clienteSeleccionado.ap_materno || ''}`.trim() : ""}
+      fullWidth
+      sx={{ 
+        flex: 1,
+        '& .MuiInputBase-root': {
+          height: { xs: 56, sm: 40 }, // Altura consistente
+        }
+      }}
+    />
+    <Box sx={{ 
+      display: 'flex', 
+      gap: { xs: 1, sm: 2 },
+      flexDirection: { xs: 'row', sm: 'row' }
+    }}>
+      <Button
+        size={isMobile ? "medium" : "small"}
+        variant="contained"
+        onClick={() => {
+          setSearchText("");
+          setSearch("");
+          setPage(0);
+          setModalClienteOpen(true);
+        }}
+        sx={{ 
+          minWidth: { xs: 120, sm: 'auto' },
+          height: { xs: 56, sm: 'auto' }
+        }}
+      >
+        Seleccionar
+      </Button>
+      <Button 
+        size={isMobile ? "medium" : "small"} 
+        variant="outlined" 
+        sx={{ 
+          minWidth: { xs: 56, sm: 'auto' },
+          height: { xs: 56, sm: 'auto' }
+        }}
+      >
+        +
+      </Button>
+    </Box>
+  </Box>
+
+  <Divider sx={{ mb: { xs: 3, sm: 4 } }} />
+
+  {/* Sección de agregar venta */}
+  <Box sx={{ mb: { xs: 3, sm: 4 } }}>
+    <Box sx={{ 
+      display: 'grid', 
+      gridTemplateColumns: { 
+        xs: '1fr', 
+        sm: 'repeat(2, 1fr)', 
+        lg: 'repeat(3, 1fr)' 
+      }, 
+      gap: { xs: 2, sm: 2 } 
+    }}>
+      {/* Estilista */}
+      <Box>
+        <FormControl size={isMobile ? "medium" : "small"} fullWidth>
+          <InputLabel id="estilista-label">Estilista</InputLabel>
+          <Select
+            labelId="estilista-label"
+            label="Estilista"
+            value={estilistaSeleccionado}
+            onChange={(e) => setEstilistaSeleccionado(e.target.value)}
+            sx={{
+              '& .MuiInputBase-root': {
+                height: { xs: 56, sm: 40 },
+              }
+            }}
+          >
+            <MenuItem value="">
+              <em>Selecciona</em>
+            </MenuItem>
+            {estilistas.map((est) => (
+              <MenuItem key={est.clave_empleado} value={est.clave_empleado}>
+                {est.nombre}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
       </Box>
 
-      {/* Footer: totales y acciones */}
-      <Paper sx={{ mt: 2, p: 2 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Box>
-            <Typography variant="subtitle1">Totales</Typography>
-            <Typography variant="body2">Subtotal: {subtotal.toFixed(2)}</Typography>
-            <Typography variant="body2">IVA: {tax.toFixed(2)}</Typography>
-            <Typography variant="h6">Total: {total.toFixed(2)}</Typography>
-          </Box>
-          <Box>
-            <Button variant="contained" color="primary" sx={{ mr: 1 }}>Guardar</Button>
-            <Button variant="contained" color="success" sx={{ mr: 1 }}>Finalizar Venta</Button>
-            <Button variant="outlined" color="secondary" sx={{ mr: 1 }}>Cobro</Button>
-            <Button variant="outlined" color="inherit">Totales</Button>
-          </Box>
-        </Box>
-      </Paper>
+      {/* Producto */}
+      <Box sx={{ display: "flex", gap: { xs: 1, sm: 1 }, alignItems: "center" }}>
+        <TextField
+          size={isMobile ? "medium" : "small"}
+          type="text"
+          value={productoSeleccionado ? `${productoSeleccionado.descripcion}  ` : ""}
+          fullWidth
+          placeholder="Seleccionar producto"
+          sx={{
+            '& .MuiInputBase-root': {
+              height: { xs: 56, sm: 40 },
+            }
+          }}
+        />
+        <Button 
+          size={isMobile ? "medium" : "small"} 
+          variant="outlined" 
+          onClick={() => {
+            setPageProductos(0);
+            setSearchProductos("");
+            setEsInsumo(false);
+            setModalProductoOpen(true);
+          }}
+          sx={{ 
+            minWidth: { xs: 80, sm: 'auto' },
+            height: { xs: 56, sm: 'auto' },
+            whiteSpace: 'nowrap'
+          }}
+        >
+          prod
+        </Button>
+      </Box>
+
+      {/* Auxiliar */}
+      <Box sx={{ display: "flex", gap: { xs: 1, sm: 1 }, alignItems: "center" }}>
+        <FormControl size={isMobile ? "medium" : "small"} fullWidth>
+          <InputLabel id="auxiliar-label">Auxiliar</InputLabel>
+          <Select
+            labelId="auxiliar-label"
+            label="Auxiliar"
+            value={auxiliarSeleccionado}
+            onChange={(e) => setAuxiliarSeleccionado(e.target.value)}
+            sx={{
+              '& .MuiInputBase-root': {
+                height: { xs: 56, sm: 40 },
+              }
+            }}
+          >
+            <MenuItem value="">
+              <em>Selecciona</em>
+            </MenuItem>
+            {estilistaAuxiliar?.map((est) => (
+              <MenuItem key={est.clave_empleado} value={est.clave_empleado}>
+                {est.nombre}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <Button 
+          size={isMobile ? "medium" : "small"} 
+          variant="outlined"
+          onClick={handleRegistrar}
+          sx={{ 
+            minWidth: { xs: 100, sm: 'auto' },
+            height: { xs: 56, sm: 'auto' },
+            whiteSpace: 'nowrap'
+          }}
+        >
+          registrar
+        </Button>
+      </Box>
     </Box>
+  </Box>
+
+  {/* Tabla de detalles - responsive */}
+  <Box sx={{ 
+    overflowX: 'auto', // Para scroll horizontal en móviles
+    '& .MuiPaper-root': {
+      minWidth: { xs: 600, sm: 'auto' } // Ancho mínimo para la tabla
+    }
+  }}>
+    <DetalleVentasTable 
+      data={detallesVenta} 
+      onSelect={(id: string) => {
+        setDetallesVenta(prev => prev.filter(detalle => detalle.id !== id));
+      }} 
+    />
+
+<Box sx={{ 
+      display: "flex", 
+      justifyContent: "space-between", 
+      alignItems: "flex-end",
+      mt: { xs: 2, sm: 3 },
+      gap: { xs: 2, sm: 3 }
+    }}>
+      <Box sx={{ 
+        display: "flex", 
+        gap: { xs: 1, sm: 2 }, 
+        flexWrap: "wrap" 
+      }}>
+        <Button 
+          variant="contained" 
+          sx={{ 
+            backgroundColor: 'grey.500',
+            color: 'black',
+            '&:hover': {
+              backgroundColor: 'grey.600',
+            }
+          }}
+          onClick={guardarDatosEnJSON}
+        >
+          Guardar
+        </Button>
+        <Button 
+          variant="contained" 
+          sx={{ 
+            backgroundColor: 'grey.500',
+            color: 'black',
+            '&:hover': {
+              backgroundColor: 'grey.600',
+            }
+          }}
+        >
+          Cobrar
+        </Button>
+        <Button 
+          variant="contained" 
+          sx={{ 
+            backgroundColor: 'grey.500',
+            color: 'black',
+            '&:hover': {
+              backgroundColor: 'grey.600',
+            }
+          }}
+        >
+          Cobrar varios Ctes Tc
+        </Button>
+        <Button 
+          variant="contained" 
+          sx={{ 
+            backgroundColor: 'grey.500',
+            color: 'black',
+            '&:hover': {
+              backgroundColor: 'grey.600',
+            }
+          }}
+        >
+          En proceso
+        </Button>
+        <Button 
+          variant="contained" 
+          sx={{ 
+            backgroundColor: 'grey.500',
+            color: 'black',
+            '&:hover': {
+              backgroundColor: 'grey.600',
+            }
+          }}
+        >
+          Cambiar cliente
+        </Button>
+        <Button 
+          variant="contained" 
+          sx={{ 
+            backgroundColor: 'grey.500',
+            color: 'black',
+            '&:hover': {
+              backgroundColor: 'grey.600',
+            }
+          }}
+        >
+          Salir
+        </Button>
+        <Button 
+          variant="contained" 
+          color="secondary"
+          onClick={cargarDatosDesdeJSON}
+          sx={{ 
+            '&:hover': {
+              backgroundColor: 'grey.700',
+            }
+          }}
+        >
+          Cargar JSON
+        </Button>
+        <Button 
+          variant="contained" 
+          color="warning"
+          onClick={cargarDatosDesdeArchivo}
+          sx={{ 
+            '&:hover': {
+              backgroundColor: 'orange.700',
+            }
+          }}
+        >
+          Cargar Archivo
+        </Button>
+      </Box>
+      
+      <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+        TOTAL: ${total.toFixed(2)}
+      </Typography>
+    </Box>
+
+    
+  </Box>
+</Box>
+
+{/* modals */}
+<Dialog 
+  maxWidth={isMobile ? "sm" : "lg"} 
+  fullWidth
+  open={modalClienteOpen} 
+  onClose={() => setModalClienteOpen(false)}
+  PaperProps={{
+    sx: {
+      m: { xs: 1, sm: 2 },
+      maxHeight: { xs: '90vh', sm: '85vh' }
+    }
+  }}
+>
+  <DialogTitle>Seleccionar Cliente</DialogTitle>
+  <DialogContent sx={{ p: { xs: 2, sm: 3 } }}>
+    <TextField
+      size={isMobile ? "medium" : "small"}
+      label="Buscar cliente"
+      fullWidth
+      sx={{ 
+        mb: { xs: 2, sm: 2 },
+        '& .MuiInputBase-root': {
+          height: { xs: 56, sm: 40 },
+        }
+      }}
+      value={searchText}
+      onChange={(e) => {
+        const value = e.target.value;
+        setSearchText(value);
+        setPage(0);
+        setSearch(value);
+      }}
+    />
+    <Box sx={{ mb: { xs: 2, sm: 2 } }}>
+      <ClientesTable
+        data={clients}
+        onSelect={(cliente) => {
+          setClienteSeleccionado(cliente);
+          setModalClienteOpen(false);
+        }}
+      />
+    </Box>
+    <PaginationControls
+      page={page}
+      total={total}
+      pageSize={pageSize}
+      onChange={setPage}
+    />
+  </DialogContent>
+</Dialog>
+
+<Dialog 
+  maxWidth={isMobile ? "sm" : "lg"} 
+  fullWidth
+  open={modalProductoOpen} 
+  onClose={() => setModalProductoOpen(false)}
+  PaperProps={{
+    sx: {
+      m: { xs: 1, sm: 2 },
+      maxHeight: { xs: '90vh', sm: '85vh' }
+    }
+  }}
+>
+  <DialogTitle>Seleccionar {esInsumo ? "Insumo" : "Producto"}</DialogTitle>
+  <DialogContent sx={{ p: { xs: 2, sm: 3 } }}>
+    <TextField
+      size={isMobile ? "medium" : "small"}
+      label="Buscar producto"
+      fullWidth
+      sx={{ 
+        mb: { xs: 2, sm: 2 },
+        '& .MuiInputBase-root': {
+          height: { xs: 56, sm: 40 },
+        }
+      }}
+      onChange={(e) => {
+        setPageProductos(0);
+        setSearchProductos(e.target.value);
+      }}
+    />
+
+    <Box sx={{ mb: { xs: 2, sm: 2 } }}>
+      <ProductosTable
+        data={productos}
+        onSelect={(producto) => {
+          setProductoSeleccionado(producto);
+          setModalProductoOpen(false);
+        }}
+      />
+    </Box>
+    <PaginationControls
+      page={pageProductos}
+      total={totalProductos}
+      pageSize={pageSizeProductos}
+      onChange={setPageProductos}
+    />
+  </DialogContent>
+</Dialog>
+
+{/* Modal de selección de insumos para productos controlados */}
+<Dialog 
+  maxWidth={isMobile ? "md" : "lg"} 
+  fullWidth
+  open={modalInsumosOpen} 
+  onClose={() => {
+    setModalInsumosOpen(false);
+    setProductoPrincipal(null);
+    setInsumosSeleccionados([]);
+  }}
+  PaperProps={{
+    sx: {
+      m: { xs: 1, sm: 2 },
+      maxHeight: { xs: '90vh', sm: '85vh' }
+    }
+  }}
+>
+  <DialogTitle>
+    Seleccionar Insumos para: {productoPrincipal?.descripcion}
+  </DialogTitle>
+  <DialogContent sx={{ p: { xs: 2, sm: 3 } }}>
+    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+      Este servicio requiere insumos adicionales. Por favor selecciona los insumos necesarios y ajusta las cantidades.
+    </Typography>
+    
+    <TextField
+      size={isMobile ? "medium" : "small"}
+      label="Buscar insumo"
+      fullWidth
+      sx={{ 
+        mb: { xs: 2, sm: 2 },
+        '& .MuiInputBase-root': {
+          height: { xs: 56, sm: 40 },
+        }
+      }}
+      onChange={(e) => {
+        setPageInsumos(0);
+        setSearchInsumos(e.target.value);
+      }}
+    />
+
+    {/* Tabla de insumos disponibles */}
+    <Box sx={{ mb: { xs: 2, sm: 2 }, maxHeight: 300, overflow: 'auto' }}>
+      <ProductosTable
+        data={insumos}
+        onSelect={handleSeleccionarInsumo}
+      />
+    </Box>
+    <PaginationControls
+      page={pageInsumos}
+      total={totalInsumos}
+      pageSize={pageSizeInsumos}
+      onChange={setPageInsumos}
+    />
+
+    {/* Lista de insumos seleccionados */}
+    {insumosSeleccionados.length > 0 && (
+      <Box sx={{ mt: 2, p: 2, backgroundColor: 'grey.50', borderRadius: 1 }}>
+        <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 'bold' }}>
+          Insumos Seleccionados:
+        </Typography>
+        {insumosSeleccionados.map((item, index) => (
+          <Box key={item.producto.clave_prod} sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            py: 1,
+            px: 2,
+            borderBottom: index < insumosSeleccionados.length - 1 ? '1px solid #e0e0e0' : 'none'
+          }}>
+            <Typography variant="body2" sx={{ flex: 1 }}>
+              {item.producto.clave_prod} - {item.producto.descripcion}
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <TextField
+                size="small"
+                type="number"
+                label="Cant"
+                value={item.cantidad}
+                onChange={(e) => handleCantidadInsumo(item.producto.clave_prod, parseInt(e.target.value) || 1)}
+                sx={{ 
+                  width: 80,
+                  '& .MuiInputBase-root': {
+                    height: 32,
+                  }
+                }}
+                inputProps={{ min: 1 }}
+              />
+              <Button
+                size="small"
+                color="error"
+                variant="outlined"
+                onClick={() => handleSeleccionarInsumo(item.producto)}
+              >
+                X
+              </Button>
+            </Box>
+          </Box>
+        ))}
+        
+        <Typography variant="subtitle1" sx={{ mt: 2, fontWeight: 'bold' }}>
+          Total Insumos: ${insumosSeleccionados.reduce((sum, item) => sum + (item.producto.Precio || 0) * item.cantidad, 0).toFixed(2)}
+        </Typography>
+      </Box>
+    )}
+    
+    <Box sx={{ mt: 2, display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+      <Button 
+        variant="outlined" 
+        onClick={() => {
+          setModalInsumosOpen(false);
+          setProductoPrincipal(null);
+          setInsumosSeleccionados([]);
+        }}
+      >
+        Cancelar
+      </Button>
+      <Button 
+        variant="contained" 
+        color="primary"
+        onClick={handleConfirmarInsumos}
+        disabled={insumosSeleccionados.length === 0}
+      >
+        Confirmar Insumos ({insumosSeleccionados.length})
+      </Button>
+    </Box>
+  </DialogContent>
+</Dialog>
+
+    </>
+
+
   );
 }
