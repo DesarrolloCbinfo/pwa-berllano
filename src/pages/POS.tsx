@@ -7,6 +7,7 @@ import PaginationControls from "../components/POS/PaginationControl";
 import { Box, Button, Dialog, DialogContent, DialogTitle, Divider, FormControl, Input, InputLabel, MenuItem, Select, useTheme, useMediaQuery, Typography } from "@mui/material";
 import ProductosTable from "../components/POS/ProductosTable";
 import DetalleVentasTable from "../components/POS/DetalleVentasTable";
+import SideBarHorizontal from "../components/SideBarHorizontal";
 
 type Cliente = {
   No_cliente: string;

@@ -11,13 +11,16 @@ import "@fontsource/lora/600.css";
 import "@fontsource/lora/700.css";
 import App from "./app/App.tsx";
 import { AuthProvider } from "./context/AuthContext.tsx";
+import { SessionProvider } from "./context/SessionProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={new QueryClient()}>
       <AuthProvider>
-        <App />
+        <SessionProvider>
+          <App />
+        </SessionProvider>
       </AuthProvider>
     </QueryClientProvider>
   </StrictMode>
