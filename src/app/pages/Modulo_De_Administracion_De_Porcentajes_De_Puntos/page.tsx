@@ -48,7 +48,6 @@ export default function AdministracionPorcentajesPuntos() {
   const [sucursales, setSucursales] = useState<Sucursal[]>([])
   const [areas, setAreas] = useState<Area[]>([])
   const [departamentos, setDepartamentos] = useState<Departamento[]>([])
-  const [allDepartamentos, setAllDepartamentos] = useState<Departamento[]>([])
   const [formasPago, setFormasPago] = useState<FormaPago[]>([])
 
   const [selectedSucursal, setSelectedSucursal] = useState('')
@@ -68,6 +67,7 @@ export default function AdministracionPorcentajesPuntos() {
     { field: 'area', headerName: 'Área', width: 200 },
     { field: 'depto', headerName: 'Depto.', width: 200 },
     { field: 'forma_pago', headerName: 'Forma Pago', width: 150 },
+    { field: 'porcentaje', headerName: 'Porcentaje', width: 120 },
     {
       field: 'acciones',
       headerName: '',
@@ -89,8 +89,6 @@ export default function AdministracionPorcentajesPuntos() {
   const fetchSucursales = async () => {
     try {
       const res = await consumoApi.get('/api/CatAdminPorcenPuntos/sp_bw_cat_sucursales_sel')
-      console.log('Sucursales cargadas:', res.data)
-      console.log('Primera sucursal:', res.data[0])
       setSucursales(res.data)
     } catch (err) {
       console.error('Error al cargar sucursales:', err)
@@ -134,16 +132,16 @@ export default function AdministracionPorcentajesPuntos() {
       const res = await consumoApi.get(
         '/api/CatAdminPorcenPuntos/sp_bw_administracion_porcentajes_puntos_sel'
       )
-
+      
       const data = res.data.map((item: any, index: number) => ({
         id: index,
         sucursal: item.sucursal,
         area: item.area,
         depto: item.depto,
         forma_pago: item.forma_pago,
+        porcentaje: item.porcentaje_puntos,
       }))
 
-      console.log('Datos mapeados:', data.length)
       setRows(data)
     } catch (err) {
       console.error('Error al cargar porcentajes:', err)
@@ -154,7 +152,6 @@ export default function AdministracionPorcentajesPuntos() {
     const loadData = async () => {
       await fetchSucursales()
       await fetchAreas()
-      // await fetchFormasPago() // Endpoint no desplegado en producción
       await fetchPorcentajesPuntos()
       setLoading(false)
     }
@@ -195,7 +192,7 @@ export default function AdministracionPorcentajesPuntos() {
             sucursal: parseInt(selectedSucursal),
             area: selectedArea,
             depto: selectedDepto,
-            forma_pago: selectedFormaPago,
+            forma_pago: parseInt(selectedFormaPago),
             porcentaje: parseFloat(porcentaje),
           },
         }
@@ -245,13 +242,14 @@ export default function AdministracionPorcentajesPuntos() {
       })
 
       const response = await consumoApi.delete(
-        `/api/CatPorcentajesPuntos/sp_bw_porcentajes_puntos_del`,
+        `/api/CatPorcentajesPuntos/sp_bw_administracion_porcentajes_puntos_del`,
         {
           params: {
             sucursal: rowToDelete.sucursal,
             area: rowToDelete.area,
             depto: rowToDelete.depto,
             forma_pago: rowToDelete.forma_pago,
+            porcentaje: rowToDelete.porcentaje,
           },
         }
       )
@@ -305,13 +303,11 @@ export default function AdministracionPorcentajesPuntos() {
               <Select
                 value={selectedSucursal}
                 onChange={(e) => {
-                  console.log('Sucursal seleccionada:', e.target.value)
-                  console.log('Tipo:', typeof e.target.value)
                   setSelectedSucursal(e.target.value)
                 }}
                 label="Sucursal"
               >
-                {console.log('Renderizando sucursales:', sucursales.length, sucursales)}
+
                 {sucursales.map((sucursal) => (
                   <MenuItem key={sucursal.cve_sucursal} value={String(sucursal.cve_sucursal)}> 
                     {sucursal.nombre}
@@ -371,7 +367,7 @@ export default function AdministracionPorcentajesPuntos() {
               value={porcentaje}
               onChange={(e) => setPorcentaje(e.target.value)}
               sx={{ width: 120 }}
-              inputProps={{ step: "0.01", min: "0", max: "100" }}
+              inputProps={{ step: "0.01", min: "0", max: "1" }}
             />
 
             <Button
@@ -386,6 +382,7 @@ export default function AdministracionPorcentajesPuntos() {
 
           {error && <Alert severity="error" sx={{ mb: 2 }}>Error: {error}</Alert>}
 
+          {/* Seleccionado */}
           <DataGrid
             rows={rows}
             columns={columns}

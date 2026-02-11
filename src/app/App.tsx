@@ -24,6 +24,8 @@ import CatProveedores from './pages/cat_Proveedores/page';
 import AdministracionServiciosInsumos from './pages/Modulo _Administracion_Insumos/page';
 import AdministracionPorcentajesPuntos from './pages/Modulo_De_Administracion_De_Porcentajes_De_Puntos/page';
 import CatProductos from './pages/cat_Productos/page';
+import ConfiguracionPromocionesDescuentoPorcentual from './pages/Configuracion_promociones_descuento_porcentual/page';
+
 
 
 function App() {
@@ -53,7 +55,11 @@ function App() {
          <Route path='/Cat_Proveedores' element={<Layout><CatProveedores/></Layout>} />
          <Route path='/modulo-servicios-insumos' element={<Layout><AdministracionServiciosInsumos/></Layout>} />
          <Route path='/modulo_porcentajes_puntos' element={<Layout><AdministracionPorcentajesPuntos/></Layout>} />
+
          <Route path='/cat_Productos' element={<Layout><CatProductos/></Layout>} />
+
+         <Route path='/config_promociones_descuento_porcentual' element={<Layout><ConfiguracionPromocionesDescuentoPorcentual/></Layout>} />
+
          
 
 
@@ -250,6 +256,14 @@ function App() {
           element={
             <Layout>
               <AdministracionPorcentajesPuntos />
+            </Layout>
+          }
+          />
+          <Route
+          path='/config_promociones_descuento_porcentual'
+          element={
+            <Layout>
+              <ConfiguracionPromocionesDescuentoPorcentual />
             </Layout>
           }
           />
