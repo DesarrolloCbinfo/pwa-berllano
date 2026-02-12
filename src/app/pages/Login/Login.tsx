@@ -27,6 +27,7 @@ const Login: React.FC = () => {
   useLogin()
 
   const navigate = useNavigate();
+  const { setAuthToken } = useAuth(); // Obtener setAuthToken del contexto
   const dataSucursales = useFetchData<ICatSucursal>(CatSucursalApis.get);
   const { consumoApi } = useConsumoApi();
   const { setSession } = useSessionContext(); // Obtener setSession del contexto
@@ -54,7 +55,19 @@ const [sucData, setSucData] = useState({ idSuc: 0, dSuc: "" });
   const finalizarSesion = (usuarioFinal: IUsuario) => {
     localStorage.setItem("userLoggedv2", JSON.stringify(usuarioFinal));
     setSession(usuarioFinal);
-    navigate(routes.mainMenu);
+    
+    // Crear objeto token compatible con AuthContext
+    const tokenData = {
+      claveDepartamento: usuarioFinal.idDepartamento || 0,
+      clavePerfiles: usuarioFinal.clavePerfil || 0,
+      contra: usuarioFinal.password || "",
+      mensaje: "Autenticación exitosa",
+      nombre: usuarioFinal.nombre || "",
+      usuario: usuarioFinal.claveEmpleado || ""
+    };
+    
+    setAuthToken(tokenData);
+    navigate(routes.pos);
   };
 
 const handleNavigation = async () => {
@@ -136,7 +149,7 @@ const handleConfirmarSucursal = () => {
   console.log("Sesión actualizada en contexto desde modal:", usuarioFinal);
   
   setModalSucursal(false);
-  navigate(routes.mainMenu);
+  navigate(routes.pos);
 };
 
 
@@ -149,7 +162,19 @@ const handleConfirmarSucursal = () => {
 
       if(response.data.acceso === 1) {
         localStorage.setItem("userLoggedv2", JSON.stringify(response.data));
-        navigate(routes.mainMenu);
+        
+        // Crear objeto token compatible con AuthContext
+        const tokenData = {
+          claveDepartamento: response.data.idDepartamento || 0,
+          clavePerfiles: response.data.clavePerfil || 0,
+          contra: response.data.password || "",
+          mensaje: "Autenticación exitosa",
+          nombre: response.data.nombre || "",
+          usuario: response.data.claveEmpleado || ""
+        };
+        
+        setAuthToken(tokenData);
+        navigate(routes.pos);
       } 
     } catch (error) {
       Swal.fire({

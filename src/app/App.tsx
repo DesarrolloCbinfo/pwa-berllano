@@ -36,7 +36,7 @@ function App() {
         <Routes>
           <Route path='/login' element={<Login />} />
 
-          <Route path="/pos" element={<Layout><POS /></Layout>} />
+          <Route path='/pos' element={<Layout><POS /></Layout>} />
 
           <Route path='/' element={<Layout><Home /></Layout>} />
           <Route path='/demo' element={<Layout><Page /></Layout>} />
@@ -60,117 +60,6 @@ function App() {
 
          <Route path='/config_promociones_descuento_porcentual' element={<Layout><ConfiguracionPromocionesDescuentoPorcentual/></Layout>} />
 
-         
-
-
-          <Route
-            path='/pos'
-            element={
-              <Layout>
-                <POS />
-              </Layout>
-            }
-          />
-
-
-          <Route
-            path='/'
-            element={
-              <Layout>
-                <Home />
-              </Layout>
-            }
-          />
-          <Route
-            path='/demo'
-            element={
-              <Layout>
-                <Page />
-              </Layout>
-            }
-          />
-          <Route
-            path='/demoStepper'
-            element={
-              <Layout>
-                <DemoStepper />
-              </Layout>
-            }
-          />
-          <Route
-            path='/generadorFormularios'
-            element={
-              <Layout>
-                <GeneradorFormularios />
-              </Layout>
-            }
-          />
-          <Route
-            path='/recepcion'
-            element={
-              <Layout>
-                <RecepcionMercancia />
-              </Layout>
-            }
-          />
-          <Route
-            path='/catalogos'
-            element={
-              <Layout>
-                <Catalogos />
-              </Layout>
-            }
-          />
-          <Route
-            path='/cat_Areas'
-            element={
-              <Layout>
-                <CatAreas />
-              </Layout>
-            }
-          />
-          <Route
-            path='/cat_Tipo_Descuento'
-            element={
-              <Layout>
-                <CatTipoDescuentos />
-              </Layout>
-            }
-          />
-          <Route
-            path='/cat_Compradores'
-            element={
-              <Layout>
-                <CatCompradores />
-              </Layout>
-            }
-          />
-          <Route
-            path='/cat_Marcas'
-            element={
-              <Layout>
-                <CatMarcas />
-              </Layout>
-            }
-          />
-          <Route
-            path='/cat_Sucursales'
-            element={
-              <Layout>
-                <CatSucursales />
-              </Layout>
-            }
-          />
-
-          <Route
-            path='/cat_Clientes'
-            element={
-              <Layout>
-                <CatCliente />
-              </Layout>
-            }
-          />
-
           <Route
             path='/'
             element={
@@ -244,12 +133,12 @@ function App() {
             }
           />
           <Route
-            path='/modulo-servicios-insumos'
-            element={
-              <Layout>
-                <AdministracionServiciosInsumos />
-              </Layout>
-            }
+          path='/modulo-servicios-insumos'
+          element={
+            <Layout>
+              <AdministracionServiciosInsumos />
+            </Layout>
+          }
           />
           <Route
           path='/modulo_porcentajes_puntos'
@@ -263,7 +152,7 @@ function App() {
           path='/config_promociones_descuento_porcentual'
           element={
             <Layout>
-              <ConfiguracionPromocionesDescuentoPorcentual />
+              <ConfiguracionPromocionesDescuentoPorcentual/>
             </Layout>
           }
           />
