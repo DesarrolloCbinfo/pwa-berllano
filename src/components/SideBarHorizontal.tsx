@@ -23,8 +23,8 @@ import Swal from "sweetalert2";
 import "../assets/styles/sidebar.css";
 import logoImage from "../assets/imgs/berllanoLogo.png";
 import useFetchData from "../hooks/useFetchData";
-import { ICatSucursal } from "../pages/CatSucursal/interfaces/ICatSucursal";
-import { CatSucursalApis } from "../pages/CatSucursal/apis/CatSucursalApis";
+import { ICatSucursal } from "../app/pages/CatSucursal/interfaces/ICatSucursal";
+import { CatSucursalApis } from "../app/pages/CatSucursal/apis/CatSucursalApis";
 import useSession from "../hooks/useSession";
 import { useSessionContext } from "../context/SessionProvider";
 import { routes } from "../utils/Routes";
@@ -181,8 +181,6 @@ const SidebarHorizontal = () => {
             <MenuItem onClick={() => navigate(routes.pos)}>Corte Dia</MenuItem>   
         </Menu>
 
-        {/* Espacio flexible para empujar PERFIL a la derecha */}
-        <Box sx={{ flexGrow: 1 }} />
 
         {/* PERFIL */}
         <Button

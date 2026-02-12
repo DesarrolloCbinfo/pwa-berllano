@@ -4,7 +4,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import theme from '../theme/theme';
 import Page from './pages/demo/page';
-import POS from '../pages/POS';
+import POS from './pages/POS';
 import Home from './pages/Home/Home';
 import GeneradorFormularios from './pages/GeneradorFormularios/GeneradorFormularios';
 import DemoStepper from './pages/DemoStepper/DemoStepper';
