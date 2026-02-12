@@ -1,9 +1,9 @@
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import SidebarHorizontal from './SideBarHorizontal';
 import { Box, Container, Typography } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router';
-import { useEffect } from 'react';
+import useSession from '../hooks/useSession';
 import watermarkImage from '../assets/imgs/berllanoLogo.png'; // Importar imagen
 
 type LayoutProps = {
@@ -11,28 +11,59 @@ type LayoutProps = {
 };
 
 export default function Layout({ children }: LayoutProps) {
-  const { isAuthenticated, logout, token } = useAuth();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const session = useSession(); // Obtener datos de sesión
+  const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
+    // Evitar bucle infinito - solo ejecutar una vez
+    if (!isChecking) return;
+
+    // Verificar autenticación básica
     if (!isAuthenticated()) {
       navigate('/login');
+      setIsChecking(false);
+      return;
     }
 
+    // Verificar si hay datos de sesión válidos
+    if (!session || !session.claveEmpleado) {
+      console.log('No hay sesión válida, redirigiendo a login');
+      navigate('/login');
+      setIsChecking(false);
+      return;
+    }
+
+    // Si todo está bien, permitir acceso
+    console.log('Sesión válida, permitiendo acceso');
+    setIsChecking(false);
+
     window.addEventListener('storage', () => {
-      if (!isAuthenticated()) {
+      if (!isAuthenticated() || !session || !session.claveEmpleado) {
         navigate('/login');
       }
     });
 
     return () => {
       window.removeEventListener('storage', () => {
-        if (!isAuthenticated()) {
+        if (!isAuthenticated() || !session || !session.claveEmpleado) {
           navigate('/login');
         }
       });
     };
-  }, [isAuthenticated, navigate, logout, token, children]);
+  }, [isChecking]); // Solo dependemos de isChecking
+
+  // Mostrar estado de carga mientras verificamos
+  if (isChecking) {
+    return (
+      <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', justifyContent: 'center', alignItems: 'center' }}>
+        <Typography variant='h6'>
+          Verificando sesión...
+        </Typography>
+      </Box>
+    );
+  }
 
   return (
     <>

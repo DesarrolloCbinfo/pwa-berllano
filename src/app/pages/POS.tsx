@@ -1,13 +1,13 @@
 import React, { useEffect } from "react";
 import TextField from "@mui/material/TextField";
-import useConsumoApi from "../hooks/useConsumoApi";
-import { useServerTable } from "../hooks/useServerTable";
-import ClientesTable from "../components/POS/ClientesTable";
-import PaginationControls from "../components/POS/PaginationControl";
-import { Box, Button, Dialog, DialogContent, DialogTitle, Divider, FormControl, Input, InputLabel, MenuItem, Select, useTheme, useMediaQuery, Typography } from "@mui/material";
-import ProductosTable from "../components/POS/ProductosTable";
-import DetalleVentasTable from "../components/POS/DetalleVentasTable";
-import SideBarHorizontal from "../components/SideBarHorizontal";
+import useConsumoApi from "../../hooks/useConsumoApi";
+import { useServerTable } from "../../hooks/useServerTable";
+import ClientesTable from "../../components/POS/ClientesTable";
+import PaginationControls from "../../components/POS/PaginationControl";
+import { Box, Button, Dialog, DialogContent, DialogTitle, Divider, FormControl, InputLabel, MenuItem, Select, useTheme, useMediaQuery, Typography } from "@mui/material";
+import ProductosTable from "../../components/POS/ProductosTable";
+import DetalleVentasTable from "../../components/POS/DetalleVentasTable";
+import useCantidadesProducto from "../../hooks/useCantidadesProducto";
 
 type Cliente = {
   No_cliente: string;
@@ -73,6 +73,55 @@ export default function POS() {
   const [modalInsumosOpen, setModalInsumosOpen] = React.useState(false);
   const [productoPrincipal, setProductoPrincipal] = React.useState<Producto | null>(null);
   const [insumosSeleccionados, setInsumosSeleccionados] = React.useState<Array<{producto: Producto, cantidad: number}>>([]);
+  const [insumoSeleccionadoParaCantidades, setInsumoSeleccionadoParaCantidades] = React.useState<string | null>(null);
+  const [cantidadesCache, setCantidadesCache] = React.useState<Record<string, number[]>>({});
+  const [insumoCargandoCantidades, setInsumoCargandoCantidades] = React.useState<string | null>(null);
+  
+  // Hook para obtener cantidades disponibles del insumo seleccionado
+  const { cantidades, loading: loadingCantidades } = useCantidadesProducto(insumoSeleccionadoParaCantidades);
+
+  // Cache de cantidades para evitar múltiples llamadas
+  React.useEffect(() => {
+    if (insumoSeleccionadoParaCantidades && cantidades.length > 0) {
+      setCantidadesCache(prev => ({
+        ...prev,
+        [insumoSeleccionadoParaCantidades]: cantidades
+      }));
+      setInsumoCargandoCantidades(null);
+    }
+  }, [insumoSeleccionadoParaCantidades, cantidades]);
+
+  // Efecto para cargar cantidades cuando se selecciona un insumo nuevo (no está en cache)
+  React.useEffect(() => {
+    if (insumosSeleccionados.length > 0) {
+      // Buscar el último insumo que no tenga cantidades en cache
+      const insumoSinCache = [...insumosSeleccionados].reverse().find(
+        item => !cantidadesCache[item.producto.clave_prod]
+      );
+      if (insumoSinCache) {
+        setInsumoCargandoCantidades(insumoSinCache.producto.clave_prod);
+        setInsumoSeleccionadoParaCantidades(insumoSinCache.producto.clave_prod);
+      }
+    }
+  }, [insumosSeleccionados, cantidadesCache]);
+
+  // Efecto para actualizar la cantidad inicial cuando lleguen las cantidades del API
+  React.useEffect(() => {
+    if (insumoSeleccionadoParaCantidades && cantidades.length > 0) {
+      // Verificar si el insumo actual tiene cantidad inicial que no está en las cantidades disponibles
+      setInsumosSeleccionados(prev => 
+        prev.map(item => {
+          if (item.producto.clave_prod === insumoSeleccionadoParaCantidades) {
+            // Si la cantidad actual no está en las nuevas cantidades, usar la primera disponible
+            if (!cantidades.includes(item.cantidad)) {
+              return { ...item, cantidad: cantidades[0] };
+            }
+          }
+          return item;
+        })
+      );
+    }
+  }, [insumoSeleccionadoParaCantidades, cantidades]);
 
   const [clienteSeleccionado, setClienteSeleccionado] = React.useState<
   Cliente | null
@@ -275,6 +324,8 @@ const [detallesVenta, setDetallesVenta] = React.useState<DetalleVenta[]>([]);
     } else {
       // Agregar a la selección con cantidad 1
       setInsumosSeleccionados(prev => [...prev, { producto: insumo, cantidad: 1 }]);
+      // Establecer el insumo seleccionado para cargar sus cantidades disponibles
+      setInsumoSeleccionadoParaCantidades(insumo.clave_prod);
     }
   };
 
@@ -282,7 +333,7 @@ const [detallesVenta, setDetallesVenta] = React.useState<DetalleVenta[]>([]);
     setInsumosSeleccionados(prev => 
       prev.map(item => 
         item.producto.clave_prod === clave_prod 
-          ? { ...item, cantidad: Math.max(1, cantidad) }
+          ? { ...item, cantidad: Math.max(0.001, cantidad) }
           : item
       )
     );
@@ -938,20 +989,30 @@ const {
               {item.producto.clave_prod} - {item.producto.descripcion}
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <TextField
-                size="small"
-                type="number"
-                label="Cant"
-                value={item.cantidad}
-                onChange={(e) => handleCantidadInsumo(item.producto.clave_prod, parseInt(e.target.value) || 1)}
-                sx={{ 
-                  width: 80,
-                  '& .MuiInputBase-root': {
-                    height: 32,
-                  }
-                }}
-                inputProps={{ min: 1 }}
-              />
+              <FormControl size="small" sx={{ width: 100 }}>
+                <InputLabel id={`cantidad-label-${item.producto.clave_prod}`}>Cant</InputLabel>
+                <Select
+                  labelId={`cantidad-label-${item.producto.clave_prod}`}
+                  value={item.cantidad}
+                  label="Cant"
+                  onChange={(e) => handleCantidadInsumo(item.producto.clave_prod, Number(e.target.value))}
+                  sx={{ 
+                    '& .MuiInputBase-root': {
+                      height: 32,
+                    }
+                  }}
+                >
+                  {insumoCargandoCantidades === item.producto.clave_prod && loadingCantidades ? (
+                    <MenuItem disabled>Cargando...</MenuItem>
+                  ) : (
+                    (cantidadesCache[item.producto.clave_prod] || [1]).map((cantidad) => (
+                      <MenuItem key={cantidad} value={cantidad}>
+                        {cantidad}
+                      </MenuItem>
+                    ))
+                  )}
+                </Select>
+              </FormControl>
               <Button
                 size="small"
                 color="error"
