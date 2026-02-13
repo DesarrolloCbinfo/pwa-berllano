@@ -2,9 +2,10 @@ import React, { useEffect } from "react";
 import TextField from "@mui/material/TextField";
 import useConsumoApi from "../../hooks/useConsumoApi";
 import { useServerTable } from "../../hooks/useServerTable";
+import useSession from "../../hooks/useSession";
 import ClientesTable from "../../components/POS/ClientesTable";
 import PaginationControls from "../../components/POS/PaginationControl";
-import { Box, Button, Dialog, DialogContent, DialogTitle, Divider, FormControl, InputLabel, MenuItem, Select, useTheme, useMediaQuery, Typography } from "@mui/material";
+import { Box, Button, Dialog, DialogContent, DialogTitle, Divider, FormControl, InputLabel, MenuItem, Select, useTheme, useMediaQuery, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, CircularProgress } from "@mui/material";
 import ProductosTable from "../../components/POS/ProductosTable";
 import DetalleVentasTable from "../../components/POS/DetalleVentasTable";
 import useCantidadesProducto from "../../hooks/useCantidadesProducto";
@@ -41,6 +42,39 @@ type Producto = {
 type Auxiliar = {
   clave_empleado: string;
   nombre: string;
+};
+
+type InsumoDetalle = {
+  clave_prod: string;
+  d_producto: string;
+  cantidad: number;
+  precio: number;
+  importe: number;
+};
+
+type ProductoVenta = {
+  clave_prod: string;
+  d_producto: string;
+  cantidad: number;
+  precio: number;
+  importe: number;
+  tiempo: string;
+  id_estilista: string;
+  d_estilista: string;
+  id_auxiliar: string;
+  d_estilista_auxiliar: string | null;
+  hora: string;
+  insumos: InsumoDetalle[];
+};
+
+type VentaEnProceso = {
+  cve_cliente: string;
+  d_cliente: string;
+  user: string;
+  d_estilista: string;
+  importe: number;
+  sucursal: number;
+  productos: ProductoVenta[];
 };
 
 type DetalleVenta = {
@@ -135,6 +169,14 @@ const [esInsumo, setEsInsumo] = React.useState(false);
 
 const [detallesVenta, setDetallesVenta] = React.useState<DetalleVenta[]>([]);
 
+const session = useSession();
+const sucursal = session?.sucursal || 1;
+
+const [ventasEnProceso, setVentasEnProceso] = React.useState<VentaEnProceso[]>([]);
+const [modalVentasEnProcesoOpen, setModalVentasEnProcesoOpen] = React.useState(false);
+const [loadingVentasEnProceso, setLoadingVentasEnProceso] = React.useState(false);
+const [guardandoVenta, setGuardandoVenta] = React.useState(false);
+
   // Función para cargar datos desde JSON (para desarrollo/pruebas)
   const cargarDatosDesdeJSON = () => {
     const datosEjemplo = [
@@ -205,45 +247,59 @@ const [detallesVenta, setDetallesVenta] = React.useState<DetalleVenta[]>([]);
     setDetallesVenta(datosEjemplo);
   };
 
-  // Función para guardar datos en JSON
-  const guardarDatosEnJSON = () => {
+  // Función para guardar datos en la base de datos
+  const guardarVenta = async () => {
+    // Validar que haya datos
+    if (!clienteSeleccionado || !estilistaSeleccionado || detallesVenta.length === 0) {
+      alert('Por favor selecciona un cliente, estilista y al menos un producto');
+      return;
+    }
+
+    setGuardandoVenta(true);
     try {
-      // Crear objeto con todos los datos
-      const datosCompletos = {
-        cliente: clienteSeleccionado ? {
-          No_cliente: clienteSeleccionado.No_cliente,
-          nombre: clienteSeleccionado.nombre,
-          ap_paterno: clienteSeleccionado.ap_paterno,
-          ap_materno: clienteSeleccionado.ap_materno
-        } : null,
-        detalles: detallesVenta,
-        fecha: new Date().toISOString(),
-        sucursal: 1,
-        total: detallesVenta.reduce((sum, detalle) => sum + detalle.importe, 0),
+      // Construir el payload para el API
+      const payload = {
+        sucursal: sucursal,
+        cve_cliente: clienteSeleccionado.No_cliente,
         estilista: estilistaSeleccionado,
-        auxiliar: auxiliarSeleccionado
+        auxiliar: auxiliarSeleccionado || '',
+        productos: detallesVenta.map(detalle => ({
+          clave_prod: detalle.clave_prod,
+          cantidad: detalle.Cant,
+          precio: detalle.precio,
+          descuento: detalle.descuento,
+          tiempo: detalle.tiempo,
+          hora: detalle.hora,
+          insumos: (detalle.insumos || []).map(insumo => ({
+            clave_prod: insumo.clave_prod,
+            cantidad: insumo.Cant
+          }))
+        }))
       };
 
-      // Convertir a JSON string con formato bonito
-      const jsonString = JSON.stringify(datosCompletos, null, 2);
-      
-      // Crear blob y descargar
-      const blob = new Blob([jsonString], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      
-      // Crear enlace de descarga
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `venta_${new Date().toISOString().split('T')[0]}_${Date.now()}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      
-      alert('Datos guardados exitosamente');
-    } catch (error) {
-      console.error('Error guardando datos:', error);
-      alert('Error al guardar los datos');
+
+// //       console.log(JSON.stringify(payload));
+// return;
+      const res = await consumoApi.post(
+        '/api/PuntoDeVenta/sp_fw_pos_guardar_venta',
+        payload
+      );
+
+      if (res.data?.ok === 1) {
+        alert(res.data.mensaje || 'Venta guardada correctamente');
+        // Limpiar la tabla después de guardar
+        setDetallesVenta([]);
+        setClienteSeleccionado(null);
+        setEstilistaSeleccionado('');
+        setAuxiliarSeleccionado('');
+      } else {
+        alert(res.data?.mensaje || 'Error al guardar la venta');
+      }
+    } catch (error: any) {
+      console.error('Error guardando venta:', error);
+      alert(error.response?.data?.mensaje || 'Error al guardar la venta');
+    } finally {
+      setGuardandoVenta(false);
     }
   };
 
@@ -474,6 +530,85 @@ const fetchInsumos = async ({ page, pageSize, search }: any) => {
     data,
     total: data[0]?.total_registros ?? 0,
   };
+};
+
+const fetchVentasEnProceso = async () => {
+  setLoadingVentasEnProceso(true);
+  try {
+    const res = await consumoApi.get(
+      `/api/PuntoDeVenta/sp_bw_pos_ventas_en_proceso?sucursal=${sucursal}`
+    );
+    setVentasEnProceso(res.data ?? []);
+  } catch (error) {
+    console.error("Error al cargar ventas en proceso:", error);
+    setVentasEnProceso([]);
+  } finally {
+    setLoadingVentasEnProceso(false);
+  }
+};
+
+const fetchDetalleVenta = async (cliente: string, estilista: string) => {
+  setLoadingVentasEnProceso(true);
+  try {
+    const res = await consumoApi.get(
+      `/api/PuntoDeVenta/sp_fw_pos_recupera_detalle_venta?sucursal=${sucursal}&cliente=${cliente}&estilista=${estilista}`
+    );
+    const venta: VentaEnProceso = res.data;
+    
+    // Convertir la estructura del DTO a DetalleVenta[]
+    const detalles: DetalleVenta[] = [];
+    
+    for (const producto of venta.productos) {
+      const productoDetalle: DetalleVenta = {
+        id: `${producto.clave_prod}-${Date.now()}-${Math.random()}`,
+        estilista: producto.id_estilista,
+        d_estilista: producto.d_estilista,
+        hora: producto.hora,
+        clave_prod: producto.clave_prod,
+        d_producto: producto.d_producto,
+        tiempo: producto.tiempo || '00:00',
+        Cant: producto.cantidad,
+        precio: producto.precio,
+        importe: producto.importe,
+        descuento: 0,
+        auxiliar: producto.id_auxiliar || '',
+        d_auxiliar: producto.d_estilista_auxiliar || '',
+        insumos: producto.insumos?.map(insumo => ({
+          id: `${insumo.clave_prod}-${Date.now()}-${Math.random()}`,
+          estilista: producto.id_estilista,
+          d_estilista: producto.d_estilista,
+          hora: producto.hora,
+          clave_prod: insumo.clave_prod,
+          d_producto: insumo.d_producto,
+          tiempo: '00:00',
+          Cant: insumo.cantidad,
+          precio: insumo.precio,
+          importe: insumo.importe,
+          descuento: 0,
+          auxiliar: producto.id_auxiliar || '',
+          d_auxiliar: producto.d_estilista_auxiliar || '',
+        }))
+      };
+      detalles.push(productoDetalle);
+    }
+    
+    setDetallesVenta(detalles);
+    
+    // También configurar el cliente y estilista seleccionados
+    setClienteSeleccionado({
+      No_cliente: venta.cve_cliente,
+      nombre: venta.d_cliente,
+      ap_paterno: null,
+      ap_materno: null
+    });
+    setEstilistaSeleccionado(venta.user);
+    
+    setModalVentasEnProcesoOpen(false);
+  } catch (error) {
+    console.error("Error al cargar detalle de venta:", error);
+  } finally {
+    setLoadingVentasEnProceso(false);
+  }
 };
 
 
@@ -717,9 +852,10 @@ const {
               backgroundColor: 'grey.600',
             }
           }}
-          onClick={guardarDatosEnJSON}
+          onClick={guardarVenta}
+          disabled={guardandoVenta}
         >
-          Guardar
+          {guardandoVenta ? 'Guardando...' : 'Guardar'}
         </Button>
         <Button 
           variant="contained" 
@@ -754,6 +890,10 @@ const {
               backgroundColor: 'grey.600',
             }
           }}
+          onClick={() => {
+            fetchVentasEnProceso();
+            setModalVentasEnProcesoOpen(true);
+          }}
         >
           En proceso
         </Button>
@@ -780,18 +920,6 @@ const {
           }}
         >
           Salir
-        </Button>
-        <Button 
-          variant="contained" 
-          color="secondary"
-          onClick={cargarDatosDesdeJSON}
-          sx={{ 
-            '&:hover': {
-              backgroundColor: 'grey.700',
-            }
-          }}
-        >
-          Cargar JSON
         </Button>
         <Button 
           variant="contained" 
@@ -1051,6 +1179,64 @@ const {
         Confirmar Insumos ({insumosSeleccionados.length})
       </Button>
     </Box>
+  </DialogContent>
+</Dialog>
+
+{/* Modal de Ventas en Proceso */}
+<Dialog 
+  maxWidth="md" 
+  fullWidth
+  open={modalVentasEnProcesoOpen} 
+  onClose={() => setModalVentasEnProcesoOpen(false)}
+  PaperProps={{
+    sx: {
+      m: { xs: 1, sm: 2 },
+      maxHeight: { xs: '90vh', sm: '85vh' }
+    }
+  }}
+>
+  <DialogTitle>Ventas en Proceso - Sucursal {sucursal}</DialogTitle>
+  <DialogContent sx={{ p: { xs: 2, sm: 3 } }}>
+    {loadingVentasEnProceso ? (
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+        <CircularProgress />
+      </Box>
+    ) : ventasEnProceso.length === 0 ? (
+      <Typography variant="body1" sx={{ p: 2, textAlign: 'center' }}>
+        No hay ventas en proceso
+      </Typography>
+    ) : (
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Cliente</TableCell>
+              <TableCell>Estilista</TableCell>
+              <TableCell align="right">Importe</TableCell>
+              <TableCell align="center">Acciones</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {ventasEnProceso.map((venta, index) => (
+              <TableRow key={index}>
+                <TableCell>{venta.d_cliente}</TableCell>
+                <TableCell>{venta.d_estilista}</TableCell>
+                <TableCell align="right">${venta.importe.toFixed(2)}</TableCell>
+                <TableCell align="center">
+                  <Button 
+                    variant="contained" 
+                    size="small"
+                    onClick={() => fetchDetalleVenta(venta.cve_cliente, venta.user)}
+                  >
+                    Cargar
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    )}
   </DialogContent>
 </Dialog>
 

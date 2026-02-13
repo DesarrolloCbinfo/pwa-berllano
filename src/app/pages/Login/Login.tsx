@@ -18,7 +18,7 @@ import logoImage from "../../../assets/imgs/imgLogin.jpg";
 import nombreLogo from "../../../assets/imgs/berllanoLogo.png";
 
 
-const MOSTRAR_SELECTOR_SUCURSAL = 0;
+const MOSTRAR_SELECTOR_SUCURSAL = 1;
 
 
 
