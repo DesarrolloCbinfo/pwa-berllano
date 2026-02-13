@@ -3,7 +3,7 @@ import SidebarHorizontal from './SideBarHorizontal';
 import { Box, Container, Typography } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router';
-import useSession from '../hooks/useSession';
+import { useSessionContext } from '../context/SessionProvider';
 import watermarkImage from '../assets/imgs/berllanoLogo.png'; // Importar imagen
 
 type LayoutProps = {
@@ -13,10 +13,13 @@ type LayoutProps = {
 export default function Layout({ children }: LayoutProps) {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  const session = useSession(); // Obtener datos de sesión
+  const { session, isLoading } = useSessionContext(); // Obtener datos de sesión y estado de carga
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
+    // Esperar a que la sesión termine de cargar
+    if (isLoading) return;
+
     // Evitar bucle infinito - solo ejecutar una vez
     if (!isChecking) return;
 
@@ -52,7 +55,7 @@ export default function Layout({ children }: LayoutProps) {
         }
       });
     };
-  }, [isChecking]); // Solo dependemos de isChecking
+  }, [isChecking, isLoading, session]); // Dependemos de isLoading y session
 
   // Mostrar estado de carga mientras verificamos
   if (isChecking) {
