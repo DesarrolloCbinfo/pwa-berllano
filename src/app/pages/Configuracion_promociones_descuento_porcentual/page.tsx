@@ -6,19 +6,19 @@ import useConsumoApi from '../../../hooks/useConsumoApi'
 import PWABadge from '../../../PWABadge'
 
 interface Promocion {
-  id: string
-  nombre_promo: string
+  id: number
+  nombrePromo: string
   sucursal: string
-  del: string
-  al: string
+  f1: string
+  f2: string
   area: string
   depto: string
   marca: string
   familia: string
-  producto: string
-  cant: number
-  desc_porcentaje: number
-  descuento: string
+  clave_prod: string
+  cantidad: number
+  descuento: number
+  idDescuento: string
 }
 
 interface Sucursal {
@@ -37,17 +37,22 @@ interface Departamento {
 }
 
 interface Marca {
+  id: number
   marca: string
-  descripcion: string
 }
 
 interface Familia {
-  familia: string
+  clave: number
   descripcion: string
 }
 
 interface Producto {
-  producto: string
+  clave_prod: string
+  descripcion: string
+}
+
+interface TipoDescuento {
+  tipo_descuento: number
   descripcion: string
 }
 
@@ -63,6 +68,7 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
   const [marcas, setMarcas] = useState<Marca[]>([])
   const [familias, setFamilias] = useState<Familia[]>([])
   const [productos, setProductos] = useState<Producto[]>([])
+  const [tiposDescuento, setTiposDescuento] = useState<TipoDescuento[]>([])
 
   const [nombrePromo, setNombrePromo] = useState('')
   const [selectedSucursal, setSelectedSucursal] = useState('')
@@ -76,6 +82,7 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
   const [cantidad, setCantidad] = useState('')
   const [descPorcentaje, setDescPorcentaje] = useState('')
   const [descuento, setDescuento] = useState('')
+  const [selectedTipoDescuento, setSelectedTipoDescuento] = useState('')
 
   const [saving, setSaving] = useState(false)
 
@@ -87,7 +94,7 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
     {
       field: 'acciones',
       headerName: 'Acciones',
-      width: 100,
+      width: 90,
       sortable: false,
       filterable: false,
       renderCell: (params) => (
@@ -100,23 +107,23 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
         </IconButton>
       ),
     },
-    { field: 'nombre_promo', headerName: 'Nombre Promo', width: 140 },
-    { field: 'sucursal', headerName: 'Sucursal', width: 110 },
-    { field: 'del', headerName: 'Del', width: 90 },
-    { field: 'al', headerName: 'Al', width: 90 },
-    { field: 'area', headerName: 'Area', width: 140 },
-    { field: 'depto', headerName: 'Depto', width: 190 },
-    { field: 'marca', headerName: 'Marca', width: 140 },
-    { field: 'familia', headerName: 'Familia', width: 140 },
-    { field: 'producto', headerName: 'Producto', width: 1900 },
-    { field: 'cant', headerName: 'Cant', width: 70 },
-    { field: 'desc_porcentaje', headerName: 'Desc %', width: 80 },
-    { field: 'descuento', headerName: 'Descuento', width: 140 },
+    { field: 'nombrePromo', headerName: 'Nombre Promo', width: 130 },
+    { field: 'sucursal', headerName: 'Sucursal', width: 100 },
+    { field: 'f1', headerName: 'Del', width: 90 },
+    { field: 'f2', headerName: 'Al', width: 90 },
+    { field: 'area', headerName: 'Area', width: 120 },
+    { field: 'depto', headerName: 'Depto', width: 180 },
+    { field: 'marca', headerName: 'Marca', width: 120 },
+    { field: 'familia', headerName: 'Familia', width: 120 },
+    { field: 'clave_prod', headerName: 'Producto', width: 200 },
+    { field: 'cantidad', headerName: 'Cant', width: 60 },
+    { field: 'descuento', headerName: 'Desc %', width: 80 },
+    { field: 'idDescuento', headerName: 'Descuento', width: 120 },
   ]
 
   const fetchSucursales = async () => {
     try {
-      const res = await consumoApi.get('/api/ConfigPromoDescPorcentual/sp_bw_cat_sucursales_sel')
+      const res = await consumoApi.get('/api/CatConfigPromoDescPorcen/sp_bw_cat_sucursales_sel')
       setSucursales(res.data)
     } catch (err) {
       console.error('Error al cargar sucursales:', err)
@@ -125,7 +132,7 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
 
   const fetchAreas = async () => {
     try {
-      const res = await consumoApi.get('/api/ConfigPromoDescPorcentual/sp_bw_cat_areas_sel')
+      const res = await consumoApi.get('/api/CatConfigPromoDescPorcen/sp_bw_cat_areas_sel?area=0')
       setAreas(res.data)
     } catch (err) {
       console.error('Error al cargar áreas:', err)
@@ -134,9 +141,7 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
 
   const fetchDepartamentos = async (area: string) => {
     try {
-      const res = await consumoApi.get('/api/ConfigPromoDescPorcentual/sp_bw_cat_deptos_sel', {
-        params: { area }
-      })
+      const res = await consumoApi.get(`/api/CatConfigPromoDescPorcen/sp_bw_cat_deptos_sel?area=${area}`)
       setDepartamentos(res.data)
     } catch (err) {
       console.error('Error al cargar departamentos:', err)
@@ -145,16 +150,16 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
 
   const fetchMarcas = async () => {
     try {
-      const res = await consumoApi.get('/api/ConfigPromoDescPorcentual/sp_bw_cat_marcas_sel')
+      const res = await consumoApi.get('/api/CatConfigPromoDescPorcen/sp_bw_cat_marcas_sel?id=0')
       setMarcas(res.data)
     } catch (err) {
       console.error('Error al cargar marcas:', err)
     }
   }
 
-  const fetchFamilias = async () => {
+  const fetchFamilias = async (id_marca: number) => {
     try {
-      const res = await consumoApi.get('/api/ConfigPromoDescPorcentual/sp_bw_cat_familias_sel')
+      const res = await consumoApi.get(`/api/CatConfigPromoDescPorcen/sp_bw_cat_marcaFam1_sel?id_marca=${id_marca}`)
       setFamilias(res.data)
     } catch (err) {
       console.error('Error al cargar familias:', err)
@@ -163,33 +168,29 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
 
   const fetchProductos = async () => {
     try {
-      const res = await consumoApi.get('/api/ConfigPromoDescPorcentual/sp_bw_cat_productos_sel')
+      const res = await consumoApi.get('/api/CatConfigPromoDescPorcen/sp_bw_cat_productos_servicios_sel')
       setProductos(res.data)
     } catch (err) {
       console.error('Error al cargar productos:', err)
     }
   }
 
+  const fetchTiposDescuento = async () => {
+    try {
+      const res = await consumoApi.get('/api/CatConfigPromoDescPorcen/sp_bw_cat_tipos_descuento_sel')
+      setTiposDescuento(res.data)
+    } catch (err) {
+      console.error('Error al cargar tipos de descuento:', err)
+    }
+  }
+
   const fetchPromociones = async () => {
     try {
-      const res = await consumoApi.get('/api/ConfigPromoDescPorcentual/sp_bw_config_promo_desc_porcentual_sel')
-      
-      const data = res.data.map((item: any, index: number) => ({
-        id: index,
-        nombre_promo: item.nombre_promo,
-        sucursal: item.sucursal,
-        del: item.del,
-        al: item.al,
-        area: item.area,
-        depto: item.depto,
-        marca: item.marca,
-        familia: item.familia,
-        producto: item.producto,
-        cant: item.cant,
-        desc_porcentaje: item.desc_porcentaje,
-        descuento: item.descuento,
+      const res = await consumoApi.get('/api/CatConfigPromoDescPorcen/sp_bw_t_promocionesDescuentos_sel')
+      const data = res.data.map((item: any, index: number) => ({ 
+        ...item, 
+        id: item.id ?? index 
       }))
-
       setRows(data)
     } catch (err) {
       console.error('Error al cargar promociones:', err)
@@ -201,8 +202,8 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
       await fetchSucursales()
       await fetchAreas()
       await fetchMarcas()
-      await fetchFamilias()
       await fetchProductos()
+      await fetchTiposDescuento()
       await fetchPromociones()
       setLoading(false)
     }
@@ -219,29 +220,48 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
     }
   }, [selectedArea])
 
+  useEffect(() => {
+    if (selectedMarca) {
+      const marca = marcas.find(m => m.marca === selectedMarca)
+      if (marca) {
+        fetchFamilias(marca.id)
+        setSelectedFamilia('')
+      }
+    } else {
+      setFamilias([])
+      setSelectedFamilia('')
+    }
+  }, [selectedMarca])
+
   const handleAdd = async () => {
-    if (!nombrePromo || !selectedSucursal || !fechaDel || !fechaAl || !selectedArea || !selectedDepto || !selectedMarca || !selectedFamilia || !selectedProducto || !cantidad || !descPorcentaje || !descuento) return
+    if (!nombrePromo || !selectedSucursal || !fechaDel || !fechaAl || !selectedArea || !selectedDepto || !selectedMarca || !selectedFamilia || !selectedProducto || !cantidad || !descPorcentaje || !descuento || !selectedTipoDescuento) return
 
     try {
       setSaving(true)
 
+      // Encontrar el ID del tipo de descuento seleccionado
+      const tipoDescuento = tiposDescuento.find(t => t.descripcion === selectedTipoDescuento)
+      if (!tipoDescuento) {
+        throw new Error('Tipo de descuento no válido')
+      }
+
       const response = await consumoApi.post(
-        `/api/ConfigPromoDescPorcentual/sp_bw_config_promo_desc_porcentual_add`,
-        null,
+        `/api/CatConfigPromoDescPorcen/sp_bw_t_promocionesDescuentos_upd`,
+        '',
         {
           params: {
-            nombre_promo: nombrePromo,
-            sucursal: parseInt(selectedSucursal),
-            del: fechaDel,
-            al: fechaAl,
+            nombrePromo: nombrePromo,
+            sucursal: selectedSucursal,
+            f1: fechaDel,
+            f2: fechaAl,
             area: selectedArea,
             depto: selectedDepto,
             marca: selectedMarca,
             familia: selectedFamilia,
-            producto: selectedProducto,
-            cant: parseInt(cantidad),
-            desc_porcentaje: parseFloat(descPorcentaje),
-            descuento: descuento,
+            clave_prod: selectedProducto,
+            cantidad: parseInt(cantidad),
+            descuento: parseFloat(descPorcentaje),
+            idDescuento: tipoDescuento.tipo_descuento,
           },
         }
       )
@@ -266,7 +286,9 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
       setCantidad('')
       setDescPorcentaje('')
       setDescuento('')
+      setSelectedTipoDescuento('')
       setDepartamentos([])
+      setFamilias([])
     } catch (err: any) {
       setError(err.message || 'Error al guardar')
     } finally {
@@ -291,21 +313,10 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
       setDeleting(true)
 
       const response = await consumoApi.delete(
-        `/api/ConfigPromoDescPorcentual/sp_bw_config_promo_desc_porcentual_del`,
+        `/api/CatConfigPromoDescPorcen/sp_bw_t_promocionesDescuentos_del`,
         {
           params: {
-            nombre_promo: rowToDelete.nombre_promo,
-            sucursal: rowToDelete.sucursal,
-            del: rowToDelete.del,
-            al: rowToDelete.al,
-            area: rowToDelete.area,
-            depto: rowToDelete.depto,
-            marca: rowToDelete.marca,
-            familia: rowToDelete.familia,
-            producto: rowToDelete.producto,
-            cant: rowToDelete.cant,
-            desc_porcentaje: rowToDelete.desc_porcentaje,
-            descuento: rowToDelete.descuento,
+            id: rowToDelete.id,
           },
         }
       )
@@ -339,8 +350,8 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
 
   return (
     <>
-      <Box sx={{ width: '100%', p: {xs:1, md:2}, backgroundColor: '#f5f5f5', minHeight: '100vh', display: 'flex', flexDirection: 'column' , justifyContent: 'center'}}>
-        <Box sx={{ backgroundColor: 'white', p: 3, borderRadius: 1, boxShadow: 1, width: '100%', mx:'auto' }}>
+      <Box sx={{ width: '100%', p: 1, backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+        <Box sx={{ backgroundColor: 'white', p: 2, borderRadius: 1, boxShadow: 1, width: '100%', maxWidth: '100%' }}>
           <Typography variant="h6" sx={{ color: '#999', mb: 0.5, fontSize: '0.9rem' }}>
             CONFIGURACION DE PROMOCIONES CON DESCUENTOS
           </Typography>
@@ -428,8 +439,8 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
                 label="Marca"
               >
                 {marcas.map((marca) => (
-                  <MenuItem key={marca.marca} value={marca.marca}>
-                    {marca.descripcion}
+                  <MenuItem key={marca.id} value={marca.marca}>
+                    {marca.marca}
                   </MenuItem>
                 ))}
               </Select>
@@ -441,9 +452,10 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
                 value={selectedFamilia}
                 onChange={(e) => setSelectedFamilia(e.target.value)}
                 label="Familia"
+                disabled={!selectedMarca}
               >
                 {familias.map((familia) => (
-                  <MenuItem key={familia.familia} value={familia.familia}>
+                  <MenuItem key={familia.clave} value={familia.descripcion}>
                     {familia.descripcion}
                   </MenuItem>
                 ))}
@@ -458,7 +470,7 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
                 label="Producto"
               >
                 {productos.map((producto) => (
-                  <MenuItem key={producto.producto} value={producto.producto}>
+                  <MenuItem key={producto.clave_prod} value={producto.clave_prod}>
                     {producto.descripcion}
                   </MenuItem>
                 ))}
@@ -490,10 +502,25 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
               sx={{ minWidth: 120 }}
             />
 
+            <FormControl sx={{ minWidth: 200 }}>
+              <InputLabel>Tipo Descuento</InputLabel>
+              <Select
+                value={selectedTipoDescuento}
+                onChange={(e) => setSelectedTipoDescuento(e.target.value)}
+                label="Tipo Descuento"
+              >
+                {tiposDescuento.map((tipo) => (
+                  <MenuItem key={tipo.tipo_descuento} value={tipo.descripcion}>
+                    {tipo.descripcion}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
             <Button
               variant="contained"
               onClick={handleAdd}
-              disabled={!nombrePromo || !selectedSucursal || !fechaDel || !fechaAl || !selectedArea || !selectedDepto || !selectedMarca || !selectedFamilia || !selectedProducto || !cantidad || !descPorcentaje || !descuento || saving}
+              disabled={!nombrePromo || !selectedSucursal || !fechaDel || !fechaAl || !selectedArea || !selectedDepto || !selectedMarca || !selectedFamilia || !selectedProducto || !cantidad || !descPorcentaje || !descuento || !selectedTipoDescuento || saving}
               sx={{ height: 56 }}
             >
               {saving ? 'Guardando...' : 'Agregar'}

@@ -56,7 +56,7 @@ export default function Catalogos() {
         Cat_Proveedores
       </button>
       <button
-        onClick={() => (window.location.href = '/modulo-servicios-insumos')}
+        onClick={() => (window.location.href = '/modulo_servicios_insumos')}
       >
         Modulo_Servicios_Insumos
       </button>
