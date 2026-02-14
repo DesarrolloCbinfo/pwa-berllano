@@ -5,6 +5,7 @@ import { useServerTable } from "../../hooks/useServerTable";
 import useSession from "../../hooks/useSession";
 import ClientesTable from "../../components/POS/ClientesTable";
 import PaginationControls from "../../components/POS/PaginationControl";
+import Swal from "sweetalert2";
 import { Box, Button, Dialog, DialogContent, DialogTitle, Divider, FormControl, InputLabel, MenuItem, Select, useTheme, useMediaQuery, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, CircularProgress } from "@mui/material";
 import ProductosTable from "../../components/POS/ProductosTable";
 import DetalleVentasTable from "../../components/POS/DetalleVentasTable";
@@ -91,7 +92,18 @@ type DetalleVenta = {
   descuento: number;
   auxiliar: string;
   d_auxiliar: string;
-  insumos?: DetalleVenta[]; // Insumos asociados
+  insumos?: DetalleVenta[];
+};
+
+type FormaPago = {
+  tipo: number;
+  descripcion: string;
+};
+
+type PagoRegistro = {
+  tipo: number;
+  descripcion: string;
+  importe: number;
 };
 
 export default function POS() {
@@ -175,133 +187,21 @@ const sucursal = session?.sucursal || 1;
 const [ventasEnProceso, setVentasEnProceso] = React.useState<VentaEnProceso[]>([]);
 const [modalVentasEnProcesoOpen, setModalVentasEnProcesoOpen] = React.useState(false);
 const [loadingVentasEnProceso, setLoadingVentasEnProceso] = React.useState(false);
-const [guardandoVenta, setGuardandoVenta] = React.useState(false);
 
-  // Función para cargar datos desde JSON (para desarrollo/pruebas)
-  const cargarDatosDesdeJSON = () => {
-    const datosEjemplo = [
-      {
-        id: "1",
-        estilista: "EMP001",
-        d_estilista: "Juan Pérez",
-        hora: "14:30",
-        clave_prod: "SERV001",
-        d_producto: "Corte de Cabello",
-        tiempo: "01:00",
-        Cant: 1,
-        precio: 150.00,
-        importe: 150.00,
-        descuento: 0,
-        auxiliar: "EMP003",
-        d_auxiliar: "María López",
-        insumos: [
-          {
-            id: "1-1",
-            estilista: "EMP001",
-            d_estilista: "Juan Pérez",
-            hora: "14:30",
-            clave_prod: "INS001",
-            d_producto: "Shampoo Profesional",
-            tiempo: "00:15",
-            Cant: 1,
-            precio: 25.00,
-            importe: 25.00,
-            descuento: 0,
-            auxiliar: "EMP003",
-            d_auxiliar: "María López"
-          },
-          {
-            id: "1-2",
-            estilista: "EMP001",
-            d_estilista: "Juan Pérez",
-            hora: "14:30",
-            clave_prod: "INS002",
-            d_producto: "Acondicionador",
-            tiempo: "00:10",
-            Cant: 2,
-            precio: 15.00,
-            importe: 30.00,
-            descuento: 0,
-            auxiliar: "EMP003",
-            d_auxiliar: "María López"
-          }
-        ]
-      },
-      {
-        id: "2",
-        estilista: "EMP002",
-        d_estilista: "Ana García",
-        hora: "15:00",
-        clave_prod: "SERV002",
-        d_producto: "Manicure",
-        tiempo: "00:45",
-        Cant: 1,
-        precio: 80.00,
-        importe: 80.00,
-        descuento: 0,
-        auxiliar: "",
-        d_auxiliar: ""
-      }
-    ];
-    
-    setDetallesVenta(datosEjemplo);
-  };
+// Estados para el modal de cobro
+const [modalCobroOpen, setModalCobroOpen] = React.useState(false);
+const [formasPago, setFormasPago] = React.useState<FormaPago[]>([]);
+const [loadingFormasPago, setLoadingFormasPago] = React.useState(false);
+const [pagosRegistro, setPagosRegistro] = React.useState<PagoRegistro[]>([]);
+const [formaPagoSeleccionada, setFormaPagoSeleccionada] = React.useState<number | "">("");
+const [importePago, setImportePago] = React.useState<string>("");
+const [finalizandoVenta, setFinalizandoVenta] = React.useState(false);
 
-  // Función para guardar datos en la base de datos
-  const guardarVenta = async () => {
-    // Validar que haya datos
-    if (!clienteSeleccionado || !estilistaSeleccionado || detallesVenta.length === 0) {
-      alert('Por favor selecciona un cliente, estilista y al menos un producto');
-      return;
-    }
-
-    setGuardandoVenta(true);
-    try {
-      // Construir el payload para el API
-      const payload = {
-        sucursal: sucursal,
-        cve_cliente: clienteSeleccionado.No_cliente,
-        estilista: estilistaSeleccionado,
-        auxiliar: auxiliarSeleccionado || '',
-        productos: detallesVenta.map(detalle => ({
-          clave_prod: detalle.clave_prod,
-          cantidad: detalle.Cant,
-          precio: detalle.precio,
-          descuento: detalle.descuento,
-          tiempo: detalle.tiempo,
-          hora: detalle.hora,
-          insumos: (detalle.insumos || []).map(insumo => ({
-            clave_prod: insumo.clave_prod,
-            cantidad: insumo.Cant
-          }))
-        }))
-      };
-
-
-// //       console.log(JSON.stringify(payload));
-// return;
-      const res = await consumoApi.post(
-        '/api/PuntoDeVenta/sp_fw_pos_guardar_venta',
-        payload
-      );
-
-      if (res.data?.ok === 1) {
-        alert(res.data.mensaje || 'Venta guardada correctamente');
-        // Limpiar la tabla después de guardar
-        setDetallesVenta([]);
-        setClienteSeleccionado(null);
-        setEstilistaSeleccionado('');
-        setAuxiliarSeleccionado('');
-      } else {
-        alert(res.data?.mensaje || 'Error al guardar la venta');
-      }
-    } catch (error: any) {
-      console.error('Error guardando venta:', error);
-      alert(error.response?.data?.mensaje || 'Error al guardar la venta');
-    } finally {
-      setGuardandoVenta(false);
-    }
-  };
+// Calcular total de la venta
+const totalVenta = detallesVenta.reduce((sum, item) => sum + item.importe, 0);
+const totalPagado = pagosRegistro.reduce((sum, item) => sum + item.importe, 0);
+const cambio = totalPagado - totalVenta;
+const puedeFinalizar = totalPagado >= totalVenta && totalPagado > 0;
 
   // Función para cargar desde archivo JSON externo
   const cargarDatosDesdeArchivo = async () => {
@@ -334,7 +234,57 @@ const [guardandoVenta, setGuardandoVenta] = React.useState(false);
     registrarProducto(productoSeleccionado);
   };
 
-  const registrarProducto = (producto: Producto, esInsumoAdicional = false) => {
+  const guardarProductoIndividual = async (detalle: DetalleVenta) => {
+    if (!clienteSeleccionado) {
+      alert('Por favor selecciona un cliente');
+      return false;
+    }
+
+    try {
+      const payload = {
+        sucursal: sucursal,
+        cve_cliente: clienteSeleccionado.No_cliente,
+        estilista: detalle.estilista,
+        auxiliar: detalle.auxiliar || '',
+        productos: [{
+          clave_prod: detalle.clave_prod,
+          cantidad: detalle.Cant,
+          precio: detalle.precio,
+          descuento: detalle.descuento,
+          tiempo: detalle.tiempo,
+          hora: detalle.hora,
+          insumos: (detalle.insumos || []).map(insumo => ({
+            clave_prod: insumo.clave_prod,
+            cantidad: insumo.Cant
+          }))
+        }]
+      };
+
+      const res = await consumoApi.post(
+        '/api/PuntoDeVenta/sp_fw_pos_guardar_venta',
+        payload
+      );
+
+      if (res.data?.ok === 1) {
+        return true;
+      } else {
+        alert(res.data?.mensaje || 'Error al guardar el producto');
+        return false;
+      }
+    } catch (error: any) {
+      console.error('Error guardando producto:', error);
+      alert(error.response?.data?.mensaje || 'Error al guardar el producto');
+      return false;
+    }
+  };
+
+  const registrarProducto = async (producto: Producto, esInsumoAdicional = false) => {
+    // Validar que haya cliente seleccionado
+    if (!clienteSeleccionado) {
+      alert('Por favor selecciona un cliente primero');
+      return;
+    }
+
     // Obtener nombres del estilista y auxiliar
     const estilistaNombre = estilistas.find((e: Estilista) => e.clave_empleado === estilistaSeleccionado)?.nombre || '';
     const auxiliarNombre = auxiliarSeleccionado ? 
@@ -357,8 +307,16 @@ const [guardandoVenta, setGuardandoVenta] = React.useState(false);
       d_auxiliar: auxiliarNombre,
     };
 
-    // Agregar a la lista de detalles
+    // Agregar a la lista de detalles temporalmente para mostrar
     setDetallesVenta(prev => [...prev, nuevoDetalle]);
+
+    // Guardar inmediatamente en la base de datos
+    const guardoExito = await guardarProductoIndividual(nuevoDetalle);
+    
+    if (!guardoExito) {
+      // Si hubo error, quitamos el detalle de la lista
+      setDetallesVenta(prev => prev.filter(d => d.id !== nuevoDetalle.id));
+    }
 
     // Limpiar selección de producto para poder agregar otro
     setProductoSeleccionado(null);
@@ -367,6 +325,179 @@ const [guardandoVenta, setGuardandoVenta] = React.useState(false);
     if (esInsumoAdicional) {
       setModalInsumosOpen(false);
       setProductoPrincipal(null);
+    }
+  };
+
+  const fetchFormasPago = async () => {
+    setLoadingFormasPago(true);
+    try {
+      const res = await consumoApi.get(
+        `/api/PuntoDeVenta/sp_fw_pos_formas_pago_get?sucursal=${sucursal}`
+      );
+      setFormasPago(res.data || []);
+    } catch (error) {
+      console.error('Error cargando formas de pago:', error);
+      alert('Error al cargar las formas de pago');
+    } finally {
+      setLoadingFormasPago(false);
+    }
+  };
+
+  const handleCancelarRenglon = async (detalle: DetalleVenta) => {
+    if (!clienteSeleccionado) {
+      alert('No hay cliente seleccionado');
+      return;
+    }
+
+    const confirm = await Swal.fire({
+      title: 'Cancelar renglón',
+      text: `¿Estás seguro de cancelar "${detalle.d_producto}"?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, cancelar',
+      cancelButtonText: 'No',
+      confirmButtonColor: '#d32f2f',
+    });
+
+    if (!confirm.isConfirmed) return;
+
+    try {
+      const params = new URLSearchParams({
+        cia: '1',
+        sucursal: sucursal.toString(),
+        cve_cliente: clienteSeleccionado.No_cliente,
+        clave_prod: detalle.clave_prod,
+        hora: detalle.hora,
+        estilista: detalle.estilista,
+        auxiliar: detalle.auxiliar || ''
+      });
+
+      const res = await consumoApi.put(
+        `/api/PuntoDeVenta/sp_fw_pos_cancelar_renglon?${params.toString()}`
+      );
+
+      if (res.data?.ok === 1) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Cancelado',
+          text: res.data?.mensaje || 'Renglón cancelado',
+          confirmButtonText: 'Aceptar'
+        });
+        // Eliminar de la lista local
+        setDetallesVenta(prev => prev.filter(d => d.id !== detalle.id));
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: res.data?.mensaje || 'Error al cancelar el renglón',
+          confirmButtonText: 'Aceptar'
+        });
+      }
+    } catch (error: any) {
+      console.error('Error cancelando renglón:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: error.response?.data?.mensaje || 'Error al cancelar el renglón',
+        confirmButtonText: 'Aceptar'
+      });
+    }
+  };
+
+  const handleAbrirCobro = () => {
+    if (detallesVenta.length === 0) {
+      alert('No hay productos para cobrar');
+      return;
+    }
+    setPagosRegistro([]);
+    setFormaPagoSeleccionada("");
+    setImportePago("");
+    fetchFormasPago();
+    setModalCobroOpen(true);
+  };
+
+  const handleAgregarPago = () => {
+    if (!formaPagoSeleccionada) {
+      alert('Selecciona una forma de pago');
+      return;
+    }
+    const importe = parseFloat(importePago);
+    if (isNaN(importe) || importe <= 0) {
+      alert('Ingresa un importe válido');
+      return;
+    }
+
+    const formaPago = formasPago.find(f => f.tipo === formaPagoSeleccionada);
+    setPagosRegistro(prev => [...prev, {
+      tipo: formaPagoSeleccionada as number,
+      descripcion: formaPago?.descripcion || '',
+      importe
+    }]);
+    setImportePago("");
+  };
+
+  const handleEliminarPago = (index: number) => {
+    setPagosRegistro(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleFinalizarVenta = async () => {
+    if (!clienteSeleccionado || !estilistaSeleccionado) {
+      alert('Faltan datos para finalizar la venta');
+      return;
+    }
+
+    setFinalizandoVenta(true);
+    try {
+      const payload = {
+        cia: 1,
+        sucursal: sucursal,
+        caja: 1,
+        cve_Cliente: clienteSeleccionado.No_cliente,
+        estilista: estilistaSeleccionado,
+        usuario: session?.claveEmpleado || '',
+        pagos: pagosRegistro.map(p => ({
+          tipo_Pago: p.tipo,
+          referencia: p.descripcion,
+          importe: p.importe
+        }))
+      };
+
+      const res = await consumoApi.post(
+        '/api/PuntoDeVenta/sp_bw_pos_finaliza_venta',
+        payload
+      );
+
+      if (res.data?.ok === 1) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Venta finalizada',
+          text: `${res.data?.mensaje} - Folio: ${res.data?.folio}`,
+          confirmButtonText: 'Aceptar'
+        });
+        setModalCobroOpen(false);
+        setDetallesVenta([]);
+        setClienteSeleccionado(null);
+        setEstilistaSeleccionado('');
+        setAuxiliarSeleccionado('');
+        setPagosRegistro([]);
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: res.data?.mensaje || 'Error al finalizar la venta',
+          confirmButtonText: 'Aceptar'
+        });
+      }
+    } catch (error: any) {
+      console.error('Error finalizando venta:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: error.response?.data?.mensaje || 'Error al finalizar la venta',
+        confirmButtonText: 'Aceptar'
+      });
+    } finally {
+      setFinalizandoVenta(false);
     }
   };
 
@@ -826,9 +957,7 @@ const {
   }}>
     <DetalleVentasTable 
       data={detallesVenta} 
-      onSelect={(id: string) => {
-        setDetallesVenta(prev => prev.filter(detalle => detalle.id !== id));
-      }} 
+      onSelect={handleCancelarRenglon}
     />
 
 <Box sx={{ 
@@ -843,7 +972,7 @@ const {
         gap: { xs: 1, sm: 2 }, 
         flexWrap: "wrap" 
       }}>
-        <Button 
+        <Button
           variant="contained" 
           sx={{ 
             backgroundColor: 'grey.500',
@@ -852,24 +981,11 @@ const {
               backgroundColor: 'grey.600',
             }
           }}
-          onClick={guardarVenta}
-          disabled={guardandoVenta}
-        >
-          {guardandoVenta ? 'Guardando...' : 'Guardar'}
-        </Button>
-        <Button 
-          variant="contained" 
-          sx={{ 
-            backgroundColor: 'grey.500',
-            color: 'black',
-            '&:hover': {
-              backgroundColor: 'grey.600',
-            }
-          }}
+          onClick={handleAbrirCobro}
         >
           Cobrar
         </Button>
-        <Button 
+        {/* <Button 
           variant="contained" 
           sx={{ 
             backgroundColor: 'grey.500',
@@ -878,9 +994,10 @@ const {
               backgroundColor: 'grey.600',
             }
           }}
+          
         >
           Cobrar varios Ctes Tc
-        </Button>
+        </Button> */}
         <Button 
           variant="contained" 
           sx={{ 
@@ -909,7 +1026,7 @@ const {
         >
           Cambiar cliente
         </Button>
-        <Button 
+        {/* <Button 
           variant="contained" 
           sx={{ 
             backgroundColor: 'grey.500',
@@ -920,8 +1037,8 @@ const {
           }}
         >
           Salir
-        </Button>
-        <Button 
+        </Button> */}
+        {/* <Button 
           variant="contained" 
           color="warning"
           onClick={cargarDatosDesdeArchivo}
@@ -932,7 +1049,7 @@ const {
           }}
         >
           Cargar Archivo
-        </Button>
+        </Button> */}
       </Box>
       
       <Typography variant="h6" sx={{ fontWeight: "bold" }}>
@@ -1236,6 +1353,162 @@ const {
           </TableBody>
         </Table>
       </TableContainer>
+    )}
+  </DialogContent>
+</Dialog>
+
+{/* Modal de Cobro */}
+<Dialog 
+  maxWidth="sm" 
+  fullWidth
+  open={modalCobroOpen} 
+  onClose={() => setModalCobroOpen(false)}
+  PaperProps={{
+    sx: {
+      m: { xs: 1, sm: 2 },
+      maxHeight: { xs: '90vh', sm: '85vh' }
+    }
+  }}
+>
+  <DialogTitle>
+    Cobrar Venta - Total: ${totalVenta.toFixed(2)}
+  </DialogTitle>
+  <DialogContent sx={{ p: { xs: 2, sm: 3 } }}>
+    {loadingFormasPago ? (
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+        <CircularProgress />
+      </Box>
+    ) : (
+      <>
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold' }}>
+            Agregar Pago
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+            <FormControl sx={{ flex: 1, minWidth: 150 }}>
+              <InputLabel>Forma de Pago</InputLabel>
+              <Select
+                value={formaPagoSeleccionada}
+                label="Forma de Pago"
+                onChange={(e) => setFormaPagoSeleccionada(e.target.value as number)}
+              >
+                {formasPago.map((fp) => (
+                  <MenuItem key={fp.tipo} value={fp.tipo}>
+                    {fp.descripcion}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <TextField
+              label="Importe"
+              type="number"
+              value={importePago}
+              onChange={(e) => setImportePago(e.target.value)}
+              sx={{ width: 120 }}
+              inputProps={{ min: 0, step: 0.01 }}
+            />
+            <Button 
+              variant="contained" 
+              onClick={handleAgregarPago}
+              disabled={!formaPagoSeleccionada || !importePago}
+            >
+              Agregar
+            </Button>
+          </Box>
+        </Box>
+
+        <Divider sx={{ my: 2 }} />
+
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold' }}>
+            Pagos Registrados
+          </Typography>
+          {pagosRegistro.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">
+              No hay pagos registrados
+            </Typography>
+          ) : (
+            <TableContainer component={Paper} variant="outlined">
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Forma de Pago</TableCell>
+                    <TableCell align="right">Importe</TableCell>
+                    <TableCell align="center">Acciones</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {pagosRegistro.map((pago, index) => (
+                    <TableRow key={index}>
+                      <TableCell>{pago.descripcion}</TableCell>
+                      <TableCell align="right">${pago.importe.toFixed(2)}</TableCell>
+                      <TableCell align="center">
+                        <Button 
+                          color="error" 
+                          size="small"
+                          onClick={() => handleEliminarPago(index)}
+                        >
+                          X
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </Box>
+
+        <Divider sx={{ my: 2 }} />
+
+        <Box sx={{ mb: 3, p: 2, backgroundColor: 'grey.100', borderRadius: 1 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+            <Typography variant="body1">Total Venta:</Typography>
+            <Typography variant="body1" fontWeight="bold">${totalVenta.toFixed(2)}</Typography>
+          </Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+            <Typography variant="body1">Total Pagado:</Typography>
+            <Typography variant="body1" fontWeight="bold" color={totalPagado >= totalVenta ? 'success.main' : 'text.primary'}>
+              ${totalPagado.toFixed(2)}
+            </Typography>
+          </Box>
+          {cambio > 0 && (
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+              <Typography variant="body1">Cambio:</Typography>
+              <Typography variant="body1" fontWeight="bold" color="error.main">
+                ${cambio.toFixed(2)}
+              </Typography>
+            </Box>
+          )}
+          {totalPagado < totalVenta && (
+            <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+              Faltan ${(totalVenta - totalPagado).toFixed(2)} para cubrir la venta
+            </Typography>
+          )}
+          {totalPagado > totalVenta && cambio === 0 && (
+            <Typography variant="body2" color="warning.main" sx={{ mt: 1 }}>
+              Precaución: El total pagado excede el total de la venta sin efectivo
+            </Typography>
+          )}
+        </Box>
+
+        <Box sx={{ mt: 2, display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+          <Button 
+            variant="outlined" 
+            onClick={() => setModalCobroOpen(false)}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            variant="contained" 
+            color="primary"
+            onClick={handleFinalizarVenta}
+            disabled={!puedeFinalizar || finalizandoVenta}
+          >
+            {finalizandoVenta ? 'Finalizando...' : 'Finalizar Venta'}
+          </Button>
+        </Box>
+      </>
     )}
   </DialogContent>
 </Dialog>

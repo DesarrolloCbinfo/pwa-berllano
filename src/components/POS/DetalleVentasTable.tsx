@@ -36,7 +36,7 @@ insumos?: DetalleVenta[]; // Insumos asociados
 
 type Props = {
   data: DetalleVenta[];
-  onSelect: (id: string) => void;
+  onSelect: (detalle: DetalleVenta) => void;
 };
 
 export default function DetalleVentasTable({ data, onSelect }: Props) {
@@ -221,7 +221,7 @@ export default function DetalleVentasTable({ data, onSelect }: Props) {
           color="error"
           variant="contained"
           size={isMobile ? "small" : "medium"}
-          onClick={() => onSelect(row.original.id)}
+          onClick={() => onSelect(row.original)}
         >
           {isMobile ? "✕" : "X"}
         </Button>
