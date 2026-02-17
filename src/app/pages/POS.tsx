@@ -367,20 +367,23 @@ const puedeFinalizar = totalPagado >= totalVenta && totalPagado > 0;
         sucursal: sucursal.toString(),
         cve_cliente: clienteSeleccionado.No_cliente,
         clave_prod: detalle.clave_prod,
-        hora: detalle.hora,
+        hora: 'xx',
         estilista: detalle.estilista,
-        auxiliar: detalle.auxiliar || ''
+        auxiliar: detalle.auxiliar || '0'
       });
 
       const res = await consumoApi.put(
         `/api/PuntoDeVenta/sp_fw_pos_cancelar_renglon?${params.toString()}`
       );
 
-      if (res.data?.ok === 1) {
+      // La API devuelve un array, tomamos el primer elemento
+      const responseData = Array.isArray(res.data) ? res.data[0] : res.data;
+
+      if (responseData?.ok === 1) {
         Swal.fire({
           icon: 'success',
           title: 'Cancelado',
-          text: res.data?.mensaje || 'Renglón cancelado',
+          text: responseData?.mensaje || 'Renglón cancelado',
           confirmButtonText: 'Aceptar'
         });
         // Eliminar de la lista local
@@ -389,7 +392,7 @@ const puedeFinalizar = totalPagado >= totalVenta && totalPagado > 0;
         Swal.fire({
           icon: 'error',
           title: 'Error',
-          text: res.data?.mensaje || 'Error al cancelar el renglón',
+          text: responseData?.mensaje || 'Error al cancelar el renglón',
           confirmButtonText: 'Aceptar'
         });
       }
@@ -448,6 +451,28 @@ const puedeFinalizar = totalPagado >= totalVenta && totalPagado > 0;
 
     setFinalizandoVenta(true);
     try {
+      // Ajustar los pagos para que el total sea exactamente igual a la venta
+      // El último pago (generalmente efectivo) debe cubrir exactamente lo que falta
+      let pagosAjustados = [...pagosRegistro];
+      const totalPagadoOriginal = pagosAjustados.reduce((sum, p) => sum + p.importe, 0);
+      
+      if (totalPagadoOriginal > totalVenta && pagosAjustados.length > 0) {
+        // Encontrar el último pago en efectivo (tipo 1 generalmente es efectivo)
+        // o usar el último pago registrado
+        const ultimoPagoIndex = pagosAjustados.length - 1;
+        const pagosAnteriores = pagosAjustados.slice(0, ultimoPagoIndex);
+        const totalAnteriores = pagosAnteriores.reduce((sum, p) => sum + p.importe, 0);
+        
+        // El último pago debe ser exactamente lo que falta para cubrir la venta
+        const importeUltimoPago = totalVenta - totalAnteriores;
+        
+        // Actualizar el último pago con el importe ajustado
+        pagosAjustados[ultimoPagoIndex] = {
+          ...pagosAjustados[ultimoPagoIndex],
+          importe: Math.max(0, importeUltimoPago)
+        };
+      }
+
       const payload = {
         cia: 1,
         sucursal: sucursal,
@@ -455,7 +480,7 @@ const puedeFinalizar = totalPagado >= totalVenta && totalPagado > 0;
         cve_Cliente: clienteSeleccionado.No_cliente,
         estilista: estilistaSeleccionado,
         usuario: session?.claveEmpleado || '',
-        pagos: pagosRegistro.map(p => ({
+        pagos: pagosAjustados.map(p => ({
           tipo_Pago: p.tipo,
           referencia: p.descripcion,
           importe: p.importe
@@ -526,7 +551,7 @@ const puedeFinalizar = totalPagado >= totalVenta && totalPagado > 0;
     );
   };
 
-  const handleConfirmarInsumos = () => {
+  const handleConfirmarInsumos = async () => {
     if (!productoPrincipal || insumosSeleccionados.length === 0) {
       alert('Por favor selecciona al menos un insumo');
       return;
@@ -573,6 +598,15 @@ const puedeFinalizar = totalPagado >= totalVenta && totalPagado > 0;
       
       // Agregar el producto principal a la lista
       setDetallesVenta(prev => [...prev, productoActualizado]);
+
+      // Guardar en la base de datos
+      const guardoExito = await guardarProductoIndividual(productoActualizado);
+      
+      if (!guardoExito) {
+        // Si hubo error, quitamos el detalle de la lista
+        setDetallesVenta(prev => prev.filter(d => d.id !== productoActualizado.id));
+        return;
+      }
     } else {
       // Encontrar el producto principal existente y agregarle los insumos
       setDetallesVenta(prev => prev.map(detalle => {
@@ -603,6 +637,9 @@ const puedeFinalizar = totalPagado >= totalVenta && totalPagado > 0;
       }));
     }
     
+    // Limpiar selección de producto
+    setProductoSeleccionado(null);
+    
     // Cerrar el modal y limpiar estados
     setModalInsumosOpen(false);
     setProductoPrincipal(null);
@@ -610,15 +647,31 @@ const puedeFinalizar = totalPagado >= totalVenta && totalPagado > 0;
   };
 
   const fetchClientes = async ({ page, pageSize, search }: any) => {
-    const res = await consumoApi.get(
-      `/api/PuntoDeVenta/sp_cat_clientes_suc_paginado?pagina=${page}&registros=${pageSize}&Busqueda=${encodeURIComponent(search)}`
-    );
+    try {
+      const res = await consumoApi.get(
+        `/api/PuntoDeVenta/sp_cat_clientes_suc_paginado?pagina=${page}&registros=${pageSize}&Busqueda=${encodeURIComponent(search)}`
+      );
 
-    const data = res.data ?? [];
-    return {
-      data,
-      total: data[0]?.total_registros ?? 0,
-    };
+      const data = res.data ?? [];
+      return {
+        data,
+        total: data[0]?.total_registros ?? 0,
+      };
+    } catch (error) {
+      console.error('Error fetching clientes, usando cliente por defecto:', error);
+      // Retornar cliente Público en General (00001) si hay timeout o error
+      const clienteDefault: Cliente = {
+        No_cliente: '00001',
+        nombre: 'PÚBLICO EN GENERAL',
+        ap_paterno: null,
+        ap_materno: null,
+        total_registros: 1
+      };
+      return {
+        data: [clienteDefault],
+        total: 1,
+      };
+    }
   };
 
 

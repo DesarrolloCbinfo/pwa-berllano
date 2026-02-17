@@ -176,9 +176,10 @@ const SidebarHorizontal = () => {
           onClose={() => setAnchorModuloComercial(null)}
 
         >
-            <MenuItem onClick={() => navigate(routes.pos)}>Punto de venta</MenuItem>   
-            <MenuItem onClick={() => navigate(routes.pos)}>Corte parcial</MenuItem>   
-            <MenuItem onClick={() => navigate(routes.pos)}>Corte Dia</MenuItem>   
+            <MenuItem onClick={() => { setAnchorModuloComercial(null); navigate(routes.pos); }}>Punto de venta</MenuItem> 
+            <MenuItem onClick={() => { setAnchorModuloComercial(null); navigate(routes.retiros); }}>Retiros</MenuItem>     
+            <MenuItem onClick={() => { setAnchorModuloComercial(null); navigate(routes.corte_parcial); }}>Corte parcial</MenuItem>   
+            <MenuItem onClick={() => { setAnchorModuloComercial(null); navigate(routes.corte_dia); }}>Corte Dia</MenuItem>
         </Menu>
 
 
