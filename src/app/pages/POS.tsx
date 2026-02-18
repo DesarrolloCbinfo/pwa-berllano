@@ -479,7 +479,7 @@ const puedeFinalizar = totalPagado >= totalVenta && totalPagado > 0;
         caja: 1,
         cve_Cliente: clienteSeleccionado.No_cliente,
         estilista: estilistaSeleccionado,
-        usuario: session?.claveEmpleado || '',
+        usuario: session?.id || '',
         pagos: pagosAjustados.map(p => ({
           tipo_Pago: p.tipo,
           referencia: p.descripcion,
