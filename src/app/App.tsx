@@ -25,6 +25,9 @@ import AdministracionServiciosInsumos from './pages/modulo_servicios_Insumos/pag
 import AdministracionPorcentajesPuntos from './pages/Modulo_De_Administracion_De_Porcentajes_De_Puntos/page';
 import CatProductos from './pages/cat_Productos/page';
 import ConfiguracionPromocionesDescuentoPorcentual from './pages/Configuracion_promociones_descuento_porcentual/page';
+import Retiros from './pages/Retiros';
+import CorteParcial from './pages/CorteParcial';
+import CorteDia from './pages/CorteDia';
 
 
 
@@ -153,6 +156,30 @@ function App() {
           element={
             <Layout>
               <ConfiguracionPromocionesDescuentoPorcentual/>
+            </Layout>
+          }
+          />
+          <Route
+          path='/retiros'
+          element={
+            <Layout>
+              <Retiros/>
+            </Layout>
+          }
+          />
+          <Route
+          path='/corte-parcial'
+          element={
+            <Layout>
+              <CorteParcial/>
+            </Layout>
+          }
+          />
+          <Route
+          path='/corte-dia'
+          element={
+            <Layout>
+              <CorteDia/>
             </Layout>
           }
           />

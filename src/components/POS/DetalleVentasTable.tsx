@@ -36,7 +36,7 @@ insumos?: DetalleVenta[]; // Insumos asociados
 
 type Props = {
   data: DetalleVenta[];
-  onSelect: (id: string) => void;
+  onSelect: (detalle: DetalleVenta) => void;
 };
 
 export default function DetalleVentasTable({ data, onSelect }: Props) {
@@ -145,6 +145,7 @@ export default function DetalleVentasTable({ data, onSelect }: Props) {
       enableFilters={false}
       enableExpanding={true}
       enableRowVirtualization={false}
+      enableRowActions={true}
       positionActionsColumn="last"
       displayColumnDefOptions={{
         "mrt-row-actions": {
@@ -220,10 +221,16 @@ export default function DetalleVentasTable({ data, onSelect }: Props) {
         <Button
           color="error"
           variant="contained"
-          size={isMobile ? "small" : "medium"}
-          onClick={() => onSelect(row.original.id)}
+          size="small"
+          onClick={() => onSelect(row.original)}
+          sx={{
+            minWidth: 'auto',
+            px: isMobile ? 1 : 2,
+            fontSize: isMobile ? '0.75rem' : '0.875rem',
+            whiteSpace: 'nowrap'
+          }}
         >
-          {isMobile ? "✕" : "X"}
+          {isMobile ? "✕" : "Cancelar"}
         </Button>
       )}
       localization={{

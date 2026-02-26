@@ -1,9 +1,4 @@
-import CancelacionVentas from "../pages/cancelacionVentas/CancelacionVentas";
-import CatGrupos from "../pages/CatGrupos/CatGrupos";
-import CorteFinal from "../pages/Cortes/CorteFinal";
-import FacturacionGlobal from "../pages/Facturacion/FacturacionGlobal";
-import MovimientoDiversos from "../pages/movimiento diverso/MovimientoDiverso";
-import Retiros from "../pages/retiros/Retiros";
+
 
 export const routes = {
   login: "/login",
@@ -29,5 +24,9 @@ export const routes = {
   Cat_Marcas_Familias: "/cat_marcas_familias",
   modulo_servicios_insumos: "/modulo_servicios_insumos",
   modulo_porcentajes_puntos: "/modulo_porcentajes_puntos",
+  retiros: "/retiros",
+  corte_parcial: "/corte-parcial",
+  corte_dia: "/corte-dia",
+
 };
 
