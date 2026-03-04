@@ -13,6 +13,10 @@ export const routes = {
   cat_Tipo_Descuento: "/cat_Tipo_Descuento",
   cat_Compradores: "/cat_Compradores",
   cat_Sucursales: "/cat_Sucursales",
+  cat_Productos: "/cat_Productos",
+  cat_act_Precios_grupo: "/cat_act_Precios_grupo",
+  cat_metaempleados: "/cat_metaempleados",
+  cat_metasucursal: "/cat_metasucursal",
   pos: "/pos",
 
   //Catalogos

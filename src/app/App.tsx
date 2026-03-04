@@ -28,6 +28,10 @@ import ConfiguracionPromocionesDescuentoPorcentual from './pages/Configuracion_p
 import Retiros from './pages/Retiros';
 import CorteParcial from './pages/CorteParcial';
 import CorteDia from './pages/CorteDia';
+import AjusteMasivoPrecios from './pages/AjusteMasivoPrecios/page';
+import MetasEmpleados from './pages/Cat_metaempleados/page';
+import MetasSucursales from './pages/Cat_metasucursal/page'; 
+
 
 
 
@@ -58,10 +62,13 @@ function App() {
          <Route path='/Cat_Proveedores' element={<Layout><CatProveedores/></Layout>} />
          <Route path='/modulo_servicios_insumos' element={<Layout><AdministracionServiciosInsumos/></Layout>} />
          <Route path='/modulo_porcentajes_puntos' element={<Layout><AdministracionPorcentajesPuntos/></Layout>} />
-
          <Route path='/cat_Productos' element={<Layout><CatProductos/></Layout>} />
-
          <Route path='/config_promociones_descuento_porcentual' element={<Layout><ConfiguracionPromocionesDescuentoPorcentual/></Layout>} />
+          <Route path='/ajustemasivoprecios' element={<Layout><AjusteMasivoPrecios/></Layout>} />
+          <Route path='/cat_metaempleados' element={<Layout><MetasEmpleados/></Layout>} />
+          <Route path='/cat_metasucursal' element={<Layout><MetasSucursales/></Layout>} />
+
+          
 
           <Route
             path='/'

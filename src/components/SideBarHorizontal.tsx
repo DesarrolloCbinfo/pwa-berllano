@@ -129,7 +129,7 @@ const SidebarHorizontal = () => {
           open={openCatalogos}
           onClose={() => setAnchorCatalogos(null)}
         >
-          <MenuItem onClick={() => navigate(routes.cat_clientes_form)}>
+          <MenuItem onClick={() => navigate(routes.cat_clientes)}>
             Catálogo de clientes
           </MenuItem>
           <MenuItem onClick={() => navigate(routes.cat_Proveedores)}>
@@ -164,6 +164,18 @@ const SidebarHorizontal = () => {
           </MenuItem>
           <MenuItem onClick={() => navigate(routes.cat_Sucursales)}>
             Sucursales
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_act_Precios_grupo)}>
+            Act. precios grupo
+          </MenuItem>
+           <MenuItem onClick={() => navigate(routes.cat_Productos)}>
+            Productos
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_metaempleados)}>
+            Meta Empleados
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_metasucursal)}>
+            Metas Sucursal
           </MenuItem>
         </Menu>
 

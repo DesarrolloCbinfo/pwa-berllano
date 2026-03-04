@@ -971,6 +971,786 @@ const ModalStockSucursal = ({ open, onClose, consumoApi, setMessage, productoFor
         </Dialog>
     );
 };
+
+// --- COMPONENTE AISLADO PARA ANÁLISIS POR CLAVE ---
+const ModalAnalisisPorClave = ({ open, onClose, onAbrirVentasComparativas }: any) => {
+    // Lista exacta de botones según la imagen de Access
+    const botonesReportes = [
+        "REPORTE DE VENTAS COMPARATIVAS",
+        "ANALISIS DE COMPRAS POR CLAVE",
+        "REPORTE DE CAMBIOS AL CATALOGO DE PRODUCTOS",
+        "REPORTE DE VENTAS COMPARATIVAS POR CLASE",
+        "REPORTE DE VENTAS - PRODUCTOS OFERTADOS",
+        "REPORTE DE VENTA CRUZADA",
+        "REPORTE DE VENTAS REMATES"
+    ];
+
+    const handleClick = (texto: string) => {
+        if (texto === "REPORTE DE VENTAS COMPARATIVAS") {
+            onClose(); // Cerramos el menú actual
+            onAbrirVentasComparativas(); // Abrimos el nuevo modal de filtros
+        } else {
+            alert(`Módulo en desarrollo: ${texto}`);
+        }
+    };
+
+    return (
+        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+            <Box sx={{ p: 4, bgcolor: '#fdfdfd', textAlign: 'center' }}>
+                <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#777', mb: 4 }}>
+                    Análisis por clave
+                </Typography>
+                
+                {/* Contenedor de la lista de botones */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 5, px: 2 }}>
+                    {botonesReportes.map((texto, idx) => (
+                        <Button 
+                            key={idx}
+                            variant="contained" 
+                            fullWidth
+                            sx={{ 
+                                bgcolor: '#e3f2fd', // Azul clarito estilo Access
+                                color: '#555', 
+                                fontWeight: 600, 
+                                border: '1px solid #90caf9',
+                                py: 1.5,
+                                boxShadow: 'none',
+                                '&:hover': { bgcolor: '#bbdefb', boxShadow: 'none' }
+                            }}
+                            // ⚠️ AQUÍ ESTABA EL ERROR: Ahora sí llama a la función
+                            onClick={() => handleClick(texto)}
+                        >
+                            {texto}
+                        </Button>
+                    ))}
+                </Box>
+
+                {/* Botón de Salir (más ancho y separado) */}
+                <Button 
+                    variant="contained" 
+                    onClick={onClose}
+                    sx={{ 
+                        bgcolor: '#e3f2fd', 
+                        color: '#555', 
+                        fontWeight: 600, 
+                        width: '70%',
+                        border: '1px solid #90caf9',
+                        py: 1.5,
+                        boxShadow: 'none',
+                        '&:hover': { bgcolor: '#bbdefb', boxShadow: 'none' }
+                    }}
+                >
+                    SALIR
+                </Button>
+            </Box>
+        </Dialog>
+    );
+};
+
+// --- COMPONENTE: REPORTE DE VENTAS COMPARATIVAS ---
+const ModalVentasComparativas = ({ open, onClose, consumoApi, setMessage }: any) => {
+    // --- ESTADOS DE LOS FILTROS ---
+    const [area, setArea] = useState('%');
+    const [depto, setDepto] = useState('%');
+    const [clase, setClase] = useState('%');
+    const [sucursal, setSucursal] = useState('%');
+    const [producto, setProducto] = useState<any>(null); // Para el Autocomplete
+    const [productoWildcard, setProductoWildcard] = useState('%'); // La cajita al lado de producto
+
+    // Fechas (Por defecto hoy)
+    const hoy = new Date().toISOString().split('T')[0];
+    const [fechaDel, setFechaDel] = useState(hoy);
+    const [fechaAl, setFechaAl] = useState(hoy);
+
+    // Checkboxes
+    const [chkTiendas, setChkTiendas] = useState(true);
+    const [chkRutas, setChkRutas] = useState(true);
+    const [chkBodegas, setChkBodegas] = useState(true);
+    const [chkNocturnas, setChkNocturnas] = useState(false);
+    const [chkConIva, setChkConIva] = useState(true);
+    const [chkPromociones, setChkPromociones] = useState(false);
+
+    // Radio buttons
+    const [tipoTiendas, setTipoTiendas] = useState('totales');
+
+    // --- ESTADOS DE LAS LISTAS DESPLEGABLES ---
+    const [listaAreas, setListaAreas] = useState<any[]>([]);
+    const [listaDeptos, setListaDeptos] = useState<any[]>([]);
+    const [listaClases, setListaClases] = useState<any[]>([]);
+    const [listaSucursales, setListaSucursales] = useState<any[]>([]);
+    const [catBusquedaProd, setCatBusquedaProd] = useState<any[]>([]);
+
+    // Cargar listas principales al abrir el modal
+    useEffect(() => {
+        if (open) {
+            cargarListasBase();
+        }
+    }, [open]);
+
+    const cargarListasBase = async () => {
+        try {
+            const [resAreas, resSuc] = await Promise.all([
+                consumoApi.get('/api/CatProductosC/sp_bw_cat_combo_areas'),
+                consumoApi.get('/api/CatProductosC/sp_bw_cat_combo_sucursales')
+            ]);
+            setListaAreas(resAreas.data);
+            
+            // Fíjate que aquí usamos "id" porque así viene la respuesta mapeada de la vista general que hiciste, pero
+            // dependiendo de tu API, las llaves originales pueden venir como cve_sucursal y nombre.
+            // Para asegurarnos, inyectamos la opción %
+            setListaSucursales([{ id: '%', descripcion: ' TODAS' }, ...resSuc.data]);
+            
+            // Cargar Deptos y Clases iniciales (con %)
+            cargarDeptos('%');
+            cargarClases('%', '%');
+        } catch (error) {
+            setMessage({ text: "Error al cargar los catálogos", type: 'error' });
+        }
+    };
+
+    const cargarDeptos = async (areaId: string) => {
+        const res = await consumoApi.get('/api/CatProductosC/sp_bw_cat_combo_deptos', { params: { area: areaId } });
+        setListaDeptos(res.data);
+    };
+
+    const cargarClases = async (areaId: string, deptoId: string) => {
+        const res = await consumoApi.get('/api/CatProductosC/sp_bw_cat_combo_clases', { params: { area: areaId, depto: deptoId } });
+        setListaClases(res.data);
+    };
+
+    // Buscador de productos (cuando escriben)
+    const buscarProductos = async (termino: string) => {
+        if (termino.length < 3) return; // Buscar solo si hay 3 o más letras
+        try {
+            const res = await consumoApi.get('/api/CatProductosC/sp_bw_cat_combo_productos_sel', {
+                params: { descripcion: termino, sucursal: 1 } // Pasamos sucursal 1 como genérico para búsqueda
+            });
+            setCatBusquedaProd(res.data || []);
+        } catch (e) {}
+    };
+
+    // Manejo de cambios en cascada
+    const handleCambioArea = (val: string) => {
+        setArea(val); setDepto('%'); setClase('%');
+        cargarDeptos(val); cargarClases(val, '%');
+    };
+    const handleCambioDepto = (val: string) => {
+        setDepto(val); setClase('%');
+        cargarClases(area, val);
+    };
+
+    // Función mockeada para los botones de reportes
+    const dispararReporte = (nombreReporte: string) => {
+        alert(`Falta conectar el SP para: ${nombreReporte}\nFiltros actuales:\nÁrea: ${area}, Depto: ${depto}\nFechas: ${fechaDel} al ${fechaAl}`);
+    };
+
+    return (
+        <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+            <Box sx={{ p: 4, bgcolor: '#fdfdfd' }}>
+                
+                {/* ENCABEZADO ESTILO ACCESS */}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
+                    <Box>
+                        <Typography variant="h6" sx={{ color: '#999', mb: -1, ml: 1 }}>Reporte de</Typography>
+                        <Typography variant="h3" sx={{ fontWeight: 'bold', borderBottom: '6px solid black', display: 'inline-block', pb: 0.5, pr: 8, color: '#000' }}>
+                            Ventas Comparativas
+                        </Typography>
+                    </Box>
+                    <IconButton onClick={onClose}><CloseIcon /></IconButton>
+                </Box>
+
+                {/* ZONA DE FILTROS (GRID) */}
+                <Box sx={{ px: 4 }}>
+                    <Grid container spacing={2} alignItems="center" sx={{ mb: 2 }}>
+                        <Grid item xs={3} textAlign="right"><Typography fontWeight="bold">AREA</Typography></Grid>
+                        {/* ⚠️ CORRECCIÓN AQUÍ: Usamos (a.id || a.area) para que no falle si la API devuelve nombres distintos */}
+                        <Grid item xs={9}><TextField select size="small" fullWidth value={area} onChange={(e) => handleCambioArea(e.target.value)}>{listaAreas.map(a => <MenuItem key={a.id || a.area} value={a.id || a.area}>{a.descripcion}</MenuItem>)}</TextField></Grid>
+
+                        <Grid item xs={3} textAlign="right"><Typography fontWeight="bold">DEPTO</Typography></Grid>
+                        <Grid item xs={9}><TextField select size="small" fullWidth value={depto} onChange={(e) => handleCambioDepto(e.target.value)}>{listaDeptos.map(d => <MenuItem key={d.id || d.depto} value={d.id || d.depto}>{d.descripcion}</MenuItem>)}</TextField></Grid>
+
+                        <Grid item xs={3} textAlign="right"><Typography fontWeight="bold">CLASE</Typography></Grid>
+                        <Grid item xs={9}><TextField select size="small" fullWidth value={clase} onChange={(e) => setClase(e.target.value)}>{listaClases.map(c => <MenuItem key={c.id || c.clase} value={c.id || c.clase}>{c.descripcion}</MenuItem>)}</TextField></Grid>
+
+                        <Grid item xs={3} textAlign="right"><Typography fontWeight="bold">PRODUCTO</Typography></Grid>
+                        <Grid item xs={7}>
+                            <Autocomplete
+                                options={catBusquedaProd}
+                                getOptionLabel={(option: any) => `${option.Clave || option.clave_prod} - ${option.Descripcion || option.descripcion}`}
+                                value={producto}
+                                onChange={(e, val) => setProducto(val)}
+                                onInputChange={(e, val) => buscarProductos(val)}
+                                renderInput={(params) => <TextField {...params} size="small" placeholder="Buscar producto..." />}
+                            />
+                        </Grid>
+                        <Grid item xs={2}><TextField size="small" fullWidth value={productoWildcard} onChange={(e)=>setProductoWildcard(e.target.value)} /></Grid>
+
+                        <Grid item xs={3} textAlign="right"><Typography fontWeight="bold">SUCURSAL</Typography></Grid>
+                        <Grid item xs={9}><TextField select size="small" fullWidth value={sucursal} onChange={(e) => setSucursal(e.target.value)}>{listaSucursales.map(s => <MenuItem key={s.id || s.cve_sucursal} value={s.id || s.cve_sucursal}>{s.descripcion || s.nombre}</MenuItem>)}</TextField></Grid>
+
+                        <Grid item xs={3} textAlign="right"><Typography fontWeight="bold">DEL</Typography></Grid>
+                        <Grid item xs={4}><TextField type="date" size="small" fullWidth value={fechaDel} onChange={(e)=>setFechaDel(e.target.value)}/></Grid>
+                        <Grid item xs={1} textAlign="center"><Typography fontWeight="bold">AL</Typography></Grid>
+                        <Grid item xs={4}><TextField type="date" size="small" fullWidth value={fechaAl} onChange={(e)=>setFechaAl(e.target.value)}/></Grid>
+                    </Grid>
+
+                    {/* ZONA DE CHECKBOXES */}
+                    <Grid container spacing={2} sx={{ mb: 4, pl: 3 }}>
+                        <Grid item xs={8}>
+                            <Box sx={{ display: 'flex', gap: 2, mb: 1 }}>
+                                <FormControlLabel control={<Checkbox checked={chkTiendas} onChange={(e)=>setChkTiendas(e.target.checked)} />} label="TIENDAS" />
+                                <FormControlLabel control={<Checkbox checked={chkRutas} onChange={(e)=>setChkRutas(e.target.checked)} />} label="RUTAS" />
+                                <FormControlLabel control={<Checkbox checked={chkBodegas} onChange={(e)=>setChkBodegas(e.target.checked)} />} label="BODEGAS" />
+                            </Box>
+                            <Box sx={{ border: '1px solid #ccc', borderRadius: 1, p: 1, position: 'relative', mt: 2 }}>
+                                <Typography variant="caption" sx={{ position: 'absolute', top: -10, left: 10, bgcolor: '#fdfdfd', px: 1, color: '#666' }}>Tiendas</Typography>
+                                <Box sx={{ display: 'flex', justifyContent: 'center', gap: 4 }}>
+                                    <FormControlLabel control={<Checkbox checked={tipoTiendas === 'totales'} onChange={() => setTipoTiendas('totales')} icon={<Box sx={{width:16,height:16,borderRadius:'50%',border:'1px solid gray'}}/>} checkedIcon={<Box sx={{width:16,height:16,borderRadius:'50%',border:'1px solid gray', bgcolor:'black'}}/>} />} label="Totales" />
+                                    <FormControlLabel control={<Checkbox checked={tipoTiendas === 'iguales'} onChange={() => setTipoTiendas('iguales')} icon={<Box sx={{width:16,height:16,borderRadius:'50%',border:'1px solid gray'}}/>} checkedIcon={<Box sx={{width:16,height:16,borderRadius:'50%',border:'1px solid gray', bgcolor:'black'}}/>} />} label="Iguales" />
+                                </Box>
+                            </Box>
+                        </Grid>
+                        <Grid item xs={4} sx={{ display: 'flex', flexDirection: 'column' }}>
+                            <FormControlLabel control={<Checkbox checked={chkNocturnas} onChange={(e)=>setChkNocturnas(e.target.checked)} />} label="SOLO NOCTURNAS" />
+                            <FormControlLabel control={<Checkbox checked={chkConIva} onChange={(e)=>setChkConIva(e.target.checked)} />} label="VENTAS CON IVA" />
+                            <FormControlLabel control={<Checkbox checked={chkPromociones} onChange={(e)=>setChkPromociones(e.target.checked)} />} label="SOLO PROMOCIONES" />
+                        </Grid>
+                    </Grid>
+
+                    {/* BOTONES DE REPORTES */}
+                    <Grid container spacing={2}>
+                        {["RESUMEN POR CLAVE", "RESUMEN POR DEPTO", "RESUMEN POR SUCURSAL", "RESUMEN POR CLASE", "RESUMEN POR AREA", "RESUMEN POR SUC. GLOBAL", "RESUMEN AÑO-MES"].map((btn, idx) => (
+                            <Grid item xs={4} key={idx}>
+                                <Button 
+                                    fullWidth 
+                                    variant="contained" 
+                                    onClick={() => dispararReporte(btn)}
+                                    sx={{ 
+                                        bgcolor: '#e3f2fd', color: '#333', fontWeight: 'bold', 
+                                        border: '1px solid #90caf9', boxShadow: 'none',
+                                        '&:hover': { bgcolor: '#bbdefb', boxShadow: 'none' }
+                                    }}
+                                >
+                                    {btn} 📊
+                                </Button>
+                            </Grid>
+                        ))}
+                    </Grid>
+                </Box>
+            </Box>
+        </Dialog>
+    );
+};
+
+// --- COMPONENTE AISLADO PARA REASIGNACIÓN MASIVA ---
+const ModalReasignacionMasiva = ({ open, onClose, consumoApi, setMessage, rows, onSuccess }: any) => {
+    const [lista, setLista] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [seleccion, setSeleccion] = useState<any>(null);
+
+    useEffect(() => {
+        if (open) {
+            setSeleccion(null);
+            fetchLista();
+        }
+    }, [open]);
+
+    const fetchLista = async () => {
+        setLoading(true);
+        try {
+            const res = await consumoApi.get('/api/CatProductosC/sp_bw_cat_combo_jerarquia_plana');
+            setLista(res.data || []);
+        } catch (error) {
+            setMessage({ text: "Error al cargar clasificaciones", type: 'error' });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleConfirmar = async () => {
+        if (!seleccion) return;
+        if (rows.length === 0) {
+            alert("No hay productos en la tabla para actualizar.");
+            return;
+        }
+
+        // Aquí le decimos al usuario exactamente a cuántos va a afectar
+        const confirmar = window.confirm(`¿Está seguro de reasignar los ${rows.length} productos filtrados en la tabla a la clasificación:\n\n${seleccion.d_area} > ${seleccion.d_depto} > ${seleccion.d_clase}?`);
+        if (!confirmar) return;
+
+        setSaving(true);
+        try {
+            // MAGIA: Aquí sacamos SOLO las claves de los productos que están en la tabla
+            const clavesSeparadasPorComa = rows.map((r: any) => r.clave).join(',');
+
+            const res = await consumoApi.post('/api/CatProductosC/sp_bw_cat_combo_reasignar', {
+                claves_prod: clavesSeparadasPorComa,
+                nuevo_area: seleccion.area,
+                nuevo_depto: seleccion.depto,
+                nuevo_clase: seleccion.clase
+            });
+
+            if (res.status === 200) {
+                setMessage({ text: `✅ ${rows.length} productos reasignados con éxito.`, type: 'success' });
+                onClose();
+                onSuccess(); // Dispara la recarga de la tabla principal
+            }
+        } catch (error) {
+            setMessage({ text: "Error al aplicar la reasignación masiva", type: 'error' });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+            <Box sx={{ p: 3, bgcolor: '#fdfdfd' }}>
+                <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#d32f2f', mb: 1 }}>
+                    ⚠️ Reasignación Masiva
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#555', mb: 3 }}>
+                    Se cambiará el Área, Departamento y Clase de los <strong>{rows.length} productos</strong> que tienes filtrados actualmente. Selecciona la nueva clasificación:
+                </Typography>
+
+                <Autocomplete
+                    options={lista}
+                    loading={loading}
+                    getOptionLabel={(opt) => `${opt.d_area} > ${opt.d_depto} > ${opt.d_clase}`}
+                    value={seleccion}
+                    onChange={(e, newValue) => setSeleccion(newValue)}
+                    disabled={saving}
+                    renderInput={(params) => (
+                        <TextField {...params} label="Buscar nueva clasificación..." variant="outlined" autoFocus />
+                    )}
+                />
+
+                <Box sx={{ mt: 4, display: 'flex', justifyContent: 'space-between' }}>
+                    <Button onClick={onClose} variant="outlined" color="inherit" disabled={saving}>
+                        Cancelar
+                    </Button>
+                    <Button 
+                        variant="contained" 
+                        onClick={handleConfirmar} 
+                        disabled={!seleccion || saving}
+                        sx={{ bgcolor: '#d32f2f', color: '#fff', fontWeight: 'bold' }}
+                    >
+                        {saving ? "Procesando..." : "Confirmar Reasignación"}
+                    </Button>
+                </Box>
+            </Box>
+        </Dialog>
+    );
+};
+
+// --- COMPONENTE AISLADO PARA INFO STOCK ---
+const ModalInfoStock = ({ open, onClose, consumoApi, setMessage, productoForm }: any) => {
+    const [datos, setDatos] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (open && productoForm.clave_prod) fetchDatos();
+        else setDatos([]);
+    }, [open, productoForm.clave_prod]);
+
+    const fetchDatos = async () => {
+        setLoading(true);
+        try {
+            const res = await consumoApi.get('/api/CatProductosC/sp_bw_cat_producto_info_stock_sel', {
+                params: { clave: productoForm.clave_prod }
+            });
+            setDatos(res.data || []);
+        } catch (error) {
+            setMessage({ text: "Error al cargar la información de stock", type: 'error' });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <Dialog open={open} onClose={onClose} maxWidth="xl" fullWidth>
+            <Box sx={{ p: 3, bgcolor: '#fdfdfd' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                    <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#777', lineHeight: 1 }}>
+                        Información de <br /> <span style={{ fontSize: '1.8rem', color: '#000' }}>Stock</span>
+                    </Typography>
+                    <IconButton onClick={onClose}><CloseIcon /></IconButton>
+                </Box>
+                
+                <Divider sx={{ my: 2, borderBottomWidth: 4, borderColor: '#000' }} />
+
+                <Box sx={{ mb: 2, p: 0 }}>
+                    <Typography variant="body1"><strong>Clave:</strong> {productoForm.clave_prod}</Typography>
+                    <Typography variant="body1"><strong>Descripción:</strong> {productoForm.descripcion}</Typography>
+                </Box>
+
+                <TableContainer component={Paper} sx={{ maxHeight: 500, border: '1px solid #000', borderRadius: 0, boxShadow: 'none', overflowX: 'auto' }}>
+                    <Table stickyHeader size="small" sx={{ minWidth: 1500 }}>
+                        <TableHead>
+                            <TableRow>
+                                {["Sucursal", "Descripción", "Entradas", "Salidas", "Existencias", "Ventas Periodo", "Ventas Promedio", "Días Muestra", "Unid. Paq. Traspaso", "Días Rotación", "Días Min.", "Días Max.", "Nuevo Mínimo", "Nuevo Máximo"].map((col, idx) => (
+                                    <TableCell key={idx} align={idx > 1 ? "right" : "left"} sx={{ bgcolor: '#b3e5fc', fontWeight: 'bold', borderRight: '1px solid #fff', whiteSpace: 'nowrap' }}>
+                                        {col}
+                                    </TableCell>
+                                ))}
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {loading ? (
+                                <TableRow><TableCell colSpan={14} align="center" sx={{ py: 3 }}>Consultando información...</TableCell></TableRow>
+                            ) : datos.length > 0 ? (
+                                datos.map((row, idx) => (
+                                    <TableRow key={idx} hover sx={{ '& td': { borderRight: '1px solid #eee' } }}>
+                                        <TableCell>{row.sucursal}</TableCell>
+                                        <TableCell sx={{ whiteSpace: 'nowrap' }}>{row.descripcion}</TableCell>
+                                        <TableCell align="right">{Number(row.entradas || 0).toFixed(2)}</TableCell>
+                                        <TableCell align="right">{Number(row.salidas || 0).toFixed(2)}</TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: 'bold' }}>{Number(row.existencias || 0).toFixed(2)}</TableCell>
+                                        <TableCell align="right">{Number(row.venta_periodo || 0).toFixed(2)}</TableCell>
+                                        <TableCell align="right">{Number(row.ventas_promedio || 0).toFixed(2)}</TableCell>
+                                        <TableCell align="right">{Number(row.dias_muestra || 0)}</TableCell>
+                                        <TableCell align="right">{Number(row.unidad_paq_traspaso || 0)}</TableCell>
+                                        <TableCell align="right">{Number(row.dias_rotacion || 0)}</TableCell>
+                                        <TableCell align="right">{Number(row.dias_min || 0)}</TableCell>
+                                        <TableCell align="right">{Number(row.dias_max || 0)}</TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: 'bold', color: '#1976d2' }}>{Number(row.nuevo_minimo || 0).toFixed(2)}</TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: 'bold', color: '#d32f2f' }}>{Number(row.nuevo_maximo || 0).toFixed(2)}</TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow><TableCell colSpan={14} align="center" sx={{ py: 4, color: '#999' }}>No hay información de stock para esta clave.</TableCell></TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+
+                <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
+                    <Button onClick={onClose} variant="contained" sx={{ bgcolor: '#e0e0e0', color: '#333', '&:hover': { bgcolor: '#ccc' }, px: 6, fontWeight: 'bold' }}>
+                        Cerrar
+                    </Button>
+                </Box>
+            </Box>
+        </Dialog>
+    );
+};
+
+// --- COMPONENTE AISLADO PARA PROVEEDORES ---
+const ModalProveedores = ({ open, onClose, consumoApi, setMessage, productoForm, proveedores }: any) => {
+    const [datos, setDatos] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+        if (open && productoForm.clave_prod) fetchDatos();
+        else setDatos([]);
+    }, [open, productoForm.clave_prod]);
+
+    const fetchDatos = async () => {
+        setLoading(true);
+        try {
+            const res = await consumoApi.get('/api/CatProductosC/sp_bw_cat_producto_proveedores_sel', {
+                params: { clave: productoForm.clave_prod }
+            });
+            const conIds = (res.data || []).map((d: any) => ({ ...d, _uid: Math.random().toString(36).substr(2, 9) }));
+            setDatos(conIds);
+        } catch (error) {
+            setMessage({ text: "Error al cargar los proveedores", type: 'error' });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleAddRow = () => {
+        setDatos([...datos, { _uid: Math.random().toString(36).substr(2, 9), cve_prov: '', descuento: 0 }]);
+    };
+
+    const handleDeleteRow = (uid: string) => setDatos(prev => prev.filter(row => row._uid !== uid));
+
+    const handleChange = (uid: string, campo: string, valor: any) => {
+        if (campo === 'descuento') {
+            const num = Number(valor);
+            if (num < 0 || num > 1) {
+                alert("Ingrese solo valores entre 0 y 1 para indicar porcentajes (Ej. 0.15 para 15%).");
+                return;
+            }
+        }
+        setDatos(prev => prev.map(row => row._uid === uid ? { ...row, [campo]: valor } : row));
+    };
+
+    const handleSave = async () => {
+        if (datos.some(d => !d.cve_prov || d.cve_prov === '')) {
+            alert("Asegúrese de seleccionar un proveedor en todas las filas.");
+            return;
+        }
+
+        setSaving(true);
+        try {
+            const datosLimpios = datos.map(({ _uid, ...resto }) => ({
+                cve_prov: String(resto.cve_prov),
+                descuento: Number(resto.descuento || 0)
+            }));
+
+            const res = await consumoApi.post(
+                `/api/CatProductosC/sp_bw_cat_producto_proveedores_save?clave=${productoForm.clave_prod}`, 
+                datosLimpios
+            );
+            
+            if (res.status === 200) {
+                setMessage({ text: "✅ Proveedores asignados con éxito", type: 'success' });
+                onClose();
+            }
+        } catch (error: any) {
+            setMessage({ text: error.response?.data?.mensaje || "Error al guardar", type: 'error' });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+            <Box sx={{ p: 3, bgcolor: '#fdfdfd' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                    <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#333' }}>
+                        🏢 Proveedores Asignados
+                    </Typography>
+                    <IconButton onClick={onClose}><CloseIcon /></IconButton>
+                </Box>
+                
+                <Box sx={{ mb: 2, p: 1.5, bgcolor: '#f5f5f5', borderLeft: '5px solid #d32f2f' }}>
+                    <Typography variant="body2" sx={{ color: '#d32f2f', fontWeight: 'bold', mb: 0.5 }}>Clave general: {productoForm.clave_prod}</Typography>
+                    <Typography variant="body2" sx={{ color: '#d32f2f', fontWeight: 'bold' }}>Descripción: {productoForm.descripcion}</Typography>
+                </Box>
+
+                <TableContainer component={Paper} sx={{ maxHeight: 350, border: '1px solid #e0e0e0', boxShadow: 'none', mb: 2 }}>
+                    <Table stickyHeader size="small">
+                        <TableHead>
+                            <TableRow>
+                                <TableCell sx={{ bgcolor: '#eee', fontWeight: 'bold', color: '#8b0000' }}>Proveedores</TableCell>
+                                <TableCell sx={{ bgcolor: '#eee', fontWeight: 'bold', color: '#8b0000', width: '120px' }} align="center">Descuento</TableCell>
+                                <TableCell sx={{ bgcolor: '#eee', fontWeight: 'bold', width: '50px' }} align="center">Acción</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {loading ? (
+                                <TableRow><TableCell colSpan={3} align="center" sx={{ py: 3 }}>Cargando proveedores...</TableCell></TableRow>
+                            ) : datos.length > 0 ? (
+                                datos.map((row) => (
+                                    <TableRow key={row._uid} hover>
+                                        <TableCell>
+                                            <TextField 
+                                                select
+                                                value={row.cve_prov}
+                                                onChange={(e) => handleChange(row._uid, 'cve_prov', e.target.value)}
+                                                size="small" variant="outlined" fullWidth
+                                                sx={{ '& .MuiSelect-select': { py: 0.5 } }}
+                                            >
+                                                {proveedores.map((p: any) => (
+                                                    <MenuItem key={p.id} value={p.id}>{p.descripcion}</MenuItem>
+                                                ))}
+                                            </TextField>
+                                        </TableCell>
+                                        <TableCell align="center">
+                                            <TextField 
+                                                type="number"
+                                                value={row.descuento}
+                                                onChange={(e) => handleChange(row._uid, 'descuento', e.target.value)}
+                                                size="small" variant="outlined" 
+                                                inputProps={{ step: "0.01", min: "0", max: "1", style: { textAlign: 'center' } }}
+                                                sx={{ '& .MuiInputBase-input': { py: 0.5 } }}
+                                            />
+                                        </TableCell>
+                                        <TableCell align="center">
+                                            <IconButton size="small" color="error" onClick={() => handleDeleteRow(row._uid)}>
+                                                <DeleteIcon fontSize="small" />
+                                            </IconButton>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow><TableCell colSpan={3} align="center" sx={{ py: 4, color: '#999' }}>No hay proveedores asignados.</TableCell></TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
+                    <Button variant="outlined" size="small" onClick={handleAddRow} sx={{ fontWeight: 'bold', color: '#333', borderColor: '#ccc' }}>
+                        * Agregar Fila
+                    </Button>
+                    <Box sx={{ display: 'flex', gap: 2 }}>
+                        <Button onClick={onClose} color="inherit" variant="outlined" sx={{ borderColor: '#ccc' }}>Salir</Button>
+                        <Button variant="contained" onClick={handleSave} disabled={saving} sx={{ bgcolor: '#333', color: '#fff', fontWeight: 'bold' }}>
+                            {saving ? "Guardando..." : "💾 Guardar"}
+                        </Button>
+                    </Box>
+                </Box>
+            </Box>
+        </Dialog>
+    );
+};
+
+// --- COMPONENTE AISLADO PARA KARDEX (TARJETA DE ALMACÉN) ---
+const ModalKardex = ({ open, onClose, consumoApi, setMessage, productoForm, sucursales }: any) => {
+    const [datos, setDatos] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    // Fechas por defecto (Primer día del mes actual al día de hoy)
+    const hoy = new Date().toISOString().split('T')[0];
+    const primerDia = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+
+    const [fechaInicio, setFechaInicio] = useState(primerDia);
+    const [fechaFin, setFechaFin] = useState(hoy);
+    
+    // Tratamos de tomar la sucursal del usuario por defecto, o la primera del catálogo
+    const sucursalUsuario = () => {
+        try {
+            const tokenData = localStorage.getItem('token');
+            if (tokenData) return JSON.parse(tokenData).claveDepartamento;
+        } catch(e) {}
+        return '';
+    };
+    const [sucursalSel, setSucursalSel] = useState<string>(sucursalUsuario());
+
+    useEffect(() => {
+        if (open) {
+            setDatos([]); // Limpiar la tabla al abrir
+        }
+    }, [open]);
+
+    const handleConsultar = async () => {
+        if (!sucursalSel) {
+            alert("Seleccione una sucursal para consultar.");
+            return;
+        }
+        if (fechaInicio > fechaFin) {
+            alert("La fecha final debe ser mayor o igual a la inicial.");
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const res = await consumoApi.get('/api/CatProductosC/sp_bw_cat_producto_kardex_sel', {
+                params: {
+                    clave: productoForm.clave_prod,
+                    sucursal: sucursalSel,
+                    fecha_inicio: fechaInicio,
+                    fecha_fin: fechaFin
+                }
+            });
+            setDatos(res.data || []);
+            if(res.data.length === 0) setMessage({ text: "No se encontraron movimientos en este periodo.", type: 'success' });
+        } catch (error) {
+            setMessage({ text: "Error al consultar el Kardex", type: 'error' });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Sumatorias estilo Access
+    const totalEntradas = datos.reduce((sum, row) => sum + Number(row.cantidad_entrada || 0), 0);
+    const totalSalidas = datos.reduce((sum, row) => sum + Number(row.cantidad_salida || 0), 0);
+    const diferencia = totalEntradas - totalSalidas;
+
+    return (
+        <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
+            <Box sx={{ p: 3, bgcolor: '#fdfdfd', minHeight: '600px', display: 'flex', flexDirection: 'column' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                    <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#777', lineHeight: 1 }}>
+                        Tarjeta de Almacén <br /> <span style={{ fontSize: '2rem', color: '#000' }}>KARDEX</span>
+                    </Typography>
+                    <IconButton onClick={onClose}><CloseIcon /></IconButton>
+                </Box>
+                
+                <Divider sx={{ my: 2, borderBottomWidth: 4, borderColor: '#000' }} />
+
+                {/* ZONA DE FILTROS */}
+                <Grid container spacing={2} alignItems="center" sx={{ mb: 2, bgcolor: '#f5f5f5', p: 1.5, borderRadius: 1 }}>
+                    <Grid item xs={12} md={3}>
+                        <TextField select fullWidth size="small" label="Sucursal" value={sucursalSel} onChange={(e) => setSucursalSel(e.target.value)}>
+                            {sucursales.map((s: any) => <MenuItem key={s.id} value={s.id}>{s.descripcion}</MenuItem>)}
+                        </TextField>
+                    </Grid>
+                    <Grid item xs={6} md={2}>
+                        <TextField type="date" fullWidth size="small" label="Del" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} InputLabelProps={{ shrink: true }}/>
+                    </Grid>
+                    <Grid item xs={6} md={2}>
+                        <TextField type="date" fullWidth size="small" label="Al" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)} InputLabelProps={{ shrink: true }}/>
+                    </Grid>
+                    <Grid item xs={12} md={3}>
+                        <Button variant="contained" fullWidth onClick={handleConsultar} disabled={loading} sx={{ bgcolor: '#333', color: 'white', fontWeight: 'bold', height: '40px' }}>
+                            {loading ? "Buscando..." : "Consultar Kardex"}
+                        </Button>
+                    </Grid>
+                </Grid>
+
+                <Box sx={{ mb: 2 }}>
+                    <Typography variant="body2"><strong>Clave:</strong> {productoForm.clave_prod}</Typography>
+                    <Typography variant="body2"><strong>Producto:</strong> {productoForm.descripcion}</Typography>
+                </Box>
+
+                {/* TABLA DE MOVIMIENTOS */}
+                <TableContainer component={Paper} sx={{ flex: 1, border: '1px solid #ccc', borderRadius: 0, boxShadow: 'none' }}>
+                    <Table stickyHeader size="small">
+                        <TableHead>
+                            <TableRow>
+                                <TableCell sx={{ bgcolor: '#eee', fontWeight: 'bold' }}>Fecha</TableCell>
+                                <TableCell sx={{ bgcolor: '#eee', fontWeight: 'bold' }}>Folio</TableCell>
+                                <TableCell sx={{ bgcolor: '#eee', fontWeight: 'bold' }}>Concepto</TableCell>
+                                <TableCell align="right" sx={{ bgcolor: '#eee', fontWeight: 'bold' }}>Entrada</TableCell>
+                                <TableCell align="right" sx={{ bgcolor: '#eee', fontWeight: 'bold' }}>Salida</TableCell>
+                                <TableCell align="right" sx={{ bgcolor: '#eee', fontWeight: 'bold' }}>Costo</TableCell>
+                                <TableCell align="center" sx={{ bgcolor: '#eee', fontWeight: 'bold' }}>Usuario</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {loading ? (
+                                <TableRow><TableCell colSpan={7} align="center" sx={{ py: 3 }}>Buscando movimientos...</TableCell></TableRow>
+                            ) : datos.length > 0 ? (
+                                datos.map((row, idx) => (
+                                    <TableRow key={idx} hover>
+                                        <TableCell sx={{ whiteSpace: 'nowrap' }}>{row.fecha_movto ? String(row.fecha_movto).replace('T', ' ').substring(0, 16) : ''}</TableCell>
+                                        <TableCell>{row.folio_movto}</TableCell>
+                                        <TableCell>{row.tipo_movimiento}</TableCell>
+                                        <TableCell align="right" sx={{ color: 'green', fontWeight: row.cantidad_entrada > 0 ? 'bold' : 'normal' }}>
+                                            {Number(row.cantidad_entrada) > 0 ? row.cantidad_entrada : '-'}
+                                        </TableCell>
+                                        <TableCell align="right" sx={{ color: 'red', fontWeight: row.cantidad_salida > 0 ? 'bold' : 'normal' }}>
+                                            {Number(row.cantidad_salida) > 0 ? row.cantidad_salida : '-'}
+                                        </TableCell>
+                                        <TableCell align="right">${Number(row.costo).toFixed(2)}</TableCell>
+                                        <TableCell align="center" sx={{ fontSize: '0.8rem', color: '#666' }}>{row.usr}</TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow><TableCell colSpan={7} align="center" sx={{ py: 4, color: '#999' }}>Realice una búsqueda para ver los movimientos.</TableCell></TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+
+                {/* SUMATORIAS AL ESTILO ACCESS */}
+                <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-around', bgcolor: '#f9f9f9', p: 2, border: '1px solid #ccc' }}>
+                    <Box textAlign="center">
+                        <Typography variant="caption" color="textSecondary">Total de Entradas:</Typography>
+                        <Typography variant="h6" sx={{ color: 'green', fontWeight: 'bold' }}>{totalEntradas.toFixed(2)}</Typography>
+                    </Box>
+                    <Box textAlign="center">
+                        <Typography variant="caption" color="textSecondary">Total de Salidas:</Typography>
+                        <Typography variant="h6" sx={{ color: 'red', fontWeight: 'bold' }}>{totalSalidas.toFixed(2)}</Typography>
+                    </Box>
+                    <Box textAlign="center">
+                        <Typography variant="caption" color="textSecondary">Diferencia:</Typography>
+                        <Typography variant="h6" sx={{ color: diferencia < 0 ? 'red' : 'black', fontWeight: 'bold' }}>{diferencia.toFixed(2)}</Typography>
+                    </Box>
+                </Box>
+
+                <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
+                    <Button onClick={onClose} variant="outlined" sx={{ color: '#333', borderColor: '#ccc', px: 4 }}>Cerrar Kardex</Button>
+                </Box>
+            </Box>
+        </Dialog>
+    );
+};
 export default function CatProductos() {
   const { consumoApi } = useConsumoApi();
 
@@ -1031,7 +1811,43 @@ const [openProgPrecio, setOpenProgPrecio] = useState(false);
 const [openProgCosto, setOpenProgCosto] = useState(false);
 const [openStock, setOpenStock] = useState(false);
 
+const [openKardex, setOpenKardex] = useState(false);
+
+const handleOpenKardex = () => {
+    if (!claveSeleccionada) {
+        alert("Primero debe seleccionar un producto.");
+        return;
+    }
+    setOpenKardex(true);
+};
+
+const [openInfoStock, setOpenInfoStock] = useState(false);
+
+const handleOpenInfoStock = () => {
+    if (!claveSeleccionada) {
+        alert("Primero debe seleccionar o guardar un producto.");
+        return;
+    }
+    setOpenInfoStock(true);
+};
+
 const [openSustitutos, setOpenSustitutos] = useState(false);
+
+const [openProveedores, setOpenProveedores] = useState(false);
+
+const handleOpenProveedores = () => {
+    if (!claveSeleccionada) {
+        alert("Primero debe seleccionar o guardar un producto.");
+        return;
+    }
+    setOpenProveedores(true);
+};
+
+const [openAnalisis, setOpenAnalisis] = useState(false);
+
+const [openReasignacionMasiva, setOpenReasignacionMasiva] = useState(false);
+
+const [openVentasComparativas, setOpenVentasComparativas] = useState(false);
 
 
 const handleSaveKit = async () => {
@@ -1818,7 +2634,22 @@ return `${valorPorcentaje.toFixed(2)}%`;
         </Paper>
         <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
            <Button variant="contained" onClick={handleOpenAdd} sx={{ backgroundColor: '#333333', color: 'white', borderRadius: '8px', fontWeight: 'bold', padding: '10px 24px' }}>+ ALTA DE CLAVES</Button>
-           <Button 
+            <Button 
+             variant="contained" 
+             onClick={() => setOpenReasignacionMasiva(true)}
+             disabled={rows.length === 0}
+             sx={{ backgroundColor: '#d32f2f', color: 'white', borderRadius: '8px', fontWeight: 'bold', padding: '10px 24px', '&:hover': { backgroundColor: '#b71c1c' } }}
+           >
+             🔄 REASIGNAR FILTRADOS
+           </Button>
+           <Button 
+             variant="contained" 
+             onClick={() => setOpenAnalisis(true)}
+             sx={{ backgroundColor: '#1976d2', color: 'white', borderRadius: '8px', fontWeight: 'bold', padding: '10px 24px', '&:hover': { backgroundColor: '#115293' } }}
+           >
+             📈 REPORTE POR CLAVE
+           </Button>
+<Button 
              variant="contained" 
              onClick={handleExportExcel}
              sx={{ backgroundColor: '#2e7d32', color: 'white', borderRadius: '8px', fontWeight: 'bold', padding: '10px 24px', '&:hover': { backgroundColor: '#1b5e20' } }}
@@ -2165,9 +2996,9 @@ return `${valorPorcentaje.toFixed(2)}%`;
        { label: "Stock", action: handleOpenStock },
         { label: "Bitácora de la clave", action: handleOpenBitacora },
         { label: "Programación Costos", action: () => setOpenProgCosto(true) },
-        { label: "kardex", action: () => alert("No encontre la tabla de kardex, preguntar al inge") },
-        { label: "Info stock", action: () => alert("no puedo acceedr a esa ventana") },
-        { label: "Proveedores", action: () => alert("no puedo acceedr a esa ventana") },
+        { label: "Kardex", action: handleOpenKardex },
+        { label: "Info stock", action: handleOpenInfoStock },
+        { label: "Proveedores", action: handleOpenProveedores },
         { label: "Bitácora Precios", action: handleOpenBitacoraPrecios },
         { label: "Programación Precios", action: () => setOpenProgPrecio(true) },
 
@@ -2650,6 +3481,55 @@ return `${valorPorcentaje.toFixed(2)}%`;
 <ModalStockSucursal 
     open={openStock} 
     onClose={() => setOpenStock(false)} 
+    consumoApi={consumoApi} 
+    setMessage={setMessage} 
+    productoForm={productoForm}
+    sucursales={sucursales}
+/>
+
+{/* --- MODAL DE REASIGNACIÓN MASIVA --- */}
+<ModalReasignacionMasiva 
+    open={openReasignacionMasiva} 
+    onClose={() => setOpenReasignacionMasiva(false)} 
+    consumoApi={consumoApi} 
+    setMessage={setMessage} 
+    rows={rows} 
+    onSuccess={fetchProductos} 
+/>
+
+<ModalAnalisisPorClave 
+    open={openAnalisis} 
+    onClose={() => setOpenAnalisis(false)} 
+    onAbrirVentasComparativas={() => setOpenVentasComparativas(true)}
+/>
+
+{/* --- MODAL DE FILTROS: VENTAS COMPARATIVAS --- */}
+<ModalVentasComparativas
+    open={openVentasComparativas}
+    onClose={() => setOpenVentasComparativas(false)}
+    consumoApi={consumoApi}
+    setMessage={setMessage}
+/>
+
+<ModalInfoStock 
+    open={openInfoStock} 
+    onClose={() => setOpenInfoStock(false)} 
+    consumoApi={consumoApi} 
+    setMessage={setMessage} 
+    productoForm={productoForm}
+/>
+<ModalProveedores 
+    open={openProveedores} 
+    onClose={() => setOpenProveedores(false)} 
+    consumoApi={consumoApi} 
+    setMessage={setMessage} 
+    productoForm={productoForm}
+    proveedores={proveedores}
+/>
+
+<ModalKardex 
+    open={openKardex} 
+    onClose={() => setOpenKardex(false)} 
     consumoApi={consumoApi} 
     setMessage={setMessage} 
     productoForm={productoForm}
