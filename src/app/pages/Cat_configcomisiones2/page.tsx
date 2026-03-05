@@ -75,7 +75,7 @@ const initialFormState = {
   aplicaL: true, aplicaM: true, aplicaMi: true, aplicaJ: true, aplicaV: true, aplicaS: true, aplicaD: true
 };
 
-export default function ConfigComisiones() {
+export default function ConfigComisiones2() {
   const { consumoApi } = useConsumoApi();
 
   // Estados de la tabla
@@ -104,10 +104,10 @@ export default function ConfigComisiones() {
   const fetchCatalogosBase = async () => {
       try {
           const [resSuc, resArea, resMarca, resPuesto] = await Promise.all([
-              consumoApi.get('/api/ConfigComisiones/sp_bw_cat_combo_sucursales'),
-              consumoApi.get('/api/ConfigComisiones/sp_bw_cat_combo_areas'),
-              consumoApi.get('/api/ConfigComisiones/sp_bw_cat_combo_marcas'),
-              consumoApi.get('/api/ConfigComisiones/sp_bw_cat_combo_puestos')
+              consumoApi.get('/api/ConfigComisiones2/sp_bw_cat_combo_sucursales'),
+              consumoApi.get('/api/ConfigComisiones2/sp_bw_cat_combo_areas'),
+              consumoApi.get('/api/ConfigComisiones2/sp_bw_cat_combo_marcas'),
+              consumoApi.get('/api/ConfigComisiones2/sp_bw_cat_combo_puestos')
           ]);
           setSucursales(Array.isArray(resSuc?.data) ? resSuc.data : []);
           setAreas(Array.isArray(resArea?.data) ? resArea.data : []);
@@ -121,7 +121,7 @@ export default function ConfigComisiones() {
   const fetchTablaComisiones = async () => {
       setLoading(true);
       try {
-          const res = await consumoApi.get('/api/ConfigComisiones/sp_bw_cat_configComisiones_sel');
+          const res = await consumoApi.get('/api/ConfigComisiones2/sp_bw_cat_configComisiones2_sel');
           setRows(Array.isArray(res?.data) ? res.data : []);
       } catch (error) {
           setRows([]);
@@ -138,7 +138,7 @@ export default function ConfigComisiones() {
           setFormData(prev => ({ ...prev, area: value, depto: '%', clase: '%' }));
           try {
               if (value !== '%') {
-                  const res = await consumoApi.get('/api/ConfigComisiones/sp_bw_cat_combo_deptos', { params: { area: value }});
+                  const res = await consumoApi.get('/api/ConfigComisiones2/sp_bw_cat_combo_deptos', { params: { area: value }});
                   setDeptos(Array.isArray(res?.data) ? res.data : []);
               } else { setDeptos([]); }
               setClases([]);
@@ -148,7 +148,7 @@ export default function ConfigComisiones() {
           setFormData(prev => ({ ...prev, depto: value, clase: '%' }));
           try {
               if (value !== '%') {
-                  const res = await consumoApi.get('/api/ConfigComisiones/sp_bw_cat_combo_clases', { params: { area: formData.area, depto: value }});
+                  const res = await consumoApi.get('/api/ConfigComisiones2/sp_bw_cat_combo_clases', { params: { area: formData.area, depto: value }});
                   setClases(Array.isArray(res?.data) ? res.data : []);
               } else { setClases([]); }
           } catch(e) { setClases([]); }
@@ -158,7 +158,7 @@ export default function ConfigComisiones() {
           setFormData(prev => ({ ...prev, idMarca: value, idFamilia: '%' }));
           try {
               if (value !== '%') {
-                  const res = await consumoApi.get('/api/ConfigComisiones/sp_bw_cat_combo_familias', { params: { idMarca: value }});
+                  const res = await consumoApi.get('/api/ConfigComisiones2/sp_bw_cat_combo_familias', { params: { idMarca: value }});
                   setFamilias(Array.isArray(res?.data) ? res.data : []);
               } else { setFamilias([]); }
           } catch(e) { setFamilias([]); }
@@ -181,7 +181,7 @@ export default function ConfigComisiones() {
       }
   };
 
-const handleGuardar = async () => {
+  const handleGuardar = async () => {
         if (!formData.puesto) return setMessage({ text: "El Puesto es obligatorio.", type: 'error' });
         if (!formData.fechaInicial || !formData.fechaFinal) return setMessage({ text: "Las fechas son obligatorias.", type: 'error' });
         
@@ -190,7 +190,6 @@ const handleGuardar = async () => {
 
         setSaving(true);
         try {
-            // AQUI ESTÁ LA CORRECCIÓN: Le agregamos .toString() a los campos de texto
             const payload = { 
                 ...formData, 
                 sucursal: formData.sucursal?.toString(),
@@ -200,12 +199,12 @@ const handleGuardar = async () => {
                 idMarca: formData.idMarca?.toString(),
                 idFamilia: formData.idFamilia?.toString(),
                 comision: comisionVal, 
-                puesto: Number(formData.puesto) // El puesto sí debe ser número
+                puesto: Number(formData.puesto)
             };
             
-            const res = await consumoApi.post('/api/ConfigComisiones/sp_bw_cat_configComisiones_ins', payload);
+            const res = await consumoApi.post('/api/ConfigComisiones2/sp_bw_cat_configComisiones2_ins', payload);
             if (res.status === 200) {
-                setMessage({ text: "✅ Comisión configurada correctamente.", type: 'success' });
+                setMessage({ text: "✅ Comisión 2 configurada correctamente.", type: 'success' });
                 fetchTablaComisiones();
                 setFormData(prev => ({ ...prev, comision: 0, claveProd: '' }));
             }
@@ -220,7 +219,7 @@ const handleGuardar = async () => {
       if (!window.confirm("¿Está seguro que desea eliminar esta configuración?")) return;
       setSaving(true);
       try {
-          const res = await consumoApi.delete(`/api/ConfigComisiones/sp_bw_cat_configComisiones_del?id=${id}`);
+          const res = await consumoApi.delete(`/api/ConfigComisiones2/sp_bw_cat_configComisiones2_del?id=${id}`);
           if (res.status === 200) {
               setMessage({ text: "🗑️ Registro eliminado.", type: 'success' });
               fetchTablaComisiones();
@@ -268,9 +267,9 @@ const handleGuardar = async () => {
 
   return (
     <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
-      <Paper sx={{ p: 3 }}>
-        <Typography variant="h4" component="h1" gutterBottom align="center" sx={{ fontWeight: 'bold', mb: 4 }}>
-          CONFIGURACIÓN DE COMISIONES
+      <Paper sx={{ p: 3, mb: 3, flexShrink: 0, borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+        <Typography variant="h4" component="h1" gutterBottom align="center" sx={{ fontWeight: 'bold', mb: 3, color: '#2c3e50', borderBottom: '2px solid #e0e0e0', pb: 1 }}>
+          CONFIGURACIÓN DE COMISIONES 2
         </Typography>
 
         <Grid container spacing={2}>
@@ -333,10 +332,12 @@ const handleGuardar = async () => {
 
             {/* --- SECCIÓN 3: PARÁMETROS ECONÓMICOS Y DÍAS (ESTILO ACCESS COMPACTO) --- */}
             <Grid item xs={12} md={2}>
-                <TextField {...commonProps} type="date" label="Fecha Inicial" name="fechaInicial" value={formData.fechaInicial} onChange={handleInputChange} InputLabelProps={{ shrink: true }} />
+                <TextField {...commonProps} type="date" label="Fecha Inicial" name="fechaInicial" value={formData.fechaInicial} onChange={handleInputChange} InputLabelProps={{ shrink: true }} 
+                    sx={{ width: '160px', ...commonProps.sx }} />
             </Grid>
             <Grid item xs={12} md={2}>
-                <TextField {...commonProps} type="date" label="Fecha Final" name="fechaFinal" value={formData.fechaFinal} onChange={handleInputChange} InputLabelProps={{ shrink: true }} />
+                <TextField {...commonProps} type="date" label="Fecha Final" name="fechaFinal" value={formData.fechaFinal} onChange={handleInputChange} InputLabelProps={{ shrink: true }} 
+                    sx={{ width: '160px', ...commonProps.sx }} />
             </Grid>
 
             {/* Checkboxes de IVA estilo cabecera superior */}
@@ -358,7 +359,8 @@ const handleGuardar = async () => {
             </Grid>
 
             <Grid item xs={12} md={1.5} sx={{ display: 'flex', alignItems: 'flex-end', pb: 0.5 }}>
-                <TextField {...commonProps} type="number" label="Comisión (%)" name="comision" value={formData.comision} onChange={handleInputChange} inputProps={{ step: "0.01" }} />
+                <TextField {...commonProps} type="number" label="Comisión (%)" name="comision" value={formData.comision} onChange={handleInputChange} inputProps={{ step: "0.01" }} 
+                    sx={{ width: '120px', ...commonProps.sx }} />
             </Grid>
 
             {/* Días de la semana pegaditos como en Access */}
@@ -375,14 +377,28 @@ const handleGuardar = async () => {
             {/* Botón Guardar */}
             <Grid item xs={12} md={1.5} sx={{ display: 'flex', alignItems: 'flex-end', pb: 0.5 }}>
                 <Button variant="contained" onClick={handleGuardar} disabled={saving} fullWidth startIcon={<SaveIcon />}
-                    sx={{ height: '45px', bgcolor: '#333', color: 'white', fontWeight: 'bold', borderRadius: '8px', '&:hover': { bgcolor: '#555' } }}>
+                    sx={{ 
+                        height: '45px', 
+                        backgroundColor: '#333333', 
+                        color: 'white', 
+                        fontWeight: 600,
+                        textTransform: 'none',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)',
+                        transition: 'all 0.3s ease',
+                        '&:hover': { 
+                            backgroundColor: '#555555',
+                            boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)',
+                            transform: 'translateY(-1px)'
+                        }
+                    }}>
                     GUARDAR
                 </Button>
             </Grid>
         </Grid>
       </Paper>
 
-        {/* TABLA PRINCIPAL FLUIDA */}
+      {/* TABLA PRINCIPAL FLUIDA */}
       <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         <Paper sx={{ flex: 1, width: '100%', overflow: 'hidden', borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
           <DataGrid 

@@ -17,6 +17,11 @@ export const routes = {
   cat_act_Precios_grupo: "/cat_act_Precios_grupo",
   cat_metaempleados: "/cat_metaempleados",
   cat_metasucursal: "/cat_metasucursal",
+  cat_configcomisiones: "/cat_configcomisiones",
+  cat_configcomisiones2: "/cat_configcomisiones2",
+  cat_accesosalternos: "/cat_accesosalternos",
+  cat_conceptos_ajustes: "/cat_conceptos_ajustes",
+  cat_tipos_movimientos: "/cat_tipos_movimientos",
   pos: "/pos",
 
   //Catalogos

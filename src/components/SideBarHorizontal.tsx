@@ -177,6 +177,21 @@ const SidebarHorizontal = () => {
           <MenuItem onClick={() => navigate(routes.cat_metasucursal)}>
             Metas Sucursal
           </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_configcomisiones)}>
+            Configuración de Comisiones
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_configcomisiones2)}>
+            Configuración de Comisiones 2
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_accesosalternos)}>
+            Accesos Alternos
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_conceptos_ajustes)}>
+            Conceptos de Ajustes
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_tipos_movimientos)}>
+            Tipos de Movimientos
+          </MenuItem>
         </Menu>
 
  {/* MODULO COMERCIAL */}
@@ -202,8 +217,6 @@ const SidebarHorizontal = () => {
         >
           PERFIL
         </Button>
-
-
 
         <Menu
           anchorEl={anchorPerfil}

@@ -30,7 +30,14 @@ import CorteParcial from './pages/CorteParcial';
 import CorteDia from './pages/CorteDia';
 import AjusteMasivoPrecios from './pages/AjusteMasivoPrecios/page';
 import MetasEmpleados from './pages/Cat_metaempleados/page';
-import MetasSucursales from './pages/Cat_metasucursal/page'; 
+import MetasSucursales from './pages/Cat_metasucursal/page';
+import ConfigComisiones from './pages/Cat_configcomisiones/page';
+import ConfigComisiones2 from './pages/Cat_configcomisiones2/page';
+import AccesosAlternos from './pages/cat_accesosalternos/page';
+import ConceptosAjustes from './pages/cat_conceptos_ajustes/page';
+import TiposMovimientos from './pages/cat_tipos_movimientos/page';
+
+
 
 
 
@@ -67,6 +74,14 @@ function App() {
           <Route path='/ajustemasivoprecios' element={<Layout><AjusteMasivoPrecios/></Layout>} />
           <Route path='/cat_metaempleados' element={<Layout><MetasEmpleados/></Layout>} />
           <Route path='/cat_metasucursal' element={<Layout><MetasSucursales/></Layout>} />
+          <Route path='/cat_configcomisiones' element={<Layout><ConfigComisiones/></Layout>} />
+          <Route path='/cat_configcomisiones2' element={<Layout><ConfigComisiones2/></Layout>} />
+          <Route path='/cat_accesosalternos' element={<Layout><AccesosAlternos/></Layout>} />
+          <Route path='/cat_conceptos_ajustes' element={<Layout><ConceptosAjustes/></Layout>} />
+          <Route path='/cat_tipos_movimientos' element={<Layout><TiposMovimientos/></Layout>} />
+
+
+       
 
           
 
