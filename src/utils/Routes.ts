@@ -44,6 +44,18 @@ export const routes = {
   retiros: "/retiros",
   corte_parcial: "/corte-parcial",
   corte_dia: "/corte-dia",
+  config_promociones_descuento_porcentual: "/config_promociones_descuento_porcentual",
+  cat_Plasticos_Autorizados: "/cat_Plasticos_Autorizados",
+  factores_sucursal: "/factores_sucursal",
+  cat_Medios_Pago: "/cat_medios_pago",
+  cat_DescProveedores: "/cat_desc_proveedores",
+  cat_Proveedores_Acreedores: "/cat_proveedores_acreedores",
+  cat_Trabajadores: "/cat_trabajadores",
+  cat_nomina_departamentos: "/cat_nomina_departamentos",
+  cat_nomina_Status: "/cat_nomina_Status",
+  cat_nomina_formas_pagos: "/cat_nomina_formas_pagos",
+  cat_nomina_puestos: "/cat_nomina_puestos",
+  cat_nomina_bajas: "/cat_nomina_bajas",
 
 };
 

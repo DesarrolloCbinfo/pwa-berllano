@@ -33,3 +33,4 @@ export interface IUsuario {
   clavePerfil: number,
   password: string
 }
+

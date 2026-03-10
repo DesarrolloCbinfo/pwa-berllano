@@ -174,6 +174,88 @@ const SidebarHorizontal = () => {
            <MenuItem onClick={() => navigate(routes.cat_metaempleados)}>
             Metas empleados
           </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_metaempleados)}>
+            Meta Empleados
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_metasucursal)}>
+            Metas Sucursal
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_configcomisiones)}>
+            Configuración de Comisiones
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_configcomisiones2)}>
+            Configuración de Comisiones 2
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_accesosalternos)}>
+            Accesos Alternos
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_conceptos_ajustes)}>
+            Conceptos de Ajustes
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_tipos_movimientos)}>
+            Tipos de Movimientos
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.config_promociones_descuento_porcentual)}>
+            Configuración Promociones Descuento Porcentual
+            </MenuItem>
+        {/*  
+          <MenuItem onClick={() => navigate(routes.plasticos_autorizados)}>
+            Plásticos Autorizados
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.medios_pagos)}>
+            Medios de Pagos
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.descuento_proveedores)}>
+            Descuento Proveedores
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.proveedores_acreedores)}>
+            Proveedores Acreedores
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_trabajadores)}>
+            Trabajadores
+          </MenuItem>*/}
+          <MenuItem onClick={() => navigate(routes.cat_nomina_departamentos)}>
+            Nómina Departamentos
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_nomina_Status)}>
+            Nómina Status
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_nomina_formas_pagos)}>
+            Nómina Formas de Pagos
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_nomina_puestos)}>
+            Nómina Puestos
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_nomina_bajas)}>
+            Nómina Bajas
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.factores_sucursal)}>
+            Factores Sucursales
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_nominas_movimientos)}>
+            Movimientos
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_dias_festivos)}>
+            Días Festivos
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_niveles_estudios_rrhh)}>
+            Niveles de Estudio
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_nominas_horarios)}>
+            Horarios
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_cuentas_bancarias)}>
+            Cuentas Bancarias
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_tipos_cuentas)}>
+            Tipos de Cuentas
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_usuarios)}>
+            Usuarios del Sistema
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_nominas_folios)}>
+            Administración de Folios
+          </MenuItem>
           
         </Menu>
 
