@@ -24,7 +24,7 @@ import CatProveedores from './pages/cat_Proveedores/page';
 import AdministracionServiciosInsumos from './pages/modulo_servicios_Insumos/page';
 import AdministracionPorcentajesPuntos from './pages/Modulo_De_Administracion_De_Porcentajes_De_Puntos/page';
 import CatProductos from './pages/cat_Productos/page';
-import ConfiguracionPromocionesDescuentoPorcentual from './pages/Configuracion_promociones_descuento_porcentual/page';
+import ConfiguracionPromocionesDescuentoPorcentual from './pages/Promociones_descuento_porcentual/pages';
 import Retiros from './pages/Retiros';
 import CorteParcial from './pages/CorteParcial';
 import CorteDia from './pages/CorteDia';
@@ -36,6 +36,17 @@ import ConfigComisiones2 from './pages/Cat_configcomisiones2/page';
 import AccesosAlternos from './pages/cat_accesosalternos/page';
 import ConceptosAjustes from './pages/cat_conceptos_ajustes/page';
 import TiposMovimientos from './pages/cat_tipos_movimientos/page';
+import PlasticosAutorizados from './pages/Cat_Plasticos_Autorizados/pages';
+import MediosPagos from './pages/cat_Medios_Pago/page';
+import DescuentoProveedores from './pages/cat_DescProveedores/page';
+import ProveedoresAcreedores from './pages/cat_proveedores_acreedores/page';
+import CatTrabajadores from './pages/cat_trabajadores/page';
+import CatNominaDepartamentos from './pages/cat_nomina_departamentos/page';
+import CatNominaStatus from './pages/cat_nomina_Status/page';
+import CatNominaFormasPagos from './pages/cat_nomina_formas_pagos/page';
+import CatNominaPuestos from './pages/cat_nomina_puestos/page';
+import CatNominaBajas from './pages/cat_nomina_bajas/page';
+import FactoresSucursales from './pages/FactoresSucursal/page';
 
 
 
@@ -79,6 +90,17 @@ function App() {
           <Route path='/cat_accesosalternos' element={<Layout><AccesosAlternos/></Layout>} />
           <Route path='/cat_conceptos_ajustes' element={<Layout><ConceptosAjustes/></Layout>} />
           <Route path='/cat_tipos_movimientos' element={<Layout><TiposMovimientos/></Layout>} />
+         <Route path='/plasticos_autorizados' element={<Layout><PlasticosAutorizados/></Layout>} />
+         <Route path='/medios_pagos' element={<Layout><MediosPagos/></Layout>} />
+         <Route path='/descuento_proveedores' element={<Layout><DescuentoProveedores/></Layout>} />
+         <Route path='/proveedores_acreedores' element={<Layout><ProveedoresAcreedores/></Layout>} />
+         <Route path='/cat_trabajadores' element={<Layout><CatTrabajadores/></Layout>} />
+         <Route path='/cat_nomina_departamentos' element={<Layout><CatNominaDepartamentos/></Layout>} />
+         <Route path='/cat_nomina_status' element={<Layout><CatNominaStatus/></Layout>} />
+         <Route path='/cat_nomina_formas_pagos' element={<Layout><CatNominaFormasPagos/></Layout>} />
+         <Route path='/cat_nomina_puestos' element={<Layout><CatNominaPuestos/></Layout>} />
+         <Route path='/cat_nomina_bajas' element={<Layout><CatNominaBajas/></Layout>} />
+         <Route path='/factores_sucursales' element={<Layout><FactoresSucursales/></Layout>} />
 
 
        

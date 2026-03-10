@@ -192,6 +192,42 @@ const SidebarHorizontal = () => {
           <MenuItem onClick={() => navigate(routes.cat_tipos_movimientos)}>
             Tipos de Movimientos
           </MenuItem>
+          <MenuItem onClick={() => navigate(routes.config_promociones_descuento_porcentual)}>
+            Configuración Promociones Descuento Porcentual
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.plasticos_autorizados)}>
+            Plásticos Autorizados
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.medios_pagos)}>
+            Medios de Pagos
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.descuento_proveedores)}>
+            Descuento Proveedores
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.proveedores_acreedores)}>
+            Proveedores Acreedores
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_trabajadores)}>
+            Trabajadores
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_nomina_departamentos)}>
+            Nómina Departamentos
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_nomina_Status)}>
+            Nómina Status
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_nomina_formas_pagos)}>
+            Nómina Formas de Pagos
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_nomina_puestos)}>
+            Nómina Puestos
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_nomina_bajas)}>
+            Nómina Bajas
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.factores_sucursal)}>
+            Factores Sucursales
+          </MenuItem>
         </Menu>
 
  {/* MODULO COMERCIAL */}
