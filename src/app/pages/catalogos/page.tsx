@@ -20,6 +20,8 @@ export default function Catalogos() {
       <button onClick={() => (window.location.href = '/modulo-servicios-insumos')}>Modulo_Servicios_Insumos</button>
       <button onClick={() => (window.location.href = '/modulo_porcentajes_puntos')}>Modulo_De_Administracion_De_Porcentajes_De_Puntos</button>
       <button onClick={() => (window.location.href = '/cat_Productos')}>Productos</button>
+      <button onClick={() => (window.location.href = '/Promociones_descuento_porcentual')}>Promociones_Descuento_Porcentual</button>
+      <button onClick={() => (window.location.href = '/cat_Plasticos_Autorizados')}>Plásticos_Autorizados</button>
 
       
       <button onClick={() => (window.location.href = '/cat_Proveedores')}>
@@ -74,6 +76,25 @@ export default function Catalogos() {
         ConfiguracionPromocionesDescuentoPorcentual
       </button>
 
+      <button onClick={() => (window.location.href = '/Promociones_descuento_porcentual')}>
+        Promociones_Descuento_Porcentual
+      </button>
+
+      <button onClick={() => (window.location.href = '/cat_Plasticos_Autorizados')}>
+        Plásticos_Autorizados
+      </button>
+
+      <button onClick={() => (window.location.href = '/cat_medios_pago')}>
+        Medios_de_Pago
+      </button>
+
+      <button onClick={() => (window.location.href = '/cat_desc_proveedores')}>
+        Descuentos_de_Proveedores
+      </button>
+
+      <button onClick={() => (window.location.href = '/cat_proveedores_acreedores')}>
+        Proveedores_Acreedores
+      </button>
 
       <PWABadge />
     </>
