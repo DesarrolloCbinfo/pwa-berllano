@@ -129,7 +129,7 @@ const SidebarHorizontal = () => {
           open={openCatalogos}
           onClose={() => setAnchorCatalogos(null)}
         >
-          <MenuItem onClick={() => navigate(routes.cat_clientes)}>
+          <MenuItem onClick={() => navigate(routes.cat_Clientes)}>
             Catálogo de clientes
           </MenuItem>
           <MenuItem onClick={() => navigate(routes.cat_Proveedores)}>
@@ -171,51 +171,10 @@ const SidebarHorizontal = () => {
            <MenuItem onClick={() => navigate(routes.cat_Productos)}>
             Productos
           </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_metaempleados)}>
-            Meta Empleados
+           <MenuItem onClick={() => navigate(routes.cat_metaempleados)}>
+            Metas empleados
           </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_metasucursal)}>
-            Metas Sucursal
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_configcomisiones)}>
-            Configuración de Comisiones
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_configcomisiones2)}>
-            Configuración de Comisiones 2
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_accesosalternos)}>
-            Accesos Alternos
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_conceptos_ajustes)}>
-            Conceptos de Ajustes
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_tipos_movimientos)}>
-            Tipos de Movimientos
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_nominas_movimientos)}>
-            Movimientos
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_dias_festivos)}>
-            Días Festivos
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_niveles_estudios_rrhh)}>
-            Niveles de Estudio
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_nominas_horarios)}>
-            Horarios
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_cuentas_bancarias)}>
-            Cuentas Bancarias
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_tipos_cuentas)}>
-            Tipos de Cuentas
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_usuarios)}>
-            Usuarios del Sistema
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_nominas_folios)}>
-            Administración de Folios
-          </MenuItem>
+          
         </Menu>
 
  {/* MODULO COMERCIAL */}
@@ -241,6 +200,8 @@ const SidebarHorizontal = () => {
         >
           PERFIL
         </Button>
+
+
 
         <Menu
           anchorEl={anchorPerfil}
