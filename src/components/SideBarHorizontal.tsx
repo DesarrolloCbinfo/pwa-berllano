@@ -227,6 +227,7 @@ const SidebarHorizontal = () => {
           </MenuItem>
           <MenuItem onClick={() => navigate(routes.factores_sucursal)}>
             Factores Sucursales
+          </MenuItem>
           <MenuItem onClick={() => navigate(routes.cat_nominas_movimientos)}>
             Movimientos
           </MenuItem>
