@@ -267,13 +267,16 @@ const handleGuardar = async () => {
   ], []);
 
   return (
-    <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
-      <Paper sx={{ p: 3 }}>
-        <Typography variant="h4" component="h1" gutterBottom align="center" sx={{ fontWeight: 'bold', mb: 4 }}>
-          CONFIGURACIÓN DE COMISIONES
+    <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#f5f5f5', overflow: 'hidden', p: 2 }}>
+      
+      {/* PANEL SUPERIOR: FORMULARIO */}
+      <Paper sx={{ p: 3, mb: 3, flexShrink: 0, borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+        <Typography variant="h5" component="h1" gutterBottom sx={{ fontWeight: 'bold', mb: 3, color: '#2c3e50', borderBottom: '2px solid #e0e0e0', pb: 1 }}>
+           CONFIGURACIÓN DE COMISIONES
         </Typography>
 
         <Grid container spacing={2}>
+
             {/* --- SECCIÓN 1: UBICACIÓN Y CLASIFICACIÓN --- */}
             <Grid item xs={12} md={3}>
                 <TextField {...selectProps} select label="Sucursal (Opcional)" name="sucursal" value={formData.sucursal} onChange={handleInputChange}
@@ -333,10 +336,12 @@ const handleGuardar = async () => {
 
             {/* --- SECCIÓN 3: PARÁMETROS ECONÓMICOS Y DÍAS (ESTILO ACCESS COMPACTO) --- */}
             <Grid item xs={12} md={2}>
-                <TextField {...commonProps} type="date" label="Fecha Inicial" name="fechaInicial" value={formData.fechaInicial} onChange={handleInputChange} InputLabelProps={{ shrink: true }} />
+                <TextField {...commonProps} type="date" label="Fecha Inicial" name="fechaInicial" value={formData.fechaInicial} onChange={handleInputChange} InputLabelProps={{ shrink: true }} 
+                    sx={{ width: '160px', ...commonProps.sx }} />
             </Grid>
             <Grid item xs={12} md={2}>
-                <TextField {...commonProps} type="date" label="Fecha Final" name="fechaFinal" value={formData.fechaFinal} onChange={handleInputChange} InputLabelProps={{ shrink: true }} />
+                <TextField {...commonProps} type="date" label="Fecha Final" name="fechaFinal" value={formData.fechaFinal} onChange={handleInputChange} InputLabelProps={{ shrink: true }} 
+                    sx={{ width: '160px', ...commonProps.sx }} />
             </Grid>
 
             {/* Checkboxes de IVA estilo cabecera superior */}
@@ -358,7 +363,8 @@ const handleGuardar = async () => {
             </Grid>
 
             <Grid item xs={12} md={1.5} sx={{ display: 'flex', alignItems: 'flex-end', pb: 0.5 }}>
-                <TextField {...commonProps} type="number" label="Comisión (%)" name="comision" value={formData.comision} onChange={handleInputChange} inputProps={{ step: "0.01" }} />
+                <TextField {...commonProps} type="number" label="Comisión (%)" name="comision" value={formData.comision} onChange={handleInputChange} inputProps={{ step: "0.01" }} 
+                    sx={{ width: '120px', ...commonProps.sx }} />
             </Grid>
 
             {/* Días de la semana pegaditos como en Access */}
@@ -375,36 +381,57 @@ const handleGuardar = async () => {
             {/* Botón Guardar */}
             <Grid item xs={12} md={1.5} sx={{ display: 'flex', alignItems: 'flex-end', pb: 0.5 }}>
                 <Button variant="contained" onClick={handleGuardar} disabled={saving} fullWidth startIcon={<SaveIcon />}
-                    sx={{ height: '45px', bgcolor: '#333', color: 'white', fontWeight: 'bold', borderRadius: '8px', '&:hover': { bgcolor: '#555' } }}>
+                    sx={{ 
+                        height: '45px', 
+                        backgroundColor: '#333333', 
+                        color: 'white', 
+                        fontWeight: 600,
+                        textTransform: 'none',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)',
+                        transition: 'all 0.3s ease',
+                        '&:hover': { 
+                            backgroundColor: '#555555',
+                            boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)',
+                            transform: 'translateY(-1px)'
+                        }
+                    }}>
                     GUARDAR
                 </Button>
             </Grid>
         </Grid>
       </Paper>
 
-        {/* TABLA PRINCIPAL FLUIDA */}
-      <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-        <Paper sx={{ flex: 1, width: '100%', overflow: 'hidden', borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
-          <DataGrid 
-              rows={Array.isArray(rows) ? rows : []} 
-              columns={columns} 
-              getRowId={(row) => row.id} 
-              loading={loading || saving} 
-              paginationModel={paginationModel} 
-              onPaginationModelChange={setPaginationModel} 
-              pageSizeOptions={[50, 100, 500]} 
-              slots={{ toolbar: GridToolbar, pagination: CustomPagination }} 
-              slotProps={{ toolbar: { showQuickFilter: true } }} 
-              density="compact"
-              disableRowSelectionOnClick
-              sx={{ 
-                  border: 'none', 
-                  height: '100%', 
-                  '& .MuiDataGrid-columnHeaders': { backgroundColor: '#f0f0f0', fontWeight: 'bold' } 
-              }} 
-          />
-        </Paper>
-      </Box>
+      {/* TABLA PRINCIPAL */}
+        <Box sx={{ mb: 3 }}>
+          <Paper sx={{ maxHeight: 600, mb: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
+            <DataGrid 
+                rows={Array.isArray(rows) ? rows : []} 
+                columns={columns} 
+                getRowId={(row) => row.id} 
+                loading={loading || saving} 
+                paginationModel={paginationModel} 
+                onPaginationModelChange={setPaginationModel} 
+                pageSizeOptions={[50, 100, 500]} 
+                slots={{ toolbar: GridToolbar, pagination: CustomPagination }} 
+                slotProps={{ toolbar: { showQuickFilter: true } }} 
+                density="compact"
+                disableRowSelectionOnClick
+                sx={{ 
+                    border: 'none', 
+                    '& .MuiDataGrid-columnHeaders': { 
+                        borderBottom: '2px solid #000',
+                        textAlign: 'center',
+                        fontSize: '1rem',
+                        fontWeight: 'bold'
+                    },
+                    '& .MuiDataGrid-cell': {
+                        borderBottom: '1px solid #e0e0e0'
+                    }
+                }} 
+            />
+          </Paper>
+        </Box>
 
       {/* NOTIFICACIONES */}
       <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage(null)}>

@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Box, Typography, Button, TextField, Grid, 
-  Snackbar, Alert, Paper, IconButton 
+  Snackbar, Alert, Paper, IconButton, Checkbox, FormControlLabel 
 } from '@mui/material'; 
 import { 
   DataGrid, GridColDef, GridToolbar, 
@@ -26,13 +26,11 @@ const commonProps = {
 
 function CustomPagination() { return <GridPagination />; }
 
-const initialFormState = { descripcion: '', min_descto: 0, max_descto: 0 };
+const initialFormState = { tipo_cuenta: '', descripcion: '', acreedora: false, deudora: false };
 
-export default function CatTipoDescuentos() {
+export default function TiposCuentas() {
   const { consumoApi } = useConsumoApi();
   const { session } = useSessionContext();
-
-  const isSavingRef = useRef(false);
 
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -46,7 +44,7 @@ export default function CatTipoDescuentos() {
   const fetchTabla = async () => {
       setLoading(true);
       try {
-          const res = await consumoApi.get('/api/CatTipoDescuento/sp_bw_cat_tipos_descuento_sel');
+          const res = await consumoApi.get('/api/TiposCuentas/sp_bw_cat_tipos_cuentas_sel');
           setRows(Array.isArray(res?.data) ? res.data : []);
       } catch (error) {
           setMessage({ text: 'Error al cargar la tabla.', type: 'error' });
@@ -54,56 +52,58 @@ export default function CatTipoDescuentos() {
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const { name, value } = e.target;
-      setFormData(prev => ({ ...prev, [name]: value }));
+      const { name, value, type, checked } = e.target;
+      setFormData(prev => ({ 
+          ...prev, 
+          [name]: type === 'checkbox' ? checked : value 
+      }));
   };
 
   const handleAgregarNuevo = async () => {
-        if (isSavingRef.current) return; 
+        if (!formData.tipo_cuenta) return setMessage({ text: "La Clave es obligatoria.", type: 'error' });
         if (!formData.descripcion.trim()) return setMessage({ text: "La descripción es obligatoria.", type: 'error' });
 
-        isSavingRef.current = true;
         setSaving(true);
         try {
             const payload = {
+                tipo_cuenta: Number(formData.tipo_cuenta),
                 descripcion: formData.descripcion.toUpperCase(),
-                min_descto: Number(formData.min_descto),
-                max_descto: Number(formData.max_descto)
+                acreedora: formData.acreedora,
+                deudora: formData.deudora
             };
 
-            const res = await consumoApi.post('/api/CatTipoDescuento/sp_bw_cat_tipos_descuento_ins', payload);
+            const res = await consumoApi.post('/api/TiposCuentas/sp_bw_cat_tipos_cuentas_ins', payload);
             if (res.status === 200) {
-                setMessage({ text: `✅ Descuento agregado exitosamente.`, type: 'success' });
+                setMessage({ text: `✅ Tipo de cuenta agregado.`, type: 'success' });
                 fetchTabla();
                 setFormData(initialFormState);
             }
         } catch (error: any) {
             setMessage({ text: error.response?.data?.mensaje || "Error al agregar el registro.", type: 'error' });
         } finally {
-            isSavingRef.current = false;
             setSaving(false);
         }
     };
 
   const processRowUpdate = async (newRow: any, oldRow: any) => {
       if (
-          newRow.descripcion === oldRow.descripcion &&
-          newRow.min_descto === oldRow.min_descto &&
-          newRow.max_descto === oldRow.max_descto
+          newRow.Descripcion === oldRow.Descripcion &&
+          newRow.Acreedora === oldRow.Acreedora &&
+          newRow.Deudora === oldRow.Deudora
       ) return oldRow;
 
       try {
           const payload = {
-              tipo_descuento: newRow.tipo_descuento,
-              descripcion: newRow.descripcion?.toUpperCase() || '',
-              min_descto: Number(newRow.min_descto),
-              max_descto: Number(newRow.max_descto)
+              tipo_cuenta: newRow.Tipo_cuenta,
+              descripcion: newRow.Descripcion?.toUpperCase() || '',
+              acreedora: newRow.Acreedora,
+              deudora: newRow.Deudora
           };
 
-          const res = await consumoApi.put('/api/CatTipoDescuento/sp_bw_cat_tipos_descuento_upd', payload);
+          const res = await consumoApi.put('/api/TiposCuentas/sp_bw_cat_tipos_cuentas_upd', payload);
           if (res.status === 200) {
               setMessage({ text: "💾 Cambios guardados automáticamente.", type: 'info' });
-              return { ...newRow, descripcion: payload.descripcion }; 
+              return { ...newRow, Descripcion: payload.descripcion }; 
           } else throw new Error("Error en actualización");
       } catch (error) {
           setMessage({ text: "❌ Error al guardar los cambios.", type: 'error' });
@@ -111,13 +111,13 @@ export default function CatTipoDescuentos() {
       }
   };
 
-  const handleEliminar = async (clave: number, nombre: string) => {
-      if (!window.confirm(`¿Está seguro que desea eliminar el descuento: ${nombre}?`)) return;
+  const handleEliminar = async (clave: number) => {
+      if (!window.confirm("¿Está seguro que desea eliminar este Tipo de Cuenta?")) return;
       setSaving(true);
       try {
-          const res = await consumoApi.delete(`/api/CatTipoDescuento/sp_bw_cat_tipos_descuento_del?tipo_descuento=${clave}`);
+          const res = await consumoApi.delete(`/api/TiposCuentas/sp_bw_cat_tipos_cuentas_del?tipoCuenta=${clave}`);
           if (res.status === 200) {
-              setMessage({ text: "🗑️ Descuento eliminado.", type: 'success' });
+              setMessage({ text: "🗑️ Tipo de cuenta eliminado.", type: 'success' });
               fetchTabla();
           }
       } catch (error: any) {
@@ -128,20 +128,14 @@ export default function CatTipoDescuentos() {
   };
 
   const columns = useMemo<GridColDef[]>(() => [
-    { field: 'tipo_descuento', headerName: 'ID', width: 90, fontWeight: 'bold', align: 'center', headerAlign: 'center' },
-    { field: 'descripcion', headerName: 'Descripción (Doble clic para editar)', flex: 1, minWidth: 250, editable: true, align: 'left', headerAlign: 'center' },
-    { 
-        field: 'min_descto', headerName: 'Min Dto', width: 120, editable: true, align: 'center', headerAlign: 'center',
-        type: 'number', valueFormatter: (value) => value == null ? '0%' : `${(Number(value) * 100).toFixed(0)}%`
-    },
-    { 
-        field: 'max_descto', headerName: 'Max Dto', width: 120, editable: true, align: 'center', headerAlign: 'center',
-        type: 'number', valueFormatter: (value) => value == null ? '0%' : `${(Number(value) * 100).toFixed(0)}%`
-    },
+    { field: 'Tipo_cuenta', headerName: 'Clave', width: 100, fontWeight: 'bold', align: 'center', headerAlign: 'center' },
+    { field: 'Descripcion', headerName: 'Descripción (Doble clic para editar)', flex: 1, minWidth: 250, editable: true, align: 'left', headerAlign: 'center' },
+    { field: 'Acreedora', headerName: 'Acreedora', width: 120, type: 'boolean', editable: true, align: 'center', headerAlign: 'center' },
+    { field: 'Deudora', headerName: 'Deudora', width: 120, type: 'boolean', editable: true, align: 'center', headerAlign: 'center' },
     { 
         field: 'acciones', headerName: 'Eliminar', width: 100, sortable: false, filterable: false, align: 'center', headerAlign: 'center',
         renderCell: (params: GridRenderCellParams) => (
-            <IconButton size="small" sx={{ color: '#d32f2f' }} onClick={() => handleEliminar(params.row.tipo_descuento, params.row.descripcion)}>
+            <IconButton size="small" sx={{ color: '#d32f2f' }} onClick={() => handleEliminar(params.row.Tipo_cuenta)}>
                 <DeleteIcon />
             </IconButton>
         )
@@ -151,12 +145,15 @@ export default function CatTipoDescuentos() {
   return (
     <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
       <Paper sx={{ p: 3 }}>
+        <Typography variant="h4" component="h1" gutterBottom align="center" sx={{ fontWeight: 'bold', mb: 4 }}>
+          CATÁLOGO DE TIPOS DE CUENTAS
+        </Typography>
 
-        {/* ENCABEZADO */}
+        {/* ENCABEZADO ESTILO ACCESS */}
         <Box sx={{ border: '1px solid #2c3e50', p: 1.5, mb: 2, borderRadius: '6px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
             <Box>
                 <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
-                    Catálogo de Tipos de Descuentos
+                    Catálogo de Tipos de Cuentas
                 </Typography>
                 <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
                     Sucursal: {session?.dSucursal || 'Cargando...'}
@@ -173,17 +170,22 @@ export default function CatTipoDescuentos() {
         </Box>
 
         <Grid container spacing={2} justifyContent="center" alignItems="center">
-            {/* NO se pide ID porque es autogenerado por SQL */}
+            <Grid item xs={12} md={2}>
+                <TextField {...commonProps} type="number" label="Clave*" name="tipo_cuenta" value={formData.tipo_cuenta} onChange={handleInputChange} />
+            </Grid>
             <Grid item xs={12} md={4}>
-                <TextField {...commonProps} label="Descripción del Descuento*" name="descripcion" value={formData.descripcion} onChange={handleInputChange} />
-            </Grid>
-            <Grid item xs={6} md={2}>
-                <TextField {...commonProps} type="number" inputProps={{ step: "0.01" }} label="Min Dto (Ej: 0.15 = 15%)" name="min_descto" value={formData.min_descto} onChange={handleInputChange} />
-            </Grid>
-            <Grid item xs={6} md={2}>
-                <TextField {...commonProps} type="number" inputProps={{ step: "0.01" }} label="Max Dto (Ej: 1 = 100%)" name="max_descto" value={formData.max_descto} onChange={handleInputChange} />
+                <TextField {...commonProps} label="Descripción*" name="descripcion" value={formData.descripcion} onChange={handleInputChange} />
             </Grid>
             
+            {/* Checkboxes Centrados */}
+            <Grid item xs={6} md={2} sx={{ display: 'flex', justifyContent: 'center' }}>
+                <FormControlLabel control={<Checkbox size="small" name="acreedora" checked={formData.acreedora} onChange={handleInputChange} />} label={<Typography variant="body2" sx={{fontWeight: 500, color: '#555'}}>Acreedora</Typography>} />
+            </Grid>
+            <Grid item xs={6} md={2} sx={{ display: 'flex', justifyContent: 'center' }}>
+                <FormControlLabel control={<Checkbox size="small" name="deudora" checked={formData.deudora} onChange={handleInputChange} />} label={<Typography variant="body2" sx={{fontWeight: 500, color: '#555'}}>Deudora</Typography>} />
+            </Grid>
+
+            {/* Botón Agregar */}
             <Grid item xs={12} md={2}>
                 <Button variant="contained" onClick={handleAgregarNuevo} disabled={saving} fullWidth startIcon={<AddIcon />}
                     sx={{ 
@@ -198,12 +200,12 @@ export default function CatTipoDescuentos() {
       </Paper>
 
         {/* TABLA PRINCIPAL */}
-        <Box sx={{ mt: 3 }}>
-          <Paper sx={{ width: '100%', maxHeight: 600, mb: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
+        <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
+          <Paper sx={{ width: '100%', maxWidth: 900, maxHeight: 600, mb: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
             <DataGrid 
                 rows={Array.isArray(rows) ? rows : []} 
                 columns={columns} 
-                getRowId={(row) => row.tipo_descuento} 
+                getRowId={(row) => row.Tipo_cuenta} 
                 loading={loading || saving} 
                 paginationModel={paginationModel} 
                 onPaginationModelChange={setPaginationModel} 
@@ -228,7 +230,7 @@ export default function CatTipoDescuentos() {
       {/* PIE DE PÁGINA */}
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 1 }}>
         <Typography variant="caption" sx={{ fontWeight: 'bold', textTransform: 'uppercase' }}>
-          CAT_TIPOS_DESCUENTO, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/')}, USR:{session?.nombre || 'ADMIN'}
+          CAT_TIPOS_CUENTAS, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/')}, USR:{session?.nombre || 'ADMIN'}
         </Typography>
       </Box>
 

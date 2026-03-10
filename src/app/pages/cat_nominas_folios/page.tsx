@@ -17,6 +17,7 @@ import { useSessionContext } from '../../../context/SessionProvider';
 
 const commonProps = {
   fullWidth: true, size: "small" as const, variant: "outlined" as const,
+  InputLabelProps: { shrink: true }, // Obligatorio para los inputs de tipo "date"
   sx: {
     '& .MuiInputBase-root': { height: '50px', alignItems: 'center', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', '&:hover': { boxShadow: '0 4px 8px rgba(0,0,0,0.1)', borderColor: '#999' } },
     '& .MuiInputLabel-root': { transform: 'translate(14px, 14px) scale(1)', color: '#666', fontWeight: 500 },
@@ -26,9 +27,25 @@ const commonProps = {
 
 function CustomPagination() { return <GridPagination />; }
 
-const initialFormState = { descripcion: '', min_descto: 0, max_descto: 0 };
+// Función para evitar problemas de zona horaria al convertir a texto YYYY-MM-DD
+const formatDateToString = (dateObj: any) => {
+    if (!dateObj) return null;
+    const d = new Date(dateObj);
+    if (isNaN(d.getTime())) return null;
+    return d.toISOString().split('T')[0];
+};
 
-export default function CatTipoDescuentos() {
+const todayStr = new Date().toISOString().split('T')[0];
+
+const initialFormState = { 
+    folio: '', 
+    fecha_folio: todayStr, 
+    descripcion: '', 
+    f1: '', 
+    f2: '' 
+};
+
+export default function FoliosNomina() {
   const { consumoApi } = useConsumoApi();
   const { session } = useSessionContext();
 
@@ -46,8 +63,17 @@ export default function CatTipoDescuentos() {
   const fetchTabla = async () => {
       setLoading(true);
       try {
-          const res = await consumoApi.get('/api/CatTipoDescuento/sp_bw_cat_tipos_descuento_sel');
-          setRows(Array.isArray(res?.data) ? res.data : []);
+          const res = await consumoApi.get('/api/FoliosNomina/sp_bw_cat_nominas_folios_sel?cia=1');
+          
+          // Mapeamos las fechas a objetos Date para que el DataGrid las pueda editar bonito
+          const dataConFechas = (Array.isArray(res?.data) ? res.data : []).map(row => ({
+              ...row,
+              fecha_folio: row.fecha_folio ? new Date(row.fecha_folio) : null,
+              f1: row.f1 ? new Date(row.f1) : null,
+              f2: row.f2 ? new Date(row.f2) : null,
+          }));
+          
+          setRows(dataConFechas);
       } catch (error) {
           setMessage({ text: 'Error al cargar la tabla.', type: 'error' });
       } finally { setLoading(false); }
@@ -60,20 +86,26 @@ export default function CatTipoDescuentos() {
 
   const handleAgregarNuevo = async () => {
         if (isSavingRef.current) return; 
+
+        if (!formData.folio) return setMessage({ text: "El Folio es obligatorio.", type: 'error' });
+        if (!formData.fecha_folio) return setMessage({ text: "La Fecha del Folio es obligatoria.", type: 'error' });
         if (!formData.descripcion.trim()) return setMessage({ text: "La descripción es obligatoria.", type: 'error' });
 
         isSavingRef.current = true;
         setSaving(true);
         try {
             const payload = {
+                cia: 1, // Por defecto CIA 1, o puedes poner session?.cia si lo tienes en tu contexto
+                folio: Number(formData.folio),
+                fecha_folio: formData.fecha_folio,
                 descripcion: formData.descripcion.toUpperCase(),
-                min_descto: Number(formData.min_descto),
-                max_descto: Number(formData.max_descto)
+                f1: formData.f1 || null,
+                f2: formData.f2 || null
             };
 
-            const res = await consumoApi.post('/api/CatTipoDescuento/sp_bw_cat_tipos_descuento_ins', payload);
+            const res = await consumoApi.post('/api/FoliosNomina/sp_bw_cat_nominas_folios_ins', payload);
             if (res.status === 200) {
-                setMessage({ text: `✅ Descuento agregado exitosamente.`, type: 'success' });
+                setMessage({ text: `✅ Folio de nómina agregado exitosamente.`, type: 'success' });
                 fetchTabla();
                 setFormData(initialFormState);
             }
@@ -86,21 +118,25 @@ export default function CatTipoDescuentos() {
     };
 
   const processRowUpdate = async (newRow: any, oldRow: any) => {
+      // Si nada cambió, no hacemos la petición
       if (
+          newRow.fecha_folio?.getTime() === oldRow.fecha_folio?.getTime() &&
           newRow.descripcion === oldRow.descripcion &&
-          newRow.min_descto === oldRow.min_descto &&
-          newRow.max_descto === oldRow.max_descto
+          newRow.f1?.getTime() === oldRow.f1?.getTime() &&
+          newRow.f2?.getTime() === oldRow.f2?.getTime()
       ) return oldRow;
 
       try {
           const payload = {
-              tipo_descuento: newRow.tipo_descuento,
+              cia: newRow.cia || 1,
+              folio: newRow.folio,
+              fecha_folio: formatDateToString(newRow.fecha_folio),
               descripcion: newRow.descripcion?.toUpperCase() || '',
-              min_descto: Number(newRow.min_descto),
-              max_descto: Number(newRow.max_descto)
+              f1: formatDateToString(newRow.f1),
+              f2: formatDateToString(newRow.f2)
           };
 
-          const res = await consumoApi.put('/api/CatTipoDescuento/sp_bw_cat_tipos_descuento_upd', payload);
+          const res = await consumoApi.put('/api/FoliosNomina/sp_bw_cat_nominas_folios_upd', payload);
           if (res.status === 200) {
               setMessage({ text: "💾 Cambios guardados automáticamente.", type: 'info' });
               return { ...newRow, descripcion: payload.descripcion }; 
@@ -111,13 +147,13 @@ export default function CatTipoDescuentos() {
       }
   };
 
-  const handleEliminar = async (clave: number, nombre: string) => {
-      if (!window.confirm(`¿Está seguro que desea eliminar el descuento: ${nombre}?`)) return;
+  const handleEliminar = async (cia: number, folio: number, descripcion: string) => {
+      if (!window.confirm(`¿Está seguro que desea eliminar el folio: ${folio} - ${descripcion}?`)) return;
       setSaving(true);
       try {
-          const res = await consumoApi.delete(`/api/CatTipoDescuento/sp_bw_cat_tipos_descuento_del?tipo_descuento=${clave}`);
+          const res = await consumoApi.delete(`/api/FoliosNomina/sp_bw_cat_nominas_folios_del?cia=${cia}&folio=${folio}`);
           if (res.status === 200) {
-              setMessage({ text: "🗑️ Descuento eliminado.", type: 'success' });
+              setMessage({ text: "🗑️ Folio eliminado.", type: 'success' });
               fetchTabla();
           }
       } catch (error: any) {
@@ -128,20 +164,15 @@ export default function CatTipoDescuentos() {
   };
 
   const columns = useMemo<GridColDef[]>(() => [
-    { field: 'tipo_descuento', headerName: 'ID', width: 90, fontWeight: 'bold', align: 'center', headerAlign: 'center' },
+    { field: 'folio', headerName: 'Folio', width: 90, fontWeight: 'bold', align: 'center', headerAlign: 'center' },
+    { field: 'fecha_folio', headerName: 'Fecha Folio', width: 130, type: 'date', editable: true, align: 'center', headerAlign: 'center' },
     { field: 'descripcion', headerName: 'Descripción (Doble clic para editar)', flex: 1, minWidth: 250, editable: true, align: 'left', headerAlign: 'center' },
+    { field: 'f1', headerName: 'F. Inicial', width: 130, type: 'date', editable: true, align: 'center', headerAlign: 'center' },
+    { field: 'f2', headerName: 'F. Final', width: 130, type: 'date', editable: true, align: 'center', headerAlign: 'center' },
     { 
-        field: 'min_descto', headerName: 'Min Dto', width: 120, editable: true, align: 'center', headerAlign: 'center',
-        type: 'number', valueFormatter: (value) => value == null ? '0%' : `${(Number(value) * 100).toFixed(0)}%`
-    },
-    { 
-        field: 'max_descto', headerName: 'Max Dto', width: 120, editable: true, align: 'center', headerAlign: 'center',
-        type: 'number', valueFormatter: (value) => value == null ? '0%' : `${(Number(value) * 100).toFixed(0)}%`
-    },
-    { 
-        field: 'acciones', headerName: 'Eliminar', width: 100, sortable: false, filterable: false, align: 'center', headerAlign: 'center',
+        field: 'acciones', headerName: 'Eliminar', width: 90, sortable: false, filterable: false, align: 'center', headerAlign: 'center',
         renderCell: (params: GridRenderCellParams) => (
-            <IconButton size="small" sx={{ color: '#d32f2f' }} onClick={() => handleEliminar(params.row.tipo_descuento, params.row.descripcion)}>
+            <IconButton size="small" sx={{ color: '#d32f2f' }} onClick={() => handleEliminar(params.row.cia, params.row.folio, params.row.descripcion)}>
                 <DeleteIcon />
             </IconButton>
         )
@@ -156,7 +187,7 @@ export default function CatTipoDescuentos() {
         <Box sx={{ border: '1px solid #2c3e50', p: 1.5, mb: 2, borderRadius: '6px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
             <Box>
                 <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
-                    Catálogo de Tipos de Descuentos
+                    Folios de Nómina Activos
                 </Typography>
                 <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
                     Sucursal: {session?.dSucursal || 'Cargando...'}
@@ -173,16 +204,23 @@ export default function CatTipoDescuentos() {
         </Box>
 
         <Grid container spacing={2} justifyContent="center" alignItems="center">
-            {/* NO se pide ID porque es autogenerado por SQL */}
+            <Grid item xs={12} md={2}>
+                <TextField {...commonProps} type="number" label="No. Folio*" name="folio" value={formData.folio} onChange={handleInputChange} />
+            </Grid>
+            <Grid item xs={12} md={2}>
+                <TextField {...commonProps} type="date" label="Fecha del Folio*" name="fecha_folio" value={formData.fecha_folio} onChange={handleInputChange} />
+            </Grid>
             <Grid item xs={12} md={4}>
-                <TextField {...commonProps} label="Descripción del Descuento*" name="descripcion" value={formData.descripcion} onChange={handleInputChange} />
+                <TextField {...commonProps} label="Descripción*" name="descripcion" value={formData.descripcion} onChange={handleInputChange} />
             </Grid>
             <Grid item xs={6} md={2}>
-                <TextField {...commonProps} type="number" inputProps={{ step: "0.01" }} label="Min Dto (Ej: 0.15 = 15%)" name="min_descto" value={formData.min_descto} onChange={handleInputChange} />
+                <TextField {...commonProps} type="date" label="F. Inicial (Opcional)" name="f1" value={formData.f1} onChange={handleInputChange} />
             </Grid>
             <Grid item xs={6} md={2}>
-                <TextField {...commonProps} type="number" inputProps={{ step: "0.01" }} label="Max Dto (Ej: 1 = 100%)" name="max_descto" value={formData.max_descto} onChange={handleInputChange} />
+                <TextField {...commonProps} type="date" label="F. Final (Opcional)" name="f2" value={formData.f2} onChange={handleInputChange} />
             </Grid>
+            
+            <Grid item xs={12} md={10}></Grid> {/* Espaciador */}
             
             <Grid item xs={12} md={2}>
                 <Button variant="contained" onClick={handleAgregarNuevo} disabled={saving} fullWidth startIcon={<AddIcon />}
@@ -203,7 +241,7 @@ export default function CatTipoDescuentos() {
             <DataGrid 
                 rows={Array.isArray(rows) ? rows : []} 
                 columns={columns} 
-                getRowId={(row) => row.tipo_descuento} 
+                getRowId={(row) => row.folio} 
                 loading={loading || saving} 
                 paginationModel={paginationModel} 
                 onPaginationModelChange={setPaginationModel} 
@@ -218,7 +256,7 @@ export default function CatTipoDescuentos() {
                     border: 'none', 
                     '& .MuiDataGrid-columnHeaders': { borderBottom: '2px solid #000', fontSize: '1rem', fontWeight: 'bold' },
                     '& .MuiDataGrid-cell': { borderBottom: '1px solid #e0e0e0' },
-                    '& .MuiDataGrid-cell--editable': { backgroundColor: '#f9fbfd', cursor: 'text' }, 
+                    '& .MuiDataGrid-cell--editable': { backgroundColor: '#f9fbfd', cursor: 'pointer' }, 
                     '& .MuiDataGrid-cell--editing': { backgroundColor: '#fff', boxShadow: '0 0 5px rgba(25,118,210,0.5)' }
                 }} 
             />
@@ -228,7 +266,7 @@ export default function CatTipoDescuentos() {
       {/* PIE DE PÁGINA */}
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 1 }}>
         <Typography variant="caption" sx={{ fontWeight: 'bold', textTransform: 'uppercase' }}>
-          CAT_TIPOS_DESCUENTO, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/')}, USR:{session?.nombre || 'ADMIN'}
+          CAT_NOMINAS_MOVIMIENTOS_FOLIOS, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/')}, USR:{session?.nombre || 'ADMIN'}
         </Typography>
       </Box>
 

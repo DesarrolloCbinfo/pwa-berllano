@@ -22,6 +22,14 @@ export const routes = {
   cat_accesosalternos: "/cat_accesosalternos",
   cat_conceptos_ajustes: "/cat_conceptos_ajustes",
   cat_tipos_movimientos: "/cat_tipos_movimientos",
+  cat_nominas_movimientos: "/cat_nominas_movimientos",
+  cat_dias_festivos: "/cat_dias_festivos",
+  cat_niveles_estudios_rrhh: "/cat_niveles_estudios_rrhh",
+  cat_nominas_horarios: "/cat_nominas_horarios",
+  cat_cuentas_bancarias: "/cat_cuentas_bancarias",
+  cat_tipos_cuentas: "/cat_tipos_cuentas",
+  cat_usuarios: "/cat_usuarios",
+  cat_nominas_folios: "/cat_nominas_folios",
   pos: "/pos",
 
   //Catalogos

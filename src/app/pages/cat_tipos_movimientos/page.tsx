@@ -164,9 +164,7 @@ export default function TiposMovimientos() {
   return (
     <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
       <Paper sx={{ p: 3 }}>
-        <Typography variant="h4" component="h1" gutterBottom align="center" sx={{ fontWeight: 'bold', mb: 4 }}>
-          CATÁLOGO DE TIPOS DE MOVIMIENTOS
-        </Typography>
+        
 
         {/* ENCABEZADO ESTILO ACCESS */}
         <Box sx={{ border: '1px solid #2c3e50', p: 1.5, mb: 2, borderRadius: '6px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
