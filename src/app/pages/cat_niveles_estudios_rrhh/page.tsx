@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Box, Typography, Button, TextField, Grid, 
   Snackbar, Alert, Paper, IconButton 
@@ -26,13 +26,11 @@ const commonProps = {
 
 function CustomPagination() { return <GridPagination />; }
 
-const initialFormState = { descripcion: '', min_descto: 0, max_descto: 0 };
+const initialFormState = { clave_nivel: '', descripcion_escolaridad: '' };
 
-export default function CatTipoDescuentos() {
+export default function NivelesEstudios() {
   const { consumoApi } = useConsumoApi();
   const { session } = useSessionContext();
-
-  const isSavingRef = useRef(false);
 
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -46,7 +44,7 @@ export default function CatTipoDescuentos() {
   const fetchTabla = async () => {
       setLoading(true);
       try {
-          const res = await consumoApi.get('/api/CatTipoDescuento/sp_bw_cat_tipos_descuento_sel');
+          const res = await consumoApi.get('/api/NivelesEscolaridad/sp_bw_cat_niveles_escolaridad_sel');
           setRows(Array.isArray(res?.data) ? res.data : []);
       } catch (error) {
           setMessage({ text: 'Error al cargar la tabla.', type: 'error' });
@@ -59,65 +57,56 @@ export default function CatTipoDescuentos() {
   };
 
   const handleAgregarNuevo = async () => {
-        if (isSavingRef.current) return; 
-        if (!formData.descripcion.trim()) return setMessage({ text: "La descripción es obligatoria.", type: 'error' });
+        if (!formData.clave_nivel) return setMessage({ text: "La Clave es obligatoria.", type: 'error' });
+        if (!formData.descripcion_escolaridad.trim()) return setMessage({ text: "La descripción es obligatoria.", type: 'error' });
 
-        isSavingRef.current = true;
         setSaving(true);
         try {
             const payload = {
-                descripcion: formData.descripcion.toUpperCase(),
-                min_descto: Number(formData.min_descto),
-                max_descto: Number(formData.max_descto)
+                clave_nivel: Number(formData.clave_nivel),
+                descripcion_escolaridad: formData.descripcion_escolaridad.toUpperCase()
             };
 
-            const res = await consumoApi.post('/api/CatTipoDescuento/sp_bw_cat_tipos_descuento_ins', payload);
+            const res = await consumoApi.post('/api/NivelesEscolaridad/sp_bw_cat_niveles_escolaridad_ins', payload);
             if (res.status === 200) {
-                setMessage({ text: `✅ Descuento agregado exitosamente.`, type: 'success' });
+                setMessage({ text: `✅ Nivel de estudios agregado.`, type: 'success' });
                 fetchTabla();
                 setFormData(initialFormState);
             }
         } catch (error: any) {
             setMessage({ text: error.response?.data?.mensaje || "Error al agregar el registro.", type: 'error' });
         } finally {
-            isSavingRef.current = false;
             setSaving(false);
         }
     };
 
   const processRowUpdate = async (newRow: any, oldRow: any) => {
-      if (
-          newRow.descripcion === oldRow.descripcion &&
-          newRow.min_descto === oldRow.min_descto &&
-          newRow.max_descto === oldRow.max_descto
-      ) return oldRow;
+      if (newRow.descripcion_escolaridad === oldRow.descripcion_escolaridad) return oldRow;
 
       try {
           const payload = {
-              tipo_descuento: newRow.tipo_descuento,
-              descripcion: newRow.descripcion?.toUpperCase() || '',
-              min_descto: Number(newRow.min_descto),
-              max_descto: Number(newRow.max_descto)
+              clave_nivel: newRow.clave_nivel,
+              descripcion_escolaridad: newRow.descripcion_escolaridad.toUpperCase()
           };
 
-          const res = await consumoApi.put('/api/CatTipoDescuento/sp_bw_cat_tipos_descuento_upd', payload);
+          const res = await consumoApi.put('/api/NivelesEscolaridad/sp_bw_cat_niveles_escolaridad_upd', payload);
           if (res.status === 200) {
               setMessage({ text: "💾 Cambios guardados automáticamente.", type: 'info' });
-              return { ...newRow, descripcion: payload.descripcion }; 
+              return { ...newRow, descripcion_escolaridad: payload.descripcion_escolaridad }; 
           } else throw new Error("Error en actualización");
       } catch (error) {
-          setMessage({ text: "❌ Error al guardar los cambios.", type: 'error' });
+          setMessage({ text: "❌ Error al guardar.", type: 'error' });
           return oldRow;
       }
   };
 
-  const handleEliminar = async (clave: number, nombre: string) => {
-      if (!window.confirm(`¿Está seguro que desea eliminar el descuento: ${nombre}?`)) return;
+  const handleEliminar = async (clave: number) => {
+      if (!window.confirm("¿Está seguro que desea eliminar este nivel de estudios?")) return;
       setSaving(true);
       try {
-          const res = await consumoApi.delete(`/api/CatTipoDescuento/sp_bw_cat_tipos_descuento_del?tipo_descuento=${clave}`);
+          const res = await consumoApi.delete(`/api/NivelesEscolaridad/sp_bw_cat_niveles_escolaridad_del?claveNivel=${clave}`);
           if (res.status === 200) {
-              setMessage({ text: "🗑️ Descuento eliminado.", type: 'success' });
+              setMessage({ text: "🗑️ Nivel de estudios eliminado.", type: 'success' });
               fetchTabla();
           }
       } catch (error: any) {
@@ -128,20 +117,12 @@ export default function CatTipoDescuentos() {
   };
 
   const columns = useMemo<GridColDef[]>(() => [
-    { field: 'tipo_descuento', headerName: 'ID', width: 90, fontWeight: 'bold', align: 'center', headerAlign: 'center' },
-    { field: 'descripcion', headerName: 'Descripción (Doble clic para editar)', flex: 1, minWidth: 250, editable: true, align: 'left', headerAlign: 'center' },
+    { field: 'clave_nivel', headerName: 'Clave', width: 120, fontWeight: 'bold', align: 'center', headerAlign: 'center' },
+    { field: 'descripcion_escolaridad', headerName: 'Descripción del Nivel (Doble clic para editar)', flex: 1, minWidth: 250, editable: true, align: 'left', headerAlign: 'center' },
     { 
-        field: 'min_descto', headerName: 'Min Dto', width: 120, editable: true, align: 'center', headerAlign: 'center',
-        type: 'number', valueFormatter: (value) => value == null ? '0%' : `${(Number(value) * 100).toFixed(0)}%`
-    },
-    { 
-        field: 'max_descto', headerName: 'Max Dto', width: 120, editable: true, align: 'center', headerAlign: 'center',
-        type: 'number', valueFormatter: (value) => value == null ? '0%' : `${(Number(value) * 100).toFixed(0)}%`
-    },
-    { 
-        field: 'acciones', headerName: 'Eliminar', width: 100, sortable: false, filterable: false, align: 'center', headerAlign: 'center',
+        field: 'acciones', headerName: 'Eliminar', width: 120, sortable: false, filterable: false, align: 'center', headerAlign: 'center',
         renderCell: (params: GridRenderCellParams) => (
-            <IconButton size="small" sx={{ color: '#d32f2f' }} onClick={() => handleEliminar(params.row.tipo_descuento, params.row.descripcion)}>
+            <IconButton size="small" sx={{ color: '#d32f2f' }} onClick={() => handleEliminar(params.row.clave_nivel)}>
                 <DeleteIcon />
             </IconButton>
         )
@@ -152,11 +133,11 @@ export default function CatTipoDescuentos() {
     <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
       <Paper sx={{ p: 3 }}>
 
-        {/* ENCABEZADO */}
+        {/* ENCABEZADO ESTILO ACCESS */}
         <Box sx={{ border: '1px solid #2c3e50', p: 1.5, mb: 2, borderRadius: '6px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
             <Box>
                 <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
-                    Catálogo de Tipos de Descuentos
+                    Niveles de estudios RRHH
                 </Typography>
                 <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
                     Sucursal: {session?.dSucursal || 'Cargando...'}
@@ -173,17 +154,12 @@ export default function CatTipoDescuentos() {
         </Box>
 
         <Grid container spacing={2} justifyContent="center" alignItems="center">
-            {/* NO se pide ID porque es autogenerado por SQL */}
-            <Grid item xs={12} md={4}>
-                <TextField {...commonProps} label="Descripción del Descuento*" name="descripcion" value={formData.descripcion} onChange={handleInputChange} />
+            <Grid item xs={12} md={2}>
+                <TextField {...commonProps} type="number" label="Clave*" name="clave_nivel" value={formData.clave_nivel} onChange={handleInputChange} />
             </Grid>
-            <Grid item xs={6} md={2}>
-                <TextField {...commonProps} type="number" inputProps={{ step: "0.01" }} label="Min Dto (Ej: 0.15 = 15%)" name="min_descto" value={formData.min_descto} onChange={handleInputChange} />
+            <Grid item xs={12} md={6}>
+                <TextField {...commonProps} label="Descripción del Nivel*" name="descripcion_escolaridad" value={formData.descripcion_escolaridad} onChange={handleInputChange} />
             </Grid>
-            <Grid item xs={6} md={2}>
-                <TextField {...commonProps} type="number" inputProps={{ step: "0.01" }} label="Max Dto (Ej: 1 = 100%)" name="max_descto" value={formData.max_descto} onChange={handleInputChange} />
-            </Grid>
-            
             <Grid item xs={12} md={2}>
                 <Button variant="contained" onClick={handleAgregarNuevo} disabled={saving} fullWidth startIcon={<AddIcon />}
                     sx={{ 
@@ -203,7 +179,7 @@ export default function CatTipoDescuentos() {
             <DataGrid 
                 rows={Array.isArray(rows) ? rows : []} 
                 columns={columns} 
-                getRowId={(row) => row.tipo_descuento} 
+                getRowId={(row) => row.clave_nivel} 
                 loading={loading || saving} 
                 paginationModel={paginationModel} 
                 onPaginationModelChange={setPaginationModel} 
@@ -228,7 +204,7 @@ export default function CatTipoDescuentos() {
       {/* PIE DE PÁGINA */}
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 1 }}>
         <Typography variant="caption" sx={{ fontWeight: 'bold', textTransform: 'uppercase' }}>
-          CAT_TIPOS_DESCUENTO, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/')}, USR:{session?.nombre || 'ADMIN'}
+          CAT_NIVELES_ESTUDIOS, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/')}, USR:{session?.nombre || 'ADMIN'}
         </Typography>
       </Box>
 

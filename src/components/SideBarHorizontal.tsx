@@ -227,6 +227,29 @@ const SidebarHorizontal = () => {
           </MenuItem>
           <MenuItem onClick={() => navigate(routes.factores_sucursal)}>
             Factores Sucursales
+          <MenuItem onClick={() => navigate(routes.cat_nominas_movimientos)}>
+            Movimientos
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_dias_festivos)}>
+            Días Festivos
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_niveles_estudios_rrhh)}>
+            Niveles de Estudio
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_nominas_horarios)}>
+            Horarios
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_cuentas_bancarias)}>
+            Cuentas Bancarias
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_tipos_cuentas)}>
+            Tipos de Cuentas
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_usuarios)}>
+            Usuarios del Sistema
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_nominas_folios)}>
+            Administración de Folios
           </MenuItem>
         </Menu>
 

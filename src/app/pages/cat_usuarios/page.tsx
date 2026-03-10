@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Box, Typography, Button, TextField, Grid, 
-  Snackbar, Alert, Paper, IconButton 
+  Snackbar, Alert, Paper, MenuItem, IconButton 
 } from '@mui/material'; 
 import { 
   DataGrid, GridColDef, GridToolbar, 
@@ -24,32 +24,47 @@ const commonProps = {
   }
 };
 
+const selectProps = {
+    ...commonProps,
+    SelectProps: { MenuProps: { PaperProps: { sx: { maxHeight: 300 } } } }
+};
+
 function CustomPagination() { return <GridPagination />; }
 
-const initialFormState = { descripcion: '', min_descto: 0, max_descto: 0 };
+const initialFormState = { 
+    usuario: '', clave_perfiles: 0, password: '', 
+    nombre: '', celular: '', telefono: '', email: '' 
+};
 
-export default function CatTipoDescuentos() {
+export default function Usuarios() {
   const { consumoApi } = useConsumoApi();
   const { session } = useSessionContext();
 
   const isSavingRef = useRef(false);
 
   const [rows, setRows] = useState<any[]>([]);
+  const [perfiles, setPerfiles] = useState<any[]>([]);
+  
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({ page: 0, pageSize: 50 });
   const [formData, setFormData] = useState(initialFormState);
   const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' | 'info' } | null>(null);
 
-  useEffect(() => { fetchTabla(); }, []);
+  useEffect(() => { fetchCatalogos(); }, []);
 
-  const fetchTabla = async () => {
+  const fetchCatalogos = async () => {
       setLoading(true);
       try {
-          const res = await consumoApi.get('/api/CatTipoDescuento/sp_bw_cat_tipos_descuento_sel');
-          setRows(Array.isArray(res?.data) ? res.data : []);
+          // Cargamos la lista de perfiles
+          const resPerfiles = await consumoApi.get('/api/Usuarios/sp_bw_cat_combo_perfiles');
+          setPerfiles(Array.isArray(resPerfiles?.data) ? resPerfiles.data : []);
+
+          // Cargamos la tabla principal de usuarios
+          const resTabla = await consumoApi.get('/api/Usuarios/sp_bw_cat_usuarios_sel');
+          setRows(Array.isArray(resTabla?.data) ? resTabla.data : []);
       } catch (error) {
-          setMessage({ text: 'Error al cargar la tabla.', type: 'error' });
+          setMessage({ text: 'Error al cargar catálogos.', type: 'error' });
       } finally { setLoading(false); }
   };
 
@@ -59,22 +74,31 @@ export default function CatTipoDescuentos() {
   };
 
   const handleAgregarNuevo = async () => {
+        // Escudo anti-doble clic
         if (isSavingRef.current) return; 
-        if (!formData.descripcion.trim()) return setMessage({ text: "La descripción es obligatoria.", type: 'error' });
+
+        if (!formData.usuario.trim()) return setMessage({ text: "El Usuario es obligatorio.", type: 'error' });
+        if (!formData.nombre.trim()) return setMessage({ text: "El Nombre es obligatorio.", type: 'error' });
+        if (!formData.password.trim()) return setMessage({ text: "La Contraseña es obligatoria.", type: 'error' });
+        if (formData.clave_perfiles === 0) return setMessage({ text: "Seleccione un Perfil válido.", type: 'error' });
 
         isSavingRef.current = true;
         setSaving(true);
         try {
             const payload = {
-                descripcion: formData.descripcion.toUpperCase(),
-                min_descto: Number(formData.min_descto),
-                max_descto: Number(formData.max_descto)
+                usuario: formData.usuario.toUpperCase(),
+                clave_perfiles: Number(formData.clave_perfiles),
+                password: formData.password.toUpperCase(), // Igual que en Access
+                nombre: formData.nombre.toUpperCase(),     // Igual que en Access
+                celular: formData.celular,
+                telefono: formData.telefono,
+                email: formData.email
             };
 
-            const res = await consumoApi.post('/api/CatTipoDescuento/sp_bw_cat_tipos_descuento_ins', payload);
+            const res = await consumoApi.post('/api/Usuarios/sp_bw_cat_usuarios_ins', payload);
             if (res.status === 200) {
-                setMessage({ text: `✅ Descuento agregado exitosamente.`, type: 'success' });
-                fetchTabla();
+                setMessage({ text: `✅ Usuario agregado exitosamente.`, type: 'success' });
+                fetchCatalogos();
                 setFormData(initialFormState);
             }
         } catch (error: any) {
@@ -87,23 +111,29 @@ export default function CatTipoDescuentos() {
 
   const processRowUpdate = async (newRow: any, oldRow: any) => {
       if (
-          newRow.descripcion === oldRow.descripcion &&
-          newRow.min_descto === oldRow.min_descto &&
-          newRow.max_descto === oldRow.max_descto
+          newRow.clave_perfiles === oldRow.clave_perfiles &&
+          newRow.password === oldRow.password &&
+          newRow.nombre === oldRow.nombre &&
+          newRow.celular === oldRow.celular &&
+          newRow.telefono === oldRow.telefono &&
+          newRow.email === oldRow.email
       ) return oldRow;
 
       try {
           const payload = {
-              tipo_descuento: newRow.tipo_descuento,
-              descripcion: newRow.descripcion?.toUpperCase() || '',
-              min_descto: Number(newRow.min_descto),
-              max_descto: Number(newRow.max_descto)
+              usuario: newRow.usuario,
+              clave_perfiles: Number(newRow.clave_perfiles),
+              password: newRow.password?.toUpperCase() || '',
+              nombre: newRow.nombre?.toUpperCase() || '',
+              celular: newRow.celular,
+              telefono: newRow.telefono,
+              email: newRow.email
           };
 
-          const res = await consumoApi.put('/api/CatTipoDescuento/sp_bw_cat_tipos_descuento_upd', payload);
+          const res = await consumoApi.put('/api/Usuarios/sp_bw_cat_usuarios_upd', payload);
           if (res.status === 200) {
               setMessage({ text: "💾 Cambios guardados automáticamente.", type: 'info' });
-              return { ...newRow, descripcion: payload.descripcion }; 
+              return { ...newRow, nombre: payload.nombre, password: payload.password }; 
           } else throw new Error("Error en actualización");
       } catch (error) {
           setMessage({ text: "❌ Error al guardar los cambios.", type: 'error' });
@@ -111,14 +141,14 @@ export default function CatTipoDescuentos() {
       }
   };
 
-  const handleEliminar = async (clave: number, nombre: string) => {
-      if (!window.confirm(`¿Está seguro que desea eliminar el descuento: ${nombre}?`)) return;
+  const handleEliminar = async (clave: string) => {
+      if (!window.confirm(`¿Está seguro que desea eliminar al usuario ${clave}?`)) return;
       setSaving(true);
       try {
-          const res = await consumoApi.delete(`/api/CatTipoDescuento/sp_bw_cat_tipos_descuento_del?tipo_descuento=${clave}`);
+          const res = await consumoApi.delete(`/api/Usuarios/sp_bw_cat_usuarios_del?usuario=${clave}`);
           if (res.status === 200) {
-              setMessage({ text: "🗑️ Descuento eliminado.", type: 'success' });
-              fetchTabla();
+              setMessage({ text: "🗑️ Usuario eliminado.", type: 'success' });
+              fetchCatalogos();
           }
       } catch (error: any) {
           setMessage({ text: error.response?.data?.mensaje || "Error al eliminar el registro.", type: 'error' });
@@ -128,25 +158,28 @@ export default function CatTipoDescuentos() {
   };
 
   const columns = useMemo<GridColDef[]>(() => [
-    { field: 'tipo_descuento', headerName: 'ID', width: 90, fontWeight: 'bold', align: 'center', headerAlign: 'center' },
-    { field: 'descripcion', headerName: 'Descripción (Doble clic para editar)', flex: 1, minWidth: 250, editable: true, align: 'left', headerAlign: 'center' },
+    { field: 'usuario', headerName: 'Usuario', width: 120, fontWeight: 'bold', align: 'center', headerAlign: 'center' },
+    { field: 'nombre', headerName: 'Nombre', flex: 1, minWidth: 200, editable: true, align: 'left', headerAlign: 'center' },
     { 
-        field: 'min_descto', headerName: 'Min Dto', width: 120, editable: true, align: 'center', headerAlign: 'center',
-        type: 'number', valueFormatter: (value) => value == null ? '0%' : `${(Number(value) * 100).toFixed(0)}%`
+        field: 'clave_perfiles', headerName: 'Perfil ERP', width: 180, editable: true, align: 'center', headerAlign: 'center',
+        type: 'singleSelect', valueOptions: [{ value: 0, label: '-- SELECCIONE --' }, ...perfiles.map(p => ({ value: p.id, label: p.descripcion }))]
     },
     { 
-        field: 'max_descto', headerName: 'Max Dto', width: 120, editable: true, align: 'center', headerAlign: 'center',
-        type: 'number', valueFormatter: (value) => value == null ? '0%' : `${(Number(value) * 100).toFixed(0)}%`
+        field: 'password', headerName: 'Password', width: 120, editable: true, align: 'center', headerAlign: 'center',
+        renderCell: () => '******' // Máscara para que no se vea en la tabla
     },
+    { field: 'celular', headerName: 'Celular', width: 120, editable: true, align: 'center', headerAlign: 'center' },
+    { field: 'telefono', headerName: 'Teléfono', width: 120, editable: true, align: 'center', headerAlign: 'center' },
+    { field: 'email', headerName: 'Email', width: 200, editable: true, align: 'left', headerAlign: 'center' },
     { 
-        field: 'acciones', headerName: 'Eliminar', width: 100, sortable: false, filterable: false, align: 'center', headerAlign: 'center',
+        field: 'acciones', headerName: 'Eliminar', width: 90, sortable: false, filterable: false, align: 'center', headerAlign: 'center',
         renderCell: (params: GridRenderCellParams) => (
-            <IconButton size="small" sx={{ color: '#d32f2f' }} onClick={() => handleEliminar(params.row.tipo_descuento, params.row.descripcion)}>
+            <IconButton size="small" sx={{ color: '#d32f2f' }} onClick={() => handleEliminar(params.row.usuario)}>
                 <DeleteIcon />
             </IconButton>
         )
     }
-  ], []);
+  ], [perfiles]);
 
   return (
     <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
@@ -156,7 +189,7 @@ export default function CatTipoDescuentos() {
         <Box sx={{ border: '1px solid #2c3e50', p: 1.5, mb: 2, borderRadius: '6px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
             <Box>
                 <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
-                    Catálogo de Tipos de Descuentos
+                    Catálogo de Usuarios del Sistema
                 </Typography>
                 <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
                     Sucursal: {session?.dSucursal || 'Cargando...'}
@@ -167,23 +200,43 @@ export default function CatTipoDescuentos() {
                     {new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' }).replace('.', '')}
                 </Typography>
                 <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
-                    Usuario: {session?.nombre || 'Cargando...'}
+                    Usuario Activo: {session?.nombre || 'Cargando...'}
                 </Typography>
             </Box>
         </Box>
 
         <Grid container spacing={2} justifyContent="center" alignItems="center">
-            {/* NO se pide ID porque es autogenerado por SQL */}
-            <Grid item xs={12} md={4}>
-                <TextField {...commonProps} label="Descripción del Descuento*" name="descripcion" value={formData.descripcion} onChange={handleInputChange} />
+            <Grid item xs={12} md={1}>
+                <TextField {...commonProps} label="Usuario*" name="usuario" value={formData.usuario} onChange={handleInputChange} 
+                    sx={{ width: '120px', ...commonProps.sx }} />
             </Grid>
-            <Grid item xs={6} md={2}>
-                <TextField {...commonProps} type="number" inputProps={{ step: "0.01" }} label="Min Dto (Ej: 0.15 = 15%)" name="min_descto" value={formData.min_descto} onChange={handleInputChange} />
+            <Grid item xs={12} md={2}>
+                <TextField {...commonProps} label="Nombre Completo*" name="nombre" value={formData.nombre} onChange={handleInputChange} 
+                    sx={{ width: '200px', ...commonProps.sx }} />
             </Grid>
-            <Grid item xs={6} md={2}>
-                <TextField {...commonProps} type="number" inputProps={{ step: "0.01" }} label="Max Dto (Ej: 1 = 100%)" name="max_descto" value={formData.max_descto} onChange={handleInputChange} />
+            <Grid item xs={12} md={1}>
+                <TextField {...selectProps} select label="Perfil ERP*" name="clave_perfiles" value={formData.clave_perfiles} onChange={handleInputChange}
+                    sx={{ width: '120px', ...selectProps.sx }}>
+                    <MenuItem value={0}>-- SELECCIONE --</MenuItem>
+                    {perfiles.map(p => <MenuItem key={`p_${p.id}`} value={p.id}>{p.descripcion}</MenuItem>)}
+                </TextField>
             </Grid>
-            
+            <Grid item xs={12} md={1}>
+                <TextField {...commonProps} type="password" label="Password*" name="password" value={formData.password} onChange={handleInputChange} 
+                    sx={{ width: '120px', ...commonProps.sx }} />
+            </Grid>
+            <Grid item xs={12} md={2}>
+                <TextField {...commonProps} label="Email" name="email" value={formData.email} onChange={handleInputChange} 
+                    sx={{ width: '200px', ...commonProps.sx }} />
+            </Grid>
+            <Grid item xs={12} md={1}>
+                <TextField {...commonProps} label="Celular" name="celular" value={formData.celular} onChange={handleInputChange} 
+                    sx={{ width: '120px', ...commonProps.sx }} />
+            </Grid>
+            <Grid item xs={12} md={1}>
+                <TextField {...commonProps} label="Teléfono" name="telefono" value={formData.telefono} onChange={handleInputChange} 
+                    sx={{ width: '120px', ...commonProps.sx }} />
+            </Grid>
             <Grid item xs={12} md={2}>
                 <Button variant="contained" onClick={handleAgregarNuevo} disabled={saving} fullWidth startIcon={<AddIcon />}
                     sx={{ 
@@ -203,7 +256,7 @@ export default function CatTipoDescuentos() {
             <DataGrid 
                 rows={Array.isArray(rows) ? rows : []} 
                 columns={columns} 
-                getRowId={(row) => row.tipo_descuento} 
+                getRowId={(row) => row.usuario} 
                 loading={loading || saving} 
                 paginationModel={paginationModel} 
                 onPaginationModelChange={setPaginationModel} 
@@ -216,7 +269,12 @@ export default function CatTipoDescuentos() {
                 onProcessRowUpdateError={(error) => console.error(error)}
                 sx={{ 
                     border: 'none', 
-                    '& .MuiDataGrid-columnHeaders': { borderBottom: '2px solid #000', fontSize: '1rem', fontWeight: 'bold' },
+                    '& .MuiDataGrid-columnHeaders': { 
+    borderBottom: '2px solid #000',
+    textAlign: 'center',
+    fontSize: '1rem',
+    fontWeight: 'bold'
+},
                     '& .MuiDataGrid-cell': { borderBottom: '1px solid #e0e0e0' },
                     '& .MuiDataGrid-cell--editable': { backgroundColor: '#f9fbfd', cursor: 'text' }, 
                     '& .MuiDataGrid-cell--editing': { backgroundColor: '#fff', boxShadow: '0 0 5px rgba(25,118,210,0.5)' }
@@ -228,7 +286,7 @@ export default function CatTipoDescuentos() {
       {/* PIE DE PÁGINA */}
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 1 }}>
         <Typography variant="caption" sx={{ fontWeight: 'bold', textTransform: 'uppercase' }}>
-          CAT_TIPOS_DESCUENTO, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/')}, USR:{session?.nombre || 'ADMIN'}
+          CAT_USUARIOS, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/')}, USR:{session?.nombre || 'ADMIN'}
         </Typography>
       </Box>
 
