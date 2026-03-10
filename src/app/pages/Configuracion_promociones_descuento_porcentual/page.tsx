@@ -81,6 +81,7 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
   const [selectedProducto, setSelectedProducto] = useState('')
   const [cantidad, setCantidad] = useState('')
   const [descPorcentaje, setDescPorcentaje] = useState('')
+  const [descuento, setDescuento] = useState('')
   const [selectedTipoDescuento, setSelectedTipoDescuento] = useState('')
 
   const [saving, setSaving] = useState(false)
@@ -92,8 +93,8 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
   const columns: GridColDef[] = [
     {
       field: 'acciones',
-      headerName: '',
-      width: 70,
+      headerName: 'Acciones',
+      width: 90,
       sortable: false,
       filterable: false,
       renderCell: (params) => (
@@ -106,18 +107,18 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
         </IconButton>
       ),
     },
-    { field: 'nombrePromo', headerName: 'Nombre Promo', width: 200 },
-    { field: 'sucursal', headerName: 'Sucursal', width: 80 },
-    { field: 'f1', headerName: 'Del', width: 100 },
-    { field: 'f2', headerName: 'Al', width: 100 },
-    { field: 'area', headerName: 'Area', width: 90 },
-    { field: 'depto', headerName: 'Depto', width: 100 },
-    { field: 'marca', headerName: 'Marca', width: 100 },
-    { field: 'familia', headerName: 'Familia', width: 100 },
-    { field: 'clave_prod', headerName: 'Producto', width: 220 },
+    { field: 'nombrePromo', headerName: 'Nombre Promo', width: 130 },
+    { field: 'sucursal', headerName: 'Sucursal', width: 100 },
+    { field: 'f1', headerName: 'Del', width: 90 },
+    { field: 'f2', headerName: 'Al', width: 90 },
+    { field: 'area', headerName: 'Area', width: 120 },
+    { field: 'depto', headerName: 'Depto', width: 180 },
+    { field: 'marca', headerName: 'Marca', width: 120 },
+    { field: 'familia', headerName: 'Familia', width: 120 },
+    { field: 'clave_prod', headerName: 'Producto', width: 200 },
     { field: 'cantidad', headerName: 'Cant', width: 60 },
-    { field: 'descuento', headerName: 'Desc %', width: 70 },
-    { field: 'idDescuento', headerName: 'Descuento', width: 100 },
+    { field: 'descuento', headerName: 'Desc %', width: 80 },
+    { field: 'idDescuento', headerName: 'Descuento', width: 120 },
   ]
 
   const fetchSucursales = async () => {
@@ -233,7 +234,7 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
   }, [selectedMarca])
 
   const handleAdd = async () => {
-    if (!nombrePromo || !selectedSucursal || !fechaDel || !fechaAl || !selectedArea || !selectedDepto || !selectedMarca || !selectedFamilia || !selectedProducto || !cantidad || !descPorcentaje || !selectedTipoDescuento) return
+    if (!nombrePromo || !selectedSucursal || !fechaDel || !fechaAl || !selectedArea || !selectedDepto || !selectedMarca || !selectedFamilia || !selectedProducto || !cantidad || !descPorcentaje || !descuento || !selectedTipoDescuento) return
 
     try {
       setSaving(true)
@@ -245,7 +246,7 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
       }
 
       const response = await consumoApi.post(
-        `/api/CatConfigPromoDescPorcen/sp_bw_t_promocionesDescuentos_add`,
+        `/api/CatConfigPromoDescPorcen/sp_bw_t_promocionesDescuentos_upd`,
         '',
         {
           params: {
@@ -284,6 +285,7 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
       setSelectedProducto('')
       setCantidad('')
       setDescPorcentaje('')
+      setDescuento('')
       setSelectedTipoDescuento('')
       setDepartamentos([])
       setFamilias([])
@@ -357,7 +359,7 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
             CONFIGURACION DE PROMOCIONES CON DESCUENTO PORCENTUAL
           </Typography>
 
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 3, alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', flexWrap: 'nowrap', gap: 0.1, mb: 3, alignItems: 'center', overflowX: 'auto', pb: 1 }}>
             <TextField
               label="Nombre Promo"
               value={nombrePromo}
@@ -460,7 +462,7 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
               </Select>
             </FormControl>
 
-            <FormControl sx={{ minWidth: 150 }}>
+            <FormControl sx={{ minWidth: 180 }}>
               <InputLabel>Producto</InputLabel>
               <Select
                 value={selectedProducto}
@@ -480,7 +482,7 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
               type="number"
               value={cantidad}
               onChange={(e) => setCantidad(e.target.value)}
-              sx={{ minWidth: 80 }}
+              sx={{ width: 100 }}
               inputProps={{ min: "1" }}
             />
 
@@ -491,6 +493,13 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
               onChange={(e) => setDescPorcentaje(e.target.value)}
               sx={{ width: 120 }}
               inputProps={{ step: "0.01", min: "0", max: "1" }}
+            />
+
+            <TextField
+              label="Descuento"
+              value={descuento}
+              onChange={(e) => setDescuento(e.target.value)}
+              sx={{ minWidth: 120 }}
             />
 
             <FormControl sx={{ minWidth: 200 }}>
@@ -511,7 +520,7 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
             <Button
               variant="contained"
               onClick={handleAdd}
-              disabled={!nombrePromo || !selectedSucursal || !fechaDel || !fechaAl || !selectedArea || !selectedDepto || !selectedMarca || !selectedFamilia || !selectedProducto || !cantidad || !descPorcentaje || !selectedTipoDescuento || saving}
+              disabled={!nombrePromo || !selectedSucursal || !fechaDel || !fechaAl || !selectedArea || !selectedDepto || !selectedMarca || !selectedFamilia || !selectedProducto || !cantidad || !descPorcentaje || !descuento || !selectedTipoDescuento || saving}
               sx={{ height: 56 }}
             >
               {saving ? 'Guardando...' : 'Agregar'}

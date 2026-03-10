@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { Box, CircularProgress, Alert, Typography } from '@mui/material';
-import useConsumoApi from "../../../hooks/useConsumoApi";
+import useConsumoApi from '../../../hooks/useConsumoApi';
 import {
   Button,
   Dialog,
@@ -45,6 +45,8 @@ export default function CatMarcas() {
   const [deleting, setDeleting] = useState(false);
 
   const columns: GridColDef[] = [
+    { field: 'id', headerName: 'ID', width: 80, type: 'number' },
+    { field: 'marca', headerName: 'Marca', width: 200, type: 'string' },
     {
       field: 'acciones',
       headerName: 'Acciones',
@@ -65,8 +67,6 @@ export default function CatMarcas() {
         </>
       ),
     },
-    { field: 'id', headerName: 'ID', width: 80, type: 'number' },
-    { field: 'marca', headerName: 'Marca', width: 200, type: 'string' },
   ];
 
   const handleEditOpen = (row: CatMarcas) => {
@@ -213,7 +213,7 @@ export default function CatMarcas() {
       <Box sx={{ p: 2 }}>
         <h1>Catálogo de Marcas</h1>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-          <Button variant='contained' onClick={() => setOpenAdd(true)} sx={{ borderRadius: 2 }}>
+          <Button variant='contained' onClick={() => setOpenAdd(true)}>
             Agregar Marca
           </Button>
         </Box>
@@ -238,77 +238,23 @@ export default function CatMarcas() {
           onClose={() => setOpenAdd(false)}
           maxWidth='sm'
           fullWidth
-          PaperProps={{
-            sx: {
-              borderRadius: 2,
-            }
-          }}
         >
-          <DialogTitle sx={{ 
-            bgcolor: '#424242', 
-            color: 'white',
-            py: 2.5,
-            px: 3
-          }}>
-            <Typography variant='h6' sx={{ fontWeight: 600 }}>
-              Agregar Nueva Marca
-            </Typography>
-            <Typography variant='body2' sx={{ color: '#e0e0e0', mt: 0.5 }}>
-              Complete la información de la marca en los campos correspondientes
-            </Typography>
-          </DialogTitle>
+          <DialogTitle>Agregar Marca</DialogTitle>
 
-          <DialogContent sx={{ p: 3, bgcolor: '#fafafa' }}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              
-              {/* Identificación de la Marca */}
-              <Box>
-                <Box sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 1, 
-                  mb: 2,
-                  borderLeft: '3px solid #424242',
-                  pl: 1.5
-                }}>
-                  <Typography variant='subtitle1' sx={{ fontWeight: 600 }}>
-                    Identificación de la Marca
-                  </Typography>
-                </Box>
-                <TextField
-                  label='Marca *'
-                  value={marca}
-                  onChange={(e) => setMarca(e.target.value)}
-                  fullWidth
-                  size='small'
-                  sx={{ bgcolor: 'white' }}
-                />
-              </Box>
-
-            </Box>
+          <DialogContent
+            sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}
+          >
+            <TextField
+              label='Marca'
+              value={marca}
+              onChange={(e) => setMarca(e.target.value)}
+              fullWidth
+            />
           </DialogContent>
 
-          <DialogActions sx={{ px: 3, py: 2, bgcolor: '#fafafa', borderTop: '1px solid #e0e0e0' }}>
-            <Button 
-              onClick={() => setOpenAdd(false)}
-              sx={{ textTransform: 'uppercase', fontWeight: 600 }}
-            >
-              Cancelar
-            </Button>
-            <Button 
-              variant='contained' 
-              onClick={handleAdd} 
-              disabled={saving}
-              sx={{ 
-                bgcolor: '#212121',
-                textTransform: 'uppercase',
-                fontWeight: 600,
-                px: 4,
-                '&:hover': {
-                  bgcolor: '#424242'
-                }
-              }}
-            >
+          <DialogActions>
+            <Button onClick={() => setOpenAdd(false)}>Cancelar</Button>
+            <Button variant='contained' onClick={handleAdd} disabled={saving}>
               Guardar
             </Button>
           </DialogActions>
@@ -319,88 +265,29 @@ export default function CatMarcas() {
           onClose={() => setOpenEdit(false)}
           maxWidth='sm'
           fullWidth
-          PaperProps={{
-            sx: {
-              borderRadius: 2,
-            }
-          }}
         >
-          <DialogTitle sx={{ 
-            bgcolor: '#424242', 
-            color: 'white',
-            py: 2.5,
-            px: 3
-          }}>
-            <Typography variant='h6' sx={{ fontWeight: 600 }}>
-              Editar Marca: {editId}
-            </Typography>
-            <Typography variant='body2' sx={{ color: '#e0e0e0', mt: 0.5 }}>
-              Complete la información de la marca en los campos correspondientes
-            </Typography>
-          </DialogTitle>
+          <DialogTitle>Editar Marca</DialogTitle>
 
-          <DialogContent sx={{ p: 3, bgcolor: '#fafafa' }}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              
-              {/* Identificación de la Marca */}
-              <Box>
-                <Box sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 1, 
-                  mb: 2,
-                  borderLeft: '3px solid #424242',
-                  pl: 1.5
-                }}>
-                  <Typography variant='subtitle1' sx={{ fontWeight: 600 }}>
-                    Identificación de la Marca
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <TextField 
-                    label='ID' 
-                    value={editId || ''} 
-                    disabled 
-                    fullWidth 
-                    size='small'
-                    sx={{ bgcolor: 'white' }}
-                  />
-                  <TextField
-                    label='Marca *'
-                    value={editMarca}
-                    onChange={(e) => setEditMarca(e.target.value)}
-                    fullWidth
-                    size='small'
-                    sx={{ bgcolor: 'white' }}
-                  />
-                </Box>
-              </Box>
-
-            </Box>
+          <DialogContent
+            sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}
+          >
+            <TextField label='ID' value={editId || ''} disabled fullWidth />
+            <TextField
+              label='Marca'
+              value={editMarca}
+              onChange={(e) => setEditMarca(e.target.value)}
+              fullWidth
+            />
           </DialogContent>
 
-          <DialogActions sx={{ px: 3, py: 2, bgcolor: '#fafafa', borderTop: '1px solid #e0e0e0' }}>
-            <Button 
-              onClick={() => setOpenEdit(false)}
-              sx={{ textTransform: 'uppercase', fontWeight: 600 }}
-            >
-              Cancelar
-            </Button>
+          <DialogActions>
+            <Button onClick={() => setOpenEdit(false)}>Cancelar</Button>
             <Button
               variant='contained'
               onClick={handleUpdate}
               disabled={savingEdit}
-              sx={{ 
-                bgcolor: '#212121',
-                textTransform: 'uppercase',
-                fontWeight: 600,
-                px: 4,
-                '&:hover': {
-                  bgcolor: '#424242'
-                }
-              }}
             >
-              Guardar
+              Guardar cambios
             </Button>
           </DialogActions>
         </Dialog>

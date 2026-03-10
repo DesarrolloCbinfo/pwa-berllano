@@ -13,6 +13,7 @@ import {
 import EditIcon from '@mui/icons-material/Edit';
 import { IconButton } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 
 import PWABadge from '../../../PWABadge';
 
@@ -21,18 +22,37 @@ interface CatSucursal {
   cve_sucursal: number;
   nombre: string;
   direccion: string | null;
+  es_ruta?: boolean | number;
+  es_bodega?: boolean | number;
   dias_devolucion: number;
   en_linea?: boolean | number;
+  supervisor: number;
   version: string;
   fecha_alta: string | null;
   fecha_act: string | null;
   validar_tx?: boolean | number;
   validar_rm?: boolean | number;
   clave_timbrador: number;
+  recibe_fv?: string;
   min_records_val_tx: number;
+  min_records_val_rm: number;
   recibe_prov_all?: boolean | number;
   edita_costos_rm?: boolean | number;
+  nocturna?: boolean | number;
   credito?: boolean | number;
+  vencimiento_deposito: number;
+  tolerancia_existencia: number;
+  control_traspasos?: boolean | number;
+  bancomer_online?: boolean | number;
+  afiliacion_bancomer?: string;
+  servicio_domicilio?: boolean | number;
+  aplica_cinepolis?: boolean | number;
+  aplica_cinetix?: boolean | number;
+  area_deposito?: string;
+  depto_deposito?: string;
+  limite_sobrante?: string | number;
+  limite_faltante?: string | number;
+  importe_retiros?: string | number;
   fondo?: string | number;
   montoAviso?: string | number;
   numeroAvisos?: string | number;
@@ -51,14 +71,35 @@ export default function CatSucursales() {
   const [cve_sucursal, setCveSucursal] = useState('');
   const [nombre, setNombre] = useState('');
   const [direccion, setDireccion] = useState('');
+  const [es_ruta, setEsRuta] = useState(false);
+  const [es_bodega, setEsBodega] = useState(false);
   const [dias_devolucion, setDiasDevolucion] = useState('');
   const [en_linea, setEnLinea] = useState(false);
+  const [supervisor, setSupervisor] = useState('');
   const [version, setVersion] = useState('');
   const [validar_tx, setValidar_tx] = useState(false);
+  const [validar_rm, setValidar_rm] = useState(false);
+  const [min_records_val_tx, setMin_records_val_tx] = useState('');
+  const [min_records_val_rm, setMin_records_val_rm] = useState('');
   const [clave_timbrador, setClave_timbrador] = useState('');
+  const [recibe_fv, setRecibe_fv] = useState('');
   const [recibe_prov_all, setRecibe_prov_all] = useState(false);
   const [edita_costos_rm, setEdita_costos_rm] = useState(false);
+  const [nocturna, setNocturna] = useState(false);
   const [credito, setCredito] = useState(false);
+  const [vencimiento_deposito, setVencimiento_deposito] = useState('');
+  const [tolerancia_existencia, setTolerancia_existencia] = useState('');
+  const [control_traspasos, setControl_traspasos] = useState(false);
+  const [bancomer_online, setBancomer_online] = useState(false);
+  const [afiliacion_bancomer, setAfiliacion_bancomer] = useState('');
+  const [servicio_domicilio, setServicio_domicilio] = useState(false);
+  const [aplica_cinepolis, setAplica_cinepolis] = useState(false);
+  const [aplica_cinetix, setAplica_cinetix] = useState(false);
+  const [area_deposito, setArea_deposito] = useState('');
+  const [depto_deposito, setDepto_deposito] = useState('');
+  const [limite_sobrante, setLimite_sobrante] = useState('');
+  const [limite_faltante, setLimite_faltante] = useState('');
+  const [importe_retiros, setImporte_retiros] = useState('');
   const [fondo, setFondo] = useState('');
   const [montoAviso, setMontoAviso] = useState('');
   const [numeroAvisos, setNumeroAvisos] = useState('');
@@ -73,21 +114,42 @@ export default function CatSucursales() {
   const [editCveSucursal, setEditCveSucursal] = useState('');
   const [editNombre, setEditNombre] = useState('');
   const [editDireccion, setEditDireccion] = useState('');
+  const [editEsRuta, setEditEsRuta] = useState(false);
+  const [editEsBodega, setEditEsBodega] = useState(false);
   const [editDiasDevolucion, setEditDiasDevolucion] = useState('');
   const [editEnLinea, setEditEnLinea] = useState(false);
+  const [editSupervisor, setEditSupervisor] = useState('');
   const [editVersion, setEditVersion] = useState('');
   const [editValidarTx, setEditValidarTx] = useState(false);
+  const [editValidarRm, setEditValidarRm] = useState(false);
+  const [editMinRecordsValTx, setEditMinRecordsValTx] = useState('');
+  const [editMinRecordsValRm, setEditMinRecordsValRm] = useState('');
   const [editClaveTimbrador, setEditClaveTimbrador] = useState('');
+  const [editRecibeFv, setEditRecibeFv] = useState('');
   const [editRecipeProvAll, setEditRecipeProvAll] = useState(false);
   const [editEditaCostosRm, setEditEditaCostosRm] = useState(false);
+  const [editNocturna, setEditNocturna] = useState(false);
   const [editCredito, setEditCredito] = useState(false);
+  const [editVencimientoDeposito, setEditVencimientoDeposito] = useState('');
+  const [editToleranciaExistencia, setEditToleranciaExistencia] = useState('');
+  const [editControlTraspasos, setEditControlTraspasos] = useState(false);
+  const [editBancomerOnline, setEditBancomerOnline] = useState(false);
+  const [editAfiliacionBancomer, setEditAfiliacionBancomer] = useState('');
+  const [editServicioDomicilio, setEditServicioDomicilio] = useState(false);
+  const [editAplicaCinepolis, setEditAplicaCinepolis] = useState(false);
+  const [editAplicaCinetix, setEditAplicaCinetix] = useState(false);
+  const [editAreaDeposito, setEditAreaDeposito] = useState('');
+  const [editDeptoDeposito, setEditDeptoDeposito] = useState('');
+  const [editLimiteSobrante, setEditLimiteSobrante] = useState('');
+  const [editLimiteFaltante, setEditLimiteFaltante] = useState('');
+  const [editImporteRetiros, setEditImporteRetiros] = useState('');
   const [editFondo, setEditFondo] = useState('');
   const [editMontoAviso, setEditMontoAviso] = useState('');
   const [editNumeroAvisos, setEditNumeroAvisos] = useState('');
   const [editImporteCajaDespuesRetiros, setEditImporteCajaDespuesRetiros] =
     useState('');
   const [savingEdit, setSavingEdit] = useState(false);
-  
+
   // Elementos para ver detalles
   const [openView, setOpenView] = useState(false);
   const [viewData, setViewData] = useState<CatSucursal | null>(null);
@@ -98,29 +160,11 @@ export default function CatSucursales() {
   const [deleteNombre, setDeleteNombre] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  
+  // Elementos para validación
+  const [openValidationError, setOpenValidationError] = useState(false);
+  const [validationErrorMessage, setValidationErrorMessage] = useState('');
+
   const columns: GridColDef[] = [
-    {
-      field: 'acciones',
-      headerName: 'Acciones',
-      width: 100,
-      sortable: false,
-      filterable: false,
-      renderCell: (params) => (
-        <>
-          <IconButton onClick={(e) => { e.stopPropagation(); handleEditOpen(params.row); }} size="small">
-            <EditIcon fontSize="small" />
-          </IconButton>
-          <IconButton
-            color='error'
-            onClick={(e) => { e.stopPropagation(); handleDeleteOpen(params.row); }}
-            size="small"
-          >
-            <DeleteIcon fontSize="small" />
-          </IconButton>
-        </>
-      ),
-    },
     { field: 'cve_sucursal', headerName: 'ID', width: 80, type: 'number' },
     { field: 'nombre', headerName: 'Nombre', width: 150, type: 'string' },
     { field: 'direccion', headerName: 'Dirección', width: 250 },
@@ -139,6 +183,29 @@ export default function CatSucursales() {
       renderCell: (params) =>
         params.value ? new Date(params.value).toLocaleString() : '-',
     },
+    {
+      field: 'acciones',
+      headerName: 'Acciones',
+      width: 150,
+      sortable: false,
+      filterable: false,
+      renderCell: (params) => (
+        <>
+          <IconButton onClick={() => handleViewOpen(params.row)}>
+            <VisibilityIcon />
+          </IconButton>
+          <IconButton onClick={() => handleEditOpen(params.row)}>
+            <EditIcon />
+          </IconButton>
+          <IconButton
+            color='error'
+            onClick={() => handleDeleteOpen(params.row)}
+          >
+            <DeleteIcon />
+          </IconButton>
+        </>
+      ),
+    },
   ];
 
   const handleViewOpen = (row: CatSucursal) => {
@@ -152,14 +219,37 @@ export default function CatSucursales() {
     setEditCveSucursal(row.cve_sucursal.toString());
     setEditNombre(row.nombre);
     setEditDireccion(row.direccion || '');
+    setEditEsRuta((row.es_ruta as boolean) || false);
+    setEditEsBodega((row.es_bodega as boolean) || false);
     setEditDiasDevolucion(row.dias_devolucion?.toString() || '0');
     setEditEnLinea((row.en_linea as boolean) || false);
+    setEditSupervisor(row.supervisor?.toString() || '1');
     setEditVersion(row.version || '');
     setEditValidarTx((row.validar_tx as boolean) || false);
+    setEditValidarRm((row.validar_rm as boolean) || false);
+    setEditMinRecordsValTx(row.min_records_val_tx?.toString() || '1');
+    setEditMinRecordsValRm(row.min_records_val_rm?.toString() || '1');
     setEditClaveTimbrador(row.clave_timbrador?.toString() || '1');
+    setEditRecibeFv(row.recibe_fv ? row.recibe_fv.toString() : '');
     setEditRecipeProvAll((row.recibe_prov_all as boolean) || false);
     setEditEditaCostosRm((row.edita_costos_rm as boolean) || false);
+    setEditNocturna((row.nocturna as boolean) || false);
     setEditCredito((row.credito as boolean) || false);
+    setEditVencimientoDeposito(row.vencimiento_deposito?.toString() || '');
+    setEditToleranciaExistencia(
+      row.tolerancia_existencia ? row.tolerancia_existencia.toString() : '0',
+    );
+    setEditControlTraspasos((row.control_traspasos as boolean) || false);
+    setEditBancomerOnline((row.bancomer_online as boolean) || false);
+    setEditAfiliacionBancomer(row.afiliacion_bancomer || '');
+    setEditServicioDomicilio((row.servicio_domicilio as boolean) || false);
+    setEditAplicaCinepolis((row.aplica_cinepolis as boolean) || false);
+    setEditAplicaCinetix((row.aplica_cinetix as boolean) || false);
+    setEditAreaDeposito(row.area_deposito || '');
+    setEditDeptoDeposito(row.depto_deposito || '');
+    setEditLimiteSobrante(row.limite_sobrante?.toString() || '');
+    setEditLimiteFaltante(row.limite_faltante?.toString() || '');
+    setEditImporteRetiros(row.importe_retiros?.toString() || '');
     setEditFondo(row.fondo?.toString() || '');
     setEditMontoAviso(row.montoAviso?.toString() || '');
     setEditNumeroAvisos(row.numeroAvisos?.toString() || '');
@@ -179,23 +269,9 @@ export default function CatSucursales() {
     try {
       setLoading(true);
       const response = await consumoApi.get(
-        '/api/CatSucursales/sp_bw_cat_sucursales_sel',
-        {
-          params: {
-            cve_sucursal: 0
-          }
-        }
+        '/api/CatSucursales/sp_bw_cat_sucursales_sel?cve_sucursal=0',
       );
-      
-      const data = response.data.map((item: any) => ({
-        ...item,
-        validar_tx: item.VALIDAR_TX,
-        recibe_prov_all: item.RECIBE_PROV_ALL,
-        edita_costos_rm: item.EDITA_COSTOS_RM,
-        credito: item.CREDITO,
-      }));
-      
-      setRows(data);
+      setRows(response.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
     } finally {
@@ -208,9 +284,9 @@ export default function CatSucursales() {
   }, []);
 
   const handleAdd = async () => {
-    if (!nombre) {
+    if (!nombre || !direccion) {
       setValidationErrorMessage(
-        'Por favor, ingresa el nombre de la sucursal',
+        'Por favor, rellena todos los campos requeridos (Nombre y Dirección)',
       );
       setOpenValidationError(true);
       return;
@@ -220,69 +296,110 @@ export default function CatSucursales() {
       setSaving(true);
 
       const response = await consumoApi.post(
-        '/api/CatSucursales/sp_bw_cat_sucursales_add',
-        {},
+        `/api/CatSucursales/sp_bw_cat_sucursales_add`,
+        null,
         {
           params: {
             cia: 1,
-            cve_sucursal: parseInt(cve_sucursal) || 0,
+            cve_sucursal: cve_sucursal || 32,
             nombre,
-            direccion: direccion || '',
-            dias_devolucion: parseInt(dias_devolucion) || 0,
+            direccion,
+            es_ruta: es_ruta ? 1 : 0,
+            es_bodega: es_bodega ? 1 : 0,
+            dias_devolucion: dias_devolucion || 0,
             en_linea: en_linea ? 1 : 0,
+            supervisor: supervisor || 1,
             version: version || '',
             VALIDAR_TX: validar_tx ? 1 : 0,
-            clave_timbrador: parseInt(clave_timbrador) || 1,
+            VALIDAR_RM: validar_rm ? 1 : 0,
+            MIN_RECORDS_VAL_TX: min_records_val_tx || 1,
+            MIN_RECORDS_VAL_RM: min_records_val_rm || 1,
+            clave_timbrador: clave_timbrador || 1,
+            RECIBE_FV: recibe_fv || '',
             RECIBE_PROV_ALL: recibe_prov_all ? 1 : 0,
             EDITA_COSTOS_RM: edita_costos_rm ? 1 : 0,
+            NOCTURNA: nocturna ? 1 : 0,
             CREDITO: credito ? 1 : 0,
-            fondo: parseFloat(fondo) || 0,
-            montoAviso: parseFloat(montoAviso) || 0,
-            numeroAvisos: parseInt(numeroAvisos) || 0,
-            importeCajaDespuesRetiros: parseFloat(importeCajaDespuesRetiros) || 0,
+            VENCIMIENTO_DEPOSITO: vencimiento_deposito || '',
+            TOLERANCIA_EXISTENCIA: tolerancia_existencia || 1,
+            CONTROL_TRASPASOS: control_traspasos ? 1 : 0,
+            BANCOMER_ONLINE: bancomer_online ? 1 : 0,
+            AFILIACION_BANCOMER: afiliacion_bancomer,
+            SERVICIO_DOMICILIO: servicio_domicilio ? 1 : 0,
+            APLICA_CINEPOLIS: aplica_cinepolis ? 1 : 0,
+            APLICA_CINETIX: aplica_cinetix ? 1 : 0,
+            AREA_DEPOSITO: area_deposito,
+            DEPTO_DEPOSITO: depto_deposito,
+            LIMITE_SOBRANTE: limite_sobrante,
+            LIMITE_FALTANTE: limite_faltante,
+            importe_retiros: importe_retiros,
+            fondo: fondo,
+            montoAviso: montoAviso || 0,
+            numeroAvisos: numeroAvisos || 0,
+            importeCajaDespuesRetiros: importeCajaDespuesRetiros || 520,
           },
         },
       );
 
-      if (response.data?.[0]?.codigo === 0) {
-        await fetchSucursales();
-        setOpenAdd(false);
-        
-        // Reset campos
-        setNombre('');
-        setDireccion('');
-        setCveSucursal('');
-        setDiasDevolucion('0');
-        setEnLinea(true);
-        setVersion('');
-        setValidar_tx(false);
-        setClave_timbrador('1');
-        setRecibe_prov_all(false);
-        setEdita_costos_rm(false);
-        setCredito(false);
-        setFondo('');
-        setMontoAviso('');
-        setNumeroAvisos('');
-        setImporteCajaDespuesRetiros('');
-      } else {
-        setError(response.data?.[0]?.mensaje1 || 'Error al agregar');
+      const result = response.data?.[0];
+
+      if (result?.codigo !== 0) {
+        throw new Error(result?.mensaje1 || 'Error al guardar');
       }
-    } catch (err: any) {
-      console.error('Error al agregar sucursal:', err);
-      console.error('Detalles del error:', err.response?.data);
-      const errorMsg = err.response?.data?.errors 
-        ? Object.values(err.response.data.errors).flat().join(', ')
-        : err.response?.data?.title || 'Error al agregar la sucursal';
-      setError(errorMsg);
+
+      setOpenAdd(false);
+      // Reset todos los campos
+      setCia('1');
+      setNombre('');
+      setDireccion('');
+      setCveSucursal('');
+      setEsRuta(false);
+      setEsBodega(false);
+      setDiasDevolucion('0');
+      setEnLinea(true);
+      setSupervisor('1');
+      setVersion('gt');
+      setValidar_tx(true);
+      setValidar_rm(true);
+      setMin_records_val_tx('1');
+      setMin_records_val_rm('1');
+      setClave_timbrador('1');
+      setRecibe_fv('');
+      setRecibe_prov_all(false);
+      setEdita_costos_rm(false);
+      setNocturna(false);
+      setCredito(false);
+      setVencimiento_deposito('');
+      setTolerancia_existencia('');
+      setControl_traspasos(true);
+      setBancomer_online(false);
+      setAfiliacion_bancomer('');
+      setServicio_domicilio(false);
+      setAplica_cinepolis(false);
+      setAplica_cinetix(false);
+      setArea_deposito('');
+      setDepto_deposito('');
+      setLimite_sobrante('0');
+      setLimite_faltante('0');
+      setImporte_retiros('');
+      setFondo('');
+      setMontoAviso('0');
+      setNumeroAvisos('0');
+      setImporteCajaDespuesRetiros('');
+      fetchSucursales();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error desconocido');
     } finally {
       setSaving(false);
     }
-  }
+  };
 
   const handleUpdate = async () => {
-    // Validación de campos obligatorios
-    if (!editId || !editNombre) {
-      alert('Por favor, ingresa la clave y el nombre de la sucursal');
+    if (!editId || !editNombre || !editDireccion) {
+      setValidationErrorMessage(
+        'Por favor, rellena todos los campos requeridos (Nombre y Dirección)',
+      );
+      setOpenValidationError(true);
       return;
     }
 
@@ -290,47 +407,105 @@ export default function CatSucursales() {
       setSavingEdit(true);
 
       const response = await consumoApi.put(
-        '/api/CatSucursales/sp_bw_cat_sucursales_upd',
-        {}, // Cuerpo de la petición vacío
+        `/api/CatSucursales/sp_bw_cat_sucursales_upd`,
+        null,
         {
           params: {
-            cia: 1,
             cve_sucursal: editId,
             nombre: editNombre,
-            direccion: editDireccion || '',
-            dias_devolucion: parseInt(editDiasDevolucion) || 0,
+            direccion: editDireccion,
+            es_ruta: editEsRuta ? 1 : 0,
+            es_bodega: editEsBodega ? 1 : 0,
+            dias_devolucion: editDiasDevolucion || 0,
             en_linea: editEnLinea ? 1 : 0,
+            supervisor: editSupervisor || 1,
             version: editVersion || '',
             VALIDAR_TX: editValidarTx ? 1 : 0,
-            clave_timbrador: parseInt(editClaveTimbrador) || 0,
+            VALIDAR_RM: editValidarRm ? 1 : 0,
+            MIN_RECORDS_VAL_TX: editMinRecordsValTx || 1,
+            MIN_RECORDS_VAL_RM: editMinRecordsValRm || 1,
+            clave_timbrador: editClaveTimbrador || 1,
+            RECIBE_FV: editRecibeFv || '',
             RECIBE_PROV_ALL: editRecipeProvAll ? 1 : 0,
             EDITA_COSTOS_RM: editEditaCostosRm ? 1 : 0,
+            NOCTURNA: editNocturna ? 1 : 0,
             CREDITO: editCredito ? 1 : 0,
-            fondo: parseFloat(editFondo) || 0,
-            montoAviso: parseFloat(editMontoAviso) || 0,
-            numeroAvisos: parseInt(editNumeroAvisos) || 0,
-            importeCajaDespuesRetiros: parseFloat(editImporteCajaDespuesRetiros) || 0,
+            VENCIMIENTO_DEPOSITO: editVencimientoDeposito,
+            TOLERANCIA_EXISTENCIA: editToleranciaExistencia,
+            CONTROL_TRASPASOS: editControlTraspasos ? 1 : 0,
+            BANCOMER_ONLINE: editBancomerOnline ? 1 : 0,
+            AFILIACION_BANCOMER: editAfiliacionBancomer,
+            SERVICIO_DOMICILIO: editServicioDomicilio ? 1 : 0,
+            APLICA_CINEPOLIS: editAplicaCinepolis ? 1 : 0,
+            APLICA_CINETIX: editAplicaCinetix ? 1 : 0,
+            AREA_DEPOSITO: editAreaDeposito,
+            DEPTO_DEPOSITO: editDeptoDeposito,
+            LIMITE_SOBRANTE: editLimiteSobrante,
+            LIMITE_FALTANTE: editLimiteFaltante,
+            importe_retiros: editImporteRetiros || 3000,
+            fondo: editFondo || 2000,
+            montoAviso: editMontoAviso || 0,
+            numeroAvisos: editNumeroAvisos || 0,
+            importeCajaDespuesRetiros: editImporteCajaDespuesRetiros || 520,
           },
         },
       );
 
-      // Validación de la respuesta del Store Procedure
-      if (response.data?.[0]?.codigo === 0) {
-        await fetchSucursales(); // Recarga la lista de sucursales
-        setOpenEdit(false);        // Cierra el modal de edición
-        setEditId(null); // Limpia el ID de edición
-        alert('Sucursal actualizada exitosamente');
-      } else {
-        // mensaje1 es el nombre que definiste en tu SELECT del SP
-        alert(response.data?.[0]?.mensaje1 || 'Error al actualizar');
+      const result = response.data?.[0];
+
+      if (result?.codigo !== 0) {
+        throw new Error(result?.mensaje1 || 'Error al actualizar');
       }
+
+      setOpenEdit(false);
+      setEditId(null);
+      fetchSucursales(); //
     } catch (err) {
-      console.error('Error al actualizar sucursal:', err);
-      alert('Error al actualizar la información de la sucursal');
+      alert(err instanceof Error ? err.message : 'Error desconocido');
     } finally {
       setSavingEdit(false);
     }
   };
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+
+    try {
+      setDeleting(true);
+
+      const response = await consumoApi.delete(
+        `/api/CatSucursales/sp_bw_cat_sucursales_del`,
+        {
+          params: {
+            cve_sucursal: deleteId,
+          },
+        },
+      );
+
+      const result = response.data?.[0];
+
+      if (result?.codigo !== 0) {
+        throw new Error(result?.mensaje || 'Error al eliminar');
+      }
+
+      setOpenDelete(false);
+      setDeleteId(null);
+      setDeleteNombre(null);
+      fetchSucursales(); //
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error desconocido');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   if (error) {
     return <Alert severity='error'>Error al cargar los datos: {error}</Alert>;
@@ -338,420 +513,465 @@ export default function CatSucursales() {
 
   return (
     <>
-      <Box sx={{ p: 3 }}>
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="subtitle2" sx={{ color: '#666', mb: 0.5 }}>
-            Catálogo de
-          </Typography>
-          <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 2 }}>
-            Sucursales
-          </Typography>
-          
-          <Button 
-            variant='contained' 
-            onClick={() => setOpenAdd(true)}
-            sx={{
-              backgroundColor: '#000',
-              color: '#fff',
-              textTransform: 'none',
-              borderRadius: 1,
-              px: 3,
-              py: 1,
-              '&:hover': {
-                backgroundColor: '#333',
-              }
-            }}
-          >
-            AGREGAR SUCURSAL
+      <Box sx={{ p: 2 }}>
+        <h1>Catálogo de Sucursales</h1>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+          <Button variant='contained' onClick={() => setOpenAdd(true)}>
+            Agregar Sucursal
           </Button>
         </Box>
 
-        <Box sx={{ width: '100%', bgcolor: 'background.paper' }}>
-          <DataGrid
-            rows={rows}
-            columns={columns}
-            getRowId={(row) => row.cve_sucursal}
-            pageSizeOptions={[5, 10, 25, 100]}
-            initialState={{
-              pagination: {
-                paginationModel: {
-                  pageSize: 100,
-                },
+        <DataGrid
+          rows={rows}
+          columns={columns}
+          getRowId={(row) => row.cve_sucursal}
+          pageSizeOptions={[5, 10, 25]}
+          initialState={{
+            pagination: {
+              paginationModel: {
+                pageSize: 10,
               },
-            }}
-            onRowClick={(params) => handleViewOpen(params.row)}
-            sx={{ 
-              height: 600,
-              '& .MuiDataGrid-cell': {
-                borderBottom: '1px solid #f0f0f0',
-              },
-              '& .MuiDataGrid-columnHeaders': {
-                backgroundColor: '#fafafa',
-                borderBottom: '2px solid #e0e0e0',
-              },
-              '& .MuiDataGrid-row': {
-                cursor: 'pointer',
-              }
-            }}
-          />
+            },
+          }}
+          sx={{ height: 600 }}
+        />
 
-          <Typography variant="caption" sx={{ display: 'block', textAlign: 'center', color: '#666', mt: 2 }}>
-            CATÁLOGO DE SUCURSALES, {new Date().toLocaleDateString('es-MX')}, USR:ADMIN
-          </Typography>
-        </Box>
-      </Box>
-
-      <Dialog
+        <Dialog
           open={openAdd}
           onClose={() => setOpenAdd(false)}
           maxWidth='md'
           fullWidth
-          PaperProps={{
-            sx: {
-              borderRadius: 2,
-            }
-          }}
         >
-          <DialogTitle sx={{ 
-            bgcolor: '#424242', 
-            color: 'white',
-            py: 2.5,
-            px: 3
-          }}>
-            <Typography variant='h6' sx={{ fontWeight: 600 }}>
-              Agregar Nueva Sucursal
-            </Typography>
-            <Typography variant='body2' sx={{ color: '#e0e0e0', mt: 0.5 }}>
-              Complete la información de la sucursal en los campos correspondientes
-            </Typography>
-          </DialogTitle>
+          <DialogTitle>Agregar Sucursal</DialogTitle>
+          <DialogContent
+            sx={{
+              mt: 2,
+              maxHeight: '70vh',
+              overflowY: 'auto',
+            }}
+          >
+            <Grid container spacing={2}>
+              {/* Row 1 */}
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Cia'
+                  value={cia}
+                  disabled
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Nombre *'
+                  value={nombre}
+                  onChange={(e) => setNombre(e.target.value)}
+                  required
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
 
-          <DialogContent sx={{ p: 3, bgcolor: '#fafafa' }}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              
-              {/* Identificación de la Sucursal */}
-              <Box>
-                <Box sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 1, 
-                  mb: 2,
-                  borderLeft: '3px solid #424242',
-                  pl: 1.5
-                }}>
-                  <Typography variant='subtitle1' sx={{ fontWeight: 600 }}>
-                    Identificación de la Sucursal
-                  </Typography>
-                </Box>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      label='Clave Sucursal'
-                      value={cve_sucursal}
-                      onChange={(e) => setCveSucursal(e.target.value)}
-                      type='number'
-                      fullWidth
-                      size='small'
-                      sx={{ bgcolor: 'white' }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      label='Nombre *'
-                      value={nombre}
-                      onChange={(e) => setNombre(e.target.value)}
-                      required
-                      fullWidth
-                      size='small'
-                      sx={{ bgcolor: 'white' }}
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <TextField
-                      label='Dirección'
-                      value={direccion}
-                      onChange={(e) => setDireccion(e.target.value)}
-                      fullWidth
-                      size='small'
-                      sx={{ bgcolor: 'white' }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      label='Versión'
-                      value={version}
-                      onChange={(e) => setVersion(e.target.value)}
-                      fullWidth
-                      size='small'
-                      sx={{ bgcolor: 'white' }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      label='Días Devolución'
-                      value={dias_devolucion}
-                      onChange={(e) => setDiasDevolucion(e.target.value)}
-                      type='number'
-                      fullWidth
-                      size='small'
-                      sx={{ bgcolor: 'white' }}
-                    />
-                  </Grid>
-                </Grid>
-              </Box>
+              {/* Row 2 */}
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Dirección'
+                  value={direccion}
+                  onChange={(e) => setDireccion(e.target.value)}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Clave Sucursal'
+                  value={cve_sucursal}
+                  onChange={(e) => setCveSucursal(e.target.value)}
+                  type='number'
+                  inputProps={{ min: 0 }}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
 
-              {/* Configuración y Operación */}
-              <Box>
-                <Box sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 1, 
-                  mb: 2,
-                  borderLeft: '3px solid #424242',
-                  pl: 1.5
-                }}>
-                  <Typography variant='subtitle1' sx={{ fontWeight: 600 }}>
-                    Configuración y Operación
-                  </Typography>
-                </Box>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={4}>
-                    <TextField
-                      label='Clave Timbrador'
-                      value={clave_timbrador}
-                      onChange={(e) => setClave_timbrador(e.target.value)}
-                      type='number'
-                      fullWidth
-                      size='small'
-                      sx={{ bgcolor: 'white' }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={4}>
-                    <TextField
-                      label='Fondo'
-                      value={fondo}
-                      onChange={(e) => setFondo(e.target.value)}
-                      type='number'
-                      fullWidth
-                      size='small'
-                      sx={{ bgcolor: 'white' }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={4}>
-                    <TextField
-                      label='Monto Aviso'
-                      value={montoAviso}
-                      onChange={(e) => setMontoAviso(e.target.value)}
-                      type='number'
-                      fullWidth
-                      size='small'
-                      sx={{ bgcolor: 'white' }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      label='Número Avisos'
-                      value={numeroAvisos}
-                      onChange={(e) => setNumeroAvisos(e.target.value)}
-                      type='number'
-                      fullWidth
-                      size='small'
-                      sx={{ bgcolor: 'white' }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      label='Importe Caja Después Retiros'
-                      value={importeCajaDespuesRetiros}
-                      onChange={(e) => setImporteCajaDespuesRetiros(e.target.value)}
-                      type='number'
-                      fullWidth
-                      size='small'
-                      sx={{ bgcolor: 'white' }}
-                    />
-                  </Grid>
-                </Grid>
-              </Box>
+              {/* Row 3 */}
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Versión'
+                  value={version}
+                  onChange={(e) => setVersion(e.target.value)}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
 
-              {/* Opciones de Configuración */}
-              <Box>
-                <Box sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 1, 
-                  mb: 2,
-                  borderLeft: '3px solid #424242',
-                  pl: 1.5
-                }}>
-                  <Typography variant='subtitle1' sx={{ fontWeight: 600 }}>
-                    Opciones de Configuración
-                  </Typography>
-                </Box>
-                <Box sx={{ 
-                  bgcolor: 'white', 
-                  p: 2.5, 
-                  borderRadius: 1,
-                  border: '1px solid #e0e0e0'
-                }}>
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6}>
-                      <Box sx={{ 
-                        display: 'flex', 
-                        alignItems: 'flex-start', 
-                        gap: 1.5,
-                        p: 1.5,
-                        borderRadius: 1,
-                        border: '1px solid #f0f0f0',
-                        bgcolor: '#fafafa'
-                      }}>
-                        <input
-                          type='checkbox'
-                          checked={en_linea}
-                          onChange={(e) => setEnLinea(e.target.checked)}
-                          style={{ marginTop: '2px' }}
-                        />
-                        <Box>
-                          <Typography variant='body2' sx={{ fontWeight: 600 }}>
-                            En Línea
-                          </Typography>
-                          <Typography variant='caption' sx={{ color: '#666' }}>
-                            Habilitar operación en línea
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <Box sx={{ 
-                        display: 'flex', 
-                        alignItems: 'flex-start', 
-                        gap: 1.5,
-                        p: 1.5,
-                        borderRadius: 1,
-                        border: '1px solid #f0f0f0',
-                        bgcolor: '#fafafa'
-                      }}>
-                        <input
-                          type='checkbox'
-                          checked={validar_tx}
-                          onChange={(e) => setValidar_tx(e.target.checked)}
-                          style={{ marginTop: '2px' }}
-                        />
-                        <Box>
-                          <Typography variant='body2' sx={{ fontWeight: 600 }}>
-                            Validar TX
-                          </Typography>
-                          <Typography variant='caption' sx={{ color: '#666' }}>
-                            Validar transacciones
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <Box sx={{ 
-                        display: 'flex', 
-                        alignItems: 'flex-start', 
-                        gap: 1.5,
-                        p: 1.5,
-                        borderRadius: 1,
-                        border: '1px solid #f0f0f0',
-                        bgcolor: '#fafafa'
-                      }}>
-                        <input
-                          type='checkbox'
-                          checked={recibe_prov_all}
-                          onChange={(e) => setRecibe_prov_all(e.target.checked)}
-                          style={{ marginTop: '2px' }}
-                        />
-                        <Box>
-                          <Typography variant='body2' sx={{ fontWeight: 600 }}>
-                            Recibe Proveedor All
-                          </Typography>
-                          <Typography variant='caption' sx={{ color: '#666' }}>
-                            Recibir de todos los proveedores
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <Box sx={{ 
-                        display: 'flex', 
-                        alignItems: 'flex-start', 
-                        gap: 1.5,
-                        p: 1.5,
-                        borderRadius: 1,
-                        border: '1px solid #f0f0f0',
-                        bgcolor: '#fafafa'
-                      }}>
-                        <input
-                          type='checkbox'
-                          checked={edita_costos_rm}
-                          onChange={(e) => setEdita_costos_rm(e.target.checked)}
-                          style={{ marginTop: '2px' }}
-                        />
-                        <Box>
-                          <Typography variant='body2' sx={{ fontWeight: 600 }}>
-                            Edita Costos RM
-                          </Typography>
-                          <Typography variant='caption' sx={{ color: '#666' }}>
-                            Permitir edición de costos
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <Box sx={{ 
-                        display: 'flex', 
-                        alignItems: 'flex-start', 
-                        gap: 1.5,
-                        p: 1.5,
-                        borderRadius: 1,
-                        border: '1px solid #f0f0f0',
-                        bgcolor: '#fafafa'
-                      }}>
-                        <input
-                          type='checkbox'
-                          checked={credito}
-                          onChange={(e) => setCredito(e.target.checked)}
-                          style={{ marginTop: '2px' }}
-                        />
-                        <Box>
-                          <Typography variant='body2' sx={{ fontWeight: 600 }}>
-                            Crédito
-                          </Typography>
-                          <Typography variant='caption' sx={{ color: '#666' }}>
-                            Habilitar ventas a crédito
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </Grid>
-                  </Grid>
-                </Box>
-              </Box>
+              {/* Row 3 */}
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Supervisor'
+                  value={supervisor}
+                  onChange={(e) => setSupervisor(e.target.value)}
+                  type='number'
+                  inputProps={{ min: 0 }}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Días Devolución'
+                  value={dias_devolucion}
+                  onChange={(e) => setDiasDevolucion(e.target.value)}
+                  type='number'
+                  inputProps={{ min: 0 }}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
 
-            </Box>
+              {/* Row 4 */}
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Importe Retiros'
+                  value={importe_retiros}
+                  onChange={(e) => setImporte_retiros(e.target.value)}
+                  type='number'
+                  inputProps={{ min: 0 }}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Fondo'
+                  value={fondo}
+                  onChange={(e) => setFondo(e.target.value)}
+                  type='number'
+                  inputProps={{ min: 0 }}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+
+              {/* Row 5 */}
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Monto Aviso'
+                  value={montoAviso}
+                  onChange={(e) => setMontoAviso(e.target.value)}
+                  type='number'
+                  inputProps={{ min: 0 }}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Número Avisos'
+                  value={numeroAvisos}
+                  onChange={(e) => setNumeroAvisos(e.target.value)}
+                  type='number'
+                  inputProps={{ min: 0 }}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+
+              {/* Row 6 */}
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Importe Caja Después Retiros'
+                  value={importeCajaDespuesRetiros}
+                  onChange={(e) => setImporteCajaDespuesRetiros(e.target.value)}
+                  type='number'
+                  inputProps={{ min: 0 }}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Límite Sobrante'
+                  value={limite_sobrante}
+                  onChange={(e) => setLimite_sobrante(e.target.value)}
+                  type='number'
+                  inputProps={{ min: 0 }}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+
+              {/* Row 7 */}
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Límite Faltante'
+                  value={limite_faltante}
+                  onChange={(e) => setLimite_faltante(e.target.value)}
+                  type='number'
+                  inputProps={{ min: 0 }}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Min Records Validar TX'
+                  value={min_records_val_tx}
+                  onChange={(e) => setMin_records_val_tx(e.target.value)}
+                  type='number'
+                  inputProps={{ min: 0 }}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+
+              {/* Row 8 */}
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Min Records Validar RM'
+                  value={min_records_val_rm}
+                  onChange={(e) => setMin_records_val_rm(e.target.value)}
+                  type='number'
+                  inputProps={{ min: 0 }}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Clave Timbrador'
+                  value={clave_timbrador}
+                  onChange={(e) => setClave_timbrador(e.target.value)}
+                  type='number'
+                  inputProps={{ min: 0 }}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+
+              {/* Row 9 */}
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Recibe FV'
+                  value={recibe_fv}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    //solo permitir 1 digito
+                    if (
+                      value === '' ||
+                      (/^\d$/.test(value) && value.length === 1)
+                    ) {
+                      setRecibe_fv(value);
+                    }
+                  }}
+                  inputProps={{ maxLength: 1 }}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Vencimiento Depósito'
+                  value={vencimiento_deposito}
+                  onChange={(e) => setVencimiento_deposito(e.target.value)}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Tolerancia Existencia'
+                  value={tolerancia_existencia}
+                  onChange={(e) => setTolerancia_existencia(e.target.value)}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+              {/* Row 10 */}
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Área Depósito'
+                  value={area_deposito}
+                  onChange={(e) => setArea_deposito(e.target.value)}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Depto Depósito'
+                  value={depto_deposito}
+                  onChange={(e) => setDepto_deposito(e.target.value)}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+
+              {/* Row 11 - Afiliacion Bancomer */}
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Afiliación Bancomer'
+                  value={afiliacion_bancomer}
+                  onChange={(e) => setAfiliacion_bancomer(e.target.value)}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+            </Grid>
+
+            {/* Checkboxes - Grid Layout */}
+            <Grid container spacing={2} sx={{ mt: 1 }}>
+              <Grid item xs={12} sm={6}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <input
+                    type='checkbox'
+                    checked={es_ruta}
+                    onChange={(e) => setEsRuta(e.target.checked)}
+                  />
+                  <label>Es Ruta</label>
+                </Box>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <input
+                    type='checkbox'
+                    checked={recibe_prov_all}
+                    onChange={(e) => setRecibe_prov_all(e.target.checked)}
+                  />
+                  <label>Recibe Proveedor All</label>
+                </Box>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <input
+                    type='checkbox'
+                    checked={es_bodega}
+                    onChange={(e) => setEsBodega(e.target.checked)}
+                  />
+                  <label>Es Bodega</label>
+                </Box>
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <input
+                    type='checkbox'
+                    checked={en_linea}
+                    onChange={(e) => setEnLinea(e.target.checked)}
+                  />
+                  <label>En Línea</label>
+                </Box>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <input
+                    type='checkbox'
+                    checked={validar_tx}
+                    onChange={(e) => setValidar_tx(e.target.checked)}
+                  />
+                  <label>Validar TX</label>
+                </Box>
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <input
+                    type='checkbox'
+                    checked={validar_rm}
+                    onChange={(e) => setValidar_rm(e.target.checked)}
+                  />
+                  <label>Validar RM</label>
+                </Box>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <input
+                    type='checkbox'
+                    checked={edita_costos_rm}
+                    onChange={(e) => setEdita_costos_rm(e.target.checked)}
+                  />
+                  <label>Edita Costos RM</label>
+                </Box>
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <input
+                    type='checkbox'
+                    checked={nocturna}
+                    onChange={(e) => setNocturna(e.target.checked)}
+                  />
+                  <label>Nocturna</label>
+                </Box>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <input
+                    type='checkbox'
+                    checked={credito}
+                    onChange={(e) => setCredito(e.target.checked)}
+                  />
+                  <label>Crédito</label>
+                </Box>
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <input
+                    type='checkbox'
+                    checked={control_traspasos}
+                    onChange={(e) => setControl_traspasos(e.target.checked)}
+                  />
+                  <label>Control Traspasos</label>
+                </Box>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <input
+                    type='checkbox'
+                    checked={bancomer_online}
+                    onChange={(e) => setBancomer_online(e.target.checked)}
+                  />
+                  <label>Bancomer Online</label>
+                </Box>
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <input
+                    type='checkbox'
+                    checked={servicio_domicilio}
+                    onChange={(e) => setServicio_domicilio(e.target.checked)}
+                  />
+                  <label>Servicio Domicilio</label>
+                </Box>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <input
+                    type='checkbox'
+                    checked={aplica_cinepolis}
+                    onChange={(e) => setAplica_cinepolis(e.target.checked)}
+                  />
+                  <label>Aplica Cinépolis</label>
+                </Box>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <input
+                    type='checkbox'
+                    checked={aplica_cinetix}
+                    onChange={(e) => setAplica_cinetix(e.target.checked)}
+                  />
+                  <label>Aplica Cinetix</label>
+                </Box>
+              </Grid>
+            </Grid>
           </DialogContent>
-          
-          <DialogActions sx={{ px: 3, py: 2, bgcolor: '#fafafa', borderTop: '1px solid #e0e0e0' }}>
-            <Button 
-              onClick={() => setOpenAdd(false)}
-              sx={{ textTransform: 'uppercase', fontWeight: 600 }}
-            >
-              Cancelar
-            </Button>
-            <Button
-              variant='contained'
-              onClick={handleAdd}
-              disabled={saving}
-              sx={{ 
-                bgcolor: '#212121',
-                textTransform: 'uppercase',
-                fontWeight: 600,
-                px: 4,
-                '&:hover': {
-                  bgcolor: '#424242'
-                }
-              }}
-            >
+          <DialogActions>
+            <Button onClick={() => setOpenAdd(false)}>Cancelar</Button>
+            <Button variant='contained' onClick={handleAdd} disabled={saving}>
               Guardar
             </Button>
           </DialogActions>
@@ -765,110 +985,505 @@ export default function CatSucursales() {
         >
           <DialogTitle>Detalles de Sucursal</DialogTitle>
 
-          <DialogContent sx={{ mt: 2 }}>
+          <DialogContent
+            sx={{
+              mt: 0,
+              maxHeight: '70vh',
+              overflowY: 'auto',
+            }}
+          >
             {viewData && (
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <Box>
-                  <Typography variant='subtitle2' sx={{ fontWeight: 'bold', color: '#666' }}>
-                    Clave Sucursal
-                  </Typography>
-                  <Typography variant='body1'>{viewData.cve_sucursal}</Typography>
-                </Box>
-                <Box>
-                  <Typography variant='subtitle2' sx={{ fontWeight: 'bold', color: '#666' }}>
-                    Nombre
-                  </Typography>
-                  <Typography variant='body1'>{viewData.nombre}</Typography>
-                </Box>
-                <Box>
-                  <Typography variant='subtitle2' sx={{ fontWeight: 'bold', color: '#666' }}>
-                    Dirección
-                  </Typography>
-                  <Typography variant='body1'>{viewData.direccion || '-'}</Typography>
-                </Box>
-                <Box>
-                  <Typography variant='subtitle2' sx={{ fontWeight: 'bold', color: '#666' }}>
-                    Versión
-                  </Typography>
-                  <Typography variant='body1'>{viewData.version || '-'}</Typography>
-                </Box>
-                <Box>
-                  <Typography variant='subtitle2' sx={{ fontWeight: 'bold', color: '#666' }}>
-                    Días Devolución
-                  </Typography>
-                  <Typography variant='body1'>{viewData.dias_devolucion || '-'}</Typography>
-                </Box>
-                <Box>
-                  <Typography variant='subtitle2' sx={{ fontWeight: 'bold', color: '#666' }}>
-                    Clave Timbrador
-                  </Typography>
-                  <Typography variant='body1'>{viewData.clave_timbrador || '-'}</Typography>
-                </Box>
-                <Box>
-                  <Typography variant='subtitle2' sx={{ fontWeight: 'bold', color: '#666' }}>
-                    Fondo
-                  </Typography>
-                  <Typography variant='body1'>{viewData.fondo || '-'}</Typography>
-                </Box>
-                <Box>
-                  <Typography variant='subtitle2' sx={{ fontWeight: 'bold', color: '#666' }}>
-                    Monto Aviso
-                  </Typography>
-                  <Typography variant='body1'>{viewData.montoAviso || '-'}</Typography>
-                </Box>
-                <Box>
-                  <Typography variant='subtitle2' sx={{ fontWeight: 'bold', color: '#666' }}>
-                    Número Avisos
-                  </Typography>
-                  <Typography variant='body1'>{viewData.numeroAvisos || '-'}</Typography>
-                </Box>
-                <Box>
-                  <Typography variant='subtitle2' sx={{ fontWeight: 'bold', color: '#666' }}>
-                    Importe Caja Después Retiros
-                  </Typography>
-                  <Typography variant='body1'>{viewData.importeCajaDespuesRetiros || '-'}</Typography>
-                </Box>
-                
-                <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid #e0e0e0' }}>
-                  <Typography variant='subtitle2' sx={{ fontWeight: 'bold', color: '#666', mb: 1 }}>
-                    Configuración
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-                    <Box>
-                      <Typography variant='caption' sx={{ color: '#999' }}>En Línea:</Typography>
-                      <Typography variant='body2'>{viewData.en_linea ? 'Sí' : 'No'}</Typography>
+              <Box>
+                <Typography variant='h6' sx={{ mb: 2 }}>
+                  Información Básica
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        Cia
+                      </Typography>
+                      <Typography>1</Typography>
                     </Box>
-                    <Box>
-                      <Typography variant='caption' sx={{ color: '#999' }}>Validar TX:</Typography>
-                      <Typography variant='body2'>{viewData.validar_tx ? 'Sí' : 'No'}</Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        Clave Sucursal
+                      </Typography>
+                      <Typography>{viewData.cve_sucursal}</Typography>
                     </Box>
-                    <Box>
-                      <Typography variant='caption' sx={{ color: '#999' }}>Recibe Prov All:</Typography>
-                      <Typography variant='body2'>{viewData.recibe_prov_all ? 'Sí' : 'No'}</Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        Nombre
+                      </Typography>
+                      <Typography>{viewData.nombre}</Typography>
                     </Box>
-                    <Box>
-                      <Typography variant='caption' sx={{ color: '#999' }}>Edita Costos RM:</Typography>
-                      <Typography variant='body2'>{viewData.edita_costos_rm ? 'Sí' : 'No'}</Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        Dirección
+                      </Typography>
+                      <Typography>{viewData.direccion || '-'}</Typography>
                     </Box>
-                    <Box>
-                      <Typography variant='caption' sx={{ color: '#999' }}>Crédito:</Typography>
-                      <Typography variant='body2'>{viewData.credito ? 'Sí' : 'No'}</Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        Versión
+                      </Typography>
+                      <Typography>{viewData.version || '-'}</Typography>
                     </Box>
-                  </Box>
-                </Box>
-                
-                <Box sx={{ mt: 1, pt: 2, borderTop: '1px solid #e0e0e0' }}>
-                  <Typography variant='caption' sx={{ color: '#999' }}>Fecha Alta:</Typography>
-                  <Typography variant='body2'>
-                    {viewData.fecha_alta ? new Date(viewData.fecha_alta).toLocaleString() : '-'}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography variant='caption' sx={{ color: '#999' }}>Fecha Actualización:</Typography>
-                  <Typography variant='body2'>
-                    {viewData.fecha_act ? new Date(viewData.fecha_act).toLocaleString() : '-'}
-                  </Typography>
-                </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        Fecha Alta
+                      </Typography>
+                      <Typography>
+                        {viewData.fecha_alta
+                          ? new Date(viewData.fecha_alta).toLocaleString()
+                          : '-'}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        Fecha Actualización
+                      </Typography>
+                      <Typography>
+                        {viewData.fecha_act
+                          ? new Date(viewData.fecha_act).toLocaleString()
+                          : '-'}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                </Grid>
+
+                <Typography variant='h6' sx={{ mb: 2, mt: 3 }}>
+                  Configuración General
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        Es Ruta
+                      </Typography>
+                      <Typography>{viewData.es_ruta ? 'Sí' : 'No'}</Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        Es Bodega
+                      </Typography>
+                      <Typography>
+                        {viewData.es_bodega ? 'Sí' : 'No'}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        Días Devolución
+                      </Typography>
+                      <Typography>{viewData.dias_devolucion || '-'}</Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        En Línea
+                      </Typography>
+                      <Typography>{viewData.en_linea ? 'Sí' : 'No'}</Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        Supervisor
+                      </Typography>
+                      <Typography>{viewData.supervisor || '-'}</Typography>
+                    </Box>
+                  </Grid>
+                </Grid>
+
+                <Typography variant='h6' sx={{ mb: 2, mt: 3 }}>
+                  Validaciones
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        Validar TX
+                      </Typography>
+                      <Typography>
+                        {viewData.validar_tx ? 'Sí' : 'No'}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        Validar RM
+                      </Typography>
+                      <Typography>
+                        {viewData.validar_rm ? 'Sí' : 'No'}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        Min Records Validar TX
+                      </Typography>
+                      <Typography>
+                        {viewData.min_records_val_tx || '-'}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        Min Records Validar RM
+                      </Typography>
+                      <Typography>
+                        {viewData.min_records_val_rm || '-'}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                </Grid>
+
+                <Typography variant='h6' sx={{ mb: 2, mt: 3 }}>
+                  Configuración de Timbrador y Recepción
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        Clave Timbrador
+                      </Typography>
+                      <Typography>{viewData.clave_timbrador || '-'}</Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        Recibe FV
+                      </Typography>
+                      <Typography>{viewData.recibe_fv || '-'}</Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        Edita Costos RM
+                      </Typography>
+                      <Typography>
+                        {viewData.edita_costos_rm ? 'Sí' : 'No'}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                </Grid>
+
+                <Typography variant='h6' sx={{ mb: 2, mt: 3 }}>
+                  Configuración Operativa
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        Nocturna
+                      </Typography>
+                      <Typography>{viewData.nocturna ? 'Sí' : 'No'}</Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        Crédito
+                      </Typography>
+                      <Typography>{viewData.credito ? 'Sí' : 'No'}</Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        RECIBE_PROV_ALL
+                      </Typography>
+                      <Typography>
+                        {viewData.recibe_prov_all ? 'Sí' : 'No'}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        Control Traspasos
+                      </Typography>
+                      <Typography>
+                        {viewData.control_traspasos ? 'Sí' : 'No'}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                </Grid>
+
+                <Typography variant='h6' sx={{ mb: 2, mt: 3 }}>
+                  Configuración Bancaria
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        Bancomer Online
+                      </Typography>
+                      <Typography>
+                        {viewData.bancomer_online ? 'Sí' : 'No'}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        Afiliación Bancomer
+                      </Typography>
+                      <Typography>
+                        {viewData.afiliacion_bancomer || '-'}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        Servicio Domicilio
+                      </Typography>
+                      <Typography>
+                        {viewData.servicio_domicilio ? 'Sí' : 'No'}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                </Grid>
+
+                <Typography variant='h6' sx={{ mb: 2, mt: 3 }}>
+                  Integraciones
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        Aplica Cinépolis
+                      </Typography>
+                      <Typography>
+                        {viewData.aplica_cinepolis ? 'Sí' : 'No'}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        Aplica Cinetix
+                      </Typography>
+                      <Typography>
+                        {viewData.aplica_cinetix ? 'Sí' : 'No'}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        Área Depósito
+                      </Typography>
+                      <Typography>{viewData.area_deposito || '-'}</Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        Depto Depósito
+                      </Typography>
+                      <Typography>{viewData.depto_deposito || '-'}</Typography>
+                    </Box>
+                  </Grid>
+                </Grid>
+
+                <Typography variant='h6' sx={{ mb: 2, mt: 3 }}>
+                  Límites y Montos
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        Límite Sobrante
+                      </Typography>
+                      <Typography>{viewData.limite_sobrante || '-'}</Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        Límite Faltante
+                      </Typography>
+                      <Typography>{viewData.limite_faltante || '-'}</Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        Importe Retiros
+                      </Typography>
+                      <Typography>{viewData.importe_retiros || '-'}</Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        Fondo
+                      </Typography>
+                      <Typography>{viewData.fondo || '-'}</Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        Monto Aviso
+                      </Typography>
+                      <Typography>{viewData.montoAviso || '-'}</Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        Número Avisos
+                      </Typography>
+                      <Typography>{viewData.numeroAvisos || '-'}</Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant='subtitle2'
+                        sx={{ fontWeight: 'bold' }}
+                      >
+                        Importe Caja Después Retiros
+                      </Typography>
+                      <Typography>
+                        {viewData.importeCajaDespuesRetiros || '-'}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                </Grid>
               </Box>
             )}
           </DialogContent>
@@ -883,370 +1498,472 @@ export default function CatSucursales() {
           onClose={() => setOpenEdit(false)}
           maxWidth='md'
           fullWidth
-          PaperProps={{
-            sx: {
-              borderRadius: 2,
-            }
-          }}
         >
-          <DialogTitle sx={{ 
-            bgcolor: '#424242', 
-            color: 'white',
-            py: 2.5,
-            px: 3
-          }}>
-            <Typography variant='h6' sx={{ fontWeight: 600 }}>
-              Editar Sucursal: {editCveSucursal}
-            </Typography>
-            <Typography variant='body2' sx={{ color: '#e0e0e0', mt: 0.5 }}>
-              Complete la información de la sucursal en los campos correspondientes
-            </Typography>
-          </DialogTitle>
+          <DialogTitle>Editar Sucursal</DialogTitle>
 
-          <DialogContent sx={{ p: 3, bgcolor: '#fafafa' }}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              
-              {/* Identificación de la Sucursal */}
-              <Box>
-                <Box sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 1, 
-                  mb: 2,
-                  borderLeft: '3px solid #424242',
-                  pl: 1.5
-                }}>
-                  <Typography variant='subtitle1' sx={{ fontWeight: 600 }}>
-                    Identificación de la Sucursal
-                  </Typography>
-                </Box>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      label='Clave Sucursal'
-                      value={editCveSucursal}
-                      disabled
-                      fullWidth
-                      size='small'
-                      sx={{ bgcolor: 'white' }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      label='Nombre *'
-                      value={editNombre}
-                      onChange={(e) => setEditNombre(e.target.value)}
-                      required
-                      fullWidth
-                      size='small'
-                      sx={{ bgcolor: 'white' }}
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <TextField
-                      label='Dirección'
-                      value={editDireccion}
-                      onChange={(e) => setEditDireccion(e.target.value)}
-                      fullWidth
-                      size='small'
-                      sx={{ bgcolor: 'white' }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      label='Versión'
-                      value={editVersion}
-                      onChange={(e) => setEditVersion(e.target.value)}
-                      fullWidth
-                      size='small'
-                      sx={{ bgcolor: 'white' }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      label='Días Devolución'
-                      value={editDiasDevolucion}
-                      onChange={(e) => setEditDiasDevolucion(e.target.value)}
-                      type='number'
-                      fullWidth
-                      size='small'
-                      sx={{ bgcolor: 'white' }}
-                    />
-                  </Grid>
-                </Grid>
-              </Box>
+          <DialogContent
+            sx={{
+              mt: 0,
+              maxHeight: '70vh',
+              overflowY: 'auto',
+            }}
+          >
+            <Grid container spacing={2}>
+              {/* Row 1 */}
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Cia'
+                  value={editCia}
+                  disabled
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Nombre *'
+                  value={editNombre}
+                  onChange={(e) => setEditNombre(e.target.value)}
+                  required
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
 
-              {/* Configuración y Operación */}
-              <Box>
-                <Box sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 1, 
-                  mb: 2,
-                  borderLeft: '3px solid #424242',
-                  pl: 1.5
-                }}>
-                  <Typography variant='subtitle1' sx={{ fontWeight: 600 }}>
-                    Configuración y Operación
-                  </Typography>
-                </Box>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={4}>
-                    <TextField
-                      label='Clave Timbrador'
-                      value={editClaveTimbrador}
-                      onChange={(e) => setEditClaveTimbrador(e.target.value)}
-                      type='number'
-                      fullWidth
-                      size='small'
-                      sx={{ bgcolor: 'white' }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={4}>
-                    <TextField
-                      label='Fondo'
-                      value={editFondo}
-                      onChange={(e) => setEditFondo(e.target.value)}
-                      type='number'
-                      fullWidth
-                      size='small'
-                      sx={{ bgcolor: 'white' }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={4}>
-                    <TextField
-                      label='Monto Aviso'
-                      value={editMontoAviso}
-                      onChange={(e) => setEditMontoAviso(e.target.value)}
-                      type='number'
-                      fullWidth
-                      size='small'
-                      sx={{ bgcolor: 'white' }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      label='Número Avisos'
-                      value={editNumeroAvisos}
-                      onChange={(e) => setEditNumeroAvisos(e.target.value)}
-                      type='number'
-                      fullWidth
-                      size='small'
-                      sx={{ bgcolor: 'white' }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      label='Importe Caja Después Retiros'
-                      value={editImporteCajaDespuesRetiros}
-                      onChange={(e) => setEditImporteCajaDespuesRetiros(e.target.value)}
-                      type='number'
-                      fullWidth
-                      size='small'
-                      sx={{ bgcolor: 'white' }}
-                    />
-                  </Grid>
-                </Grid>
-              </Box>
+              {/* Row 2 */}
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Dirección'
+                  value={editDireccion}
+                  onChange={(e) => setEditDireccion(e.target.value)}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Clave Sucursal'
+                  value={editCveSucursal}
+                  onChange={(e) => setEditCveSucursal(e.target.value)}
+                  type='number'
+                  inputProps={{ min: 0 }}
+                  size='small'
+                  fullWidth
+                  disabled
+                />
+              </Grid>
 
-              {/* Opciones de Configuración */}
-              <Box>
-                <Box sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 1, 
-                  mb: 2,
-                  borderLeft: '3px solid #424242',
-                  pl: 1.5
-                }}>
-                  <Typography variant='subtitle1' sx={{ fontWeight: 600 }}>
-                    Opciones de Configuración
-                  </Typography>
-                </Box>
-                <Box sx={{ 
-                  bgcolor: 'white', 
-                  p: 2.5, 
-                  borderRadius: 1,
-                  border: '1px solid #e0e0e0'
-                }}>
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6}>
-                      <Box sx={{ 
-                        display: 'flex', 
-                        alignItems: 'flex-start', 
-                        gap: 1.5,
-                        p: 1.5,
-                        borderRadius: 1,
-                        border: '1px solid #f0f0f0',
-                        bgcolor: '#fafafa'
-                      }}>
-                        <input
-                          type='checkbox'
-                          checked={editEnLinea}
-                          onChange={(e) => setEditEnLinea(e.target.checked)}
-                          style={{ marginTop: '2px' }}
-                        />
-                        <Box>
-                          <Typography variant='body2' sx={{ fontWeight: 600 }}>
-                            En Línea
-                          </Typography>
-                          <Typography variant='caption' sx={{ color: '#666' }}>
-                            Habilitar operación en línea
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <Box sx={{ 
-                        display: 'flex', 
-                        alignItems: 'flex-start', 
-                        gap: 1.5,
-                        p: 1.5,
-                        borderRadius: 1,
-                        border: '1px solid #f0f0f0',
-                        bgcolor: '#fafafa'
-                      }}>
-                        <input
-                          type='checkbox'
-                          checked={editValidarTx}
-                          onChange={(e) => setEditValidarTx(e.target.checked)}
-                          style={{ marginTop: '2px' }}
-                        />
-                        <Box>
-                          <Typography variant='body2' sx={{ fontWeight: 600 }}>
-                            Validar TX
-                          </Typography>
-                          <Typography variant='caption' sx={{ color: '#666' }}>
-                            Validar transacciones
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <Box sx={{ 
-                        display: 'flex', 
-                        alignItems: 'flex-start', 
-                        gap: 1.5,
-                        p: 1.5,
-                        borderRadius: 1,
-                        border: '1px solid #f0f0f0',
-                        bgcolor: '#fafafa'
-                      }}>
-                        <input
-                          type='checkbox'
-                          checked={editRecipeProvAll}
-                          onChange={(e) => setEditRecipeProvAll(e.target.checked)}
-                          style={{ marginTop: '2px' }}
-                        />
-                        <Box>
-                          <Typography variant='body2' sx={{ fontWeight: 600 }}>
-                            Recibe Proveedor All
-                          </Typography>
-                          <Typography variant='caption' sx={{ color: '#666' }}>
-                            Recibir de todos los proveedores
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <Box sx={{ 
-                        display: 'flex', 
-                        alignItems: 'flex-start', 
-                        gap: 1.5,
-                        p: 1.5,
-                        borderRadius: 1,
-                        border: '1px solid #f0f0f0',
-                        bgcolor: '#fafafa'
-                      }}>
-                        <input
-                          type='checkbox'
-                          checked={editEditaCostosRm}
-                          onChange={(e) => setEditEditaCostosRm(e.target.checked)}
-                          style={{ marginTop: '2px' }}
-                        />
-                        <Box>
-                          <Typography variant='body2' sx={{ fontWeight: 600 }}>
-                            Edita Costos RM
-                          </Typography>
-                          <Typography variant='caption' sx={{ color: '#666' }}>
-                            Permitir edición de costos
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <Box sx={{ 
-                        display: 'flex', 
-                        alignItems: 'flex-start', 
-                        gap: 1.5,
-                        p: 1.5,
-                        borderRadius: 1,
-                        border: '1px solid #f0f0f0',
-                        bgcolor: '#fafafa'
-                      }}>
-                        <input
-                          type='checkbox'
-                          checked={editCredito}
-                          onChange={(e) => setEditCredito(e.target.checked)}
-                          style={{ marginTop: '2px' }}
-                        />
-                        <Box>
-                          <Typography variant='body2' sx={{ fontWeight: 600 }}>
-                            Crédito
-                          </Typography>
-                          <Typography variant='caption' sx={{ color: '#666' }}>
-                            Habilitar ventas a crédito
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </Grid>
-                  </Grid>
-                </Box>
-              </Box>
+              {/* Row 3 */}
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Versión'
+                  value={editVersion}
+                  onChange={(e) => setEditVersion(e.target.value)}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Supervisor'
+                  value={editSupervisor}
+                  onChange={(e) => setEditSupervisor(e.target.value)}
+                  type='number'
+                  inputProps={{ min: 0 }}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
 
-            </Box>
+              {/* Row 4 */}
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Días Devolución'
+                  value={editDiasDevolucion}
+                  onChange={(e) => setEditDiasDevolucion(e.target.value)}
+                  type='number'
+                  inputProps={{ min: 0 }}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Importe Retiros'
+                  value={editImporteRetiros}
+                  onChange={(e) => setEditImporteRetiros(e.target.value)}
+                  type='number'
+                  inputProps={{ min: 0 }}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+
+              {/* Row 5 */}
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Fondo'
+                  value={editFondo}
+                  onChange={(e) => setEditFondo(e.target.value)}
+                  type='number'
+                  inputProps={{ min: 0 }}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Monto Aviso'
+                  value={editMontoAviso}
+                  onChange={(e) => setEditMontoAviso(e.target.value)}
+                  type='number'
+                  inputProps={{ min: 0 }}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+
+              {/* Row 6 */}
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Número Avisos'
+                  value={editNumeroAvisos}
+                  onChange={(e) => setEditNumeroAvisos(e.target.value)}
+                  type='number'
+                  inputProps={{ min: 0 }}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Importe Caja Después Retiros'
+                  value={editImporteCajaDespuesRetiros}
+                  onChange={(e) =>
+                    setEditImporteCajaDespuesRetiros(e.target.value)
+                  }
+                  type='number'
+                  inputProps={{ min: 0 }}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+
+              {/* Row 7 */}
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Límite Sobrante'
+                  value={editLimiteSobrante}
+                  onChange={(e) => setEditLimiteSobrante(e.target.value)}
+                  type='number'
+                  inputProps={{ min: 0 }}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Límite Faltante'
+                  value={editLimiteFaltante}
+                  onChange={(e) => setEditLimiteFaltante(e.target.value)}
+                  type='number'
+                  inputProps={{ min: 0 }}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+
+              {/* Row 8 */}
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Min Records Validar TX'
+                  value={editMinRecordsValTx}
+                  onChange={(e) => setEditMinRecordsValTx(e.target.value)}
+                  type='number'
+                  inputProps={{ min: 0 }}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Min Records Validar RM'
+                  value={editMinRecordsValRm}
+                  onChange={(e) => setEditMinRecordsValRm(e.target.value)}
+                  type='number'
+                  inputProps={{ min: 0 }}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+
+              {/* Row 9 */}
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Clave Timbrador'
+                  value={editClaveTimbrador}
+                  onChange={(e) => setEditClaveTimbrador(e.target.value)}
+                  type='number'
+                  inputProps={{ min: 0 }}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Recibe FV (String)'
+                  value={editRecibeFv}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Solo permite dígitos de 1 carácter
+                    if (
+                      value === '' ||
+                      (/^\d$/.test(value) && value.length === 1)
+                    ) {
+                      setEditRecibeFv(value);
+                    }
+                  }}
+                  inputProps={{ maxLength: 1 }}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+
+              {/* Row 10 */}
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Vencimiento Depósito'
+                  value={editVencimientoDeposito}
+                  onChange={(e) => setEditVencimientoDeposito(e.target.value)}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Tolerancia Existencia'
+                  value={editToleranciaExistencia}
+                  onChange={(e) => setEditToleranciaExistencia(e.target.value)}
+                  type='number'
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+
+              {/* Row 11 */}
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Área Depósito'
+                  value={editAreaDeposito}
+                  onChange={(e) => setEditAreaDeposito(e.target.value)}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Depto Depósito'
+                  value={editDeptoDeposito}
+                  onChange={(e) => setEditDeptoDeposito(e.target.value)}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+
+              {/* Row 12 */}
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Afiliación Bancomer'
+                  value={editAfiliacionBancomer}
+                  onChange={(e) => setEditAfiliacionBancomer(e.target.value)}
+                  size='small'
+                  fullWidth
+                />
+              </Grid>
+
+              {/* Checkboxes - Grid Layout */}
+              <Grid item xs={12}>
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(2, 1fr)',
+                    gap: 2,
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <input
+                      type='checkbox'
+                      checked={editEsRuta}
+                      onChange={(e) => setEditEsRuta(e.target.checked)}
+                    />
+                    <label>Es Ruta</label>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <input
+                      type='checkbox'
+                      checked={editEsBodega}
+                      onChange={(e) => setEditEsBodega(e.target.checked)}
+                    />
+                    <label>Es Bodega</label>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <input
+                      type='checkbox'
+                      checked={editEnLinea}
+                      onChange={(e) => setEditEnLinea(e.target.checked)}
+                    />
+                    <label>En Línea</label>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <input
+                      type='checkbox'
+                      checked={editValidarTx}
+                      onChange={(e) => setEditValidarTx(e.target.checked)}
+                    />
+                    <label>Validar TX</label>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <input
+                      type='checkbox'
+                      checked={editValidarRm}
+                      onChange={(e) => setEditValidarRm(e.target.checked)}
+                    />
+                    <label>Validar RM</label>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <input
+                      type='checkbox'
+                      checked={editRecipeProvAll}
+                      onChange={(e) => setEditRecipeProvAll(e.target.checked)}
+                    />
+                    <label>Recibe Prov All</label>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <input
+                      type='checkbox'
+                      checked={editEditaCostosRm}
+                      onChange={(e) => setEditEditaCostosRm(e.target.checked)}
+                    />
+                    <label>Edita Costos RM</label>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <input
+                      type='checkbox'
+                      checked={editNocturna}
+                      onChange={(e) => setEditNocturna(e.target.checked)}
+                    />
+                    <label>Nocturna</label>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <input
+                      type='checkbox'
+                      checked={editCredito}
+                      onChange={(e) => setEditCredito(e.target.checked)}
+                    />
+                    <label>Crédito</label>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <input
+                      type='checkbox'
+                      checked={editControlTraspasos}
+                      onChange={(e) =>
+                        setEditControlTraspasos(e.target.checked)
+                      }
+                    />
+                    <label>Control Traspasos</label>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <input
+                      type='checkbox'
+                      checked={editBancomerOnline}
+                      onChange={(e) => setEditBancomerOnline(e.target.checked)}
+                    />
+                    <label>Bancomer Online</label>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <input
+                      type='checkbox'
+                      checked={editServicioDomicilio}
+                      onChange={(e) =>
+                        setEditServicioDomicilio(e.target.checked)
+                      }
+                    />
+                    <label>Servicio Domicilio</label>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <input
+                      type='checkbox'
+                      checked={editAplicaCinepolis}
+                      onChange={(e) => setEditAplicaCinepolis(e.target.checked)}
+                    />
+                    <label>Aplica Cinépolis</label>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <input
+                      type='checkbox'
+                      checked={editAplicaCinetix}
+                      onChange={(e) => setEditAplicaCinetix(e.target.checked)}
+                    />
+                    <label>Aplica Cinetix</label>
+                  </Box>
+                </Box>
+              </Grid>
+            </Grid>
           </DialogContent>
-          
-          <DialogActions sx={{ px: 3, py: 2, bgcolor: '#fafafa', borderTop: '1px solid #e0e0e0' }}>
-            <Button 
-              onClick={() => setOpenEdit(false)}
-              sx={{ textTransform: 'uppercase', fontWeight: 600 }}
-            >
-              Cancelar
-            </Button>
+
+          <DialogActions>
+            <Button onClick={() => setOpenEdit(false)}>Cancelar</Button>
             <Button
               variant='contained'
               onClick={handleUpdate}
               disabled={savingEdit}
-              sx={{ 
-                bgcolor: '#212121',
-                textTransform: 'uppercase',
-                fontWeight: 600,
-                px: 4,
-                '&:hover': {
-                  bgcolor: '#424242'
-                }
-              }}
             >
-              {savingEdit ? 'Guardando...' : 'Guardar'}
+              Guardar cambios
             </Button>
           </DialogActions>
         </Dialog>
-
         <Dialog open={openDelete} onClose={() => setOpenDelete(false)}>
           <DialogTitle>Eliminar Sucursal</DialogTitle>
+
           <DialogContent>
             <Typography>
               ¿Seguro que deseas eliminar la sucursal{' '}
               <strong>{deleteNombre}</strong>?
             </Typography>
           </DialogContent>
+
           <DialogActions>
             <Button onClick={() => setOpenDelete(false)}>Cancelar</Button>
+
+            <Button
+              color='error'
+              variant='contained'
+              onClick={handleDelete}
+              disabled={deleting}
+            >
+              Eliminar
+            </Button>
           </DialogActions>
         </Dialog>
 
-        
+        <Dialog
+          open={openValidationError}
+          onClose={() => setOpenValidationError(false)}
+        >
+          <DialogTitle>Campos Requeridos</DialogTitle>
+          <DialogContent sx={{ mt: 1 }}>
+            <Typography color='error'>{validationErrorMessage}</Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={() => setOpenValidationError(false)}
+              variant='contained'
+            >
+              Aceptar
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </Box>
       <PWABadge />
     </>
   );

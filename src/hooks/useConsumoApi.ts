@@ -38,7 +38,7 @@ const useConsumoApi = () => {
   };
 
   const consumoApi = axios.create({
-    baseURL: "https://localhost:7102",
+    baseURL: "https://cbinfo.no-ip.info:8079",
     headers: {
       "Content-Type": "application/json",
     },

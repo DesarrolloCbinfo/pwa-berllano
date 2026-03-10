@@ -7,15 +7,15 @@ import PWABadge from '../../../PWABadge'
 
 interface PorcentajePunto {
   id: string
-  cve_sucursal: number
   sucursal: string
-  cve_area: string
   area: string
-  cve_depto: string
   depto: string
-  tipo_forma_pago: number
   forma_pago: string
   porcentaje: number
+  sucursal_nombre?: string
+  area_descripcion?: string
+  depto_descripcion?: string
+  forma_pago_descripcion?: string
 }
 
 interface Sucursal {
@@ -63,6 +63,11 @@ export default function AdministracionPorcentajesPuntos() {
   const [deleting, setDeleting] = useState(false)
 
   const columns: GridColDef[] = [
+    { field: 'sucursal', headerName: 'Sucursal', width: 150 },
+    { field: 'area', headerName: 'Área', width: 200 },
+    { field: 'depto', headerName: 'Depto.', width: 200 },
+    { field: 'forma_pago', headerName: 'Forma Pago', width: 150 },
+    { field: 'porcentaje', headerName: 'Porcentaje', width: 120 },
     {
       field: 'acciones',
       headerName: '',
@@ -79,11 +84,6 @@ export default function AdministracionPorcentajesPuntos() {
         </IconButton>
       ),
     },
-    { field: 'sucursal', headerName: 'Sucursal', width: 150 },
-    { field: 'area', headerName: 'Área', width: 200 },
-    { field: 'depto', headerName: 'Depto.', width: 200 },
-    { field: 'forma_pago', headerName: 'Forma Pago', width: 150 },
-    { field: 'porcentaje', headerName: 'Porcentaje', width: 120 },
   ]
 
   const fetchSucursales = async () => {
@@ -135,13 +135,9 @@ export default function AdministracionPorcentajesPuntos() {
       
       const data = res.data.map((item: any, index: number) => ({
         id: index,
-        cve_sucursal: item.cve_sucursal,
         sucursal: item.sucursal,
-        cve_area: item.cve_area,
         area: item.area,
-        cve_depto: item.cve_depto,
         depto: item.depto,
-        tipo_forma_pago: item.tipo_forma_pago,
         forma_pago: item.forma_pago,
         porcentaje: item.porcentaje_puntos,
       }))
@@ -190,14 +186,14 @@ export default function AdministracionPorcentajesPuntos() {
 
       const response = await consumoApi.post(
         `/api/CatAdminPorcenPuntos/sp_bw_administracion_porcentajes_puntos_add`,
-        '',
+        null,
         {
           params: {
             sucursal: parseInt(selectedSucursal),
             area: selectedArea,
             depto: selectedDepto,
             forma_pago: parseInt(selectedFormaPago),
-            porcentaje_puntos: parseFloat(porcentaje),
+            porcentaje: parseFloat(porcentaje),
           },
         }
       )
@@ -238,17 +234,27 @@ export default function AdministracionPorcentajesPuntos() {
       const rowToDelete = rows.find(r => r.id === deleteId)
       if (!rowToDelete) return
 
+      console.log('Eliminando registro:', {
+        sucursal: rowToDelete.sucursal,
+        area: rowToDelete.area,
+        depto: rowToDelete.depto,
+        forma_pago: rowToDelete.forma_pago,
+      })
+
       const response = await consumoApi.delete(
-        `/api/CatAdminPorcenPuntos/sp_bw_administracion_porcentajes_puntos_del`,
+        `/api/CatPorcentajesPuntos/sp_bw_administracion_porcentajes_puntos_del`,
         {
           params: {
-            sucursal: rowToDelete.cve_sucursal,
-            area: rowToDelete.cve_area,
-            depto: rowToDelete.cve_depto,
-            forma_pago: rowToDelete.tipo_forma_pago,
+            sucursal: rowToDelete.sucursal,
+            area: rowToDelete.area,
+            depto: rowToDelete.depto,
+            forma_pago: rowToDelete.forma_pago,
+            porcentaje: rowToDelete.porcentaje,
           },
         }
       )
+
+      console.log('Respuesta del servidor:', response.data)
 
       const result = response.data?.[0]
 
