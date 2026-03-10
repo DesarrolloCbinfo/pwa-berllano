@@ -36,6 +36,7 @@ import ConfigComisiones2 from './pages/Cat_configcomisiones2/page';
 import AccesosAlternos from './pages/cat_accesosalternos/page';
 import ConceptosAjustes from './pages/cat_conceptos_ajustes/page';
 import TiposMovimientos from './pages/cat_tipos_movimientos/page';
+
 import PlasticosAutorizados from './pages/Cat_Plasticos_Autorizados/pages';
 import MediosPagos from './pages/cat_Medios_Pago/page';
 import DescuentoProveedores from './pages/cat_DescProveedores/page';
@@ -47,6 +48,16 @@ import CatNominaFormasPagos from './pages/cat_nomina_formas_pagos/page';
 import CatNominaPuestos from './pages/cat_nomina_puestos/page';
 import CatNominaBajas from './pages/cat_nomina_bajas/page';
 import FactoresSucursales from './pages/FactoresSucursal/page';
+
+import NominasMovimientos from './pages/cat_nominas_movimientos/page';
+import DiasFestivos from './pages/cat_dias_festivos/page';
+import NivelesEstudios from './pages/cat_niveles_estudios_rrhh/page'; 
+import NominasHorarios from './pages/cat_nominas_horarios/page';
+import CuentasBancarias from './pages/cat_cuentas_bancarias/page';
+import TiposCuentas from './pages/cat_tipos_cuentas/page';
+import Usuarios from './pages/cat_usuarios/page';
+import FoliosNomina from './pages/cat_nominas_folios/page';
+
 
 
 
@@ -101,6 +112,14 @@ function App() {
          <Route path='/cat_nomina_puestos' element={<Layout><CatNominaPuestos/></Layout>} />
          <Route path='/cat_nomina_bajas' element={<Layout><CatNominaBajas/></Layout>} />
          <Route path='/factores_sucursales' element={<Layout><FactoresSucursales/></Layout>} />
+          <Route path='/cat_nominas_movimientos' element={<Layout><NominasMovimientos/></Layout>} />
+          <Route path='/cat_dias_festivos' element={<Layout><DiasFestivos/></Layout>} />
+          <Route path='/cat_niveles_estudios_rrhh' element={<Layout><NivelesEstudios/></Layout>} />
+          <Route path='/cat_nominas_horarios' element={<Layout><NominasHorarios/></Layout>} />
+          <Route path='/cat_cuentas_bancarias' element={<Layout><CuentasBancarias/></Layout>} />
+          <Route path='/cat_tipos_cuentas' element={<Layout><TiposCuentas/></Layout>} />
+          <Route path='/cat_usuarios' element={<Layout><Usuarios/></Layout>} />
+          <Route path='/cat_nominas_folios' element={<Layout><FoliosNomina/></Layout>} />
 
 
        
