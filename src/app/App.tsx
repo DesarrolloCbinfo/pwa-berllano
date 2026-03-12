@@ -57,6 +57,9 @@ import CuentasBancarias from './pages/cat_cuentas_bancarias/page';
 import TiposCuentas from './pages/cat_tipos_cuentas/page';
 import Usuarios from './pages/cat_usuarios/page';
 import FoliosNomina from './pages/cat_nominas_folios/page';
+import TurnosDobles from './pages/Cat_turnos_dobles/page';
+
+
 
 
 
@@ -92,7 +95,7 @@ function App() {
          <Route path='/modulo_servicios_insumos' element={<Layout><AdministracionServiciosInsumos/></Layout>} />
          <Route path='/modulo_porcentajes_puntos' element={<Layout><AdministracionPorcentajesPuntos/></Layout>} />
          <Route path='/cat_Productos' element={<Layout><CatProductos/></Layout>} />
-         <Route path='/config_promociones_descuento_porcentual' element={<Layout><ConfiguracionPromocionesDescuentoPorcentual/></Layout>} />
+         <Route path='/config_promociones_descuento_porcentual' element={<Layout><ConfiguracionPromocionesDescuentoPorcentual/></Layout>} /> 
           <Route path='/ajustemasivoprecios' element={<Layout><AjusteMasivoPrecios/></Layout>} />
           <Route path='/cat_metaempleados' element={<Layout><MetasEmpleados/></Layout>} />
           <Route path='/cat_metasucursal' element={<Layout><MetasSucursales/></Layout>} />
@@ -101,7 +104,9 @@ function App() {
           <Route path='/cat_accesosalternos' element={<Layout><AccesosAlternos/></Layout>} />
           <Route path='/cat_conceptos_ajustes' element={<Layout><ConceptosAjustes/></Layout>} />
           <Route path='/cat_tipos_movimientos' element={<Layout><TiposMovimientos/></Layout>} />
-         <Route path='/plasticos_autorizados' element={<Layout><PlasticosAutorizados/></Layout>} />
+
+        
+         <Route path='/zos_autorizados' element={<Layout><PlasticosAutorizados/></Layout>} />
          <Route path='/medios_pagos' element={<Layout><MediosPagos/></Layout>} />
          <Route path='/descuento_proveedores' element={<Layout><DescuentoProveedores/></Layout>} />
          <Route path='/proveedores_acreedores' element={<Layout><ProveedoresAcreedores/></Layout>} />
@@ -112,6 +117,7 @@ function App() {
          <Route path='/cat_nomina_puestos' element={<Layout><CatNominaPuestos/></Layout>} />
          <Route path='/cat_nomina_bajas' element={<Layout><CatNominaBajas/></Layout>} />
          <Route path='/factores_sucursales' element={<Layout><FactoresSucursales/></Layout>} />
+
           <Route path='/cat_nominas_movimientos' element={<Layout><NominasMovimientos/></Layout>} />
           <Route path='/cat_dias_festivos' element={<Layout><DiasFestivos/></Layout>} />
           <Route path='/cat_niveles_estudios_rrhh' element={<Layout><NivelesEstudios/></Layout>} />
@@ -120,6 +126,8 @@ function App() {
           <Route path='/cat_tipos_cuentas' element={<Layout><TiposCuentas/></Layout>} />
           <Route path='/cat_usuarios' element={<Layout><Usuarios/></Layout>} />
           <Route path='/cat_nominas_folios' element={<Layout><FoliosNomina/></Layout>} />
+          <Route path='/Cat_turnos_dobles' element={<Layout><TurnosDobles/></Layout>} />
+
 
 
        

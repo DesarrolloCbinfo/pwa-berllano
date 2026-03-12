@@ -37,7 +37,7 @@ const useConsumoApi = () => {
     //    console.log("New token:", newToken);
   };
 
-  const consumoApi = axios.create({
+const consumoApi = axios.create({
     baseURL: "https://cbinfo.no-ip.info:8079",
     headers: {
       "Content-Type": "application/json",

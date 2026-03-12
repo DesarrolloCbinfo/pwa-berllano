@@ -198,22 +198,22 @@ const SidebarHorizontal = () => {
           <MenuItem onClick={() => navigate(routes.config_promociones_descuento_porcentual)}>
             Configuración Promociones Descuento Porcentual
             </MenuItem>
-        {/*  
-          <MenuItem onClick={() => navigate(routes.plasticos_autorizados)}>
+          
+          <MenuItem onClick={() => navigate(routes.cat_Plasticos_Autorizados)}>
             Plásticos Autorizados
           </MenuItem>
-          <MenuItem onClick={() => navigate(routes.medios_pagos)}>
+          <MenuItem onClick={() => navigate(routes.cat_Medios_Pago)}>
             Medios de Pagos
           </MenuItem>
-          <MenuItem onClick={() => navigate(routes.descuento_proveedores)}>
+          <MenuItem onClick={() => navigate(routes.cat_DescProveedores)}>
             Descuento Proveedores
           </MenuItem>
-          <MenuItem onClick={() => navigate(routes.proveedores_acreedores)}>
+          <MenuItem onClick={() => navigate(routes.cat_Proveedores_Acreedores)}>
             Proveedores Acreedores
           </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_trabajadores)}>
+          <MenuItem onClick={() => navigate(routes.cat_Trabajadores)}>
             Trabajadores
-          </MenuItem>*/}
+          </MenuItem>
           <MenuItem onClick={() => navigate(routes.cat_nomina_departamentos)}>
             Nómina Departamentos
           </MenuItem>
@@ -255,6 +255,9 @@ const SidebarHorizontal = () => {
           </MenuItem>
           <MenuItem onClick={() => navigate(routes.cat_nominas_folios)}>
             Administración de Folios
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_turnos_dobles)}>
+            Turnos Dobles
           </MenuItem>
           
         </Menu>

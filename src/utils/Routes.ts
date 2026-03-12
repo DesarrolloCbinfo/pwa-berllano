@@ -56,6 +56,7 @@ export const routes = {
   cat_nomina_formas_pagos: "/cat_nomina_formas_pagos",
   cat_nomina_puestos: "/cat_nomina_puestos",
   cat_nomina_bajas: "/cat_nomina_bajas",
+  cat_turnos_dobles: "/cat_turnos_dobles",
 
 };
 
