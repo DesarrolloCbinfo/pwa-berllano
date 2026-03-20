@@ -32,6 +32,8 @@ interface SubsubcategoriaRow {
   id_subgasto: number;
   id_subsubgasto: number;
   descripcion: string;
+  cuenta_contable?: string;
+  segmentable?: boolean;
 }
 
 interface CategoriaForm {
@@ -50,6 +52,8 @@ interface SubsubcategoriaForm {
   id_gasto: number;
   id_subgasto: number;
   descripcion: string;
+  cuenta_contable?: string;
+  segmentable?: boolean;
 }
 
 // --- ESTILOS COMUNES ---
@@ -85,7 +89,11 @@ export default function CatCategorias() {
   // --- ESTADOS PRINCIPALES ---
   const [rows, setRows] = useState<CategoriaRow[]>([]);
   const [loading, setLoading] = useState(false);
+  
+  // --- ESTADOS DE MODALES ---
   const [openModal, setOpenModal] = useState(false);
+  const [openSubcategoriaFormModal, setOpenSubcategoriaFormModal] = useState(false);
+  const [openSubsubcategoriaFormModal, setOpenSubsubcategoriaFormModal] = useState(false);
   const [claveSeleccionada, setClaveSeleccionada] = useState<number | null>(null);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   
@@ -98,7 +106,9 @@ export default function CatCategorias() {
   const [subsubcategoriaForm, setSubsubcategoriaForm] = useState<SubsubcategoriaForm>({
     id_gasto: 0,
     id_subgasto: 0,
-    descripcion: ''
+    descripcion: '',
+    cuenta_contable: '',
+    segmentable: false
   });
   
   // --- ESTADOS DE MODALES ---
@@ -206,9 +216,66 @@ export default function CatCategorias() {
     }));
   };
 
-  const handleSaveSubcategoria = async () => {
+  const handleEditSubcategoria = async (subcategoria: SubcategoriaRow) => {
+    setSubcategoriaForm({
+      id_gasto: subcategoria.id_gasto,
+      id_subgasto: subcategoria.id_subgasto,
+      descripcion: subcategoria.descripcion
+    });
+    setOpenSubcategoriaFormModal(true);
+  };
+
+  const handleUpdateSubcategoria = async () => {
     if (!subcategoriaForm.descripcion.trim()) {
       setMessage({ text: "La descripción de la subcategoría es obligatoria", type: 'error' });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await consumoApi.consumoApi.put('/api/CatCategorias/sp_bw_cat_subcategorias_upd', null, {
+        params: {
+          id_gasto: subcategoriaForm.id_gasto,
+          id_subgasto: subcategoriaForm.id_subgasto,
+          descripcion: subcategoriaForm.descripcion.trim()
+        }
+      });
+      
+      if (res.status === 200) {
+        const response = res.data;
+        if (response && response.length > 0 && response[0].codigo === 0) {
+          setMessage({ 
+            text: response[0].mensaje1 || "Subcategoría actualizada exitosamente", 
+            type: 'success' 
+          });
+          setSubcategoriaForm({
+            ...subcategoriaForm,
+            descripcion: ''
+          });
+          if (categoriaSeleccionada) {
+            fetchSubcategorias(categoriaSeleccionada.id_gasto);
+          }
+          setOpenSubcategoriaFormModal(false); // ✅ Cerrar modal después de actualizar
+        } else {
+          setMessage({ 
+            text: response?.[0]?.mensaje1 || "Error al actualizar subcategoría", 
+            type: 'error' 
+          });
+        }
+      }
+    } catch (error: any) {
+      setMessage({ 
+        text: error.response?.data?.mensaje || "Error al actualizar subcategoría", 
+        type: 'error' 
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveSubcategoria = async () => {
+    if (!subcategoriaForm.descripcion.trim() || !subcategoriaForm.id_subgasto) {
+      setMessage({ text: "El ID y la descripción de la subcategoría son obligatorios", type: 'error' });
       return;
     }
 
@@ -217,7 +284,7 @@ export default function CatCategorias() {
       const res = await consumoApi.consumoApi.post('/api/CatCategorias/sp_bw_cat_subcategorias_add', null, {
         params: {
           id_gasto: subcategoriaForm.id_gasto,
-          id_subgasto: subcategoriaForm.id_subgasto || Math.floor(Math.random() * 9000) + 1000,
+          id_subgasto: subcategoriaForm.id_subgasto,
           descripcion: subcategoriaForm.descripcion.trim()
         }
       });
@@ -236,6 +303,7 @@ export default function CatCategorias() {
           if (categoriaSeleccionada) {
             fetchSubcategorias(categoriaSeleccionada.id_gasto);
           }
+          setOpenSubcategoriaFormModal(false); // ✅ Cerrar modal después de guardar
         } else {
           setMessage({ 
             text: response?.[0]?.mensaje1 || "Error al registrar subcategoría", 
@@ -260,7 +328,10 @@ export default function CatCategorias() {
 
     try {
       const res = await consumoApi.consumoApi.delete('/api/CatCategorias/sp_bw_cat_subcategorias_del', {
-        params: { id_subgasto: subcategoria.id_subgasto }
+        params: { 
+          id_gasto: subcategoria.id_gasto,
+          id_subgasto: subcategoria.id_subgasto 
+        }
       });
       
       if (res.status === 200) {
@@ -294,7 +365,9 @@ export default function CatCategorias() {
     setSubsubcategoriaForm({
       id_gasto: subcategoria.id_gasto,
       id_subgasto: subcategoria.id_subgasto,
-      descripcion: ''
+      descripcion: '',
+      cuenta_contable: '',
+      segmentable: false
     });
     await fetchSubsubcategorias(subcategoria.id_gasto, subcategoria.id_subgasto);
     setOpenSubsubcategoriaModal(true);
@@ -306,22 +379,89 @@ export default function CatCategorias() {
     setSubsubcategoriaForm({
       id_gasto: 0,
       id_subgasto: 0,
-      descripcion: ''
+      descripcion: '',
+      cuenta_contable: '',
+      segmentable: false
     });
     setSubsubcategorias([]);
   };
 
   const handleSubsubcategoriaChange = (e: any) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setSubsubcategoriaForm(prev => ({
       ...prev,
-      [name]: value
+      [name]: type === 'checkbox' ? checked : value
     }));
   };
 
-  const handleSaveSubsubcategoria = async () => {
+  const handleEditSubsubcategoria = async (subsubcategoria: SubsubcategoriaRow) => {
+    setSubsubcategoriaForm({
+      id_gasto: subsubcategoria.id_gasto,
+      id_subgasto: subsubcategoria.id_subgasto,
+      id_subsubgasto: subsubcategoria.id_subsubgasto,
+      descripcion: subsubcategoria.descripcion,
+      cuenta_contable: subsubcategoria.cuenta_contable || '',
+      segmentable: subsubcategoria.segmentable || false
+    });
+    setOpenSubsubcategoriaFormModal(true);
+  };
+
+  const handleUpdateSubsubcategoria = async () => {
     if (!subsubcategoriaForm.descripcion.trim()) {
       setMessage({ text: "La descripción de la sub-subcategoría es obligatoria", type: 'error' });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await consumoApi.consumoApi.put('/api/CatCategorias/sp_bw_cat_subsubcategorias_upd', null, {
+        params: {
+          id_gasto: subsubcategoriaForm.id_gasto,
+          id_subgasto: subsubcategoriaForm.id_subgasto,
+          id_subsubgasto: subsubcategoriaForm.id_subsubgasto,
+          descripcion: subsubcategoriaForm.descripcion.trim(),
+          cuenta_contable: subsubcategoriaForm.cuenta_contable || '',
+          segmentable: subsubcategoriaForm.segmentable || false
+        }
+      });
+      
+      if (res.status === 200) {
+        const response = res.data;
+        if (response && response.length > 0 && response[0].codigo === 0) {
+          setMessage({ 
+            text: response[0].mensaje1 || "Sub-subcategoría actualizada exitosamente", 
+            type: 'success' 
+          });
+          setSubsubcategoriaForm({
+            ...subsubcategoriaForm,
+            descripcion: '',
+            cuenta_contable: '',
+            segmentable: false
+          });
+          if (subcategoriaSeleccionada) {
+            fetchSubsubcategorias(subcategoriaSeleccionada.id_gasto, subcategoriaSeleccionada.id_subgasto);
+          }
+          setOpenSubsubcategoriaFormModal(false); // ✅ Cerrar modal después de actualizar
+        } else {
+          setMessage({ 
+            text: response?.[0]?.mensaje1 || "Error al actualizar sub-subcategoría", 
+            type: 'error' 
+          });
+        }
+      }
+    } catch (error: any) {
+      setMessage({ 
+        text: error.response?.data?.mensaje || "Error al actualizar sub-subcategoría", 
+        type: 'error' 
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveSubsubcategoria = async () => {
+    if (!subsubcategoriaForm.descripcion.trim() || !subsubcategoriaForm.id_subsubgasto) {
+      setMessage({ text: "El ID y la descripción de la sub-subcategoría son obligatorios", type: 'error' });
       return;
     }
 
@@ -331,8 +471,10 @@ export default function CatCategorias() {
         params: {
           id_gasto: subsubcategoriaForm.id_gasto,
           id_subgasto: subsubcategoriaForm.id_subgasto,
-          id_subsubgasto: subsubcategoriaForm.id_subsubgasto || Math.floor(Math.random() * 9000) + 1000,
-          descripcion: subsubcategoriaForm.descripcion.trim()
+          id_subsubgasto: subsubcategoriaForm.id_subsubgasto,
+          descripcion: subsubcategoriaForm.descripcion.trim(),
+          cuenta_contable: subsubcategoriaForm.cuenta_contable || '',
+          segmentable: subsubcategoriaForm.segmentable || false
         }
       });
       
@@ -345,11 +487,14 @@ export default function CatCategorias() {
           });
           setSubsubcategoriaForm({
             ...subsubcategoriaForm,
-            descripcion: ''
+            descripcion: '',
+            cuenta_contable: '',
+            segmentable: false
           });
           if (subcategoriaSeleccionada) {
             fetchSubsubcategorias(subcategoriaSeleccionada.id_gasto, subcategoriaSeleccionada.id_subgasto);
           }
+          setOpenSubsubcategoriaFormModal(false); // ✅ Cerrar modal después de guardar
         } else {
           setMessage({ 
             text: response?.[0]?.mensaje1 || "Error al registrar sub-subcategoría", 
@@ -374,7 +519,11 @@ export default function CatCategorias() {
 
     try {
       const res = await consumoApi.consumoApi.delete('/api/CatCategorias/sp_bw_cat_subsubcategorias_del', {
-        params: { id_subsubgasto: subsubcategoria.id_subsubgasto }
+        params: { 
+          id_gasto: subsubcategoria.id_gasto,
+          id_subgasto: subsubcategoria.id_subgasto,
+          id_subsubgasto: subsubcategoria.id_subsubgasto
+        }
       });
       
       if (res.status === 200) {
@@ -534,7 +683,7 @@ export default function CatCategorias() {
           <IconButton 
             size="small" 
             onClick={() => handleOpenEdit(params.row)}
-            sx={{ color: '#1976d2' }}
+            sx={{ color: '#505050ff' }}
           >
             <EditIcon fontSize="small" />
           </IconButton>
@@ -548,7 +697,7 @@ export default function CatCategorias() {
           <IconButton 
             size="small" 
             onClick={() => handleOpenSubcategorias(params.row)}
-            sx={{ color: '#2e7d32' }}
+            sx={{ color: '#555555ff' }}
             title="Ver Subcategorías"
           >
             <AddIcon fontSize="small" />
@@ -556,7 +705,7 @@ export default function CatCategorias() {
           <IconButton 
             size="small" 
             onClick={() => handleOpenSubsubcategorias(params.row)}
-            sx={{ color: '#9c27b0' }}
+            sx={{ color: '#555555ff' }}
             title="Ver Sub-subcategorías"
           >
             <AddIcon fontSize="small" />
@@ -580,75 +729,420 @@ export default function CatCategorias() {
         boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
       }}>
         <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#333' }}>
-          📁 Categorías de Gastos
+          Categorías de Gastos
         </Typography>
-        <Button 
-          variant="contained" 
-          startIcon={<AddIcon />}
-          onClick={handleOpenNew}
-          sx={{ 
-            bgcolor: '#1976d2', 
-            color: 'white',
-            fontWeight: 'bold',
-            px: 3,
-            py: 1.5,
-            borderRadius: '8px'
-          }}
-        >
-          Nueva Categoría de Gasto
-        </Button>
+        
       </Box>
 
-      {/* --- DATAGRID --- */}
-      <Paper sx={{ 
-        height: 600, 
-        borderRadius: '12px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-        '& .super-app-theme--header': {
-          backgroundColor: '#1976d2',
-          color: 'white',
-          fontWeight: 'bold',
-        }
-      }}>
-        <DataGrid
-          rows={rows}
-          columns={columns}
-          loading={loading}
-          getRowId={(row) => row.id_gasto}
-          components={{
-            Toolbar: GridToolbar,
-          }}
-          componentsProps={{
-            toolbar: {
-              showQuickFilter: true,
-              quickFilterProps: { debounceMs: 500 },
-            },
-          }}
-          sx={{
-            '& .MuiDataGrid-root': {
-              border: 'none',
-            },
-            '& .MuiDataGrid-columnHeaders': {
-              backgroundColor: '#1976d2',
+      {/* --- TRES TABLAS EN LÍNEA --- */}
+      <Grid container spacing={2}>
+        {/* TABLA DE CATEGORÍAS */}
+        <Grid item xs={12} md={4}>
+          <Paper sx={{ 
+            height: 600, 
+            borderRadius: '12px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+            '& .super-app-theme--header': {
+              backgroundColor: '#797979ff',
               color: 'white',
-              fontSize: '14px',
-            },
-            '& .MuiDataGrid-virtualScroller': {
-              backgroundColor: '#ffffff',
-            },
-            '& .MuiDataGrid-row': {
-              '&:nth-of-type(odd)': {
-                backgroundColor: '#f9f9f9',
-              },
-              '&:hover': {
-                backgroundColor: '#e3f2fd',
-              },
-            },
-          }}
-        />
-      </Paper>
+              fontWeight: 'bold',
+            }
+          }}>
+            <Box sx={{ p: 2, bgcolor: '#555555ff', color: 'white', borderRadius: '12px 12px 0 0' }}>
+              <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                Categorías
+              </Typography>
+            </Box>
+            <Box sx={{ p: 1, bgcolor: '#f5f5f5', borderBottom: '1px solid #e0e0e0' }}>
+              <Button 
+                variant="contained" 
+                size="small"
+                startIcon={<AddIcon />}
+                onClick={handleOpenNew}
+                sx={{ 
+                  bgcolor: '#000000ff', 
+                  color: 'white',
+                  fontWeight: 'bold',
+                  fontSize: '12px',
+                  px: 2,
+                  py: 0.5,
+                  borderRadius: '6px',
+                  width: '100%'
+                }}
+              >
+                Agregar Categoría
+              </Button>
+            </Box>
+            <DataGrid
+              rows={rows}
+              columns={[
+                {
+                  field: 'id_gasto',
+                  headerName: 'ID',
+                  width: 80,
+                  headerClassName: 'super-app-theme--header',
+                },
+                {
+                  field: 'descripcion',
+                  headerName: 'Descripción',
+                  width: 200,
+                  headerClassName: 'super-app-theme--header',
+                },
+                {
+                  field: 'acciones',
+                  headerName: 'Acciones',
+                  width: 80,
+                  headerClassName: 'super-app-theme--header',
+                  renderCell: (params) => (
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <IconButton 
+                        size="small" 
+                        onClick={() => handleOpenEdit(params.row)}
+                        sx={{ color: '#555555ff' }}
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton 
+                        size="small" 
+                        onClick={() => handleDelete(params.row)}
+                        sx={{ color: '#555555ff' }}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  ),
+                },
+              ]}
+              loading={loading}
+              getRowId={(row) => row.id_gasto}
+              hideFooter
+              onRowClick={(params) => handleOpenSubcategorias(params.row)}
+              components={{
+                Toolbar: () => null,
+              }}
+              sx={{
+                '& .MuiDataGrid-root': {
+                  border: 'none',
+                },
+                '& .MuiDataGrid-columnHeaders': {
+                  backgroundColor: '#1976d2',
+                  color: 'white',
+                  fontSize: '12px',
+                },
+                '& .MuiDataGrid-virtualScroller': {
+                  backgroundColor: '#ffffff',
+                },
+                '& .MuiDataGrid-row': {
+                  '&:nth-of-type(odd)': {
+                    backgroundColor: '#f9f9f9',
+                  },
+                  '&:hover': {
+                    backgroundColor: '#e3f2fd',
+                  },
+                  cursor: 'pointer',
+                },
+              }}
+            />
+          </Paper>
+        </Grid>
 
-      {/* --- MODAL DE FORMULARIO --- */}
+        {/* TABLA DE SUBCATEGORÍAS */}
+        <Grid item xs={12} md={4}>
+          <Paper sx={{ 
+            height: 600, 
+            borderRadius: '12px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+            '& .super-app-theme--header': {
+              backgroundColor: '#797979ff',
+              color: 'white',
+              fontWeight: 'bold',
+            }
+          }}>
+            <Box sx={{ p: 2, bgcolor: '#555555ff', color: 'white', borderRadius: '12px 12px 0 0' }}>
+              <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                Subcategorías
+              </Typography>
+              {categoriaSeleccionada && (
+                <Typography variant="caption">
+                  De: {categoriaSeleccionada.descripcion}
+                </Typography>
+              )}
+            </Box>
+            <Box sx={{ p: 1, bgcolor: '#f5f5f5', borderBottom: '1px solid #e0e0e0' }}>
+              <Button 
+                variant="contained" 
+                size="small"
+                startIcon={<AddIcon />}
+                disabled={!categoriaSeleccionada}
+                onClick={() => {
+                  if (categoriaSeleccionada) {
+                    setSubcategoriaForm({
+                      id_gasto: categoriaSeleccionada.id_gasto,
+                      id_subgasto: undefined,
+                      descripcion: ''
+                    });
+                    setOpenSubcategoriaFormModal(true);
+                  }
+                }}
+                sx={{ 
+                  bgcolor: '#000000ff', 
+                  color: 'white',
+                  fontWeight: 'bold',
+                  fontSize: '12px',
+                  px: 2,
+                  py: 0.5,
+                  borderRadius: '6px',
+                  width: '100%'
+                }}
+              >
+                Agregar Subcategoría
+              </Button>
+            </Box>
+            <DataGrid
+              rows={subcategorias}
+              columns={[
+                {
+                  field: 'id_subgasto',
+                  headerName: 'ID',
+                  width: 80,
+                  headerClassName: 'super-app-theme--header',
+                },
+                {
+                  field: 'descripcion',
+                  headerName: 'Descripción',
+                  width: 200,
+                  headerClassName: 'super-app-theme--header',
+                },
+                {
+                  field: 'acciones',
+                  headerName: 'Acciones',
+                  width: 120,
+                  headerClassName: 'super-app-theme--header',
+                  renderCell: (params) => (
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <IconButton 
+                        size="small" 
+                        sx={{ color: '#555555ff' }}
+                        onClick={() => handleEditSubcategoria(params.row)}
+                        title="Editar Subcategoría"
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton 
+                        size="small" 
+                        sx={{ color: '#555555ff' }}
+                        onClick={() => handleDeleteSubcategoria(params.row)}
+                        title="Eliminar Subcategoría"
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  ),
+                },
+              ]}
+              loading={loading}
+              getRowId={(row) => row.id_subgasto}
+              hideFooter
+              onRowClick={(params) => handleOpenSubsubcategorias(params.row)}
+              components={{
+                Toolbar: () => null,
+              }}
+              sx={{
+                '& .MuiDataGrid-root': {
+                  border: 'none',
+                },
+                '& .MuiDataGrid-columnHeaders': {
+                  backgroundColor: '#2e7d32',
+                  color: 'white',
+                  fontSize: '12px',
+                },
+                '& .MuiDataGrid-virtualScroller': {
+                  backgroundColor: '#ffffff',
+                },
+                '& .MuiDataGrid-row': {
+                  '&:nth-of-type(odd)': {
+                    backgroundColor: '#f9f9f9',
+                  },
+                  '&:hover': {
+                    backgroundColor: '#e8f5e9',
+                  },
+                  cursor: 'pointer',
+                },
+              }}
+            />
+          </Paper>
+        </Grid>
+
+        {/* TABLA DE SUB-SUBCATEGORÍAS */}
+        <Grid item xs={12} md={4}>
+          <Paper sx={{ 
+            height: 600, 
+            borderRadius: '12px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+            '& .super-app-theme--header': {
+              backgroundColor: '#797979ff',
+              color: 'white',
+              fontWeight: 'bold',
+            }
+          }}>
+            <Box sx={{ p: 2, bgcolor: '#555555ff', color: 'white', borderRadius: '12px 12px 0 0' }}>
+              <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                Sub-subcategorías
+              </Typography>
+              {subcategoriaSeleccionada && (
+                <Typography variant="caption">
+                  De: {subcategoriaSeleccionada.descripcion}
+                </Typography>
+              )}
+            </Box>
+            <Box sx={{ p: 1, bgcolor: '#f5f5f5', borderBottom: '1px solid #e0e0e0' }}>
+              <Button 
+                variant="contained" 
+                size="small"
+                startIcon={<AddIcon />}
+                disabled={!subcategoriaSeleccionada}
+                onClick={() => {
+                  if (subcategoriaSeleccionada) {
+                    setSubsubcategoriaForm({
+                      id_gasto: subcategoriaSeleccionada.id_gasto,
+                      id_subgasto: subcategoriaSeleccionada.id_subgasto,
+                      id_subsubgasto: undefined,
+                      descripcion: '',
+                      cuenta_contable: '',
+                      segmentable: false
+                    });
+                    setOpenSubsubcategoriaFormModal(true);
+                  }
+                }}
+                sx={{ 
+                  bgcolor: '#000000ff', 
+                  color: 'white',
+                  fontWeight: 'bold',
+                  fontSize: '12px',
+                  px: 2,
+                  py: 0.5,
+                  borderRadius: '6px',
+                  width: '100%'
+                }}
+              >
+                Agregar Sub-subcategoría
+              </Button>
+            </Box>
+            <DataGrid
+              rows={subsubcategorias}
+              columns={[
+                {
+                  field: 'id_subsubgasto',
+                  headerName: 'ID',
+                  width: 80,
+                  headerClassName: 'super-app-theme--header',
+                },
+                {
+                  field: 'descripcion',
+                  headerName: 'Descripción',
+                  width: 180,
+                  headerClassName: 'super-app-theme--header',
+                },
+                {
+                  field: 'cuenta_contable',
+                  headerName: 'Cuenta Contable',
+                  width: 120,
+                  headerClassName: 'super-app-theme--header',
+                  renderCell: (params) => (
+                    <Typography variant="caption" sx={{ fontSize: '11px' }}>
+                      {params.value || 'N/A'}
+                    </Typography>
+                  ),
+                },
+                {
+                  field: 'segmentable',
+                  headerName: 'Segmentable',
+                  width: 80,
+                  headerClassName: 'super-app-theme--header',
+                  renderCell: (params) => (
+                    <Box sx={{ 
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <Typography 
+                        variant="caption" 
+                        sx={{ 
+                          fontSize: '10px',
+                          px: 1,
+                          py: 0.5,
+                          borderRadius: '4px',
+                          bgcolor: params.value ? '#e8f5e9' : '#ffebee',
+                          color: params.value ? '#2e7d32' : '#c62828',
+                          fontWeight: 'bold'
+                        }}
+                      >
+                        {params.value ? 'Sí' : 'No'}
+                      </Typography>
+                    </Box>
+                  ),
+                },
+                {
+                  field: 'acciones',
+                  headerName: 'Acciones',
+                  width: 120,
+                  headerClassName: 'super-app-theme--header',
+                  renderCell: (params) => (
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <IconButton 
+                        size="small" 
+                        sx={{ color: '#555555ff' }}
+                        onClick={() => handleEditSubsubcategoria(params.row)}
+                        title="Editar Sub-subcategoría"
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton 
+                        size="small" 
+                        sx={{ color: '#555555ff' }}
+                        onClick={() => handleDeleteSubsubcategoria(params.row)}
+                        title="Eliminar Sub-subcategoría"
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  ),
+                },
+              ]}
+              loading={loading}
+              getRowId={(row) => row.id_subsubgasto}
+              hideFooter
+              components={{
+                Toolbar: () => null,
+              }}
+              sx={{
+                '& .MuiDataGrid-root': {
+                  border: 'none',
+                },
+                '& .MuiDataGrid-columnHeaders': {
+                  backgroundColor: '#9c27b0',
+                  color: 'white',
+                  fontSize: '12px',
+                },
+                '& .MuiDataGrid-virtualScroller': {
+                  backgroundColor: '#ffffff',
+                },
+                '& .MuiDataGrid-row': {
+                  '&:nth-of-type(odd)': {
+                    backgroundColor: '#f9f9f9',
+                  },
+                  '&:hover': {
+                    backgroundColor: '#f3e5f5',
+                  },
+                  cursor: 'pointer',
+                },
+              }}
+            />
+          </Paper>
+        </Grid>
+      </Grid>
+
+      {/* --- MODAL DE FORMULARIO DE CATEGORÍAS --- */}
       <Dialog 
         open={openModal} 
         onClose={handleCloseModal} 
@@ -699,59 +1193,45 @@ export default function CatCategorias() {
                   required
                 />
               </Grid>
+              <Grid item xs={12}>
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+                  <Button 
+                    onClick={handleCloseModal} 
+                    variant="outlined"
+                    sx={{ 
+                      borderColor: '#ccc',
+                      color: '#666',
+                      fontWeight: 'bold',
+                      px: 3
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button 
+                    onClick={handleSave}
+                    variant="contained"
+                    disabled={loading}
+                    sx={{ 
+                      bgcolor: '#1976d2',
+                      color: 'white',
+                      fontWeight: 'bold',
+                      px: 4
+                    }}
+                  >
+                    {loading ? 'Guardando...' : (claveSeleccionada ? 'Actualizar' : 'Guardar')}
+                  </Button>
+                </Box>
+              </Grid>
             </Grid>
-          </Box>
-
-          {/* Botones de Acción */}
-          <Box sx={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center',
-            mt: 4,
-            p: 2,
-            bgcolor: '#f8f9fa',
-            borderRadius: '8px',
-            borderTop: '1px solid #e0e0e0'
-          }}>
-            <Typography variant="caption" sx={{ color: '#666' }}>
-              * El ID Gasto y la descripción son obligatorios
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <Button 
-                onClick={handleCloseModal} 
-                variant="outlined"
-                sx={{ 
-                  borderColor: '#ccc',
-                  color: '#666',
-                  fontWeight: 'bold',
-                  px: 3
-                }}
-              >
-                Cancelar
-              </Button>
-              <Button 
-                onClick={handleSave}
-                variant="contained"
-                disabled={loading}
-                sx={{ 
-                  bgcolor: '#1976d2',
-                  color: 'white',
-                  fontWeight: 'bold',
-                  px: 4
-                }}
-              >
-                {loading ? 'Guardando...' : (claveSeleccionada ? 'Actualizar' : 'Guardar')}
-              </Button>
-            </Box>
           </Box>
         </Box>
       </Dialog>
 
-      {/* --- MODAL DE SUBCATEGORÍAS --- */}
+      {/* --- MODAL DE FORMULARIO DE SUBCATEGORÍAS --- */}
       <Dialog 
-        open={openSubcategoriaModal} 
-        onClose={handleCloseSubcategoriaModal} 
-        maxWidth="lg" 
+        open={openSubcategoriaFormModal} 
+        onClose={() => setOpenSubcategoriaFormModal(false)} 
+        maxWidth="md" 
         fullWidth
         PaperProps={{
           sx: { borderRadius: '12px' }
@@ -761,9 +1241,9 @@ export default function CatCategorias() {
           {/* Header del Modal */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
             <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#333' }}>
-              🗂️ Subcategorías de {categoriaSeleccionada?.descripcion}
+              {subcategoriaForm.id_subgasto ? '✏️ Editar Subcategoría' : '🆕 Nueva Subcategoría'}
             </Typography>
-            <IconButton onClick={handleCloseSubcategoriaModal}>
+            <IconButton onClick={() => setOpenSubcategoriaFormModal(false)}>
               <CloseIcon />
             </IconButton>
           </Box>
@@ -779,13 +1259,22 @@ export default function CatCategorias() {
             </Box>
           )}
 
-          {/* Formulario para agregar subcategoría */}
+          {/* Formulario */}
           <Box sx={modalSectionStyle}>
-            <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#2e7d32', mb: 2 }}>
-              Agregar Nueva Subcategoría
-            </Typography>
             <Grid container spacing={3}>
-              <Grid item xs={12}>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  {...commonProps}
+                  label="ID Subcategoría"
+                  name="id_subgasto"
+                  value={subcategoriaForm.id_subgasto || ''}
+                  onChange={handleSubcategoriaChange}
+                  placeholder="Ej. 1100, 1200, etc."
+                  type="number"
+                  required
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
                 <TextField
                   {...commonProps}
                   label="Descripción de la Subcategoría"
@@ -799,110 +1288,43 @@ export default function CatCategorias() {
                 />
               </Grid>
               <Grid item xs={12}>
-                <Button 
-                  variant="contained" 
-                  onClick={handleSaveSubcategoria}
-                  disabled={loading || !subcategoriaForm.descripcion.trim()}
-                  sx={{ 
-                    bgcolor: '#2e7d32', 
-                    color: 'white',
-                    fontWeight: 'bold',
-                    px: 4
-                  }}
-                >
-                  {loading ? 'Guardando...' : 'Agregar Subcategoría'}
-                </Button>
-              </Grid>
-            </Grid>
-          </Box>
-
-          {/* Lista de subcategorías existentes */}
-          <Box sx={modalSectionStyle}>
-            <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#333', mb: 2 }}>
-              Subcategorías Existentes
-            </Typography>
-            <Box sx={{ maxHeight: 300, overflow: 'auto' }}>
-              {subcategorias.length > 0 ? (
-                subcategorias.map((sub) => (
-                  <Box 
-                    key={sub.id_subgasto} 
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+                  <Button 
+                    onClick={() => setOpenSubcategoriaFormModal(false)} 
+                    variant="outlined"
                     sx={{ 
-                      p: 2, 
-                      mb: 1, 
-                      border: '1px solid #e0e0e0', 
-                      borderRadius: '8px',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      bgcolor: '#f9f9f9'
+                      borderColor: '#ccc',
+                      color: '#666',
+                      fontWeight: 'bold',
+                      px: 3
                     }}
                   >
-                    <Box>
-                      <Typography variant="body1" fontWeight={500}>
-                        {sub.descripcion}
-                      </Typography>
-                      <Typography variant="caption" color="#666">
-                        ID Subgasto: {sub.id_subgasto}
-                      </Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                      <IconButton 
-                        size="small" 
-                        sx={{ color: '#9c27b0' }}
-                        onClick={() => handleOpenSubsubcategorias(sub)}
-                        title="Ver Sub-subcategorías"
-                      >
-                        <AddIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton 
-                        size="small" 
-                        sx={{ color: '#d32f2f' }}
-                        onClick={() => handleDeleteSubcategoria(sub)}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </Box>
-                  </Box>
-                ))
-              ) : (
-                <Typography variant="body2" sx={{ color: '#666', textAlign: 'center', py: 3 }}>
-                  No hay subcategorías registradas para esta categoría.
-                </Typography>
-              )}
-            </Box>
-          </Box>
-
-          {/* Botones de Acción */}
-          <Box sx={{ 
-            display: 'flex', 
-            justifyContent: 'flex-end', 
-            alignItems: 'center',
-            mt: 4,
-            p: 2,
-            bgcolor: '#f8f9fa',
-            borderRadius: '8px',
-            borderTop: '1px solid #e0e0e0'
-          }}>
-            <Button 
-              onClick={handleCloseSubcategoriaModal} 
-              variant="contained"
-              sx={{ 
-                bgcolor: '#666',
-                color: 'white',
-                fontWeight: 'bold',
-                px: 4
-              }}
-            >
-              Cerrar
-            </Button>
+                    Cancelar
+                  </Button>
+                  <Button 
+                    onClick={subcategoriaForm.id_subgasto ? handleUpdateSubcategoria : handleSaveSubcategoria}
+                    variant="contained"
+                    disabled={loading || !subcategoriaForm.descripcion.trim()}
+                    sx={{ 
+                      bgcolor: '#2e7d32',
+                      color: 'white',
+                      fontWeight: 'bold',
+                      px: 4
+                    }}
+                  >
+                    {loading ? 'Guardando...' : (subcategoriaForm.id_subgasto ? 'Actualizar' : 'Guardar')}
+                  </Button>
+                </Box>
+              </Grid>
+            </Grid>
           </Box>
         </Box>
       </Dialog>
 
-      {/* --- MODAL DE SUB-SUBCATEGORÍAS --- */}
+      {/* --- MODAL DE FORMULARIO DE SUB-SUBCATEGORÍAS --- */}
       <Dialog 
-        open={openSubsubcategoriaModal} 
-        onClose={handleCloseSubsubcategoriaModal} 
+        open={openSubsubcategoriaFormModal} 
+        onClose={() => setOpenSubsubcategoriaFormModal(false)} 
         maxWidth="lg" 
         fullWidth
         PaperProps={{
@@ -913,9 +1335,9 @@ export default function CatCategorias() {
           {/* Header del Modal */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
             <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#333' }}>
-              🗂️ Sub-subcategorías de {subcategoriaSeleccionada?.descripcion}
+              {subsubcategoriaForm.id_subsubgasto ? '✏️ Editar Sub-subcategoría' : '🆕 Nueva Sub-subcategoría'}
             </Typography>
-            <IconButton onClick={handleCloseSubsubcategoriaModal}>
+            <IconButton onClick={() => setOpenSubsubcategoriaFormModal(false)}>
               <CloseIcon />
             </IconButton>
           </Box>
@@ -937,13 +1359,22 @@ export default function CatCategorias() {
             </Box>
           )}
 
-          {/* Formulario para agregar sub-subcategoría */}
+          {/* Formulario */}
           <Box sx={modalSectionStyle}>
-            <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#9c27b0', mb: 2 }}>
-              Agregar Nueva Sub-subcategoría
-            </Typography>
             <Grid container spacing={3}>
-              <Grid item xs={12}>
+              <Grid item xs={12} md={4}>
+                <TextField
+                  {...commonProps}
+                  label="ID Sub-subcategoría"
+                  name="id_subsubgasto"
+                  value={subsubcategoriaForm.id_subsubgasto || ''}
+                  onChange={handleSubsubcategoriaChange}
+                  placeholder="Ej. 1110, 1120, etc."
+                  type="number"
+                  required
+                />
+              </Grid>
+              <Grid item xs={12} md={4}>
                 <TextField
                   {...commonProps}
                   label="Descripción de la Sub-subcategoría"
@@ -956,93 +1387,63 @@ export default function CatCategorias() {
                   required
                 />
               </Grid>
-              <Grid item xs={12}>
-                <Button 
-                  variant="contained" 
-                  onClick={handleSaveSubsubcategoria}
-                  disabled={loading || !subsubcategoriaForm.descripcion.trim()}
-                  sx={{ 
-                    bgcolor: '#9c27b0', 
-                    color: 'white',
-                    fontWeight: 'bold',
-                    px: 4
-                  }}
-                >
-                  {loading ? 'Guardando...' : 'Agregar Sub-subcategoría'}
-                </Button>
+              <Grid item xs={12} md={4}>
+                <TextField
+                  {...commonProps}
+                  label="Cuenta Contable"
+                  name="cuenta_contable"
+                  value={subsubcategoriaForm.cuenta_contable}
+                  onChange={handleSubsubcategoriaChange}
+                  placeholder="Ej. 5-51-51-05"
+                />
               </Grid>
-            </Grid>
-          </Box>
-
-          {/* Lista de sub-subcategorías existentes */}
-          <Box sx={modalSectionStyle}>
-            <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#333', mb: 2 }}>
-              Sub-subcategorías Existentes
-            </Typography>
-            <Box sx={{ maxHeight: 300, overflow: 'auto' }}>
-              {subsubcategorias.length > 0 ? (
-                subsubcategorias.map((subsub) => (
-                  <Box 
-                    key={subsub.id_subsubgasto} 
+              <Grid item xs={12}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                    Segmentable:
+                  </Typography>
+                  <input
+                    type="checkbox"
+                    name="segmentable"
+                    checked={subsubcategoriaForm.segmentable}
+                    onChange={handleSubsubcategoriaChange}
+                    style={{ width: '20px', height: '20px' }}
+                  />
+                  <Typography variant="body2" color="#666">
+                    {subsubcategoriaForm.segmentable ? 'Sí' : 'No'}
+                  </Typography>
+                </Box>
+              </Grid>
+              <Grid item xs={12}>
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+                  <Button 
+                    onClick={() => setOpenSubsubcategoriaFormModal(false)} 
+                    variant="outlined"
                     sx={{ 
-                      p: 2, 
-                      mb: 1, 
-                      border: '1px solid #e0e0e0', 
-                      borderRadius: '8px',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      bgcolor: '#f9f9f9'
+                      borderColor: '#ccc',
+                      color: '#666',
+                      fontWeight: 'bold',
+                      px: 3
                     }}
                   >
-                    <Box>
-                      <Typography variant="body1" fontWeight={500}>
-                        {subsub.descripcion}
-                      </Typography>
-                      <Typography variant="caption" color="#666">
-                        ID Sub-subgasto: {subsub.id_subsubgasto}
-                      </Typography>
-                    </Box>
-                    <IconButton 
-                      size="small" 
-                      sx={{ color: '#d32f2f' }}
-                      onClick={() => handleDeleteSubsubcategoria(subsub)}
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </Box>
-                ))
-              ) : (
-                <Typography variant="body2" sx={{ color: '#666', textAlign: 'center', py: 3 }}>
-                  No hay sub-subcategorías registradas para esta subcategoría.
-                </Typography>
-              )}
-            </Box>
-          </Box>
-
-          {/* Botones de Acción */}
-          <Box sx={{ 
-            display: 'flex', 
-            justifyContent: 'flex-end', 
-            alignItems: 'center',
-            mt: 4,
-            p: 2,
-            bgcolor: '#f8f9fa',
-            borderRadius: '8px',
-            borderTop: '1px solid #e0e0e0'
-          }}>
-            <Button 
-              onClick={handleCloseSubsubcategoriaModal} 
-              variant="contained"
-              sx={{ 
-                bgcolor: '#666',
-                color: 'white',
-                fontWeight: 'bold',
-                px: 4
-              }}
-            >
-              Cerrar
-            </Button>
+                    Cancelar
+                  </Button>
+                  <Button 
+                    onClick={subsubcategoriaForm.id_subsubgasto ? handleUpdateSubsubcategoria : handleSaveSubsubcategoria}
+                    variant="contained"
+                    disabled={loading || !subsubcategoriaForm.descripcion.trim()}
+                    sx={{ 
+                      bgcolor: '#9c27b0',
+                      color: 'white',
+                      fontWeight: 'bold',
+                      px: 4
+                    }}
+                  >
+                    {loading ? 'Guardando...' : (subsubcategoriaForm.id_subsubgasto ? 'Actualizar' : 'Guardar')}
+                  </Button>
+                </Box>
+              </Grid>
+            </Grid>
           </Box>
         </Box>
       </Dialog>
