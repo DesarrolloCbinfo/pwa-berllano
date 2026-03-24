@@ -58,6 +58,7 @@ import TiposCuentas from './pages/cat_tipos_cuentas/page';
 import Usuarios from './pages/cat_usuarios/page';
 import FoliosNomina from './pages/cat_nominas_folios/page';
 import TurnosDobles from './pages/Cat_turnos_dobles/page';
+import CatPerfilesPermisos from './pages/cat_perfiles_permisos/page';
 
 
 
@@ -109,14 +110,14 @@ function App() {
          <Route path='/zos_autorizados' element={<Layout><PlasticosAutorizados/></Layout>} />
          <Route path='/medios_pagos' element={<Layout><MediosPagos/></Layout>} />
          <Route path='/descuento_proveedores' element={<Layout><DescuentoProveedores/></Layout>} />
-         <Route path='/proveedores_acreedores' element={<Layout><ProveedoresAcreedores/></Layout>} />
+         <Route path='/cat_proveedores_acreedores' element={<Layout><ProveedoresAcreedores/></Layout>} />
          <Route path='/cat_trabajadores' element={<Layout><CatTrabajadores/></Layout>} />
          <Route path='/cat_nomina_departamentos' element={<Layout><CatNominaDepartamentos/></Layout>} />
          <Route path='/cat_nomina_status' element={<Layout><CatNominaStatus/></Layout>} />
          <Route path='/cat_nomina_formas_pagos' element={<Layout><CatNominaFormasPagos/></Layout>} />
          <Route path='/cat_nomina_puestos' element={<Layout><CatNominaPuestos/></Layout>} />
          <Route path='/cat_nomina_bajas' element={<Layout><CatNominaBajas/></Layout>} />
-         <Route path='/factores_sucursales' element={<Layout><FactoresSucursales/></Layout>} />
+         <Route path='/factores_sucursal' element={<Layout><FactoresSucursales/></Layout>} />
 
           <Route path='/cat_nominas_movimientos' element={<Layout><NominasMovimientos/></Layout>} />
           <Route path='/cat_dias_festivos' element={<Layout><DiasFestivos/></Layout>} />
@@ -127,6 +128,7 @@ function App() {
           <Route path='/cat_usuarios' element={<Layout><Usuarios/></Layout>} />
           <Route path='/cat_nominas_folios' element={<Layout><FoliosNomina/></Layout>} />
           <Route path='/Cat_turnos_dobles' element={<Layout><TurnosDobles/></Layout>} />
+          <Route path='/cat_perfiles_permisos' element={<Layout><CatPerfilesPermisos/></Layout>} />
 
 
 

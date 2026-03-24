@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
-import { Box, CircularProgress, Alert, Typography } from '@mui/material';
+import { Box, CircularProgress, Alert, Typography, Paper, Grid } from '@mui/material';
 import useConsumoApi from "../../../hooks/useConsumoApi";
+import { useSessionContext } from '../../../context/SessionProvider'; 
 import {
   Button,
   Dialog,
@@ -13,6 +14,7 @@ import {
 import EditIcon from '@mui/icons-material/Edit';
 import { IconButton } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import AddIcon from '@mui/icons-material/Add';
 
 import PWABadge from '../../../PWABadge';
 
@@ -23,6 +25,7 @@ interface CatMarcas {
 
 export default function CatMarcas() {
   const { consumoApi } = useConsumoApi();
+  const { session } = useSessionContext();
   const [rows, setRows] = useState<CatMarcas[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,6 +47,40 @@ export default function CatMarcas() {
   const [deleteMarca, setDeleteMarca] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Props comunes para campos de formulario estilo Berllano Elegante
+  const commonProps = {
+    fullWidth: true,
+    size: "small" as const,
+    variant: "outlined" as const,
+    sx: {
+      '& .MuiInputBase-root': { 
+        height: '50px', 
+        alignItems: 'center',
+        borderRadius: '8px',
+        transition: 'all 0.3s ease',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+        '&:hover': {
+          boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+          borderColor: '#999'
+        }
+      },
+      '& .MuiInputLabel-root': { 
+        transform: 'translate(14px, 14px) scale(1)',
+        color: '#666',
+        fontWeight: 500
+      },
+      '& .MuiInputLabel-shrink': { 
+        transform: 'translate(14px, -9px) scale(0.75)',
+        color: '#333',
+        fontWeight: 600
+      },
+      '& .MuiOutlinedInput-notchedOutline': {
+        borderColor: '#e0e0e0',
+        borderWidth: '1.5px'
+      }
+    }
+  };
+
   const columns: GridColDef[] = [
     {
       field: 'acciones',
@@ -53,12 +90,25 @@ export default function CatMarcas() {
       filterable: false,
       renderCell: (params) => (
         <>
-          <IconButton onClick={() => handleEditOpen(params.row)}>
+          <IconButton 
+            onClick={() => handleEditOpen(params.row)}
+            sx={{
+              '&:hover': {
+                backgroundColor: 'rgba(51, 51, 51, 0.04)',
+                color: '#333'
+              }
+            }}
+          >
             <EditIcon />
           </IconButton>
           <IconButton
             color='error'
             onClick={() => handleDeleteOpen(params.row)}
+            sx={{
+              '&:hover': {
+                backgroundColor: 'rgba(211, 47, 47, 0.04)',
+              }
+            }}
           >
             <DeleteIcon />
           </IconButton>
@@ -210,28 +260,81 @@ export default function CatMarcas() {
 
   return (
     <>
-      <Box sx={{ p: 2 }}>
-        <h1>Catálogo de Marcas</h1>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-          <Button variant='contained' onClick={() => setOpenAdd(true)} sx={{ borderRadius: 2 }}>
-            Agregar Marca
-          </Button>
-        </Box>
+      <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#ececec' }}>
+        <Paper sx={{ p: 3, borderRadius: '8px' }}>
+          {/* ENCABEZADO */}
+          <Box sx={{ border: '1px solid #2c3e50', p: 1.5, mb: 2, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
+            <Box>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
+                    Catálogo de Marcas
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                    Sucursal: {session?.dSucursal || 'Cargando...'}
+                </Typography>
+            </Box>
+            <Box sx={{ textAlign: 'right' }}>
+                <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#333', lineHeight: 1.1, fontSize: '0.9rem' }}>
+                    {new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' }).replace('.', '')}
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                    Usuario: {session?.nombre || 'Cargando...'}
+                </Typography>
+            </Box>
+          </Box>
 
-        <DataGrid
-          rows={rows}
-          columns={columns}
-          getRowId={(row) => row.id}
-          pageSizeOptions={[5, 10, 25]}
-          initialState={{
-            pagination: {
-              paginationModel: {
-                pageSize: 10,
-              },
-            },
-          }}
-          sx={{ height: 600 }}
-        />
+          <Grid container spacing={2} justifyContent="flex-start" alignItems="center" sx={{ mb: 0.5 }}>
+            <Grid item xs={12} md={2}>
+              <Button variant="contained" onClick={() => setOpenAdd(true)} disabled={saving} fullWidth startIcon={<AddIcon />}
+                sx={{ 
+                    height: '50px', backgroundColor: '#333333', color: 'white', fontWeight: 600, textTransform: 'none', borderRadius: '8px',
+                    boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)', transition: 'all 0.3s ease',
+                    '&:hover': { backgroundColor: '#555555', boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)', transform: 'translateY(-1px)' }
+                }}>
+                AGREGAR
+              </Button>
+            </Grid>
+          </Grid>
+        </Paper>
+
+        {/* TABLA PRINCIPAL */}
+        <Box sx={{ mt: 3 }}>
+          <Paper sx={{ 
+            p: 3, 
+            width: '100%', 
+            maxHeight: 600, 
+            mb: 3, 
+            borderRadius: '8px', 
+            boxShadow: '0 4px 8px rgba(0,0,0,0.08)' 
+          }}>
+            <DataGrid
+              rows={rows}
+              columns={columns}
+              getRowId={(row) => row.id}
+              pageSizeOptions={[5, 10, 25]}
+              density="compact"
+              disableRowSelectionOnClick
+              initialState={{
+                pagination: {
+                  paginationModel: {
+                    pageSize: 10,
+                  },
+                },
+              }}
+              sx={{
+                border: 'none',
+                '& .MuiDataGrid-columnHeaders': {
+                  borderBottom: '2px solid #000',
+                  fontSize: '1rem',
+                  fontWeight: 'bold',
+                  textAlign: 'center'
+                },
+                '& .MuiDataGrid-cell': {
+                  borderBottom: '1px solid #e0e0e000'
+                }
+              }}
+            />
+          </Paper>
+        </Box>
 
         <Dialog
           open={openAdd}
@@ -240,58 +343,53 @@ export default function CatMarcas() {
           fullWidth
           PaperProps={{
             sx: {
-              borderRadius: 2,
+              borderRadius: '12px',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+              border: '1px solid #e0e0e0'
             }
           }}
         >
           <DialogTitle sx={{ 
-            bgcolor: '#424242', 
+            background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', 
             color: 'white',
             py: 2.5,
-            px: 3
+            px: 3,
+            borderBottom: '1px solid #e0e0e0'
           }}>
-            <Typography variant='h6' sx={{ fontWeight: 600 }}>
+            <Typography variant='h6' sx={{ fontWeight: 600, fontFamily: 'Georgia, "Times New Roman", serif' }}>
               Agregar Nueva Marca
             </Typography>
             <Typography variant='body2' sx={{ color: '#e0e0e0', mt: 0.5 }}>
-              Complete la información de la marca en los campos correspondientes
+              Complete la información de la marca
             </Typography>
           </DialogTitle>
 
-          <DialogContent sx={{ p: 3, bgcolor: '#fafafa' }}>
+          <DialogContent sx={{ p: 3, bgcolor: '#fff' }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              
-              {/* Identificación de la Marca */}
-              <Box>
-                <Box sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 1, 
-                  mb: 2,
-                  borderLeft: '3px solid #424242',
-                  pl: 1.5
-                }}>
-                  <Typography variant='subtitle1' sx={{ fontWeight: 600 }}>
-                    Identificación de la Marca
-                  </Typography>
-                </Box>
-                <TextField
-                  label='Marca *'
-                  value={marca}
-                  onChange={(e) => setMarca(e.target.value)}
-                  fullWidth
-                  size='small'
-                  sx={{ bgcolor: 'white' }}
-                />
-              </Box>
-
+              <TextField
+                label='Marca *'
+                value={marca}
+                onChange={(e) => setMarca(e.target.value)}
+                {...commonProps}
+              />
             </Box>
           </DialogContent>
 
-          <DialogActions sx={{ px: 3, py: 2, bgcolor: '#fafafa', borderTop: '1px solid #e0e0e0' }}>
+          <DialogActions sx={{ px: 3, py: 2, bgcolor: '#f5f5f5', borderTop: '1px solid #e0e0e0' }}>
             <Button 
               onClick={() => setOpenAdd(false)}
-              sx={{ textTransform: 'uppercase', fontWeight: 600 }}
+              sx={{ 
+                backgroundColor: '#e0e0e0', 
+                color: '#000', 
+                fontWeight: 600,
+                textTransform: 'none',
+                borderRadius: '8px',
+                padding: '8px 16px',
+                transition: 'all 0.3s ease',
+                '&:hover': { 
+                  backgroundColor: '#d0d0d0' 
+                }
+              }}
             >
               Cancelar
             </Button>
@@ -300,12 +398,18 @@ export default function CatMarcas() {
               onClick={handleAdd} 
               disabled={saving}
               sx={{ 
-                bgcolor: '#212121',
-                textTransform: 'uppercase',
+                backgroundColor: '#333333',
+                color: 'white',
                 fontWeight: 600,
-                px: 4,
-                '&:hover': {
-                  bgcolor: '#424242'
+                textTransform: 'none',
+                borderRadius: '8px',
+                padding: '8px 16px',
+                boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)',
+                transition: 'all 0.3s ease',
+                '&:hover': { 
+                  backgroundColor: '#555555',
+                  boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)',
+                  transform: 'translateY(-1px)'
                 }
               }}
             >
@@ -321,68 +425,59 @@ export default function CatMarcas() {
           fullWidth
           PaperProps={{
             sx: {
-              borderRadius: 2,
+              borderRadius: '12px',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+              border: '1px solid #e0e0e0'
             }
           }}
         >
           <DialogTitle sx={{ 
-            bgcolor: '#424242', 
+            background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', 
             color: 'white',
             py: 2.5,
-            px: 3
+            px: 3,
+            borderBottom: '1px solid #e0e0e0'
           }}>
-            <Typography variant='h6' sx={{ fontWeight: 600 }}>
+            <Typography variant='h6' sx={{ fontWeight: 600, fontFamily: 'Georgia, "Times New Roman", serif' }}>
               Editar Marca: {editId}
             </Typography>
             <Typography variant='body2' sx={{ color: '#e0e0e0', mt: 0.5 }}>
-              Complete la información de la marca en los campos correspondientes
+              Modifique la información de la marca
             </Typography>
           </DialogTitle>
 
-          <DialogContent sx={{ p: 3, bgcolor: '#fafafa' }}>
+          <DialogContent sx={{ p: 3, bgcolor: '#fff' }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              
-              {/* Identificación de la Marca */}
-              <Box>
-                <Box sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 1, 
-                  mb: 2,
-                  borderLeft: '3px solid #424242',
-                  pl: 1.5
-                }}>
-                  <Typography variant='subtitle1' sx={{ fontWeight: 600 }}>
-                    Identificación de la Marca
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <TextField 
-                    label='ID' 
-                    value={editId || ''} 
-                    disabled 
-                    fullWidth 
-                    size='small'
-                    sx={{ bgcolor: 'white' }}
-                  />
-                  <TextField
-                    label='Marca *'
-                    value={editMarca}
-                    onChange={(e) => setEditMarca(e.target.value)}
-                    fullWidth
-                    size='small'
-                    sx={{ bgcolor: 'white' }}
-                  />
-                </Box>
-              </Box>
-
+              <TextField 
+                label='ID' 
+                value={editId || ''} 
+                disabled 
+                {...commonProps}
+              />
+              <TextField
+                label='Marca *'
+                value={editMarca}
+                onChange={(e) => setEditMarca(e.target.value)}
+                {...commonProps}
+              />
             </Box>
           </DialogContent>
 
-          <DialogActions sx={{ px: 3, py: 2, bgcolor: '#fafafa', borderTop: '1px solid #e0e0e0' }}>
+          <DialogActions sx={{ px: 3, py: 2, bgcolor: '#f5f5f5', borderTop: '1px solid #e0e0e0' }}>
             <Button 
               onClick={() => setOpenEdit(false)}
-              sx={{ textTransform: 'uppercase', fontWeight: 600 }}
+              sx={{ 
+                backgroundColor: '#e0e0e0', 
+                color: '#000', 
+                fontWeight: 600,
+                textTransform: 'none',
+                borderRadius: '8px',
+                padding: '8px 16px',
+                transition: 'all 0.3s ease',
+                '&:hover': { 
+                  backgroundColor: '#d0d0d0' 
+                }
+              }}
             >
               Cancelar
             </Button>
@@ -391,44 +486,105 @@ export default function CatMarcas() {
               onClick={handleUpdate}
               disabled={savingEdit}
               sx={{ 
-                bgcolor: '#212121',
-                textTransform: 'uppercase',
+                backgroundColor: '#333333',
+                color: 'white',
                 fontWeight: 600,
-                px: 4,
-                '&:hover': {
-                  bgcolor: '#424242'
+                textTransform: 'none',
+                borderRadius: '8px',
+                padding: '8px 16px',
+                boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)',
+                transition: 'all 0.3s ease',
+                '&:hover': { 
+                  backgroundColor: '#555555',
+                  boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)',
+                  transform: 'translateY(-1px)'
                 }
               }}
             >
-              Guardar
+              Actualizar
             </Button>
           </DialogActions>
         </Dialog>
 
-        <Dialog open={openDelete} onClose={() => setOpenDelete(false)}>
-          <DialogTitle>Eliminar Marca</DialogTitle>
+        <Dialog 
+          open={openDelete} 
+          onClose={() => setOpenDelete(false)}
+          PaperProps={{
+            sx: {
+              borderRadius: '12px',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+              border: '1px solid #e0e0e0'
+            }
+          }}
+        >
+          <DialogTitle sx={{ 
+            background: 'linear-gradient(135deg, #d32f2f 0%, #f44336 100%)', 
+            color: 'white',
+            fontFamily: 'Georgia, "Times New Roman", serif'
+          }}>
+            Eliminar Marca
+          </DialogTitle>
 
-          <DialogContent>
-            <Typography>
+          <DialogContent sx={{ p: 3, bgcolor: '#fff' }}>
+            <Typography sx={{ fontSize: '1.1rem', mb: 2 }}>
               ¿Seguro que deseas eliminar la marca{' '}
               <strong>{deleteMarca}</strong>?
             </Typography>
+            <Typography variant="body2" sx={{ color: '#666' }}>
+              Esta acción no se puede deshacer.
+            </Typography>
           </DialogContent>
 
-          <DialogActions>
-            <Button onClick={() => setOpenDelete(false)}>Cancelar</Button>
-
+          <DialogActions sx={{ px: 3, py: 2, bgcolor: '#f5f5f5', borderTop: '1px solid #e0e0e0' }}>
+            <Button 
+              onClick={() => setOpenDelete(false)}
+              sx={{ 
+                backgroundColor: '#e0e0e0', 
+                color: '#000', 
+                fontWeight: 600,
+                textTransform: 'none',
+                borderRadius: '8px',
+                padding: '8px 16px',
+                transition: 'all 0.3s ease',
+                '&:hover': { 
+                  backgroundColor: '#d0d0d0' 
+                }
+              }}
+            >
+              Cancelar
+            </Button>
             <Button
               color='error'
               variant='contained'
               onClick={handleDelete}
               disabled={deleting}
+              sx={{ 
+                backgroundColor: '#d32f2f',
+                fontWeight: 600,
+                textTransform: 'none',
+                borderRadius: '8px',
+                padding: '8px 16px',
+                boxShadow: '0 4px 12px rgba(211, 47, 47, 0.3)',
+                transition: 'all 0.3s ease',
+                '&:hover': { 
+                  backgroundColor: '#b71c1c',
+                  boxShadow: '0 6px 16px rgba(211, 47, 47, 0.4)',
+                  transform: 'translateY(-1px)'
+                }
+              }}
             >
               Eliminar
             </Button>
           </DialogActions>
         </Dialog>
+
+      {/* PIE DE PÁGINA */}
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 1 }}>
+        <Typography variant="caption" sx={{ fontWeight: 'bold', textTransform: 'uppercase' }}>
+          CAT_MARCAS, ARAUCARIAS, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/')}, USR:{session?.nombre || 'ADMIN'}
+        </Typography>
       </Box>
+    </Box>
       <PWABadge />
     </>
   );

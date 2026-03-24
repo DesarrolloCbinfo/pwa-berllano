@@ -13,6 +13,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 
 import useConsumoApi from '../../../hooks/useConsumoApi'; 
+import { useSessionContext } from '../../../context/SessionProvider'; 
 
 // --- ESTILOS BERLLANO ELEGANTE ---
 const commonProps = {
@@ -73,6 +74,7 @@ const initialFormState = {
 
 export default function MetasSucursales() {
   const { consumoApi } = useConsumoApi();
+  const { session } = useSessionContext();
 
   // Estados de la tabla
   const [rows, setRows] = useState<any[]>([]);
@@ -188,11 +190,28 @@ export default function MetasSucursales() {
   ], []);
 
   return (
-    <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
-      <Paper sx={{ p: 3 }}>
-        <Typography variant="h4" component="h1" gutterBottom align="center" sx={{ fontWeight: 'bold', mb: 4 }}>
-          CONFIGURACIÓN DE METAS POR SUCURSAL
-        </Typography>
+    <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#ececec' }}>
+      {/* PAPER 1: ENCABEZADO Y TÍTULO */}
+      <Paper sx={{ p: 3, borderRadius: '8px', mb: 3 }}>
+        {/* ENCABEZADO */}
+        <Box sx={{ border: '1px solid #2c3e50', p: 1.5, mb: 2, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
+            <Box>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
+                    CONFIGURACIÓN DE METAS POR SUCURSAL
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                    Sucursal: {session?.dSucursal || 'Cargando...'}
+                </Typography>
+            </Box>
+            <Box sx={{ textAlign: 'right' }}>
+                <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#333', lineHeight: 1.1, fontSize: '0.9rem' }}>
+                    {new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' }).replace('.', '')}
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                    Usuario: {session?.nombre || 'Cargando...'}
+                </Typography>
+            </Box>
+        </Box>
 
         {/* PANEL DE CAPTURA RÁPIDA */}
         <Box sx={{ mb: 4 }}>
@@ -249,37 +268,37 @@ export default function MetasSucursales() {
 
           </Grid>
         </Box>
+      </Paper>
 
-        {/* TABLA PRINCIPAL */}
-        <Box sx={{ mb: 3 }}>
-          <TableContainer component={Paper} sx={{ maxHeight: 600, mb: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
-            <DataGrid 
-              rows={Array.isArray(rows) ? rows : []} 
-              columns={columns} 
-              getRowId={(row) => row.id} 
-              loading={loading || saving} 
-              paginationModel={paginationModel} 
-              onPaginationModelChange={setPaginationModel} 
-              pageSizeOptions={[50, 100, 500]} 
-              slots={{ toolbar: GridToolbar, pagination: CustomPagination }} 
-              slotProps={{ toolbar: { showQuickFilter: true } }} 
-              density="compact"
-              disableRowSelectionOnClick
-              sx={{ 
-                border: 'none', 
-                '& .MuiDataGrid-columnHeaders': {
-                  borderBottom: '2px solid #000',
-                  textAlign: 'center',
-                  fontSize: '1rem',
-                  fontWeight: 'bold'
-                },
-                '& .MuiDataGrid-cell': {
-                  borderBottom: '1px solid #e0e0e0'
-                }
-              }} 
-            />
-          </TableContainer>
-        </Box>
+      {/* PAPER 2: TABLA PRINCIPAL */}
+      <Paper sx={{ p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
+        <TableContainer component={Paper} sx={{ maxHeight: 600, borderRadius: '8px' }}>
+          <DataGrid 
+            rows={Array.isArray(rows) ? rows : []} 
+            columns={columns} 
+            getRowId={(row) => row.id} 
+            loading={loading || saving} 
+            paginationModel={paginationModel} 
+            onPaginationModelChange={setPaginationModel} 
+            pageSizeOptions={[50, 100, 500]} 
+            slots={{ toolbar: GridToolbar, pagination: CustomPagination }} 
+            slotProps={{ toolbar: { showQuickFilter: true } }} 
+            density="compact"
+            disableRowSelectionOnClick
+            sx={{ 
+              border: 'none', 
+              '& .MuiDataGrid-columnHeaders': {
+                borderBottom: '2px solid #000',
+                textAlign: 'center',
+                fontSize: '1rem',
+                fontWeight: 'bold'
+              },
+              '& .MuiDataGrid-cell': {
+                borderBottom: '1px solid #e0e0e0'
+              }
+            }} 
+          />
+        </TableContainer>
 
         {/* PIE DE PÁGINA ESTILO ACCESS */}
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 3 }}>

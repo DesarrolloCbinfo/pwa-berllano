@@ -1,19 +1,30 @@
 import { useEffect, useState } from 'react';
-import { DataGrid, GridColDef } from '@mui/x-data-grid';
-import { Box, CircularProgress, Alert, Typography } from '@mui/material';
-import useConsumoApi from "../../../hooks/useConsumoApi";
-import {
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-} from '@mui/material';
+import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
+import { Box, CircularProgress, Alert, Typography, Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, Snackbar } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
-import { IconButton } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import useConsumoApi from "../../../hooks/useConsumoApi";
+import { useSessionContext } from '../../../context/SessionProvider'; 
 
-import PWABadge from '../../../PWABadge';
+// --- ESTILOS BERLLANO ELEGANTE ---
+const commonProps = {
+  fullWidth: true,
+  size: "small" as const,
+  variant: "outlined" as const,
+  sx: {
+    '& .MuiInputBase-root': { 
+      height: '50px', 
+      alignItems: 'center',
+      borderRadius: '8px',
+      transition: 'all 0.3s ease',
+      boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+      '&:hover': { boxShadow: '0 4px 8px rgba(0,0,0,0.1)', borderColor: '#999' }
+    },
+    '& .MuiInputLabel-root': { transform: 'translate(14px, 14px) scale(1)', color: '#666', fontWeight: 500 },
+    '& .MuiInputLabel-shrink': { transform: 'translate(14px, -9px) scale(0.75)', color: '#333', fontWeight: 600 },
+    '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0', borderWidth: '1.5px' }
+  }
+};
 
 interface CatNominaFormasPagos {
   id: number;
@@ -23,9 +34,11 @@ interface CatNominaFormasPagos {
 
 export default function CatNominaFormasPagos() {
   const { consumoApi } = useConsumoApi();
+  const { session } = useSessionContext();
   const [rows, setRows] = useState<CatNominaFormasPagos[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' | 'info' } | null>(null);
 
   // Elementos para agregar formas de pago
   const [openAdd, setOpenAdd] = useState(false);
@@ -46,14 +59,18 @@ export default function CatNominaFormasPagos() {
       field: 'actions',
       headerName: 'Acciones',
       width: 100,
+      sortable: false,
+      filterable: false,
+      align: 'center',
+      headerAlign: 'center',
       renderCell: (params) => (
-        <IconButton onClick={() => handleEditOpen(params.row)}>
+        <IconButton size="small" onClick={() => handleEditOpen(params.row)}>
           <EditIcon />
         </IconButton>
       ),
     },
-    { field: 'clave_forma_pago', headerName: 'Clave', width: 150, type: 'number' },
-    { field: 'descripcion_forma_pago', headerName: 'Descripción', width: 300, type: 'string' },
+    { field: 'clave_forma_pago', headerName: 'Clave', width: 150, type: 'number', align: 'center', headerAlign: 'center' },
+    { field: 'descripcion_forma_pago', headerName: 'Descripción', width: 300, type: 'string', align: 'left', headerAlign: 'center' },
   ];
 
   const handleEditOpen = (row: CatNominaFormasPagos) => {
@@ -62,7 +79,6 @@ export default function CatNominaFormasPagos() {
     setEditDescripcionFormaPago(row.descripcion_forma_pago);
     setOpenEdit(true);
   };
-
 
   const fetchFormasPagos = async () => {
     try {
@@ -103,15 +119,17 @@ export default function CatNominaFormasPagos() {
       const result = response.data?.[0];
 
       if (result?.codigo !== 0) {
-        throw new Error(result?.mensaje1 || 'Error al guardar');
+        setMessage({ text: result?.mensaje1 || 'Error al guardar', type: 'error' });
+        return;
       }
 
+      setMessage({ text: '✅ Forma de pago agregada correctamente', type: 'success' });
       setOpenAdd(false);
       setClaveFormaPago('');
       setDescripcionFormaPago('');
       fetchFormasPagos(); //  refresca grid
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Error desconocido');
+      setMessage({ text: err instanceof Error ? err.message : 'Error desconocido', type: 'error' });
     } finally {
       setSaving(false);
     }
@@ -133,37 +151,54 @@ export default function CatNominaFormasPagos() {
       const result = response.data?.[0];
 
       if (result?.codigo !== 0) {
-        throw new Error(result?.mensaje1 || 'Error al actualizar');
+        setMessage({ text: result?.mensaje1 || 'Error al actualizar', type: 'error' });
+        return;
       }
 
+      setMessage({ text: '💾 Forma de pago actualizada correctamente', type: 'success' });
       setOpenEdit(false);
       setEditId(null);
       setEditClaveFormaPago('');
       setEditDescripcionFormaPago('');
       fetchFormasPagos(); // refresca grid
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Error desconocido');
+      setMessage({ text: err instanceof Error ? err.message : 'Error desconocido', type: 'error' });
     } finally {
       setSavingEdit(false);
     }
   };
 
-
-
   return (
-    <>
-      <PWABadge />
-      <Box sx={{ height: 600, width: '100%' }}>
-        <Typography variant="h4" gutterBottom>
-          Catálogo de Formas de Pago
-        </Typography>
-        
-        <Button 
-          variant="contained" 
-          onClick={() => setOpenAdd(true)}
-          sx={{ mb: 2, borderRadius: 2 }}
-        >
-          Agregar Forma de Pago
+    <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#ececec' }}>
+      <Paper sx={{ p: 3, borderRadius: '8px' }}>
+        {/* ENCABEZADO BERLLANO ELEGANTE 2 */}
+        <Box sx={{ border: '1px solid #2c3e50', borderRadius: '8px', backgroundColor: '#fff', p: 1.5, mb: 2, display: 'flex', justifyContent: 'space-between' }}>
+          <Box>
+            <Typography variant="h6" sx={{ fontFamily: 'Georgia, "Times New Roman", serif', fontWeight: 'bold', color: '#1a365d', fontSize: '1.1rem' }}>
+              Catálogo de Formas de Pago
+            </Typography>
+            <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', fontSize: '0.75rem' }}>
+              Sucursal: {session?.dSucursal || 'Cargando...'}
+            </Typography>
+          </Box>
+          <Box sx={{ textAlign: 'right' }}>
+            <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#333', fontSize: '0.9rem' }}>
+              {new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' }).replace('.', '')}
+            </Typography>
+            <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', fontSize: '0.75rem' }}>
+              USR: {session?.nombre || 'ADMIN'}
+            </Typography>
+          </Box>
+        </Box>
+
+        {/* Botón Agregar */}
+        <Button variant="contained" onClick={() => setOpenAdd(true)} startIcon={<AddIcon />}
+          sx={{ 
+            height: '50px', backgroundColor: '#333333', color: 'white', fontWeight: 600, textTransform: 'none', borderRadius: '8px',
+            boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)', transition: 'all 0.3s ease', mb: 2,
+            '&:hover': { backgroundColor: '#555555', boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)', transform: 'translateY(-1px)' }
+          }}>
+          AGREGAR FORMA DE PAGO
         </Button>
 
         {error && (
@@ -171,30 +206,67 @@ export default function CatNominaFormasPagos() {
             {error}
           </Alert>
         )}
+      </Paper>
 
-        <DataGrid
-          rows={rows}
-          columns={columns}
-          loading={loading}
-          pageSizeOptions={[5, 10, 25]}
-          initialState={{
-            pagination: {
-              paginationModel: { pageSize: 10 },
-            },
-          }}
-        />
+      {/* TABLA PRINCIPAL */}
+      <Box sx={{ mt: 3 }}>
+        <Paper sx={{ p: 3, width: '100%', maxHeight: 600, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
+          <DataGrid
+            rows={rows}
+            columns={columns}
+            loading={loading}
+            pageSizeOptions={[5, 10, 25]}
+            slots={{ toolbar: GridToolbar }}
+            slotProps={{ toolbar: { showQuickFilter: true } }}
+            density="compact"
+            disableRowSelectionOnClick
+            initialState={{
+              pagination: {
+                paginationModel: { pageSize: 10 },
+              },
+            }}
+            sx={{ 
+              border: 'none', 
+              '& .MuiDataGrid-columnHeaders': { borderBottom: '2px solid #000', fontSize: '1rem', fontWeight: 'bold', textAlign: 'center' },
+              '& .MuiDataGrid-cell': { borderBottom: '1px solid #e0e0e000' },
+              '& .MuiDataGrid-cell--editable': { backgroundColor: '#f9fbfd', cursor: 'pointer' }, 
+              '& .MuiDataGrid-cell--editing': { backgroundColor: '#fff', boxShadow: '0 0 5px rgba(25,118,210,0.5)' }
+            }} 
+          />
+        </Paper>
+      </Box>
+
+      {/* PIE DE PÁGINA BERLLANO ELEGANTE 2 */}
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 3 }}>
+        <Button variant="contained" sx={{ backgroundColor: '#e0e0e0', color: '#000', fontWeight: 'bold', px: 4, mb: 2, '&:hover': { backgroundColor: '#d0d0d0' } }}>
+          Salir
+        </Button>
+        <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
+          CAT_NOMINA_FORMAS_PAGOS, ARAUCARIAS, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/')}, USR:{session?.nombre || 'ADMIN'}
+        </Typography>
       </Box>
 
       {/* Dialog para agregar */}
-      <Dialog open={openAdd} onClose={() => setOpenAdd(false)}>
-        <DialogTitle>Agregar Forma de Pago</DialogTitle>
+      <Dialog 
+        open={openAdd} 
+        onClose={() => setOpenAdd(false)}
+        PaperProps={{
+          sx: {
+            borderRadius: '12px',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+            border: '1px solid #e0e0e0'
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontFamily: 'Georgia, "Times New Roman", serif', fontWeight: 'bold', color: '#1a365d' }}>
+          Agregar Forma de Pago
+        </DialogTitle>
         <DialogContent>
           <TextField
             autoFocus
-            margin="dense"
-            label="Clave de la Forma de Pago"
-            fullWidth
-            variant="outlined"
+            {...commonProps}
+            label="Clave de la Forma de Pago*"
+            type="number"
             value={clave_forma_pago}
             onChange={(e) => {
               const value = e.target.value;
@@ -208,20 +280,30 @@ export default function CatNominaFormasPagos() {
             sx={{ mb: 2 }}
           />
           <TextField
-            margin="dense"
-            label="Descripción de la Forma de Pago"
-            fullWidth
-            variant="outlined"
+            {...commonProps}
+            label="Descripción de la Forma de Pago*"
             value={descripcion_forma_pago}
             onChange={(e) => setDescripcionFormaPago(e.target.value)}
           />
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenAdd(false)}>Cancelar</Button>
+        <DialogActions sx={{ p: 3 }}>
           <Button 
-            onClick={handleAdd} 
+            onClick={() => setOpenAdd(false)}
+            sx={{ 
+              backgroundColor: '#e0e0e0', color: '#000', fontWeight: 'bold',
+              '&:hover': { backgroundColor: '#d0d0d0' }, borderRadius: '8px'
+            }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleAdd}
             disabled={saving}
-            sx={{ backgroundColor: 'black', color: 'white', '&:hover': { backgroundColor: '#333' }, borderRadius: 2 }}
+            sx={{ 
+              backgroundColor: '#333333', color: 'white', fontWeight: 600, textTransform: 'none', borderRadius: '8px',
+              boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)', transition: 'all 0.3s ease',
+              '&:hover': { backgroundColor: '#555555', boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)', transform: 'translateY(-1px)' }
+            }}
           >
             {saving ? 'Guardando...' : 'Guardar'}
           </Button>
@@ -229,15 +311,26 @@ export default function CatNominaFormasPagos() {
       </Dialog>
 
       {/* Dialog para editar */}
-      <Dialog open={openEdit} onClose={() => setOpenEdit(false)}>
-        <DialogTitle>Editar Forma de Pago</DialogTitle>
+      <Dialog 
+        open={openEdit} 
+        onClose={() => setOpenEdit(false)}
+        PaperProps={{
+          sx: {
+            borderRadius: '12px',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+            border: '1px solid #e0e0e0'
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontFamily: 'Georgia, "Times New Roman", serif', fontWeight: 'bold', color: '#1a365d' }}>
+          Editar Forma de Pago
+        </DialogTitle>
         <DialogContent>
           <TextField
             autoFocus
-            margin="dense"
-            label="Clave de la Forma de Pago"
-            fullWidth
-            variant="outlined"
+            {...commonProps}
+            label="Clave de la Forma de Pago*"
+            type="number"
             value={editClaveFormaPago}
             onChange={(e) => {
               const value = e.target.value;
@@ -251,26 +344,40 @@ export default function CatNominaFormasPagos() {
             sx={{ mb: 2 }}
           />
           <TextField
-            margin="dense"
-            label="Descripción de la Forma de Pago"
-            fullWidth
-            variant="outlined"
+            {...commonProps}
+            label="Descripción de la Forma de Pago*"
             value={editDescripcionFormaPago}
             onChange={(e) => setEditDescripcionFormaPago(e.target.value)}
           />
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenEdit(false)}>Cancelar</Button>
+        <DialogActions sx={{ p: 3 }}>
           <Button 
-            onClick={handleUpdate} 
+            onClick={() => setOpenEdit(false)}
+            sx={{ 
+              backgroundColor: '#e0e0e0', color: '#000', fontWeight: 'bold',
+              '&:hover': { backgroundColor: '#d0d0d0' }, borderRadius: '8px'
+            }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleUpdate}
             disabled={savingEdit}
-            sx={{ backgroundColor: 'black', color: 'white', '&:hover': { backgroundColor: '#333' }, borderRadius: 2 }}
+            sx={{ 
+              backgroundColor: '#333333', color: 'white', fontWeight: 600, textTransform: 'none', borderRadius: '8px',
+              boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)', transition: 'all 0.3s ease',
+              '&:hover': { backgroundColor: '#555555', boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)', transform: 'translateY(-1px)' }
+            }}
           >
             {savingEdit ? 'Actualizando...' : 'Actualizar'}
           </Button>
         </DialogActions>
       </Dialog>
 
-    </>
+      {/* NOTIFICACIONES */}
+      <Snackbar open={!!message} autoHideDuration={3000} onClose={() => setMessage(null)}>
+        <Alert severity={message?.type} onClose={() => setMessage(null)} sx={{ width: '100%' }}>{message?.text}</Alert>
+      </Snackbar>
+    </Box>
   );
 }

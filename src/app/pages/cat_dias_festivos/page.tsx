@@ -12,6 +12,8 @@ import {
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 
+import Swal from 'sweetalert2'; // <--- AGREGAR ESTA LÍNEA
+
 import useConsumoApi from '../../../hooks/useConsumoApi';
 import { useSessionContext } from '../../../context/SessionProvider'; 
 
@@ -41,21 +43,23 @@ export default function DiasFestivos() {
 
   useEffect(() => { fetchTabla(); }, []);
 
-  const fetchTabla = async () => {
+const fetchTabla = async () => {
       setLoading(true);
       try {
           const res = await consumoApi.get('/api/DiasFestivos/sp_bw_cat_dias_festivos_sel');
-          // Le asignamos un ID falso a cada fila (el índice) solo para que DataGrid no se queje, 
-          // pero nuestra llave real para borrar seguirá siendo la fecha.
           const dataConId = (Array.isArray(res?.data) ? res.data : []).map((row, index) => ({ ...row, id: index }));
           setRows(dataConId);
       } catch (error) {
-          setMessage({ text: 'Error al cargar la tabla.', type: 'error' });
+          // CAMBIO: Alerta de error
+          Swal.fire({ title: 'Error', text: 'Error al cargar la tabla.', icon: 'error', confirmButtonColor: '#333' });
       } finally { setLoading(false); }
   };
 
-  const handleAgregarNuevo = async () => {
-        if (!fechaFestivo) return setMessage({ text: "Seleccione una fecha.", type: 'error' });
+const handleAgregarNuevo = async () => {
+        // CAMBIO: Validación con SweetAlert
+        if (!fechaFestivo) {
+            return Swal.fire({ title: 'Atención', text: 'Seleccione una fecha.', icon: 'warning', confirmButtonColor: '#333' });
+        }
 
         setSaving(true);
         try {
@@ -63,27 +67,44 @@ export default function DiasFestivos() {
             const res = await consumoApi.post('/api/DiasFestivos/sp_bw_cat_dias_festivos_ins', payload);
             
             if (res.status === 200) {
-                setMessage({ text: `✅ Día festivo agregado.`, type: 'success' });
+                // CAMBIO: Éxito con SweetAlert (Se cierra solo en 2 seg)
+                Swal.fire({ title: '¡Guardado!', text: 'Día festivo agregado.', icon: 'success', timer: 2000, showConfirmButton: false });
                 fetchTabla();
             }
         } catch (error: any) {
-            setMessage({ text: error.response?.data?.mensaje || "Error al agregar el registro.", type: 'error' });
+            // CAMBIO: Error con SweetAlert
+            Swal.fire({ title: 'Error', text: error.response?.data?.mensaje || "Error al agregar el registro.", icon: 'error', confirmButtonColor: '#333' });
         } finally {
             setSaving(false);
         }
     };
 
-  const handleEliminar = async (fechaString: string) => {
-      if (!window.confirm("¿Está seguro que desea eliminar este día festivo?")) return;
+const handleEliminar = async (fechaString: string) => {
+      // CAMBIO: Confirmación moderna con SweetAlert
+      const confirmacion = await Swal.fire({
+          title: '¿Estás seguro?',
+          text: "¿Deseas eliminar este día festivo?",
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d32f2f',
+          cancelButtonColor: '#333',
+          confirmButtonText: 'Sí, eliminar',
+          cancelButtonText: 'Cancelar'
+      });
+
+      if (!confirmacion.isConfirmed) return;
+
       setSaving(true);
       try {
           const res = await consumoApi.delete(`/api/DiasFestivos/sp_bw_cat_dias_festivos_del?fechaFestivo=${fechaString}`);
           if (res.status === 200) {
-              setMessage({ text: "🗑️ Día festivo eliminado.", type: 'success' });
+              // CAMBIO: Éxito con SweetAlert
+              Swal.fire({ title: 'Eliminado', text: 'Día festivo eliminado.', icon: 'success', timer: 2000, showConfirmButton: false });
               fetchTabla();
           }
       } catch (error) {
-          setMessage({ text: "Error al eliminar.", type: 'error' });
+          // CAMBIO: Error con SweetAlert
+          Swal.fire({ title: 'Error', text: 'Error al eliminar.', icon: 'error', confirmButtonColor: '#333' });
       } finally {
           setSaving(false);
       }
@@ -114,12 +135,12 @@ export default function DiasFestivos() {
   ], []);
 
   return (
-    <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
-      <Paper sx={{ p: 3 }}>
+    <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#ececec' }}>
+      <Paper sx={{ p: 3, borderRadius: '8px' }}>
 
 
         {/* ENCABEZADO ESTILO ACCESS */}
-        <Box sx={{ border: '1px solid #2c3e50', p: 1.5, mb: 2, borderRadius: '6px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
+        <Box sx={{ border: '1px solid #2c3e50', p: 1.5, mb: 2, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
             <Box>
                 <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
                     Catálogo de Días Festivos
@@ -166,7 +187,7 @@ export default function DiasFestivos() {
 
         {/* TABLA PRINCIPAL */}
         <Box sx={{ mt: 3 }}>
-          <Paper sx={{ width: '100%', maxHeight: 600, mb: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
+          <Paper sx={{ p: 3, width: '100%', maxHeight: 600, mb: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
             <DataGrid 
                 rows={Array.isArray(rows) ? rows : []} 
                 columns={columns} 
@@ -182,17 +203,12 @@ export default function DiasFestivos() {
                 sx={{ 
                     border: 'none', 
                     '& .MuiDataGrid-columnHeaders': { borderBottom: '2px solid #000', fontSize: '1rem', fontWeight: 'bold' },
-                    '& .MuiDataGrid-cell': { borderBottom: '1px solid #e0e0e0' }
+                    '& .MuiDataGrid-cell': { borderBottom: '1px solid #e0e0e000' },
                 }} 
             />
           </Paper>
         </Box>
 
-
-
-      <Snackbar open={!!message} autoHideDuration={3000} onClose={() => setMessage(null)}>
-        <Alert severity={message?.type} onClose={() => setMessage(null)} sx={{ width: '100%' }}>{message?.text}</Alert>
-      </Snackbar>
     </Box>
   );
 }

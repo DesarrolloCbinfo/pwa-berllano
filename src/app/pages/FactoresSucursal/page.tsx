@@ -1,9 +1,43 @@
 import { useState } from 'react'
-import { Box, CircularProgress, Alert, Typography, Button, TextField, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Grid } from '@mui/material'
+import { Box, CircularProgress, Alert, Typography, Button, TextField, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Grid, Paper, Snackbar } from '@mui/material'
 import { DataGrid, GridColDef } from '@mui/x-data-grid'
 import EditIcon from '@mui/icons-material/Edit'
 import useConsumoApi from '../../../hooks/useConsumoApi'
 import PWABadge from '../../../PWABadge'
+
+// --- ESTILOS BERLLANO ELEGANTE 2 ---
+const commonProps = {
+  fullWidth: true,
+  size: 'small' as const,
+  variant: 'outlined' as const,
+  sx: {
+    '& .MuiInputBase-root': {
+      height: '50px',
+      alignItems: 'center',
+      borderRadius: '12px',
+      transition: 'all 0.3s ease',
+      boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+      '&:hover': {
+        boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+        borderColor: '#999',
+      },
+    },
+    '& .MuiInputLabel-root': {
+      transform: 'translate(14px, 14px) scale(1)',
+      color: '#666',
+      fontWeight: 500,
+    },
+    '& .MuiInputLabel-shrink': {
+      transform: 'translate(14px, -9px) scale(0.75)',
+      color: '#333',
+      fontWeight: 600,
+    },
+    '& .MuiOutlinedInput-notchedOutline': {
+      borderColor: '#e0e0e0',
+      borderWidth: '1.5px',
+    },
+  },
+};
 
 interface FactorSucursal {
   id: number
@@ -41,6 +75,7 @@ export default function FactoresSucursal() {
   const [editingRow, setEditingRow] = useState<FactorSucursal | null>(null)
   const [viewData, setViewData] = useState<FactorSucursal | null>(null)
   const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState<{text: string; type: 'success' | 'error'} | null>(null)
 
   const columns: GridColDef[] = [
     {
@@ -266,9 +301,10 @@ export default function FactoresSucursal() {
       }))
 
       setRows(data)
+      setMessage({ text: 'Datos consultados exitosamente', type: 'success' })
     } catch (err) {
       console.error('Error al consultar factores:', err)
-      setError('Error al cargar los datos')
+      setMessage({ text: 'Error al cargar los datos', type: 'error' })
     } finally {
       setLoading(false)
     }
@@ -337,13 +373,13 @@ export default function FactoresSucursal() {
           row.id === editingRow.id ? editingRow : row
         ))
         handleEditClose()
-        setError(null)
+        setMessage({ text: 'Factores actualizados exitosamente', type: 'success' })
       } else {
-        setError(result?.mensaje1 || 'Error al actualizar')
+        setMessage({ text: result?.mensaje1 || 'Error al actualizar', type: 'error' })
       }
     } catch (err) {
       console.error('Error al actualizar:', err)
-      setError('Error al actualizar los datos')
+      setMessage({ text: 'Error al actualizar los datos', type: 'error' })
     } finally {
       setSaving(false)
     }
@@ -351,33 +387,79 @@ export default function FactoresSucursal() {
 
   return (
     <>
-      <Box sx={{ width: '100%', p: 2, backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
-        <Box sx={{ backgroundColor: 'white', p: 3, borderRadius: 1, boxShadow: 1 }}>
-          <Typography variant="h4" sx={{ mb: 3, fontWeight: 'bold' }}>
-            Factores por Sucursal
-          </Typography>
+      <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#ececec' }}>
+        <Paper sx={{ p: 2, borderRadius: '8px', mb: 2 }}>
+          {/* ENCABEZADO BERLLANO ELEGANTE 2 */}
+          <Box sx={{ border: '1px solid #2c3e50', borderRadius: '8px', backgroundColor: '#fff', p: 1.5, mb: 2, display: 'flex', justifyContent: 'space-between' }}>
+            <Box>
+              <Typography
+                variant='h6'
+                component='h1'
+                sx={{
+                  fontFamily: 'Georgia, "Times New Roman", serif',
+                  fontWeight: 'bold',
+                  color: '#1a365d',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  fontSize: '1.1rem'
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    backgroundColor: '#333333',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'white',
+                    boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)',
+                    transition: 'all 0.3s ease',
+                    fontSize: '20px',
+                  }}
+                >
+                  📊
+                </Box>
+                Factores por Sucursal
+              </Typography>
+              <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', fontSize: '0.75rem' }}>
+                Sistema de Gestión de Factores
+              </Typography>
+            </Box>
+            <Box sx={{ textAlign: 'right' }}>
+              <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#333', fontSize: '0.9rem' }}>
+                {new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' }).replace('.', '')}
+              </Typography>
+              <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', fontSize: '0.75rem' }}>
+                USR: ADMIN
+              </Typography>
+            </Box>
+          </Box>
 
-          <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center' }}>
+          {/* SECCIÓN DE FILTROS */}
+          <Box sx={{ display: 'flex', gap: 3, alignItems: 'center', flexWrap: 'wrap', mb: 3 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Typography>Año</Typography>
+              <Typography sx={{ fontWeight: 'bold', color: '#333' }}>Año</Typography>
               <TextField
-                size="small"
+                {...commonProps}
                 value={anio}
                 onChange={(e) => setAnio(e.target.value)}
                 type="number"
-                sx={{ width: 100 }}
+                sx={{ width: 120 }}
                 inputProps={{ min: 2000, max: 2100 }}
               />
             </Box>
 
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Typography>Mes</Typography>
+              <Typography sx={{ fontWeight: 'bold', color: '#333' }}>Mes</Typography>
               <TextField
-                size="small"
+                {...commonProps}
                 value={mes}
                 onChange={(e) => setMes(e.target.value)}
                 type="number"
-                sx={{ width: 80 }}
+                sx={{ width: 100 }}
                 inputProps={{ min: 1, max: 12 }}
               />
             </Box>
@@ -386,17 +468,36 @@ export default function FactoresSucursal() {
               variant="contained"
               onClick={handleConsultar}
               disabled={loading}
+              sx={{
+                height: '50px',
+                backgroundColor: '#333333',
+                color: 'white',
+                fontWeight: 600,
+                textTransform: 'none',
+                borderRadius: '8px',
+                boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)',
+                transition: 'all 0.3s ease',
+                '&:hover': { 
+                  backgroundColor: '#555555', 
+                  boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)', 
+                  transform: 'translateY(-1px)' 
+                },
+              }}
             >
-              Consultar
+              {loading ? 'Consultando...' : 'Consultar'}
             </Button>
           </Box>
+        </Paper>
 
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
-
+        {/* TABLA DE DATOS */}
+        <Paper
+          sx={{
+            p: 3,
+            backgroundColor: 'white',
+            borderRadius: '8px',
+            boxShadow: '0 4px 8px rgba(0,0,0,0.08)',
+          }}
+        >
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
               <CircularProgress />
@@ -408,26 +509,53 @@ export default function FactoresSucursal() {
                 columns={columns}
                 pageSizeOptions={[10, 25, 50, 100]}
                 onRowClick={(params) => handleViewOpen(params.row)}
+                density="compact"
                 sx={{
-                  '& .MuiDataGrid-columnHeaders': {
-                    backgroundColor: '#f5f5f5',
+                  border: 'none',
+                  '& .MuiDataGrid-columnHeaders': { 
+                    borderBottom: '2px solid #000', 
+                    fontSize: '1rem', 
                     fontWeight: 'bold',
-                    fontSize: '0.75rem',
+                    textAlign: 'center'
                   },
-                  '& .MuiDataGrid-cell': {
-                    fontSize: '0.75rem',
+                  '& .MuiDataGrid-cell': { 
+                    borderBottom: '1px solid #e0e0e000',
+                    cursor: 'pointer'
                   },
-                  '& .MuiDataGrid-row': {
-                    cursor: 'pointer',
+                  '& .MuiDataGrid-cell--editable': { 
+                    backgroundColor: '#f9fbfd', 
+                    cursor: 'pointer'
+                  }, 
+                  '& .MuiDataGrid-cell--editing': { 
+                    backgroundColor: '#fff', 
+                    boxShadow: '0 0 5px rgba(25,118,210,0.5)'
                   },
-                  '& .MuiDataGrid-row:nth-of-type(even)': {
-                    backgroundColor: '#f9f9f9',
+                  '& .MuiDataGrid-row:hover': {
+                    backgroundColor: '#fafafa',
+                  },
+                  '& .MuiDataGrid-row.Mui-selected': {
+                    backgroundColor: '#f0f0f0',
                   },
                 }}
               />
             </Box>
           )}
+        </Paper>
+
+        {/* PIE DE PÁGINA BERLLANO ELEGANTE 2 */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 3 }}>
+          <Button variant="contained" sx={{ backgroundColor: '#e0e0e0', color: '#000', fontWeight: 'bold', px: 4, mb: 2, '&:hover': { backgroundColor: '#d0d0d0' } }}>
+            Salir
+          </Button>
+          <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
+            FACTORES_SUCURSAL, ARAUCARIAS, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/')}, USR:ADMIN
+          </Typography>
         </Box>
+
+        {/* NOTIFICACIONES */}
+        <Snackbar open={!!message} autoHideDuration={3000} onClose={() => setMessage(null)}>
+          <Alert severity={message?.type} onClose={() => setMessage(null)} sx={{ width: '100%' }}>{message?.text}</Alert>
+        </Snackbar>
       </Box>
 
       {/* Dialog Ver Detalles */}
@@ -438,20 +566,23 @@ export default function FactoresSucursal() {
         fullWidth
         PaperProps={{
           sx: {
-            borderRadius: 2,
+            borderRadius: '12px',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+            border: '1px solid #e0e0e0'
           }
         }}
       >
         <DialogTitle sx={{ 
-          bgcolor: '#424242', 
-          color: 'white',
-          py: 2.5,
-          px: 3
+          fontFamily: 'Georgia, "Times New Roman", serif',
+          fontWeight: 'bold', 
+          color: '#1a365d',
+          borderBottom: '1px solid #e0e0e0',
+          py: 2
         }}>
-          <Typography variant='h6' sx={{ fontWeight: 600 }}>
+          <Typography variant='h6' sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
             Detalles de Factores: {viewData?.fecha}
           </Typography>
-          <Typography variant='body2' sx={{ color: '#e0e0e0', mt: 0.5 }}>
+          <Typography variant='body2' sx={{ color: '#555', mt: 0.5 }}>
             Información completa de factores por sucursal
           </Typography>
         </DialogTitle>
@@ -467,56 +598,30 @@ export default function FactoresSucursal() {
                   alignItems: 'center', 
                   gap: 1, 
                   mb: 2,
-                  borderLeft: '3px solid #424242',
+                  borderLeft: '3px solid #1a365d',
                   pl: 1.5
                 }}>
-                  <Typography variant='subtitle1' sx={{ fontWeight: 600 }}>
+                  <Typography variant='subtitle1' sx={{ fontWeight: 600, color: '#1a365d' }}>
                     Factores de Reventa
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 2 }}>
-                  <Box>
-                    <Typography variant='caption' sx={{ color: '#666' }}>Reventa Ara</Typography>
-                    <Typography variant='body2' sx={{ fontWeight: 500 }}>
-                      {((viewData.reventa_ara ?? 0) * 100).toFixed(1)}%
-                    </Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant='caption' sx={{ color: '#666' }}>Reventa P1</Typography>
-                    <Typography variant='body2' sx={{ fontWeight: 500 }}>
-                      {((viewData.reventa_p1 ?? 0) * 100).toFixed(1)}%
-                    </Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant='caption' sx={{ color: '#666' }}>Reventa P2</Typography>
-                    <Typography variant='body2' sx={{ fontWeight: 500 }}>
-                      {((viewData.reventa_p2 ?? 0) * 100).toFixed(1)}%
-                    </Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant='caption' sx={{ color: '#666' }}>Reventa Ver</Typography>
-                    <Typography variant='body2' sx={{ fontWeight: 500 }}>
-                      {((viewData.reventa_ver ?? 0) * 100).toFixed(1)}%
-                    </Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant='caption' sx={{ color: '#666' }}>Reventa Dor</Typography>
-                    <Typography variant='body2' sx={{ fontWeight: 500 }}>
-                      {((viewData.reventa_dor ?? 0) * 100).toFixed(1)}%
-                    </Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant='caption' sx={{ color: '#666' }}>Reventa And</Typography>
-                    <Typography variant='body2' sx={{ fontWeight: 500 }}>
-                      {((viewData.reventa_and ?? 0) * 100).toFixed(1)}%
-                    </Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant='caption' sx={{ color: '#666' }}>Reventa Leju</Typography>
-                    <Typography variant='body2' sx={{ fontWeight: 500 }}>
-                      {((viewData.reventa_leju ?? 0) * 100).toFixed(1)}%
-                    </Typography>
-                  </Box>
+                  {[
+                    { label: 'Reventa Ara', value: viewData.reventa_ara },
+                    { label: 'Reventa P1', value: viewData.reventa_p1 },
+                    { label: 'Reventa P2', value: viewData.reventa_p2 },
+                    { label: 'Reventa Ver', value: viewData.reventa_ver },
+                    { label: 'Reventa Dor', value: viewData.reventa_dor },
+                    { label: 'Reventa And', value: viewData.reventa_and },
+                    { label: 'Reventa Leju', value: viewData.reventa_leju },
+                  ].map((item, index) => (
+                    <Box key={index}>
+                      <Typography variant='caption' sx={{ color: '#666', fontWeight: 500 }}>{item.label}</Typography>
+                      <Typography variant='body2' sx={{ fontWeight: 600, color: '#333' }}>
+                        {((item.value ?? 0) * 100).toFixed(1)}%
+                      </Typography>
+                    </Box>
+                  ))}
                 </Box>
               </Box>
 
@@ -527,56 +632,30 @@ export default function FactoresSucursal() {
                   alignItems: 'center', 
                   gap: 1, 
                   mb: 2,
-                  borderLeft: '3px solid #424242',
+                  borderLeft: '3px solid #1a365d',
                   pl: 1.5
                 }}>
-                  <Typography variant='subtitle1' sx={{ fontWeight: 600 }}>
+                  <Typography variant='subtitle1' sx={{ fontWeight: 600, color: '#1a365d' }}>
                     Factores de Servicio
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 2 }}>
-                  <Box>
-                    <Typography variant='caption' sx={{ color: '#666' }}>Servicio Ara</Typography>
-                    <Typography variant='body2' sx={{ fontWeight: 500 }}>
-                      {((viewData.servicio_ara ?? 0) * 100).toFixed(1)}%
-                    </Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant='caption' sx={{ color: '#666' }}>Servicio P1</Typography>
-                    <Typography variant='body2' sx={{ fontWeight: 500 }}>
-                      {((viewData.servicio_p1 ?? 0) * 100).toFixed(1)}%
-                    </Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant='caption' sx={{ color: '#666' }}>Servicio P2</Typography>
-                    <Typography variant='body2' sx={{ fontWeight: 500 }}>
-                      {((viewData.servicio_p2 ?? 0) * 100).toFixed(1)}%
-                    </Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant='caption' sx={{ color: '#666' }}>Servicio Ver</Typography>
-                    <Typography variant='body2' sx={{ fontWeight: 500 }}>
-                      {((viewData.servicio_ver ?? 0) * 100).toFixed(1)}%
-                    </Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant='caption' sx={{ color: '#666' }}>Servicio Dor</Typography>
-                    <Typography variant='body2' sx={{ fontWeight: 500 }}>
-                      {((viewData.servicio_dor ?? 0) * 100).toFixed(1)}%
-                    </Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant='caption' sx={{ color: '#666' }}>Servicio And</Typography>
-                    <Typography variant='body2' sx={{ fontWeight: 500 }}>
-                      {((viewData.servicio_and ?? 0) * 100).toFixed(1)}%
-                    </Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant='caption' sx={{ color: '#666' }}>Servicio Leju</Typography>
-                    <Typography variant='body2' sx={{ fontWeight: 500 }}>
-                      {((viewData.servicio_leju ?? 0) * 100).toFixed(1)}%
-                    </Typography>
-                  </Box>
+                  {[
+                    { label: 'Servicio Ara', value: viewData.servicio_ara },
+                    { label: 'Servicio P1', value: viewData.servicio_p1 },
+                    { label: 'Servicio P2', value: viewData.servicio_p2 },
+                    { label: 'Servicio Ver', value: viewData.servicio_ver },
+                    { label: 'Servicio Dor', value: viewData.servicio_dor },
+                    { label: 'Servicio And', value: viewData.servicio_and },
+                    { label: 'Servicio Leju', value: viewData.servicio_leju },
+                  ].map((item, index) => (
+                    <Box key={index}>
+                      <Typography variant='caption' sx={{ color: '#666', fontWeight: 500 }}>{item.label}</Typography>
+                      <Typography variant='body2' sx={{ fontWeight: 600, color: '#333' }}>
+                        {((item.value ?? 0) * 100).toFixed(1)}%
+                      </Typography>
+                    </Box>
+                  ))}
                 </Box>
               </Box>
 
@@ -587,177 +666,135 @@ export default function FactoresSucursal() {
         <DialogActions sx={{ px: 3, py: 2, bgcolor: '#fafafa', borderTop: '1px solid #e0e0e0' }}>
           <Button 
             onClick={handleViewClose}
-            sx={{ textTransform: 'uppercase', fontWeight: 600 }}
+            sx={{ 
+              backgroundColor: '#e0e0e0', 
+              color: '#000', 
+              fontWeight: 'bold',
+              '&:hover': { backgroundColor: '#d0d0d0' },
+              borderRadius: '8px'
+            }}
           >
             Cerrar
           </Button>
         </DialogActions>
       </Dialog>
 
-      <Dialog open={openEdit} onClose={handleEditClose} maxWidth="md" fullWidth>
-        <DialogTitle>Editar Factores</DialogTitle>
-        <DialogContent>
+      <Dialog 
+        open={openEdit} 
+        onClose={handleEditClose} 
+        maxWidth="md" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '12px',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+            border: '1px solid #e0e0e0'
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          fontFamily: 'Georgia, "Times New Roman", serif',
+          fontWeight: 'bold', 
+          color: '#1a365d',
+          borderBottom: '1px solid #e0e0e0',
+          py: 2
+        }}>
+          <Typography variant='h6' sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
+            Editar Factores: {editingRow?.fecha}
+          </Typography>
+          <Typography variant='body2' sx={{ color: '#555', mt: 0.5 }}>
+            Modificar los factores de reventa y servicio
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ p: 3 }}>
           {editingRow && (
             <Box sx={{ mt: 2 }}>
-              <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 'bold' }}>
+              <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 'bold', color: '#1a365d' }}>
                 Fecha: {editingRow.fecha}
               </Typography>
               
-              <Typography variant="h6" sx={{ mt: 3, mb: 2 }}>Reventa</Typography>
+              <Typography variant="h6" sx={{ mt: 3, mb: 2, fontWeight: 'bold', color: '#1a365d' }}>Reventa</Typography>
               <Grid container spacing={2}>
-                <Grid item xs={6} sm={4}>
-                  <TextField
-                    fullWidth
-                    label="Reventa Ara"
-                    type="number"
-                    value={editingRow.reventa_ara}
-                    onChange={(e) => handleFieldChange('reventa_ara', e.target.value)}
-                    inputProps={{ step: 0.01, min: 0, max: 1 }}
-                  />
-                </Grid>
-                <Grid item xs={6} sm={4}>
-                  <TextField
-                    fullWidth
-                    label="Reventa P1"
-                    type="number"
-                    value={editingRow.reventa_p1}
-                    onChange={(e) => handleFieldChange('reventa_p1', e.target.value)}
-                    inputProps={{ step: 0.01, min: 0, max: 1 }}
-                  />
-                </Grid>
-                <Grid item xs={6} sm={4}>
-                  <TextField
-                    fullWidth
-                    label="Reventa P2"
-                    type="number"
-                    value={editingRow.reventa_p2}
-                    onChange={(e) => handleFieldChange('reventa_p2', e.target.value)}
-                    inputProps={{ step: 0.01, min: 0, max: 1 }}
-                  />
-                </Grid>
-                <Grid item xs={6} sm={4}>
-                  <TextField
-                    fullWidth
-                    label="Reventa Ver"
-                    type="number"
-                    value={editingRow.reventa_ver}
-                    onChange={(e) => handleFieldChange('reventa_ver', e.target.value)}
-                    inputProps={{ step: 0.01, min: 0, max: 1 }}
-                  />
-                </Grid>
-                <Grid item xs={6} sm={4}>
-                  <TextField
-                    fullWidth
-                    label="Reventa Dor"
-                    type="number"
-                    value={editingRow.reventa_dor}
-                    onChange={(e) => handleFieldChange('reventa_dor', e.target.value)}
-                    inputProps={{ step: 0.01, min: 0, max: 1 }}
-                  />
-                </Grid>
-                <Grid item xs={6} sm={4}>
-                  <TextField
-                    fullWidth
-                    label="Reventa And"
-                    type="number"
-                    value={editingRow.reventa_and}
-                    onChange={(e) => handleFieldChange('reventa_and', e.target.value)}
-                    inputProps={{ step: 0.01, min: 0, max: 1 }}
-                  />
-                </Grid>
-                <Grid item xs={6} sm={4}>
-                  <TextField
-                    fullWidth
-                    label="Reventa Leju"
-                    type="number"
-                    value={editingRow.reventa_leju}
-                    onChange={(e) => handleFieldChange('reventa_leju', e.target.value)}
-                    inputProps={{ step: 0.01, min: 0, max: 1 }}
-                  />
-                </Grid>
+                {[
+                  { label: "Reventa Ara", field: 'reventa_ara' },
+                  { label: "Reventa P1", field: 'reventa_p1' },
+                  { label: "Reventa P2", field: 'reventa_p2' },
+                  { label: "Reventa Ver", field: 'reventa_ver' },
+                  { label: "Reventa Dor", field: 'reventa_dor' },
+                  { label: "Reventa And", field: 'reventa_and' },
+                  { label: "Reventa Leju", field: 'reventa_leju' },
+                ].map((item, index) => (
+                  <Grid item xs={6} sm={4} key={index}>
+                    <TextField
+                      {...commonProps}
+                      label={item.label}
+                      type="number"
+                      value={editingRow[item.field as keyof FactorSucursal]}
+                      onChange={(e) => handleFieldChange(item.field as keyof FactorSucursal, e.target.value)}
+                      inputProps={{ step: 0.01, min: 0, max: 1 }}
+                    />
+                  </Grid>
+                ))}
               </Grid>
 
-              <Typography variant="h6" sx={{ mt: 3, mb: 2 }}>Servicio</Typography>
+              <Typography variant="h6" sx={{ mt: 3, mb: 2, fontWeight: 'bold', color: '#1a365d' }}>Servicio</Typography>
               <Grid container spacing={2}>
-                <Grid item xs={6} sm={4}>
-                  <TextField
-                    fullWidth
-                    label="Servicio Ara"
-                    type="number"
-                    value={editingRow.servicio_ara}
-                    onChange={(e) => handleFieldChange('servicio_ara', e.target.value)}
-                    inputProps={{ step: 0.01, min: 0, max: 1 }}
-                  />
-                </Grid>
-                <Grid item xs={6} sm={4}>
-                  <TextField
-                    fullWidth
-                    label="Servicio P1"
-                    type="number"
-                    value={editingRow.servicio_p1}
-                    onChange={(e) => handleFieldChange('servicio_p1', e.target.value)}
-                    inputProps={{ step: 0.01, min: 0, max: 1 }}
-                  />
-                </Grid>
-                <Grid item xs={6} sm={4}>
-                  <TextField
-                    fullWidth
-                    label="Servicio P2"
-                    type="number"
-                    value={editingRow.servicio_p2}
-                    onChange={(e) => handleFieldChange('servicio_p2', e.target.value)}
-                    inputProps={{ step: 0.01, min: 0, max: 1 }}
-                  />
-                </Grid>
-                <Grid item xs={6} sm={4}>
-                  <TextField
-                    fullWidth
-                    label="Servicio Ver"
-                    type="number"
-                    value={editingRow.servicio_ver}
-                    onChange={(e) => handleFieldChange('servicio_ver', e.target.value)}
-                    inputProps={{ step: 0.01, min: 0, max: 1 }}
-                  />
-                </Grid>
-                <Grid item xs={6} sm={4}>
-                  <TextField
-                    fullWidth
-                    label="Servicio Dor"
-                    type="number"
-                    value={editingRow.servicio_dor}
-                    onChange={(e) => handleFieldChange('servicio_dor', e.target.value)}
-                    inputProps={{ step: 0.01, min: 0, max: 1 }}
-                  />
-                </Grid>
-                <Grid item xs={6} sm={4}>
-                  <TextField
-                    fullWidth
-                    label="Servicio And"
-                    type="number"
-                    value={editingRow.servicio_and}
-                    onChange={(e) => handleFieldChange('servicio_and', e.target.value)}
-                    inputProps={{ step: 0.01, min: 0, max: 1 }}
-                  />
-                </Grid>
-                <Grid item xs={6} sm={4}>
-                  <TextField
-                    fullWidth
-                    label="Servicio Leju"
-                    type="number"
-                    value={editingRow.servicio_leju}
-                    onChange={(e) => handleFieldChange('servicio_leju', e.target.value)}
-                    inputProps={{ step: 0.01, min: 0, max: 1 }}
-                  />
-                </Grid>
+                {[
+                  { label: "Servicio Ara", field: 'servicio_ara' },
+                  { label: "Servicio P1", field: 'servicio_p1' },
+                  { label: "Servicio P2", field: 'servicio_p2' },
+                  { label: "Servicio Ver", field: 'servicio_ver' },
+                  { label: "Servicio Dor", field: 'servicio_dor' },
+                  { label: "Servicio And", field: 'servicio_and' },
+                  { label: "Servicio Leju", field: 'servicio_leju' },
+                ].map((item, index) => (
+                  <Grid item xs={6} sm={4} key={index}>
+                    <TextField
+                      {...commonProps}
+                      label={item.label}
+                      type="number"
+                      value={editingRow[item.field as keyof FactorSucursal]}
+                      onChange={(e) => handleFieldChange(item.field as keyof FactorSucursal, e.target.value)}
+                      inputProps={{ step: 0.01, min: 0, max: 1 }}
+                    />
+                  </Grid>
+                ))}
               </Grid>
             </Box>
           )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleEditClose} disabled={saving}>
+        <DialogActions sx={{ p: 3 }}>
+          <Button 
+            onClick={handleEditClose} 
+            disabled={saving}
+            sx={{ 
+              backgroundColor: '#e0e0e0', 
+              color: '#000', 
+              fontWeight: 'bold',
+              '&:hover': { backgroundColor: '#d0d0d0' },
+              borderRadius: '8px'
+            }}
+          >
             Cancelar
           </Button>
-          <Button onClick={handleSave} variant="contained" disabled={saving}>
+          <Button 
+            onClick={handleSave} 
+            disabled={saving}
+            sx={{ 
+              backgroundColor: '#333333', 
+              color: 'white', 
+              fontWeight: 600, 
+              textTransform: 'none', 
+              borderRadius: '8px',
+              boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)', 
+              transition: 'all 0.3s ease',
+              '&:hover': { 
+                backgroundColor: '#555555', 
+                boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)', 
+                transform: 'translateY(-1px)' 
+              }
+            }}
+          >
             {saving ? 'Guardando...' : 'Guardar'}
           </Button>
         </DialogActions>

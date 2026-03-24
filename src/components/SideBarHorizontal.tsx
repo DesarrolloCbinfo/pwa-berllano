@@ -229,7 +229,7 @@ const SidebarHorizontal = () => {
           <MenuItem onClick={() => navigate(routes.cat_nomina_bajas)}>
             Nómina Bajas
           </MenuItem>
-          <MenuItem onClick={() => navigate(routes.factores_sucursal)}>
+          <MenuItem onClick={() => navigate(routes.FactoresSucursal)}>
             Factores Sucursales
           </MenuItem>
           <MenuItem onClick={() => navigate(routes.cat_nominas_movimientos)}>
@@ -256,7 +256,7 @@ const SidebarHorizontal = () => {
           <MenuItem onClick={() => navigate(routes.cat_nominas_folios)}>
             Administración de Folios
           </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_turnos_dobles)}>
+          <MenuItem onClick={() => navigate(routes.Cat_turnos_dobles)}>
             Turnos Dobles
           </MenuItem>
           

@@ -143,10 +143,10 @@ export default function TiposCuentas() {
   ], []);
 
   return (
-    <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
-      <Paper sx={{ p: 3 }}>
+    <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#ececec' }}>
+      <Paper sx={{ p: 3, borderRadius: '8px' }}>
         {/* ENCABEZADO ESTILO ACCESS */}
-        <Box sx={{ border: '1px solid #2c3e50', p: 1.5, mb: 2, borderRadius: '6px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
+        <Box sx={{ border: '1px solid #2c3e50', p: 1.5, mb: 2, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
             <Box>
                 <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
                     Catálogo de Tipos de Cuentas
@@ -196,8 +196,8 @@ export default function TiposCuentas() {
       </Paper>
 
         {/* TABLA PRINCIPAL */}
-        <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
-          <Paper sx={{ width: '100%', maxWidth: 900, maxHeight: 600, mb: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
+        <Box sx={{ mt: 3 }}>
+          <Paper sx={{ p: 3, width: '100%', maxHeight: 600, mb: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
             <DataGrid 
                 rows={Array.isArray(rows) ? rows : []} 
                 columns={columns} 
@@ -215,7 +215,7 @@ export default function TiposCuentas() {
                 sx={{ 
                     border: 'none', 
                     '& .MuiDataGrid-columnHeaders': { borderBottom: '2px solid #000', fontSize: '1rem', fontWeight: 'bold' },
-                    '& .MuiDataGrid-cell': { borderBottom: '1px solid #e0e0e0' },
+                    '& .MuiDataGrid-cell': { borderBottom: '1px solid #e0e0e000' },
                     '& .MuiDataGrid-cell--editable': { backgroundColor: '#f9fbfd', cursor: 'text' }, 
                     '& .MuiDataGrid-cell--editing': { backgroundColor: '#fff', boxShadow: '0 0 5px rgba(25,118,210,0.5)' }
                 }} 

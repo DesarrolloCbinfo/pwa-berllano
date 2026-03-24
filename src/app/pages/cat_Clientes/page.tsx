@@ -25,6 +25,7 @@ import {
 } from '@mui/icons-material';
 
 import useConsumoApi from '../../../hooks/useConsumoApi'; 
+import { useSessionContext } from '../../../context/SessionProvider'; 
 
 // --- INTERFACES ---
 interface ClienteRow {
@@ -122,6 +123,7 @@ const selectProps = {
 
 export default function CatClientes() {
   const { consumoApi } = useConsumoApi();
+  const { session } = useSessionContext();
 
   // --- ESTADOS ---
   const [rows, setRows] = useState<ClienteRow[]>([]);
@@ -331,130 +333,158 @@ export default function CatClientes() {
   ];
 
   return (
-    <Box sx={{ p: 0, minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, p: 3 }}>
-        <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', color: '#333', display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Box sx={{ 
-            width: 40, 
-            height: 40, 
-            backgroundColor: '#333333', 
-            borderRadius: '50%', 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            color: 'white',
-            boxShadow: '0 4px 8px rgba(51, 51, 51, 0.3)',
-            transition: 'all 0.3s ease'
-          }}>👤</Box>
-          CLIENTES
-        </Typography>
-      </Box>
-
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0, p: 3 }}>
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <Button 
-            variant="contained" 
-            onClick={handleOpenAdd} 
-            sx={{ 
-              backgroundColor: '#333333', 
-              color: 'white', 
-              borderRadius: '8px',
-              fontWeight: 600,
-              textTransform: 'none',
-              padding: '10px 20px',
-              boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)',
-              transition: 'all 0.3s ease',
-              '&:hover': { 
-                backgroundColor: '#555555',
-                boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)',
-                transform: 'translateY(-1px)'
-              }
-            }}
-          >
-            CREAR CLIENTE
-          </Button>
-          <Button 
-            variant="outlined" 
-            onClick={fetchClientes}
-            sx={{ 
-              borderRadius: '8px',
-              borderColor: '#e0e0e0',
-              borderWidth: '1.5px',
-              color: '#666',
-              transition: 'all 0.3s ease',
-              '&:hover': { 
-                borderColor: '#999',
-                color: '#333',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-              }
-            }}
-          >
-            <RefreshIcon />
-          </Button>
+    <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#ececec' }}>
+      {/* PAPER 1: ENCABEZADO Y TÍTULO */}
+      <Paper sx={{ p: 3, borderRadius: '8px', mb: 3 }}>
+        {/* ENCABEZADO */}
+        <Box sx={{ border: '1px solid #2c3e50', p: 1.5, mb: 2, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
+            <Box>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
+                    CATÁLOGO DE CLIENTES
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                    Sucursal: {session?.dSucursal || 'Cargando...'}
+                </Typography>
+            </Box>
+            <Box sx={{ textAlign: 'right' }}>
+                <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#333', lineHeight: 1.1, fontSize: '0.9rem' }}>
+                    {new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' }).replace('.', '')}
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                    Usuario: {session?.nombre || 'Cargando...'}
+                </Typography>
+            </Box>
         </Box>
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-          <TextField
-            size="small"
-            placeholder="Buscar..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-            sx={{ 
-              minWidth: 200,
-              '& .MuiOutlinedInput-root': {
+        
+        {/* BOTONES DE ACCIÓN */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button 
+              variant="contained" 
+              onClick={handleOpenAdd} 
+              sx={{ 
+                backgroundColor: '#333333', 
+                color: 'white', 
                 borderRadius: '8px',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                fontWeight: 600,
+                textTransform: 'none',
+                padding: '10px 20px',
+                boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)',
                 transition: 'all 0.3s ease',
-                '&:hover': {
-                  boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
+                '&:hover': { 
+                  backgroundColor: '#555555',
+                  boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)',
+                  transform: 'translateY(-1px)'
                 }
+              }}
+            >
+              CREAR CLIENTE
+            </Button>
+            <Button 
+              variant="outlined" 
+              onClick={fetchClientes}
+              sx={{ 
+                borderRadius: '8px',
+                borderColor: '#e0e0e0',
+                borderWidth: '1.5px',
+                color: '#666',
+                transition: 'all 0.3s ease',
+                '&:hover': { 
+                  borderColor: '#999',
+                  color: '#333',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                }
+              }}
+            >
+              <RefreshIcon />
+            </Button>
+          </Box>
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+            <TextField
+              size="small"
+              placeholder="Buscar..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+              sx={{ 
+                minWidth: 200,
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '8px',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
+                  }
+                }
+              }}
+            />
+            <Button 
+              variant="outlined" 
+              onClick={handleSearch} 
+              sx={{ 
+                minWidth: 'auto', 
+                px: 2,
+                borderRadius: '8px',
+                borderColor: '#e0e0e0',
+                borderWidth: '1.5px',
+                color: '#666',
+                transition: 'all 0.3s ease',
+                '&:hover': { 
+                  borderColor: '#999',
+                  color: '#333',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                }
+              }}
+            >
+              <SearchIcon />
+            </Button>
+          </Box>
+        </Box>
+      </Paper>
+
+      {/* PAPER 2: TABLA PRINCIPAL */}
+      <Paper sx={{ p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
+        <Box sx={{ 
+          height: 'auto', 
+          width: '100%', 
+          bgcolor: 'white', 
+          borderTop: '1px solid #e0e0e0', 
+          borderBottom: '1px solid #e0e0e0',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+          minHeight: 400,
+          transition: 'all 0.3s ease'
+        }}>
+          <DataGrid 
+            rows={rows} columns={columns} getRowId={(row) => row.id} loading={loading}
+            paginationModel={paginationModel}
+            onPaginationModelChange={setPaginationModel}
+            pageSizeOptions={[10, 25, 50, 100]}
+            rowCount={rowCount}
+            paginationMode="server"
+            onPaginationModelChange={(newModel) => {
+              setPaginationModel(newModel);
+            }}
+            sx={{
+              '& .MuiDataGrid-columnHeaders': {
+                borderBottom: '2px solid #000',
+                fontSize: '1rem',
+                fontWeight: 'bold',
+                textAlign: 'center'
+              },
+              '& .MuiDataGrid-cell': {
+                borderBottom: '1px solid #e0e0e0'
               }
             }}
           />
-          <Button 
-            variant="outlined" 
-            onClick={handleSearch} 
-            sx={{ 
-              minWidth: 'auto', 
-              px: 2,
-              borderRadius: '8px',
-              borderColor: '#e0e0e0',
-              borderWidth: '1.5px',
-              color: '#666',
-              transition: 'all 0.3s ease',
-              '&:hover': { 
-                borderColor: '#999',
-                color: '#333',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-              }
-            }}
-          >
-            <SearchIcon />
-          </Button>
         </Box>
-      </Box>
 
-      <Box sx={{ 
-        height: 'auto', 
-        width: '100vw', 
-        marginLeft: '-24px', 
-        bgcolor: 'white', 
-        borderTop: '1px solid #e0e0e0', 
-        borderBottom: '1px solid #e0e0e0',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-        minHeight: 400,
-        transition: 'all 0.3s ease'
-      }}>
-        <DataGrid 
-          rows={rows} columns={columns} getRowId={(row) => row.id} loading={loading}
-          paginationMode="server" rowCount={rowCount}
-          paginationModel={paginationModel} onPaginationModelChange={setPaginationModel}
-          pageSizeOptions={[10, 20, 30, 40, 50, 100]}
-          slots={{ toolbar: GridToolbar, pagination: CustomPagination }}
-          slotProps={{ toolbar: { showQuickFilter: true } }}
-          sx={{ border: 'none', '& .MuiDataGrid-columnHeaders': { backgroundColor: '#f5f5f5' } }}
-        />
-      </Box>
+        {/* PIE DE PÁGINA ESTILO ACCESS */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 3 }}>
+          <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
+            CAT_CLIENTES, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/')}, USR:{session?.nombre || 'ADMIN'}
+          </Typography>
+        </Box>
+      </Paper>
 
       <Dialog 
         open={openModal} 

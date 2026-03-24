@@ -15,9 +15,12 @@ import {
   Button,
   LinearProgress,
   Snackbar,
-  Alert
+  Alert,
+  Grid
 } from '@mui/material';
 import useConsumoApi from '../../../hooks/useConsumoApi';
+import { useSessionContext } from '../../../context/SessionProvider'; 
+import AddIcon from '@mui/icons-material/Add';
 
 // --- ESTILOS BERLLANO ELEGANTE (TONALIDADES NEUTRAS) ---
 // 1. Estilo General (Altura fija de 50px con detalles elegantes)
@@ -77,11 +80,13 @@ interface FamiliaRow {
 
 const Cat_MarcasFamilias: React.FC = () => {
   const { consumoApi } = useConsumoApi();
+  const { session } = useSessionContext();
 
   // --- ESTADOS ---
   const [marcas, setMarcas] = useState<MarcaItem[]>([]);
   const [rows, setRows] = useState<FamiliaRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   
   // Estado para mensajes de confirmación (Feedback visual)
   const [mensaje, setMensaje] = useState<{ texto: string, tipo: 'success' | 'error' } | null>(null);
@@ -152,45 +157,52 @@ const Cat_MarcasFamilias: React.FC = () => {
   };
 
   return (
-    <Box sx={{ p: 0, minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
-      
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, p: 3 }}>
-        <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', color: '#333', display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Box sx={{ 
-            width: 40, 
-            height: 40, 
-            backgroundColor: '#333333', 
-            borderRadius: '50%', 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            color: 'white',
-            boxShadow: '0 4px 8px rgba(51, 51, 51, 0.3)',
-            transition: 'all 0.3s ease'
-          }}>🏷️</Box>
-          CATÁLOGO DE MARCAS Y FAMILIAS
-        </Typography>
-      </Box>
+    <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#ececec' }}>
+      <Paper sx={{ p: 3, borderRadius: '8px' }}>
+        {/* ENCABEZADO */}
+        <Box sx={{ border: '1px solid #2c3e50', p: 1.5, mb: 2, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
+            <Box>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
+                    Catálogo de Marcas y Familias
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                    Sucursal: {session?.dSucursal || 'Cargando...'}
+                </Typography>
+            </Box>
+            <Box sx={{ textAlign: 'right' }}>
+                <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#333', lineHeight: 1.1, fontSize: '0.9rem' }}>
+                    {new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' }).replace('.', '')}
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                    Usuario: {session?.nombre || 'Cargando...'}
+                </Typography>
+            </Box>
+        </Box>
 
-      {/* Mantenemos tu diseño de Papel/Ventana */}
-      <Paper sx={{ 
-        p: 3, 
-        width: '100%', 
-        maxWidth: '1000px',
-        mx: 'auto',
-        borderRadius: '12px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-        border: '1px solid #e0e0e0'
-      }}>
-        
-        {/* Barra decorativa elegante */}
-        <Box sx={{ 
-          height: '4px', 
-          background: 'linear-gradient(90deg, #333333 0%, #666666 100%)', 
-          width: '100%', 
-          mb: 4,
-          borderRadius: '2px'
-        }} />
+        <Grid container spacing={2} justifyContent="flex-start" alignItems="center" sx={{ mb: 0.5 }}>
+            <Grid item xs={12} md={2}>
+              <Button variant="contained" disabled={saving} fullWidth startIcon={<AddIcon />}
+                sx={{ 
+                    height: '50px', backgroundColor: '#333333', color: 'white', fontWeight: 600, textTransform: 'none', borderRadius: '8px',
+                    boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)', transition: 'all 0.3s ease',
+                    '&:hover': { backgroundColor: '#555555', boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)', transform: 'translateY(-1px)' }
+                }}>
+                AGREGAR
+              </Button>
+            </Grid>
+        </Grid>
+      </Paper>
+
+        {/* TABLA PRINCIPAL */}
+        <Box sx={{ mt: 3 }}>
+          <Paper sx={{ 
+            p: 3, 
+            width: '100%', 
+            maxHeight: 600, 
+            mb: 3, 
+            borderRadius: '8px', 
+            boxShadow: '0 4px 8px rgba(0,0,0,0.08)' 
+          }}>
 
         {loading && <LinearProgress sx={{ mb: 2 }} />}
 
@@ -198,17 +210,14 @@ const Cat_MarcasFamilias: React.FC = () => {
         <TableContainer sx={{ 
           mb: 3, 
           maxHeight: '60vh', 
-          overflowY: 'auto',
-          borderRadius: '8px',
-          border: '1px solid #e0e0e0',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+          overflowY: 'auto'
         }}>
           <Table stickyHeader size="small">
             <TableHead>
               <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
                 <TableCell sx={{ 
                   fontWeight: 'bold', 
-                  borderBottom: '2px solid #e0e0e0', 
+                  borderBottom: '2px solid #000', 
                   textAlign: 'center', 
                   fontSize: '1rem', 
                   width: '40%',
@@ -218,7 +227,7 @@ const Cat_MarcasFamilias: React.FC = () => {
                 </TableCell>
                 <TableCell sx={{ 
                   fontWeight: 'bold', 
-                  borderBottom: '2px solid #e0e0e0', 
+                  borderBottom: '2px solid #000', 
                   textAlign: 'center', 
                   fontSize: '1rem', 
                   width: '60%',
@@ -238,25 +247,9 @@ const Cat_MarcasFamilias: React.FC = () => {
                   {/* COLUMNA 1: MARCA (DROPDOWN) */}
                   <TableCell sx={{ padding: '12px 16px' }}>
                     <Select
-                      fullWidth
-                      variant="outlined"
-                      size="small"
+                      {...selectProps}
                       value={row.id_marca || ''}
                       onChange={(e) => handleRowChange(index, 'id_marca', e.target.value)}
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
-                          borderRadius: '8px',
-                          boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-                          transition: 'all 0.3s ease',
-                          '&:hover': {
-                            boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
-                          }
-                        },
-                        '& .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#e0e0e0',
-                          borderWidth: '1.5px'
-                        }
-                      }}
                     >
                       {marcas.map((m) => (
                         <MenuItem key={m.id} value={m.id}>
@@ -269,26 +262,10 @@ const Cat_MarcasFamilias: React.FC = () => {
                   {/* COLUMNA 2: FAMILIA (TEXTO) */}
                   <TableCell sx={{ padding: '12px 16px' }}>
                     <TextField
-                      fullWidth
-                      variant="outlined"
-                      size="small"
+                      {...commonProps}
                       value={row.familia || ''}
                       onChange={(e) => handleRowChange(index, 'familia', e.target.value)}
                       onBlur={() => handleBlur(index)} // <--- Dispara el guardado al salir
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
-                          borderRadius: '8px',
-                          boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-                          transition: 'all 0.3s ease',
-                          '&:hover': {
-                            boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
-                          }
-                        },
-                        '& .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#e0e0e0',
-                          borderWidth: '1.5px'
-                        }
-                      }}
                     />
                   </TableCell>
 
@@ -297,28 +274,15 @@ const Cat_MarcasFamilias: React.FC = () => {
             </TableBody>
           </Table>
         </TableContainer>
-
-        {/* Pie de página estilo Access con Estilo Berllano Elegante */}
-        <Box sx={{ 
-          display: 'flex', 
-          flexDirection: 'column', 
-          alignItems: 'center', 
-          mt: 3, 
-          pt: 2, 
-          borderTop: '1px solid #e0e0e0',
-          backgroundColor: '#fafafa',
-          borderRadius: '8px',
-          padding: '16px'
-        }}>
-          <Typography variant="caption" sx={{ 
-            fontWeight: 'bold', 
-            color: '#666',
-            letterSpacing: 1
-          }}>
-            MARCAS Y FAMILIAS {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-          </Typography>
+          </Paper>
         </Box>
-      </Paper>
+
+      {/* PIE DE PÁGINA */}
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 1 }}>
+        <Typography variant="caption" sx={{ fontWeight: 'bold', textTransform: 'uppercase' }}>
+          CAT_MARCAS_FAMILIAS, ARAUCARIAS, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/')}, USR:{session?.nombre || 'ADMIN'}
+        </Typography>
+      </Box>
 
       {/* NOTIFICACIÓN FLOTANTE (FEEDBACK) */}
       <Snackbar 
@@ -331,7 +295,6 @@ const Cat_MarcasFamilias: React.FC = () => {
             {mensaje?.texto}
         </Alert>
       </Snackbar>
-
     </Box>
   );
 };

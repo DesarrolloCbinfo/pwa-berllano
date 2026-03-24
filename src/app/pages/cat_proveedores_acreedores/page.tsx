@@ -363,12 +363,12 @@ export default function CatProveedoresAcreedores() {
 
   return (
     <>
-      <Box sx={{ width: '100%', p: 2, backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
-        <Box sx={{ backgroundColor: 'white', p: 3, borderRadius: 1, boxShadow: 1 }}>
+      <Box sx={{ width: '100%', p: 3, backgroundColor: '#ececec', minHeight: '100vh' }}>
+        <Box sx={{ backgroundColor: 'white', p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
           <Typography variant="subtitle2" sx={{ color: '#666666', mb: 1, fontWeight: 500 }}>
             CATÁLOGO DE
           </Typography>
-          <Typography variant="h5" sx={{ mb: 3, fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography variant="h5" sx={{ mb: 3, fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1, fontFamily: 'Georgia, "Times New Roman", serif', color: '#1a365d' }}>
             PROVEEDORES (ACREEDORES)
           </Typography>
 
@@ -383,9 +383,19 @@ export default function CatProveedoresAcreedores() {
               variant="contained" 
               onClick={handleAddOpen}
               sx={{ 
-                backgroundColor: '#333',
-                '&:hover': { backgroundColor: '#555' },
-                borderRadius: 1,
+                height: '50px',
+                backgroundColor: '#333333',
+                color: 'white',
+                fontWeight: 600,
+                textTransform: 'none',
+                borderRadius: '8px',
+                boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)',
+                transition: 'all 0.3s ease',
+                '&:hover': { 
+                  backgroundColor: '#555555',
+                  boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)',
+                  transform: 'translateY(-1px)'
+                },
                 px: 3,
                 py: 1
               }}
@@ -400,7 +410,29 @@ export default function CatProveedoresAcreedores() {
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               size="small"
-              sx={{ width: 300 }}
+              sx={{ 
+                width: 300,
+                '& .MuiInputBase-root': {
+                  height: '50px',
+                  alignItems: 'center',
+                  borderRadius: '8px',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                  '&:hover': {
+                    boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+                    borderColor: '#999'
+                  }
+                },
+                '& .MuiInputLabel-root': {
+                  transform: 'translate(14px, 14px) scale(1)',
+                  color: '#666',
+                  fontWeight: 500
+                },
+                '& .MuiInputLabel-shrink': {
+                  transform: 'translate(14px, -9px) scale(0.75)',
+                  color: '#333',
+                  fontWeight: 600
+                }
+              }}
             />
           </Box>
 
@@ -410,10 +442,19 @@ export default function CatProveedoresAcreedores() {
               columns={columns}
               pageSizeOptions={[10, 25, 50, 100]}
               onRowClick={(params) => handleViewOpen(params.row)}
+              density="compact"
+              disableRowSelectionOnClick
               sx={{
+                border: 'none',
                 '& .MuiDataGrid-columnHeaders': {
                   backgroundColor: '#f5f5f5',
                   fontWeight: 'bold',
+                  borderBottom: '2px solid #000',
+                  fontSize: '1rem',
+                  textAlign: 'center'
+                },
+                '& .MuiDataGrid-cell': {
+                  borderBottom: '1px solid #e0e0e000'
                 },
                 '& .MuiDataGrid-row': {
                   cursor: 'pointer',
@@ -432,15 +473,18 @@ export default function CatProveedoresAcreedores() {
         fullWidth
         PaperProps={{
           sx: {
-            borderRadius: 2,
+            borderRadius: '12px',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+            border: '1px solid #e0e0e0'
           }
         }}
       >
         <DialogTitle sx={{ 
-          bgcolor: '#424242', 
+          bgcolor: '#333333', 
           color: 'white',
           py: 2.5,
-          px: 3
+          px: 3,
+          borderBottom: '1px solid #e0e0e0'
         }}>
           <Typography variant='h6' sx={{ fontWeight: 600 }}>
             Agregar Nuevo Proveedor (Acreedor)
@@ -474,7 +518,29 @@ export default function CatProveedoresAcreedores() {
                   onChange={(e) => setFormData({ ...formData, cve_prov: e.target.value })}
                   fullWidth
                   size='small'
-                  sx={{ bgcolor: 'white' }}
+                  sx={{ 
+                    bgcolor: 'white',
+                    '& .MuiInputBase-root': {
+                      height: '50px',
+                      alignItems: 'center',
+                      borderRadius: '8px',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                      '&:hover': {
+                        boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+                        borderColor: '#999'
+                      }
+                    },
+                    '& .MuiInputLabel-root': {
+                      transform: 'translate(14px, 14px) scale(1)',
+                      color: '#666',
+                      fontWeight: 500
+                    },
+                    '& .MuiInputLabel-shrink': {
+                      transform: 'translate(14px, -9px) scale(0.75)',
+                      color: '#333',
+                      fontWeight: 600
+                    }
+                  }}
                 />
                 <TextField
                   label="Nombre *"
@@ -653,7 +719,15 @@ export default function CatProveedoresAcreedores() {
         <DialogActions sx={{ px: 3, py: 2, bgcolor: '#fafafa', borderTop: '1px solid #e0e0e0' }}>
           <Button 
             onClick={handleAddClose}
-            sx={{ textTransform: 'uppercase', fontWeight: 600 }}
+            sx={{ 
+              textTransform: 'none',
+              fontWeight: 600,
+              color: '#666',
+              '&:hover': {
+                color: '#333',
+                backgroundColor: 'rgba(0,0,0,0.04)'
+              }
+            }}
           >
             Cancelar
           </Button>
@@ -661,12 +735,18 @@ export default function CatProveedoresAcreedores() {
             onClick={handleAdd} 
             variant="contained"
             sx={{ 
-              bgcolor: '#212121',
-              textTransform: 'uppercase',
+              backgroundColor: '#333333',
+              color: 'white',
               fontWeight: 600,
+              textTransform: 'none',
+              borderRadius: '8px',
+              boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)',
+              transition: 'all 0.3s ease',
               px: 4,
-              '&:hover': {
-                bgcolor: '#424242'
+              '&:hover': { 
+                backgroundColor: '#555555',
+                boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)',
+                transform: 'translateY(-1px)'
               }
             }}
           >
@@ -683,21 +763,24 @@ export default function CatProveedoresAcreedores() {
         fullWidth
         PaperProps={{
           sx: {
-            borderRadius: 2,
+            borderRadius: '12px',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+            border: '1px solid #e0e0e0'
           }
         }}
       >
         <DialogTitle sx={{ 
-          bgcolor: '#424242', 
+          bgcolor: '#333333', 
           color: 'white',
           py: 2.5,
-          px: 3
+          px: 3,
+          borderBottom: '1px solid #e0e0e0'
         }}>
           <Typography variant='h6' sx={{ fontWeight: 600 }}>
             Editar Proveedor: {formData.cve_prov}
           </Typography>
           <Typography variant='body2' sx={{ color: '#e0e0e0', mt: 0.5 }}>
-            Complete la información del proveedor en los campos correspondientes
+            Modifique la información del proveedor según sea necesario
           </Typography>
         </DialogTitle>
 

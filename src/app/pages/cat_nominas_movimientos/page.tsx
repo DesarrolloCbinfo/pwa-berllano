@@ -200,29 +200,29 @@ export default function MovimientosNomina() {
   ], [tiposMovimiento]); // Importante incluir la dependencia para que la lista se cargue en la tabla
 
   return (
-    <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
-      <Paper sx={{ p: 3 }}>
-        {/* ENCABEZADO ESTILO ACCESS */}
-        <Box sx={{ border: '1px solid #2c3e50', p: 1.5, mb: 2, borderRadius: '6px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
+    <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#ececec' }}>
+      <Paper sx={{ p: 3, borderRadius: '8px' }}>
+        {/* ENCABEZADO BERLLANO ELEGANTE 2 */}
+        <Box sx={{ border: '1px solid #2c3e50', borderRadius: '8px', backgroundColor: '#fff', p: 1.5, mb: 2, display: 'flex', justifyContent: 'space-between' }}>
             <Box>
-                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
-                    Catálogo de Movimientos
+                <Typography variant="h6" sx={{ fontFamily: 'Georgia, "Times New Roman", serif', fontWeight: 'bold', color: '#1a365d', fontSize: '1.1rem' }}>
+                    Catálogo de Movimientos de Nómina
                 </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', fontSize: '0.75rem' }}>
                     Sucursal: {session?.dSucursal || 'Cargando...'}
                 </Typography>
             </Box>
             <Box sx={{ textAlign: 'right' }}>
-                <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#333', lineHeight: 1.1, fontSize: '0.9rem' }}>
+                <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#333', fontSize: '0.9rem' }}>
                     {new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' }).replace('.', '')}
                 </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
-                    Usuario: {session?.nombre || 'Cargando...'}
+                <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', fontSize: '0.75rem' }}>
+                    USR: {session?.nombre || 'ADMIN'}
                 </Typography>
             </Box>
         </Box>
 
-        <Grid container spacing={2} alignItems="center">
+        <Grid container spacing={2} justifyContent="center" alignItems="center">
             <Grid item xs={12} md={1}>
                 <TextField {...commonProps} type="number" label="Clave*" name="id_movimiento" value={formData.id_movimiento} onChange={handleInputChange} 
                     sx={{ width: '120px', ...commonProps.sx }} />
@@ -276,7 +276,7 @@ export default function MovimientosNomina() {
 
         {/* TABLA PRINCIPAL */}
         <Box sx={{ mt: 3 }}>
-          <Paper sx={{ maxHeight: 600, mb: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
+          <Paper sx={{ p: 3, width: '100%', maxHeight: 600, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
             <DataGrid 
                 rows={Array.isArray(rows) ? rows : []} 
                 columns={columns} 
@@ -293,19 +293,22 @@ export default function MovimientosNomina() {
                 onProcessRowUpdateError={(error) => console.error(error)}
                 sx={{ 
                     border: 'none', 
-                    '& .MuiDataGrid-columnHeaders': { borderBottom: '2px solid #000', fontSize: '1rem', fontWeight: 'bold' },
-                    '& .MuiDataGrid-cell': { borderBottom: '1px solid #e0e0e0' },
-                    '& .MuiDataGrid-cell--editable': { backgroundColor: '#f9fbfd', cursor: 'text' }, 
+                    '& .MuiDataGrid-columnHeaders': { borderBottom: '2px solid #000', fontSize: '1rem', fontWeight: 'bold', textAlign: 'center' },
+                    '& .MuiDataGrid-cell': { borderBottom: '1px solid #e0e0e000' },
+                    '& .MuiDataGrid-cell--editable': { backgroundColor: '#f9fbfd', cursor: 'pointer' }, 
                     '& .MuiDataGrid-cell--editing': { backgroundColor: '#fff', boxShadow: '0 0 5px rgba(25,118,210,0.5)' }
                 }} 
             />
           </Paper>
         </Box>
 
-      {/* PIE DE PÁGINA ESTILO ACCESS */}
+      {/* PIE DE PÁGINA BERLLANO ELEGANTE 2 */}
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 3 }}>
-        <Typography variant="caption" sx={{ fontWeight: 'bold', textTransform: 'uppercase' }}>
-          CAT_MOVIMIENTOS, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/')}, USR:{session?.nombre || 'ADMIN'}
+        <Button variant="contained" sx={{ backgroundColor: '#e0e0e0', color: '#000', fontWeight: 'bold', px: 4, mb: 2, '&:hover': { backgroundColor: '#d0d0d0' } }}>
+          Salir
+        </Button>
+        <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
+          CAT_NOMINAS_MOVIMIENTOS, ARAUCARIAS, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/')}, USR:{session?.nombre || 'ADMIN'}
         </Typography>
       </Box>
 

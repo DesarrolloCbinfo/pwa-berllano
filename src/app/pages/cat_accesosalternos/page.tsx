@@ -9,8 +9,10 @@ import {
   DataGrid, GridColDef, GridToolbar, 
   GridPaginationModel, GridPagination, GridRenderCellParams
 } from '@mui/x-data-grid';
+
 import DeleteIcon from '@mui/icons-material/Delete';
 import SaveIcon from '@mui/icons-material/Save';
+import Swal from 'sweetalert2'; // <--- AGREGAR ESTA LÍNEA
 
 import useConsumoApi from '../../../hooks/useConsumoApi';
 import { useSessionContext } from '../../../context/SessionProvider'; 
@@ -72,13 +74,12 @@ export default function AccesosAlternos() {
       fetchEmpleados();
       fetchTablaAccesos();
   }, []);
-
-  const fetchEmpleados = async () => {
+const fetchEmpleados = async () => {
       try {
           const res = await consumoApi.get('/api/AccesosAlternos/sp_bw_cat_combo_trabajadores_activos');
           setEmpleados(Array.isArray(res?.data) ? res.data : []);
       } catch (error) { 
-          setMessage({ text: 'Error al cargar la lista de empleados.', type: 'error' }); 
+          Swal.fire({ title: 'Error', text: 'Error al cargar la lista de empleados.', icon: 'error', confirmButtonColor: '#333' });
       }
   };
 
@@ -89,7 +90,7 @@ export default function AccesosAlternos() {
           setRows(Array.isArray(res?.data) ? res.data : []);
       } catch (error) {
           setRows([]);
-          setMessage({ text: 'Error al cargar la tabla de accesos.', type: 'error' });
+          Swal.fire({ title: 'Error', text: 'Error al cargar la tabla de accesos.', icon: 'error', confirmButtonColor: '#333' });
       } finally { setLoading(false); }
   };
 
@@ -98,42 +99,54 @@ export default function AccesosAlternos() {
       setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleGuardar = async () => {
-        if (!formData.claveEmpleado) return setMessage({ text: "El Empleado es obligatorio.", type: 'error' });
-        if (!formData.fecha1 || !formData.fecha2) return setMessage({ text: "Las fechas son obligatorias.", type: 'error' });
+const handleGuardar = async () => {
+        if (!formData.claveEmpleado) return Swal.fire({ title: 'Atención', text: 'El Empleado es obligatorio.', icon: 'warning', confirmButtonColor: '#333' });
+        if (!formData.fecha1 || !formData.fecha2) return Swal.fire({ title: 'Atención', text: 'Las fechas son obligatorias.', icon: 'warning', confirmButtonColor: '#333' });
 
         // Validación extra: Fecha 2 no puede ser menor a Fecha 1
         if (new Date(formData.fecha2) < new Date(formData.fecha1)) {
-            return setMessage({ text: "La Fecha Final no puede ser menor a la Fecha Inicial.", type: 'error' });
+            return Swal.fire({ title: 'Atención', text: 'La Fecha Final no puede ser menor a la Fecha Inicial.', icon: 'warning', confirmButtonColor: '#333' });
         }
 
         setSaving(true);
         try {
             const res = await consumoApi.post('/api/AccesosAlternos/sp_bw_cat_accesosAlternos_ins', formData);
             if (res.status === 200) {
-                setMessage({ text: "✅ Acceso alterno guardado correctamente.", type: 'success' });
+                Swal.fire({ title: '¡Guardado!', text: 'Acceso alterno guardado correctamente.', icon: 'success', timer: 2000, showConfirmButton: false });
                 fetchTablaAccesos();
                 // Limpiamos solo el empleado para capturar otro rápidamente
                 setFormData(prev => ({ ...prev, claveEmpleado: '' }));
             }
         } catch (error) {
-            setMessage({ text: "Error al guardar el registro.", type: 'error' });
+            Swal.fire({ title: 'Error', text: 'Error al guardar el registro.', icon: 'error', confirmButtonColor: '#333' });
         } finally {
             setSaving(false);
         }
     };
 
-  const handleEliminar = async (id: number) => {
-      if (!window.confirm("¿Está seguro que desea eliminar este acceso?")) return;
+const handleEliminar = async (id: number) => {
+      const confirmacion = await Swal.fire({
+          title: '¿Estás seguro?',
+          text: "¿Deseas eliminar este acceso?",
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d32f2f',
+          cancelButtonColor: '#333',
+          confirmButtonText: 'Sí, eliminar',
+          cancelButtonText: 'Cancelar'
+      });
+
+      if (!confirmacion.isConfirmed) return;
+
       setSaving(true);
       try {
           const res = await consumoApi.delete(`/api/AccesosAlternos/sp_bw_cat_accesosAlternos_del?id=${id}`);
           if (res.status === 200) {
-              setMessage({ text: "🗑️ Registro eliminado.", type: 'success' });
+              Swal.fire({ title: 'Eliminado', text: 'Registro eliminado.', icon: 'success', timer: 2000, showConfirmButton: false });
               fetchTablaAccesos();
           }
       } catch (error) {
-          setMessage({ text: "Error al eliminar el registro.", type: 'error' });
+          Swal.fire({ title: 'Error', text: 'Error al eliminar el registro.', icon: 'error', confirmButtonColor: '#333' });
       } finally {
           setSaving(false);
       }
@@ -273,10 +286,6 @@ export default function AccesosAlternos() {
         </Typography>
       </Box>
 
-      {/* NOTIFICACIONES */}
-      <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage(null)}>
-        <Alert severity={message?.type} onClose={() => setMessage(null)} sx={{ width: '100%' }}>{message?.text}</Alert>
-      </Snackbar>
     </Box>
   );
 }

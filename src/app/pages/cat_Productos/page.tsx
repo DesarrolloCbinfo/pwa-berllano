@@ -169,6 +169,8 @@ comision: number;
 unidad_paq_traspaso: number;
 dias_rotacion: number;
 version: string;
+fecha_alta: string;
+  fecha_act: string;
 }
 
 const initialProductoState: ProductoForm = {
@@ -217,41 +219,44 @@ const initialProductoState: ProductoForm = {
 comision: 0,
 unidad_paq_traspaso: 1,
 dias_rotacion: 0,
-version: ''
+version: '',
+fecha_alta: '',
+  fecha_act: ''
 };
 
 // --- ESTILOS PARA MODAL ---
 const modalCommonProps = {
-  fullWidth: true,
-  size: "small" as const,
-  variant: "outlined" as const,
-  sx: {
-      '& .MuiInputBase-root': { 
-          height: '50px', 
-          alignItems: 'center',
-          borderRadius: '8px',
-          transition: 'all 0.3s ease',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-          '&:hover': {
-            boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
-            borderColor: '#999'
-          }
-      },
-      '& .MuiInputLabel-root': { 
-          transform: 'translate(14px, 14px) scale(1)',
-          color: '#666',
-          fontWeight: 500
-      },
-      '& .MuiInputLabel-shrink': { 
-          transform: 'translate(14px, -9px) scale(0.75)',
-          color: '#333',
-          fontWeight: 600
-      },
-      '& .MuiOutlinedInput-notchedOutline': {
-          borderColor: '#e0e0e0',
-          borderWidth: '1.5px'
-      }
-  }
+  fullWidth: true,
+  size: "small" as const,
+  variant: "outlined" as const,
+  sx: {
+      width: '100%',
+      '& .MuiInputBase-root': { 
+          height: '50px', // <--- RESTAURAMOS LA ALTURA FIJA PARA QUE NO CREZCA HACIA ABAJO
+          alignItems: 'center',
+          borderRadius: '8px',
+          transition: 'all 0.3s ease',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+          '&:hover': {
+            boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+            borderColor: '#999'
+          }
+      },
+      '& .MuiInputLabel-root': { 
+          transform: 'translate(14px, 14px) scale(1)',
+          color: '#666',
+          fontWeight: 500
+      },
+      '& .MuiInputLabel-shrink': { 
+          transform: 'translate(14px, -9px) scale(0.75)',
+          color: '#333',
+          fontWeight: 600
+      },
+      '& .MuiOutlinedInput-notchedOutline': {
+          borderColor: '#e0e0e0',
+          borderWidth: '1.5px'
+      }
+  }
 };
 
 const modalSelectProps = {
@@ -2185,6 +2190,13 @@ const handleOpenEdit = async (row: ProductoRow) => {
         }
 
         // 3. Llenar el formulario con los 41 campos del objeto 'd'
+// --- BLOQUE 1: CALCULAR COSTOS CON IVA ANTES DE ABRIR EL MODAL ---
+        const valTasaIva = Number(d.tasa_iva) || 0;
+        const valCosto = Number(d.costo) || 0;
+        const valCostoUnit = Number(d.costo_unitario) || 0;
+        
+        const calcCostoConIva = valCosto * (1 + valTasaIva);
+        const calcCostoUnitIva = valCostoUnit * (1 + valTasaIva);
         setProductoForm({
             ...initialProductoState,
             clave_prod: d.clave_prod,
@@ -2196,12 +2208,24 @@ const handleOpenEdit = async (row: ProductoRow) => {
             depto: d.depto,
             clase: d.clase,
             observacion: d.observacion,
+// --- BLOQUE LOGÍSTICA Y EXTERNOS ---
+            clave_proveedor: d.clave_prov || '',
+            clave_sas: d.clave_sas || '',
+            clave_sap: d.clave_sap || '', // Nota: clave_sap no está en tu BD, pero lo dejamos por si luego lo agregas
+            finalidad: d.finalidad ?? '',
+            fecha_alta: d.fecha_alta ? String(d.fecha_alta).split('T')[0] : '',
+            fecha_act: d.fecha_act ? String(d.fecha_act).split('T')[0] : '',
             costo_sin_iva: d.costo,
             tasa_iva: d.tasa_iva,
+// --- BLOQUE 2: ASIGNAR CAMPOS DIRECTOS Y CALCULADOS ---
+            costo_unitario: Number(d.costo_unitario) || 0,
+            costo_promedio: Number(d.costo_promedio) || 0,
+            costo_autorizado: Number(d.costo_unitario_autorizado) || 0,
+            costo_con_iva: calcCostoConIva,
+            costo_unitario_iva: calcCostoUnitIva,
             unidad_paq: d.unidad_paq,
             sucursal_origen: d.sucursal_origen,
             comision: d.comision,
-            finalidad: d.finalidad,
             unidad_paq_traspaso: d.unidad_paq_traspaso,
             en_promocion: !!d.promocion,
             precio_promocion: d.precio_promocion,
@@ -2458,8 +2482,48 @@ const handleProductoChange = (e: any) => {
       setProductoForm(prev => ({ ...prev, marca: val, familia: '' }));
     } 
     else {
-      setProductoForm(prev => ({ ...prev, [name]: val }));
-    }
+      setProductoForm(prev => {
+        let newForm = { ...prev, [name]: val };
+
+        // Lógica de restricciones de la matriz (solo al encender un checkbox)
+        if (type === 'checkbox' && val === true) {
+          switch (name) {
+            case 'es_insumo':
+              newForm.es_servicio = false;
+              newForm.es_producto = false;
+              newForm.es_kit = false;
+              break;
+
+            case 'es_servicio':
+            case 'es_kit':
+              newForm.es_insumo = false;
+              newForm.inventariable = false;
+              newForm.entrega_directa = false;
+              newForm.fraccionable = false;
+              newForm.es_producto = false;
+              newForm.controlado = false;
+              newForm.producto_libre = false;
+              break;
+
+            case 'es_producto':
+              newForm.es_insumo = false;
+              newForm.es_servicio = false;
+              newForm.es_kit = false;
+              break;
+
+            case 'inventariable':
+            case 'entrega_directa':
+            case 'fraccionable':
+            case 'controlado':
+            case 'producto_libre':
+              newForm.es_servicio = false;
+              newForm.es_kit = false;
+              break;
+          }
+        }
+        return newForm;
+      });
+    }
   };
 
 const handleSaveProducto = async () => {
@@ -2513,13 +2577,15 @@ const handleSaveProducto = async () => {
             fecha_final: productoForm.en_promocion ? productoForm.fecha_final_promo : null
         };
 
-        // 3. LÓGICA DE DECISIÓN DE URL
-        // Si claveSeleccionada tiene valor, estamos EDITANDO
-        const url = claveSeleccionada 
-            ? '/api/CatProductosC/sp_bw_cat_combo_productos_upd' 
-            : '/api/CatProductosC/sp_bw_cat_combo_productos_inse';
-
-        const response = await consumoApi.post(url, null, { params: paramsEnvio });
+       // 3. LÓGICA DE DECISIÓN DE URL Y MÉTODO HTTP
+        let response;
+        if (claveSeleccionada) {
+            // EDITANDO: Usamos PUT porque la API tiene [HttpPut]
+            response = await consumoApi.put('/api/CatProductosC/sp_bw_cat_combo_productos_upd', null, { params: paramsEnvio });
+        } else {
+            // NUEVO: Usamos POST porque la API tiene [HttpPost]
+            response = await consumoApi.post('/api/CatProductosC/sp_bw_cat_combo_productos_inse', null, { params: paramsEnvio });
+        }
 
         if (response.status === 200) {
             setMessage({ 
@@ -2560,7 +2626,7 @@ const valorPorcentaje = Number(params) * 100;
 return `${valorPorcentaje.toFixed(2)}%`;
 } 
 },
-    { field: 'iva', headerName: 'IVA', width: 80, type: 'number' },
+ { field: 'iva', headerName: 'IVA', width: 80, type: 'number', valueFormatter: (v: any) => v == null ? '0.00' : Number(v).toFixed(2) },
     // --- BUSCA ESTO Y REEMPLÁZALO ---
 
 { field: 'area', headerName: 'Área', width: 150 },
@@ -2689,69 +2755,64 @@ return `${valorPorcentaje.toFixed(2)}%`;
                         <Box sx={{ width: 4, height: 20, backgroundColor: '#333333', borderRadius: 2 }} /> Datos del Producto
                     </Typography>
                     
-                    <Grid container spacing={3}>
-                        {/* RENGLON 1: CLAVE Y DESCRIPCIONES */}
-                        <Grid item xs={12} md={4}>
-                            <TextField {...modalCommonProps} label="Clave del Producto" name="clave_prod" value={productoForm.clave_prod} onChange={handleProductoChange} disabled={!!claveSeleccionada} required />
-                        </Grid>
-                        <Grid item xs={12} md={4}>
-                            <TextField {...modalCommonProps} label="Descripción Ticket (Corta)" name="descripcion_corta" value={productoForm.descripcion_corta} onChange={handleProductoChange} />
-                        </Grid>
-                        <Grid item xs={12} md={4}>
-                            <TextField {...modalCommonProps} label="Descripción Completa" name="descripcion" value={productoForm.descripcion} onChange={handleProductoChange} />
-                        </Grid>
+<Grid container spacing={3}>
+                        {/* RENGLON 1: CLAVE Y DESCRIPCIONES (SOLO ESTOS 3 EN LA FILA) */}
+                        <Grid item xs={12} md={2}>
+                            <TextField {...modalCommonProps} label="Clave del Producto" name="clave_prod" value={productoForm.clave_prod} onChange={handleProductoChange} disabled={!!claveSeleccionada} required />
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                            <TextField {...modalCommonProps} label="Descripción Ticket (Corta)" name="descripcion_corta" value={productoForm.descripcion_corta} onChange={handleProductoChange} />
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                            {/* Sin multiline, solo crecerá hacia la derecha ocupando la mitad del modal (md=6) */}
+                            <TextField {...modalCommonProps} label="Descripción Completa" name="descripcion" value={productoForm.descripcion} onChange={handleProductoChange} />
+                        </Grid>
 
-                        {/* RENGLON 2: MARCA, FAMILIA Y ÁREA */}
-                        <Grid item xs={12} md={4}>
-                            <TextField {...modalSelectProps} select label="Marca" name="marca" value={productoForm.marca} onChange={handleProductoChange}>
-                                {marcasUnicasModal.map((m) => (<MenuItem key={m.id} value={m.id}>{m.desc}</MenuItem>))}
-                            </TextField>
-                        </Grid>
-                        <Grid item xs={12} md={4}>
-                            <TextField {...modalSelectProps} select label="Familia" name="familia" value={productoForm.familia} onChange={handleProductoChange} disabled={!productoForm.marca}>
-                                {familiasFiltradasModal.length > 0 ? (
-                                    familiasFiltradasModal.map((f) => (<MenuItem key={f.id_familia} value={f.id_familia}>{f.familia}</MenuItem>))
-                                ) : (
-                                    <MenuItem disabled>Seleccione marca primero</MenuItem>
-                                )}
-                            </TextField>
-                        </Grid>
-                        <Grid item xs={12} md={4}>
-                            <TextField {...modalSelectProps} select label="Área" name="area" value={productoForm.area} onChange={handleProductoChange}>
-                                {areas.map((item) => (<MenuItem key={item.id} value={item.id}>{item.descripcion}</MenuItem>))}
-                            </TextField>
-                        </Grid>
+                        {/* RENGLON 2: CLASIFICACIÓN (MARCA, FAMILIA, ÁREA, DEPTO, CLASE) */}
+                        <Grid item xs={12} md={3}>
+                            <TextField {...modalSelectProps} select label="Marca" name="marca" value={productoForm.marca} onChange={handleProductoChange}>
+                                {marcasUnicasModal.map((m) => (<MenuItem key={m.id} value={m.id}>{m.desc}</MenuItem>))}
+                            </TextField>
+                        </Grid>
+                        <Grid item xs={12} md={3}>
+                            <TextField {...modalSelectProps} select label="Familia" name="familia" value={productoForm.familia} onChange={handleProductoChange} disabled={!productoForm.marca}>
+                                {familiasFiltradasModal.length > 0 ? (
+                                    familiasFiltradasModal.map((f) => (<MenuItem key={f.id_familia} value={f.id_familia}>{f.familia}</MenuItem>))
+                                ) : (
+                                    <MenuItem disabled>Seleccione marca</MenuItem>
+                                )}
+                            </TextField>
+                        </Grid>
+                        <Grid item xs={12} md={2}>
+                            <TextField {...modalSelectProps} select label="Área" name="area" value={productoForm.area} onChange={handleProductoChange}>
+                                {areas.map((item) => (<MenuItem key={item.id} value={item.id}>{item.descripcion}</MenuItem>))}
+                            </TextField>
+                        </Grid>
+                        <Grid item xs={12} md={2}>
+                            <TextField {...modalSelectProps} select label="Departamento" name="depto" value={productoForm.depto} onChange={handleProductoChange} disabled={!productoForm.area}>
+                                {deptosModal.map((item) => (<MenuItem key={item.id} value={item.id}>{item.descripcion}</MenuItem>))}
+                            </TextField>
+                        </Grid>
+                        <Grid item xs={12} md={2}>
+                            <TextField {...modalSelectProps} select label="Clase" name="clase" value={productoForm.clase} onChange={handleProductoChange} disabled={!productoForm.depto}>
+                                {clasesModal.map((item) => (<MenuItem key={item.id} value={item.id}>{item.descripcion}</MenuItem>))}
+                            </TextField>
+                        </Grid>
 
-                        {/* RENGLON 3: DEPTO Y CLASE */}
-                        <Grid item xs={12} md={4}>
-                            <TextField {...modalSelectProps} select label="Departamento" name="depto" value={productoForm.depto} onChange={handleProductoChange} disabled={!productoForm.area}>
-                                {deptosModal.map((item) => (<MenuItem key={item.id} value={item.id}>{item.descripcion}</MenuItem>))}
-                            </TextField>
-                        </Grid>
-                        <Grid item xs={12} md={4}>
-                            <TextField {...modalSelectProps} select label="Clase" name="clase" value={productoForm.clase} onChange={handleProductoChange} disabled={!productoForm.depto}>
-                                {clasesModal.map((item) => (<MenuItem key={item.id} value={item.id}>{item.descripcion}</MenuItem>))}
-                            </TextField>
-                        </Grid>
-
-                        
-
-
-
-                        {/* RENGLON FINAL: OBSERVACIONES (OCUPA TODO EL ANCHO) */}
-                        <Grid item xs={12}>
-                            <TextField 
-                                {...modalCommonProps} 
-                                label="Observaciones" 
-                                name="observacion" 
-                                multiline 
-                                rows={2} 
-                                value={productoForm.observacion} 
-                                onChange={handleProductoChange} 
-                                sx={{ ...modalCommonProps.sx, '& .MuiInputBase-root': { height: 'auto', py: 1.5 } }} 
-                            />
-                        </Grid>
-                    </Grid>
+                        {/* RENGLON FINAL: OBSERVACIONES (OCUPA TODO EL ANCHO) */}
+                        <Grid item xs={12}>
+                            <TextField 
+                                {...modalCommonProps} 
+                                label="Observaciones" 
+                                name="observacion" 
+                                multiline 
+                                rows={2} 
+                                value={productoForm.observacion} 
+                                onChange={handleProductoChange} 
+                                sx={{ ...modalCommonProps.sx, '& .MuiInputBase-root': { height: 'auto', py: 1.5 } }} 
+                            />
+                        </Grid>
+                    </Grid>
                 </Box>
             )}
 
@@ -2904,8 +2965,8 @@ return `${valorPorcentaje.toFixed(2)}%`;
                             </Typography>
                             <Grid container spacing={2}>
                                 <Grid item xs={12}><TextField {...modalSelectProps} select label="Sucursal Origen" name="sucursal_origen" value={productoForm.sucursal_origen} onChange={handleProductoChange}>{/* Mapeo dinámico de la API */}{sucursales.map((suc) => (<MenuItem key={suc.id} value={suc.id}>{suc.descripcion}</MenuItem>))}</TextField></Grid>
-                                <Grid item xs={6}><TextField {...modalCommonProps} label="Fecha de Alta" value="" disabled /></Grid>
-                                <Grid item xs={6}><TextField {...modalCommonProps} label="Última Modificación" value="" disabled /></Grid>
+                                <Grid item xs={6}><TextField {...modalCommonProps} type="date" label="Fecha de Alta" value={productoForm.fecha_alta} InputLabelProps={{ shrink: true }} disabled sx={{ ...modalCommonProps.sx, '& .MuiInputBase-root': { bgcolor: '#f5f5f5' } }}/></Grid>
+<Grid item xs={6}><TextField {...modalCommonProps} type="date" label="Última Modificación" value={productoForm.fecha_act} InputLabelProps={{ shrink: true }} disabled sx={{ ...modalCommonProps.sx, '& .MuiInputBase-root': { bgcolor: '#f5f5f5' } }}/></Grid>
                                 <Grid item xs={12} md={4}><TextField {...modalCommonProps} label="Unidades Paq. TX" type="number" name="unidad_paq_traspaso" value={productoForm.unidad_paq_traspaso} onChange={handleProductoChange} /></Grid>
                                 <Grid item xs={12} md={4}><TextField {...modalCommonProps} label="Plan B (Días Rotación)" name="dias_rotacion" value={productoForm.dias_rotacion} disabled sx={{ ...modalCommonProps.sx, '& .MuiInputBase-root': { bgcolor: '#f5f5f5' } }}/></Grid>
                             </Grid>
