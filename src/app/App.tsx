@@ -12,7 +12,7 @@ import Login from './pages/Login/Login';
 import Layout from '../components/Layout';
 import RecepcionMercancia from './pages/RecepcionMercancia/RecepcionMercancia';
 import Catalogos from './pages/catalogos/page';
-import CatAreas from './pages/cat_Areas/page';
+import CatAreasDeptosClases from './pages/cat_AreasDeptosClases/page';
 import CatTipoDescuentos from './pages/cat_Tipo_Descuento/page';
 import CatCompradores from './pages/cat_Compradores/page';
 import CatMarcas from './pages/cat_Marcas/page';
@@ -59,7 +59,8 @@ import Usuarios from './pages/cat_usuarios/page';
 import FoliosNomina from './pages/cat_nominas_folios/page';
 import TurnosDobles from './pages/Cat_turnos_dobles/page';
 import CatPerfilesPermisos from './pages/cat_perfiles_permisos/page';
-
+import CatCategorias from './pages/cat_Categorias/page';
+import CatPermisosDeptos from './pages/cat_PermisosDeptos/page';
 
 
 
@@ -84,7 +85,7 @@ function App() {
           <Route path='/generadorFormularios' element={<Layout><GeneradorFormularios /></Layout>} />
           <Route path='/recepcion' element={<Layout><RecepcionMercancia /></Layout>} />
           <Route path='/catalogos' element={<Layout><Catalogos /></Layout>} />
-          <Route path='/cat_Areas' element={<Layout><CatAreas/></Layout>} />
+          <Route path='/cat_AreasDeptosClases' element={<Layout><CatAreasDeptosClases/></Layout>} />
          <Route path='/cat_Tipo_Descuento' element={<Layout><CatTipoDescuentos/></Layout>} />
          <Route path='/cat_Compradores' element={<Layout><CatCompradores/></Layout>} />
           <Route path='/cat_Marcas' element={<Layout><CatMarcas/></Layout>} />
@@ -129,7 +130,9 @@ function App() {
           <Route path='/cat_nominas_folios' element={<Layout><FoliosNomina/></Layout>} />
           <Route path='/Cat_turnos_dobles' element={<Layout><TurnosDobles/></Layout>} />
           <Route path='/cat_perfiles_permisos' element={<Layout><CatPerfilesPermisos/></Layout>} />
-
+          <Route path='/cat_Categorias' element={<Layout><CatCategorias/></Layout>} />
+          <Route path='/cat_PermisosDeptos' element={<Layout><CatPermisosDeptos/></Layout>} />
+          
 
 
        
@@ -185,10 +188,10 @@ function App() {
             }
           />
           <Route
-            path='/cat_Areas'
+            path='/cat_AreasDeptosClases'
             element={
               <Layout>
-                <CatAreas />
+                <CatAreasDeptosClases />
               </Layout>
             }
           />

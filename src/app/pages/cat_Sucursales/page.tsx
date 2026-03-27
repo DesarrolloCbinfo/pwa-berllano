@@ -175,6 +175,34 @@ export default function CatSucursales() {
     setOpenDelete(true);
   };
 
+  const handleDeleteConfirm = async () => {
+    try {
+      setSaving(true);
+      
+      const response = await consumoApi.delete(
+        '/api/CatSucursales/sp_bw_cat_sucursales_del',
+        {
+          params: {
+            cve_sucursal: deleteId
+          }
+        }
+      );
+      
+      if (response.data?.[0]?.codigo === 0) {
+        setOpenDelete(false);
+        fetchSucursales();
+        alert('Sucursal eliminada exitosamente');
+      } else {
+        alert(response.data?.[0]?.mensaje1 || 'Error al eliminar');
+      }
+    } catch (err) {
+      console.error('Error al eliminar sucursal:', err);
+      alert('Error al eliminar la sucursal');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const fetchSucursales = async () => {
     try {
       setLoading(true);
@@ -394,10 +422,6 @@ export default function CatSucursales() {
               }
             }}
           />
-
-          <Typography variant="caption" sx={{ display: 'block', textAlign: 'center', color: '#666', mt: 2 }}>
-            CATÁLOGO DE SUCURSALES, {new Date().toLocaleDateString('es-MX')}, USR:ADMIN
-          </Typography>
         </Box>
       </Box>
 
@@ -1243,6 +1267,14 @@ export default function CatSucursales() {
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setOpenDelete(false)}>Cancelar</Button>
+            <Button
+              onClick={handleDeleteConfirm}
+              variant="contained"
+              color="error"
+              disabled={saving}
+            >
+              {saving ? 'Eliminando...' : 'Eliminar'}
+            </Button>
           </DialogActions>
         </Dialog>
 
