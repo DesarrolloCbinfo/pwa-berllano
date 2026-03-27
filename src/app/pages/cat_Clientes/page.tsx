@@ -26,6 +26,7 @@ import {
 
 import useConsumoApi from '../../../hooks/useConsumoApi'; 
 import { useSessionContext } from '../../../context/SessionProvider'; 
+import Swal from 'sweetalert2';
 
 // --- INTERFACES ---
 interface ClienteRow {
@@ -46,6 +47,7 @@ interface ClienteRow {
   id_sucursal?: number;
   genero?: string;
   suspendido?: boolean;
+  domicilio?: string;
 }
 
 interface CatalogoItem {
@@ -60,6 +62,7 @@ const initialFormState = {
   apellido_materno: '',
   email: '',
   telefono: '',
+  domicilio: '', 
   ciudad: '',
   estado: '',
   cp: '',
@@ -248,6 +251,7 @@ export default function CatClientes() {
       apellido_materno: row.ap_materno || '',
       email: row.email || '',
       telefono: row.telefono || '',
+      domicilio: row.domicilio || '',
       ciudad: row.ciudad || '',
       estado: row.estado || '',
       cp: row.cp || '',
@@ -263,9 +267,9 @@ export default function CatClientes() {
     setOpenModal(true);
   };
 
-  const handleSave = async () => {
+const handleSave = async () => {
     if (!formData.clave_cliente || !formData.nombre || !formData.sucursal_id) {
-      setMessage({ text: 'Clave, Nombre y Sucursal obligatorios', type: 'error' });
+      Swal.fire('Atención', 'La Clave, Nombre y Sucursal son obligatorios', 'warning');
       return;
     }
     const paramsToSend = {
@@ -278,6 +282,7 @@ export default function CatClientes() {
         ap_materno: formData.apellido_materno,       
         email: formData.email,
         telefono: formData.telefono,
+        domicilio: formData.domicilio,
         ciudad: formData.ciudad,
         estado: formData.estado,
         cp: formData.cp,
@@ -290,28 +295,40 @@ export default function CatClientes() {
     try {
       if (isEditing) {
         await consumoApi.put('/api/CatClientesSuc/sp_bw_cat_clientes_upd', null, { params: paramsToSend });
-        setMessage({ text: 'Actualizado correctamente', type: 'success' });
+        Swal.fire({ title: '¡Éxito!', text: 'Cliente actualizado correctamente', icon: 'success', confirmButtonColor: '#333333' });
       } else {
         await consumoApi.post('/api/CatClientesSuc/sp_bw_cat_clientes_ins', null, { params: paramsToSend });
-        setMessage({ text: 'Creado correctamente', type: 'success' });
+        Swal.fire({ title: '¡Éxito!', text: 'Cliente creado correctamente', icon: 'success', confirmButtonColor: '#333333' });
       }
       setOpenModal(false);
       fetchClientes(); 
     } catch (error: any) {
         const errorMsg = error.response?.data?.mensaje || 'Error al guardar';
-        setMessage({ text: errorMsg, type: 'error' });
+        Swal.fire('Error', errorMsg, 'error');
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm(`¿Eliminar cliente ${id}?`)) return;
+const handleDelete = async (id: string) => {
+    const confirmacion = await Swal.fire({
+      title: '¿Eliminar cliente?',
+      text: `¿Estás seguro de eliminar al cliente ${id}? Esta acción no se puede deshacer.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d32f2f',
+      cancelButtonColor: '#333333',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar'
+    });
+
+    if (!confirmacion.isConfirmed) return;
+
     try {
       await consumoApi.delete('/api/CatClientesSuc/sp_bw_cat_clientes_del', { params: { No_cliente: id } });
-      setMessage({ text: 'Eliminado', type: 'success' });
+      Swal.fire({ title: '¡Éxito!', text: 'Cliente eliminado correctamente', icon: 'success', confirmButtonColor: '#333333' });
       fetchClientes();
     } catch (error: any) {
       const errorMsg = error.response?.data?.mensaje || 'Error al eliminar';
-      setMessage({ text: errorMsg, type: 'error' });
+      Swal.fire('Error', errorMsg, 'error');
     }
   };
 
@@ -332,8 +349,16 @@ export default function CatClientes() {
     { field: 'ciudad', headerName: 'Ciudad', width: 180 },
   ];
 
-  return (
+return (
     <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#ececec' }}>
+      
+      {/* MAGIA CSS: Forzamos a SweetAlert a saltar al frente de los modales de MUI */}
+      <style>{`
+        .swal2-container {
+          z-index: 9999 !important;
+        }
+      `}</style>
+
       {/* PAPER 1: ENCABEZADO Y TÍTULO */}
       <Paper sx={{ p: 3, borderRadius: '8px', mb: 3 }}>
         {/* ENCABEZADO */}
@@ -442,48 +467,39 @@ export default function CatClientes() {
         </Box>
       </Paper>
 
-      {/* PAPER 2: TABLA PRINCIPAL */}
-      <Paper sx={{ p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
-        <Box sx={{ 
-          height: 'auto', 
-          width: '100%', 
-          bgcolor: 'white', 
-          borderTop: '1px solid #e0e0e0', 
-          borderBottom: '1px solid #e0e0e0',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-          minHeight: 400,
-          transition: 'all 0.3s ease'
-        }}>
+ {/* PAPER 2: TABLA PRINCIPAL */}
+      <Paper sx={{ p: 3, mt: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
+        <Box sx={{ height: 600, width: '100%' }}>
           <DataGrid 
-            rows={rows} columns={columns} getRowId={(row) => row.id} loading={loading}
+            rows={rows} 
+            columns={columns} 
+            getRowId={(row) => row.id} 
+            loading={loading}
             paginationModel={paginationModel}
             onPaginationModelChange={setPaginationModel}
             pageSizeOptions={[10, 25, 50, 100]}
             rowCount={rowCount}
             paginationMode="server"
-            onPaginationModelChange={(newModel) => {
-              setPaginationModel(newModel);
-            }}
-            sx={{
-              '& .MuiDataGrid-columnHeaders': {
-                borderBottom: '2px solid #000',
-                fontSize: '1rem',
+            density="compact"
+            disableRowSelectionOnClick
+            slots={{ toolbar: GridToolbar, pagination: CustomPagination }}
+            slotProps={{ toolbar: { showQuickFilter: true } }}
+            sx={{ 
+              border: 'none', 
+              '& .MuiDataGrid-columnHeaders': { 
+                borderBottom: '2px solid #000', 
+                textAlign: 'center', 
+                fontSize: '1rem', 
                 fontWeight: 'bold',
-                textAlign: 'center'
+                backgroundColor: '#f5f5f5'
               },
-              '& .MuiDataGrid-cell': {
-                borderBottom: '1px solid #e0e0e0'
+              '& .MuiDataGrid-cell': { 
+                borderBottom: '1px solid #e0e0e000' 
               }
             }}
           />
         </Box>
 
-        {/* PIE DE PÁGINA ESTILO ACCESS */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 3 }}>
-          <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
-            CAT_CLIENTES, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/')}, USR:{session?.nombre || 'ADMIN'}
-          </Typography>
-        </Box>
       </Paper>
 
       <Dialog 
@@ -951,9 +967,6 @@ export default function CatClientes() {
         </Box>
       </Dialog>
 
-      <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage(null)}>
-        <Alert severity={message?.type} onClose={() => setMessage(null)} sx={{ width: '100%' }}>{message?.text}</Alert>
-      </Snackbar>
     </Box>
   );
 }

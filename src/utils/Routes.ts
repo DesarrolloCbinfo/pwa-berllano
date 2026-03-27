@@ -30,6 +30,8 @@ export const routes = {
   cat_tipos_cuentas: "/cat_tipos_cuentas",
   cat_usuarios: "/cat_usuarios",
   cat_nominas_folios: "/cat_nominas_folios",
+  Cat_turnos_dobles: "/Cat_turnos_dobles",
+  cat_perfiles_permisos: "/cat_perfiles_permisos",
   pos: "/pos",
 
   //Catalogos

@@ -11,6 +11,7 @@ import {
 } from '@mui/x-data-grid';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
+import Swal from 'sweetalert2';
 
 import useConsumoApi from '../../../hooks/useConsumoApi';
 import { useSessionContext } from '../../../context/SessionProvider'; 
@@ -46,10 +47,37 @@ export default function Usuarios() {
   const [perfiles, setPerfiles] = useState<any[]>([]);
   
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
+ const [saving, setSaving] = useState(false);
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({ page: 0, pageSize: 50 });
   const [formData, setFormData] = useState(initialFormState);
-  const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' | 'info' } | null>(null);
+  
+  // Función interceptora para SweetAlert2
+  const setMessage = (msg: { text: string, type: 'success' | 'error' | 'info' } | null) => {
+    if (!msg) return;
+    
+    // Si es un "info" (guardado de tabla DataGrid), mostramos un Toast rápido
+    if (msg.type === 'info') {
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: msg.text,
+            showConfirmButton: false,
+            timer: 2000
+        });
+        return;
+    }
+
+    // Alertas estándar de SweetAlert2
+    Swal.fire({
+      title: msg.type === 'success' ? '¡Éxito!' : 'Error',
+      text: msg.text,
+      icon: msg.type,
+      timer: msg.type === 'success' ? 2000 : undefined,
+      showConfirmButton: msg.type !== 'success',
+      confirmButtonColor: '#333'
+    });
+  };
 
   useEffect(() => { fetchCatalogos(); }, []);
 
@@ -73,14 +101,14 @@ export default function Usuarios() {
       setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleAgregarNuevo = async () => {
-        // Escudo anti-doble clic
+const handleAgregarNuevo = async () => {
         if (isSavingRef.current) return; 
 
-        if (!formData.usuario.trim()) return setMessage({ text: "El Usuario es obligatorio.", type: 'error' });
-        if (!formData.nombre.trim()) return setMessage({ text: "El Nombre es obligatorio.", type: 'error' });
-        if (!formData.password.trim()) return setMessage({ text: "La Contraseña es obligatoria.", type: 'error' });
-        if (formData.clave_perfiles === 0) return setMessage({ text: "Seleccione un Perfil válido.", type: 'error' });
+        // Validaciones con SweetAlert directo (Warning)
+        if (!formData.usuario.trim()) return Swal.fire('Atención', 'El Usuario es obligatorio.', 'warning');
+        if (!formData.nombre.trim()) return Swal.fire('Atención', 'El Nombre es obligatorio.', 'warning');
+        if (!formData.password.trim()) return Swal.fire('Atención', 'La Contraseña es obligatoria.', 'warning');
+        if (formData.clave_perfiles === 0) return Swal.fire('Atención', 'Seleccione un Perfil válido.', 'warning');
 
         isSavingRef.current = true;
         setSaving(true);
@@ -88,8 +116,8 @@ export default function Usuarios() {
             const payload = {
                 usuario: formData.usuario.toUpperCase(),
                 clave_perfiles: Number(formData.clave_perfiles),
-                password: formData.password.toUpperCase(), // Igual que en Access
-                nombre: formData.nombre.toUpperCase(),     // Igual que en Access
+                password: formData.password.toUpperCase(), 
+                nombre: formData.nombre.toUpperCase(), 
                 celular: formData.celular,
                 telefono: formData.telefono,
                 email: formData.email
@@ -97,7 +125,7 @@ export default function Usuarios() {
 
             const res = await consumoApi.post('/api/Usuarios/sp_bw_cat_usuarios_ins', payload);
             if (res.status === 200) {
-                setMessage({ text: `✅ Usuario agregado exitosamente.`, type: 'success' });
+                setMessage({ text: `Usuario agregado exitosamente.`, type: 'success' });
                 fetchCatalogos();
                 setFormData(initialFormState);
             }
@@ -141,13 +169,25 @@ export default function Usuarios() {
       }
   };
 
-  const handleEliminar = async (clave: string) => {
-      if (!window.confirm(`¿Está seguro que desea eliminar al usuario ${clave}?`)) return;
+const handleEliminar = async (clave: string) => {
+      const confirmacion = await Swal.fire({
+          title: '¿Estás seguro?',
+          text: `¿Desea eliminar al usuario ${clave}?`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d32f2f',
+          cancelButtonColor: '#333',
+          confirmButtonText: 'Sí, eliminar',
+          cancelButtonText: 'Cancelar'
+      });
+
+      if (!confirmacion.isConfirmed) return;
+
       setSaving(true);
       try {
           const res = await consumoApi.delete(`/api/Usuarios/sp_bw_cat_usuarios_del?usuario=${clave}`);
           if (res.status === 200) {
-              setMessage({ text: "🗑️ Usuario eliminado.", type: 'success' });
+              setMessage({ text: "Usuario eliminado exitosamente.", type: 'success' });
               fetchCatalogos();
           }
       } catch (error: any) {
@@ -290,9 +330,6 @@ export default function Usuarios() {
         </Typography>
       </Box>
 
-      <Snackbar open={!!message} autoHideDuration={3000} onClose={() => setMessage(null)}>
-        <Alert severity={message?.type} onClose={() => setMessage(null)} sx={{ width: '100%' }}>{message?.text}</Alert>
-      </Snackbar>
     </Box>
   );
 }

@@ -11,6 +11,7 @@ import {
 } from '@mui/x-data-grid';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import Swal from 'sweetalert2';
 
 import useConsumoApi from '../../../hooks/useConsumoApi'; 
 import { useSessionContext } from '../../../context/SessionProvider'; 
@@ -92,10 +93,23 @@ export default function MetasEmpleados() {
   const [empleados, setEmpleados] = useState<any[]>([]);
   const [areas, setAreas] = useState<any[]>([]);
   const [deptos, setDeptos] = useState<any[]>([]);
-  const [clases, setClases] = useState<any[]>([]);
+const [clases, setClases] = useState<any[]>([]);
   
   const [formData, setFormData] = useState(initialFormState);
-  const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
+  
+  // Función interceptora para SweetAlert2
+  const setMessage = (msg: { text: string, type: 'success' | 'error' | 'warning' } | null) => {
+    if (!msg) return;
+    
+    Swal.fire({
+      title: msg.type === 'success' ? '¡Éxito!' : (msg.type === 'error' ? 'Error' : 'Atención'),
+      text: msg.text,
+      icon: msg.type,
+      timer: msg.type === 'success' ? 2000 : undefined,
+      showConfirmButton: msg.type !== 'success',
+      confirmButtonColor: '#333'
+    });
+  };
 
   const meses = [
       { id: 1, desc: '1 - Enero' }, { id: 2, desc: '2 - Febrero' }, { id: 3, desc: '3 - Marzo' }, { id: 4, desc: '4 - Abril' },
@@ -163,18 +177,18 @@ const fetchTablaMetas = async () => {
       }
   };
 
-  // Insertar Registro
+// Insertar Registro
   const handleGuardar = async () => {
-      if (!formData.año) return setMessage({ text: "El Año es obligatorio.", type: 'error' });
-      if (!formData.mes) return setMessage({ text: "El Mes es obligatorio.", type: 'error' });
-      if (!formData.sucursal) return setMessage({ text: "Seleccione una Sucursal.", type: 'error' });
-      if (!formData.empleado) return setMessage({ text: "Seleccione un Empleado.", type: 'error' });
+      if (!formData.año) return setMessage({ text: "El Año es obligatorio.", type: 'warning' });
+      if (!formData.mes) return setMessage({ text: "El Mes es obligatorio.", type: 'warning' });
+      if (!formData.sucursal) return setMessage({ text: "Seleccione una Sucursal.", type: 'warning' });
+      if (!formData.empleado) return setMessage({ text: "Seleccione un Empleado.", type: 'warning' });
       
       const metaVal = Number(formData.metaMes);
       const uniVal = Number(formData.unidades);
       
-      if (isNaN(metaVal) || metaVal < 0) return setMessage({ text: "La Meta debe ser un número válido.", type: 'error' });
-      if (isNaN(uniVal) || uniVal < 0) return setMessage({ text: "Las Unidades deben ser un número válido.", type: 'error' });
+      if (isNaN(metaVal) || metaVal < 0) return setMessage({ text: "La Meta debe ser un número válido.", type: 'warning' });
+      if (isNaN(uniVal) || uniVal < 0) return setMessage({ text: "Las Unidades deben ser un número válido.", type: 'warning' });
 
       setSaving(true);
       try {
@@ -192,9 +206,9 @@ const fetchTablaMetas = async () => {
 
           const res = await consumoApi.post('/api/MetasEmpleados/sp_bw_cat_nominaMetasEmpleado_ins', payload);
           if (res.status === 200) {
-              setMessage({ text: "✅ Meta registrada correctamente.", type: 'success' });
+              setMessage({ text: "Meta registrada correctamente.", type: 'success' });
               fetchTablaMetas();
-              // Limpiamos montos pero dejamos mes/sucursal para captura rápida continua
+              // Limpiamos montos pero dejamos mes/sucursal/empleado para captura rápida
               setFormData(prev => ({ ...prev, metaMes: 0, unidades: 0 }));
           }
       } catch (error) {
@@ -206,13 +220,24 @@ const fetchTablaMetas = async () => {
 
   // Eliminar Registro
   const handleEliminar = async (id: number) => {
-      if (!window.confirm("¿Está seguro que desea eliminar esta meta? Esta acción no se puede deshacer.")) return;
+      const confirmacion = await Swal.fire({
+          title: '¿Estás seguro?',
+          text: "¿Desea eliminar esta meta? Esta acción no se puede deshacer.",
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d32f2f',
+          cancelButtonColor: '#333',
+          confirmButtonText: 'Sí, eliminar',
+          cancelButtonText: 'Cancelar'
+      });
+
+      if (!confirmacion.isConfirmed) return;
       
       setSaving(true);
       try {
           const res = await consumoApi.delete(`/api/MetasEmpleados/sp_bw_cat_nominaMetasEmpleado_del?id=${id}`);
           if (res.status === 200) {
-              setMessage({ text: "🗑️ Registro eliminado.", type: 'success' });
+              setMessage({ text: "Registro eliminado exitosamente.", type: 'success' });
               fetchTablaMetas();
           }
       } catch (error) {
@@ -398,10 +423,6 @@ const fetchTablaMetas = async () => {
         </Box>
       </Paper>
 
-      {/* NOTIFICACIONES */}
-      <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage(null)}>
-        <Alert severity={message?.type} onClose={() => setMessage(null)} sx={{ width: '100%' }}>{message?.text}</Alert>
-      </Snackbar>
     </Box>
   );
 }

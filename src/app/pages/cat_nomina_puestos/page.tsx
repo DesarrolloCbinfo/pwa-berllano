@@ -3,6 +3,7 @@ import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
 import { Box, CircularProgress, Alert, Typography, Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, Snackbar } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
+import Swal from 'sweetalert2';
 import useConsumoApi from "../../../hooks/useConsumoApi";
 import { useSessionContext } from '../../../context/SessionProvider'; 
 
@@ -36,9 +37,21 @@ export default function CatNominaPuestos() {
   const { consumoApi } = useConsumoApi();
   const { session } = useSessionContext();
   const [rows, setRows] = useState<CatNominaPuestos[]>([]);
-  const [loading, setLoading] = useState(true);
+const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' | 'info' } | null>(null);
+  
+  // Función interceptora para SweetAlert2
+  const setMessage = (msg: { text: string, type: 'success' | 'error' | 'info' } | null) => {
+    if (!msg) return;
+    Swal.fire({
+      title: msg.type === 'success' ? '¡Éxito!' : (msg.type === 'error' ? 'Error' : 'Atención'),
+      text: msg.text,
+      icon: msg.type === 'info' ? 'warning' : msg.type,
+      timer: msg.type === 'success' ? 2000 : undefined,
+      showConfirmButton: msg.type !== 'success',
+      confirmButtonColor: '#333'
+    });
+  };
 
   // Elementos para agregar puestos
   const [openAdd, setOpenAdd] = useState(false);
@@ -103,16 +116,17 @@ export default function CatNominaPuestos() {
     fetchPuestos();
   }, []);
 
-  const handleAdd = async () => {
-    if (clave_puesto === '' || !descripcion_puesto) return;
+const handleAdd = async () => {
+    // Validaciones elegantes
+    if (clave_puesto === '') return setMessage({ text: "La Clave del Puesto es obligatoria", type: 'info' });
+    if (!descripcion_puesto.trim()) return setMessage({ text: "La descripción es obligatoria", type: 'info' });
 
     try {
       setSaving(true);
-
       const clavePuestoNumber = clave_puesto === '' ? 0 : clave_puesto;
 
       const response = await consumoApi.post(
-        `/api/CatNominaPuestos/sp_bw_cat_nomina_puestos_add?clave_puesto=${clavePuestoNumber}&descripcion_puesto=${encodeURIComponent(descripcion_puesto)}`,
+        `/api/CatNominaPuestos/sp_bw_cat_nomina_puestos_add?clave_puesto=${clavePuestoNumber}&descripcion_puesto=${encodeURIComponent(descripcion_puesto.toUpperCase())}`,
         null,
       );
 
@@ -123,11 +137,11 @@ export default function CatNominaPuestos() {
         return;
       }
 
-      setMessage({ text: '✅ Puesto agregado correctamente', type: 'success' });
+      setMessage({ text: 'Puesto agregado correctamente', type: 'success' });
       setOpenAdd(false);
       setClavePuesto('');
       setDescripcionPuesto('');
-      fetchPuestos(); //  refresca grid
+      fetchPuestos(); 
     } catch (err) {
       setMessage({ text: err instanceof Error ? err.message : 'Error desconocido', type: 'error' });
     } finally {
@@ -135,16 +149,17 @@ export default function CatNominaPuestos() {
     }
   };
 
-  const handleUpdate = async () => {
-    if (!editId || editClavePuesto === '' || !editDescripcionPuesto) return;
+const handleUpdate = async () => {
+    if (!editId) return;
+    if (editClavePuesto === '') return setMessage({ text: "La Clave del Puesto es obligatoria", type: 'info' });
+    if (!editDescripcionPuesto.trim()) return setMessage({ text: "La descripción es obligatoria", type: 'info' });
 
     try {
       setSavingEdit(true);
-
       const editClavePuestoNumber = editClavePuesto === '' ? 0 : editClavePuesto;
 
       const response = await consumoApi.put(
-        `/api/CatNominaPuestos/sp_bw_cat_nomina_puestos_upd?clave_puesto=${editClavePuestoNumber}&descripcion_puesto=${encodeURIComponent(editDescripcionPuesto)}`,
+        `/api/CatNominaPuestos/sp_bw_cat_nomina_puestos_upd?clave_puesto=${editClavePuestoNumber}&descripcion_puesto=${encodeURIComponent(editDescripcionPuesto.toUpperCase())}`,
         null,
       );
 
@@ -155,12 +170,12 @@ export default function CatNominaPuestos() {
         return;
       }
 
-      setMessage({ text: '💾 Puesto actualizado correctamente', type: 'success' });
+      setMessage({ text: 'Puesto actualizado correctamente', type: 'success' });
       setOpenEdit(false);
       setEditId(null);
       setEditClavePuesto('');
       setEditDescripcionPuesto('');
-      fetchPuestos(); // refresca grid
+      fetchPuestos(); 
     } catch (err) {
       setMessage({ text: err instanceof Error ? err.message : 'Error desconocido', type: 'error' });
     } finally {
@@ -168,8 +183,16 @@ export default function CatNominaPuestos() {
     }
   };
 
-  return (
+return (
     <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#ececec' }}>
+      
+      {/* MAGIA CSS: Forzamos a SweetAlert a saltar al frente de los modales de MUI */}
+      <style>{`
+        .swal2-container {
+          z-index: 9999 !important;
+        }
+      `}</style>
+
       <Paper sx={{ p: 3, borderRadius: '8px' }}>
         {/* ENCABEZADO BERLLANO ELEGANTE 2 */}
         <Box sx={{ border: '1px solid #2c3e50', borderRadius: '8px', backgroundColor: '#fff', p: 1.5, mb: 2, display: 'flex', justifyContent: 'space-between' }}>
@@ -374,10 +397,6 @@ export default function CatNominaPuestos() {
         </DialogActions>
       </Dialog>
 
-      {/* NOTIFICACIONES */}
-      <Snackbar open={!!message} autoHideDuration={3000} onClose={() => setMessage(null)}>
-        <Alert severity={message?.type} onClose={() => setMessage(null)} sx={{ width: '100%' }}>{message?.text}</Alert>
-      </Snackbar>
     </Box>
   );
 }

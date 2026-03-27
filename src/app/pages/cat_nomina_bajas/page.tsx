@@ -3,6 +3,7 @@ import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
 import { Box, CircularProgress, Alert, Typography, Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, Snackbar } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
+import Swal from 'sweetalert2';
 import useConsumoApi from "../../../hooks/useConsumoApi";
 import { useSessionContext } from '../../../context/SessionProvider'; 
 
@@ -35,9 +36,21 @@ export default function CatNominaBajas() {
   const { consumoApi } = useConsumoApi();
   const { session } = useSessionContext();
   const [rows, setRows] = useState<CatNominaBajas[]>([]);
-  const [loading, setLoading] = useState(true);
+const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' | 'info' } | null>(null);
+  
+  // Función interceptora para SweetAlert2
+  const setMessage = (msg: { text: string, type: 'success' | 'error' | 'info' } | null) => {
+    if (!msg) return;
+    Swal.fire({
+      title: msg.type === 'success' ? '¡Éxito!' : (msg.type === 'error' ? 'Error' : 'Atención'),
+      text: msg.text,
+      icon: msg.type === 'info' ? 'warning' : msg.type,
+      timer: msg.type === 'success' ? 2000 : undefined,
+      showConfirmButton: msg.type !== 'success',
+      confirmButtonColor: '#333'
+    });
+  };
 
   // Elementos para agregar bajas
   const [openAdd, setOpenAdd] = useState(false);
@@ -98,14 +111,14 @@ export default function CatNominaBajas() {
     fetchBajas();
   }, []);
 
-  const handleAdd = async () => {
-    if (!descripcion) return;
+const handleAdd = async () => {
+    if (!descripcion.trim()) return setMessage({ text: "La descripción es obligatoria", type: 'info' });
 
     try {
       setSaving(true);
 
       const response = await consumoApi.post(
-        `/api/CatNominaBajas/sp_bw_cat_nomina_motivo_baja_add?descripcion=${encodeURIComponent(descripcion)}`,
+        `/api/CatNominaBajas/sp_bw_cat_nomina_motivo_baja_add?descripcion=${encodeURIComponent(descripcion.toUpperCase())}`,
         null,
       );
 
@@ -116,10 +129,10 @@ export default function CatNominaBajas() {
         return;
       }
 
-      setMessage({ text: '✅ Baja agregada correctamente', type: 'success' });
+      setMessage({ text: 'Baja agregada correctamente', type: 'success' });
       setOpenAdd(false);
       setDescripcion('');
-      fetchBajas(); //  refresca grid
+      fetchBajas(); 
     } catch (err) {
       setMessage({ text: err instanceof Error ? err.message : 'Error desconocido', type: 'error' });
     } finally {
@@ -127,14 +140,15 @@ export default function CatNominaBajas() {
     }
   };
 
-  const handleUpdate = async () => {
-    if (!editId || !editDescripcion) return;
+const handleUpdate = async () => {
+    if (!editId) return;
+    if (!editDescripcion.trim()) return setMessage({ text: "La descripción es obligatoria", type: 'info' });
 
     try {
       setSavingEdit(true);
 
       const response = await consumoApi.put(
-        `/api/CatNominaBajas/sp_bw_cat_nomina_motivo_baja_upd?id=${editId}&descripcion=${encodeURIComponent(editDescripcion)}`,
+        `/api/CatNominaBajas/sp_bw_cat_nomina_motivo_baja_upd?id=${editId}&descripcion=${encodeURIComponent(editDescripcion.toUpperCase())}`,
         null,
       );
 
@@ -145,11 +159,11 @@ export default function CatNominaBajas() {
         return;
       }
 
-      setMessage({ text: '💾 Baja actualizada correctamente', type: 'success' });
+      setMessage({ text: 'Baja actualizada correctamente', type: 'success' });
       setOpenEdit(false);
       setEditId(null);
       setEditDescripcion('');
-      fetchBajas(); // refresca grid
+      fetchBajas(); 
     } catch (err) {
       setMessage({ text: err instanceof Error ? err.message : 'Error desconocido', type: 'error' });
     } finally {
@@ -157,8 +171,16 @@ export default function CatNominaBajas() {
     }
   };
 
-  return (
+return (
     <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#ececec' }}>
+      
+      {/* MAGIA CSS: Forzamos a SweetAlert a saltar al frente de cualquier modal de MUI */}
+      <style>{`
+        .swal2-container {
+          z-index: 9999 !important;
+        }
+      `}</style>
+
       <Paper sx={{ p: 3, borderRadius: '8px' }}>
         {/* ENCABEZADO BERLLANO ELEGANTE 2 */}
         <Box sx={{ border: '1px solid #2c3e50', borderRadius: '8px', backgroundColor: '#fff', p: 1.5, mb: 2, display: 'flex', justifyContent: 'space-between' }}>
@@ -333,10 +355,6 @@ export default function CatNominaBajas() {
         </DialogActions>
       </Dialog>
 
-      {/* NOTIFICACIONES */}
-      <Snackbar open={!!message} autoHideDuration={3000} onClose={() => setMessage(null)}>
-        <Alert severity={message?.type} onClose={() => setMessage(null)} sx={{ width: '100%' }}>{message?.text}</Alert>
-      </Snackbar>
     </Box>
   );
 }

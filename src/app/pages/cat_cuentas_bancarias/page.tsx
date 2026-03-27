@@ -9,6 +9,7 @@ import {
 } from '@mui/x-data-grid';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete'; // <--- Agregamos DeleteIcon
+import Swal from 'sweetalert2';
 
 // OJO: Asegúrate de que esta línea exista para que no te salga el error de tu captura
 import useConsumoApi from '../../../hooks/useConsumoApi'; 
@@ -47,10 +48,37 @@ export default function CuentasBancarias() {
   const [bancos, setBancos] = useState<any[]>([]);
   
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
+const [saving, setSaving] = useState(false);
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({ page: 0, pageSize: 50 });
   const [formData, setFormData] = useState(initialFormState);
-  const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' | 'info' } | null>(null);
+
+  // Función interceptora para SweetAlert2
+  const setMessage = (msg: { text: string, type: 'success' | 'error' | 'info' } | null) => {
+    if (!msg) return;
+    
+    // Si es "info" (cuando editas directo en la tabla), lanzamos un Toast discreto
+    if (msg.type === 'info') {
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: msg.text,
+            showConfirmButton: false,
+            timer: 2000
+        });
+        return;
+    }
+
+    // Alertas estándar para éxito o validaciones (warning/error)
+    Swal.fire({
+      title: msg.type === 'success' ? '¡Éxito!' : 'Atención',
+      text: msg.text,
+      icon: msg.type === 'success' ? 'success' : (msg.type === 'error' ? 'error' : 'warning'),
+      timer: msg.type === 'success' ? 2000 : undefined,
+      showConfirmButton: msg.type !== 'success',
+      confirmButtonColor: '#333'
+    });
+  };
 
   useEffect(() => { fetchCatalogos(); }, []);
 
@@ -78,13 +106,13 @@ export default function CuentasBancarias() {
   };
 
 const handleAgregarNuevo = async () => {
-        // Si el escudo está activo, ignoramos cualquier clic adicional
         if (isSavingRef.current) return; 
 
-        if (!formData.cuenta.trim()) return setMessage({ text: "La Clave de la cuenta es obligatoria.", type: 'error' });
-        if (!formData.descripcion.trim()) return setMessage({ text: "La descripción es obligatoria.", type: 'error' });
+        // Usamos 'info' para que dispare un warning visual
+        if (!formData.cuenta.trim()) return setMessage({ text: "La Clave de la cuenta es obligatoria.", type: 'info' });
+        if (!formData.descripcion.trim()) return setMessage({ text: "La descripción es obligatoria.", type: 'info' });
 
-        isSavingRef.current = true; // Levantamos el escudo al milisegundo exacto
+        isSavingRef.current = true;
         setSaving(true);
         try {
             const payload = {
@@ -100,14 +128,14 @@ const handleAgregarNuevo = async () => {
 
             const res = await consumoApi.post('/api/CuentasBancarias/sp_bw_cat_cuentas_bancarias_ins', payload);
             if (res.status === 200) {
-                setMessage({ text: `✅ Cuenta bancaria agregada.`, type: 'success' });
+                setMessage({ text: `Cuenta bancaria agregada exitosamente.`, type: 'success' });
                 fetchCatalogos();
                 setFormData(initialFormState);
             }
         } catch (error: any) {
             setMessage({ text: error.response?.data?.mensaje || "Error al agregar el registro.", type: 'error' });
         } finally {
-            isSavingRef.current = false; // Bajamos el escudo una vez que todo terminó
+            isSavingRef.current = false;
             setSaving(false);
         }
     };
@@ -146,17 +174,27 @@ const handleAgregarNuevo = async () => {
   };
 
 const handleEliminar = async (clave: string) => {
-      if (!window.confirm("¿Está seguro que desea eliminar esta cuenta bancaria?")) return;
+      const confirmacion = await Swal.fire({
+          title: '¿Estás seguro?',
+          text: "¿Desea eliminar esta cuenta bancaria?",
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d32f2f',
+          cancelButtonColor: '#333',
+          confirmButtonText: 'Sí, eliminar',
+          cancelButtonText: 'Cancelar'
+      });
+
+      if (!confirmacion.isConfirmed) return;
+
       setSaving(true);
       try {
-          // Asumimos cia=1 y pasamos la cuenta
           const res = await consumoApi.delete(`/api/CuentasBancarias/sp_bw_cat_cuentas_bancarias_del?cia=1&cuenta=${clave}`);
           if (res.status === 200) {
-              setMessage({ text: "🗑️ Cuenta bancaria eliminada.", type: 'success' });
-              fetchCatalogos(); // Recargamos la tabla
+              setMessage({ text: "Cuenta bancaria eliminada.", type: 'success' });
+              fetchCatalogos(); 
           }
       } catch (error: any) {
-          // Mostrará el error de la BD si la cuenta tiene movimientos
           setMessage({ text: error.response?.data?.mensaje || "Error al eliminar el registro.", type: 'error' });
       } finally {
           setSaving(false);
@@ -295,9 +333,6 @@ const columns = useMemo<GridColDef[]>(() => [
         </Typography>
       </Box>
 
-      <Snackbar open={!!message} autoHideDuration={3000} onClose={() => setMessage(null)}>
-        <Alert severity={message?.type} onClose={() => setMessage(null)} sx={{ width: '100%' }}>{message?.text}</Alert>
-      </Snackbar>
     </Box>
   );
 }

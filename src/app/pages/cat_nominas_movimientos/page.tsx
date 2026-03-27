@@ -11,6 +11,7 @@ import {
 } from '@mui/x-data-grid';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
+import Swal from 'sweetalert2';
 
 import useConsumoApi from '../../../hooks/useConsumoApi';
 import { useSessionContext } from '../../../context/SessionProvider'; 
@@ -53,11 +54,38 @@ export default function MovimientosNomina() {
   const [rows, setRows] = useState<any[]>([]);
   const [tiposMovimiento, setTiposMovimiento] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
+const [saving, setSaving] = useState(false);
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({ page: 0, pageSize: 50 });
   
   const [formData, setFormData] = useState(initialFormState);
-  const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' | 'info' } | null>(null);
+
+  // Función interceptora para SweetAlert2
+  const setMessage = (msg: { text: string, type: 'success' | 'error' | 'info' } | null) => {
+    if (!msg) return;
+    
+    // Toast rápido para el guardado de la tabla (DataGrid)
+    if (msg.type === 'info') {
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: msg.text,
+            showConfirmButton: false,
+            timer: 2000
+        });
+        return;
+    }
+
+    // Alertas pop-up grandes
+    Swal.fire({
+      title: msg.type === 'success' ? '¡Éxito!' : 'Atención',
+      text: msg.text,
+      icon: msg.type === 'success' ? 'success' : (msg.type === 'error' ? 'error' : 'warning'),
+      timer: msg.type === 'success' ? 2000 : undefined,
+      showConfirmButton: msg.type !== 'success',
+      confirmButtonColor: '#333'
+    });
+  };
 
   useEffect(() => {
       fetchCatalogos();
@@ -86,18 +114,18 @@ export default function MovimientosNomina() {
       }));
   };
 
-  // 1. GUARDAR NUEVO
+// 1. GUARDAR NUEVO
   const handleAgregarNuevo = async () => {
-        if (!formData.id_movimiento) return setMessage({ text: "La Clave del movimiento es obligatoria.", type: 'error' });
-        if (!formData.descripcion.trim()) return setMessage({ text: "La descripción es obligatoria.", type: 'error' });
-        if (!formData.tipo_movto) return setMessage({ text: "Seleccione un Tipo de Movimiento.", type: 'error' });
+        if (!formData.id_movimiento) return setMessage({ text: "La Clave del movimiento es obligatoria.", type: 'info' });
+        if (!formData.descripcion.trim()) return setMessage({ text: "La descripción es obligatoria.", type: 'info' });
+        if (!formData.tipo_movto) return setMessage({ text: "Seleccione un Tipo de Movimiento.", type: 'info' });
 
         setSaving(true);
         try {
             const payload = {
                 cia: 1, // Por defecto siempre 1
                 id_movimiento: Number(formData.id_movimiento),
-                descripcion: formData.descripcion,
+                descripcion: formData.descripcion.toUpperCase(),
                 id_gasto: Number(formData.id_gasto),
                 id_subgasto: Number(formData.id_subgasto),
                 deduccion: formData.deduccion,
@@ -107,7 +135,7 @@ export default function MovimientosNomina() {
 
             const res = await consumoApi.post('/api/MovimientosNomina/sp_bw_cat_movimientos_nomina_ins', payload);
             if (res.status === 200) {
-                setMessage({ text: `✅ Nuevo movimiento agregado.`, type: 'success' });
+                setMessage({ text: `Nuevo movimiento agregado exitosamente.`, type: 'success' });
                 fetchCatalogos();
                 setFormData(initialFormState);
             }
@@ -156,14 +184,26 @@ export default function MovimientosNomina() {
       }
   };
 
-  // 3. ELIMINAR
+// 3. ELIMINAR
   const handleEliminar = async (cia: number, idMovimiento: number) => {
-      if (!window.confirm("¿Está seguro que desea eliminar este movimiento?")) return;
+      const confirmacion = await Swal.fire({
+          title: '¿Estás seguro?',
+          text: "¿Desea eliminar este movimiento?",
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d32f2f',
+          cancelButtonColor: '#333',
+          confirmButtonText: 'Sí, eliminar',
+          cancelButtonText: 'Cancelar'
+      });
+
+      if (!confirmacion.isConfirmed) return;
+
       setSaving(true);
       try {
           const res = await consumoApi.delete(`/api/MovimientosNomina/sp_bw_cat_movimientos_nomina_del?cia=${cia}&idMovimiento=${idMovimiento}`);
           if (res.status === 200) {
-              setMessage({ text: "🗑️ Movimiento eliminado.", type: 'success' });
+              setMessage({ text: "Movimiento eliminado exitosamente.", type: 'success' });
               fetchCatalogos();
           }
       } catch (error) {
@@ -311,11 +351,6 @@ export default function MovimientosNomina() {
           CAT_NOMINAS_MOVIMIENTOS, ARAUCARIAS, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/')}, USR:{session?.nombre || 'ADMIN'}
         </Typography>
       </Box>
-
-      {/* NOTIFICACIONES */}
-      <Snackbar open={!!message} autoHideDuration={3000} onClose={() => setMessage(null)}>
-        <Alert severity={message?.type} onClose={() => setMessage(null)} sx={{ width: '100%' }}>{message?.text}</Alert>
-      </Snackbar>
     </Box>
   );
 }

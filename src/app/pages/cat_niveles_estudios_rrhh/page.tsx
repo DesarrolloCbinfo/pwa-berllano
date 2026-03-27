@@ -11,6 +11,7 @@ import {
 } from '@mui/x-data-grid';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
+import Swal from 'sweetalert2';
 
 import useConsumoApi from '../../../hooks/useConsumoApi';
 import { useSessionContext } from '../../../context/SessionProvider'; 
@@ -34,10 +35,37 @@ export default function NivelesEstudios() {
 
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
+const [saving, setSaving] = useState(false);
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({ page: 0, pageSize: 50 });
   const [formData, setFormData] = useState(initialFormState);
-  const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' | 'info' } | null>(null);
+
+  // Función interceptora para SweetAlert2
+  const setMessage = (msg: { text: string, type: 'success' | 'error' | 'info' } | null) => {
+    if (!msg) return;
+    
+    // Toast chiquito para los guardados automáticos de la tabla DataGrid
+    if (msg.type === 'info') {
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: msg.text,
+            showConfirmButton: false,
+            timer: 2000
+        });
+        return;
+    }
+
+    // Alertas pop-up para las validaciones y los éxitos de guardado principal
+    Swal.fire({
+      title: msg.type === 'success' ? '¡Éxito!' : 'Atención',
+      text: msg.text,
+      icon: msg.type === 'success' ? 'success' : (msg.type === 'error' ? 'error' : 'warning'),
+      timer: msg.type === 'success' ? 2000 : undefined,
+      showConfirmButton: msg.type !== 'success',
+      confirmButtonColor: '#333'
+    });
+  };
 
   useEffect(() => { fetchTabla(); }, []);
 
@@ -56,9 +84,10 @@ export default function NivelesEstudios() {
       setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleAgregarNuevo = async () => {
-        if (!formData.clave_nivel) return setMessage({ text: "La Clave es obligatoria.", type: 'error' });
-        if (!formData.descripcion_escolaridad.trim()) return setMessage({ text: "La descripción es obligatoria.", type: 'error' });
+const handleAgregarNuevo = async () => {
+        // Validaciones elegantes
+        if (!formData.clave_nivel) return setMessage({ text: "La Clave es obligatoria.", type: 'info' });
+        if (!formData.descripcion_escolaridad.trim()) return setMessage({ text: "La descripción es obligatoria.", type: 'info' });
 
         setSaving(true);
         try {
@@ -69,7 +98,7 @@ export default function NivelesEstudios() {
 
             const res = await consumoApi.post('/api/NivelesEscolaridad/sp_bw_cat_niveles_escolaridad_ins', payload);
             if (res.status === 200) {
-                setMessage({ text: `✅ Nivel de estudios agregado.`, type: 'success' });
+                setMessage({ text: `Nivel de estudios agregado exitosamente.`, type: 'success' });
                 fetchTabla();
                 setFormData(initialFormState);
             }
@@ -100,13 +129,25 @@ export default function NivelesEstudios() {
       }
   };
 
-  const handleEliminar = async (clave: number) => {
-      if (!window.confirm("¿Está seguro que desea eliminar este nivel de estudios?")) return;
+const handleEliminar = async (clave: number) => {
+      const confirmacion = await Swal.fire({
+          title: '¿Estás seguro?',
+          text: "¿Desea eliminar este nivel de estudios?",
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d32f2f',
+          cancelButtonColor: '#333',
+          confirmButtonText: 'Sí, eliminar',
+          cancelButtonText: 'Cancelar'
+      });
+
+      if (!confirmacion.isConfirmed) return;
+
       setSaving(true);
       try {
           const res = await consumoApi.delete(`/api/NivelesEscolaridad/sp_bw_cat_niveles_escolaridad_del?claveNivel=${clave}`);
           if (res.status === 200) {
-              setMessage({ text: "🗑️ Nivel de estudios eliminado.", type: 'success' });
+              setMessage({ text: "Nivel de estudios eliminado exitosamente.", type: 'success' });
               fetchTabla();
           }
       } catch (error: any) {
@@ -208,9 +249,6 @@ export default function NivelesEstudios() {
         </Typography>
       </Box>
 
-      <Snackbar open={!!message} autoHideDuration={3000} onClose={() => setMessage(null)}>
-        <Alert severity={message?.type} onClose={() => setMessage(null)} sx={{ width: '100%' }}>{message?.text}</Alert>
-      </Snackbar>
     </Box>
   );
 }

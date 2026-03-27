@@ -11,6 +11,7 @@ import {
 } from '@mui/x-data-grid';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import Swal from 'sweetalert2';
 
 import useConsumoApi from '../../../hooks/useConsumoApi'; 
 import { useSessionContext } from '../../../context/SessionProvider'; 
@@ -82,11 +83,24 @@ export default function MetasSucursales() {
   const [saving, setSaving] = useState(false);
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({ page: 0, pageSize: 50 });
 
-  // Estados de Catálogos
+// Estados de Catálogos
   const [sucursales, setSucursales] = useState<any[]>([]);
   
   const [formData, setFormData] = useState(initialFormState);
-  const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
+  
+  // Función interceptora para SweetAlert2
+  const setMessage = (msg: { text: string, type: 'success' | 'error' | 'warning' } | null) => {
+    if (!msg) return;
+    
+    Swal.fire({
+      title: msg.type === 'success' ? '¡Éxito!' : (msg.type === 'error' ? 'Error' : 'Atención'),
+      text: msg.text,
+      icon: msg.type,
+      timer: msg.type === 'success' ? 2000 : undefined,
+      showConfirmButton: msg.type !== 'success',
+      confirmButtonColor: '#333'
+    });
+  };
 
   const meses = [
       { id: 1, desc: '1 - Enero' }, { id: 2, desc: '2 - Febrero' }, { id: 3, desc: '3 - Marzo' }, { id: 4, desc: '4 - Abril' },
@@ -124,13 +138,14 @@ export default function MetasSucursales() {
       setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleGuardar = async () => {
-      if (!formData.año) return setMessage({ text: "El Año es obligatorio.", type: 'error' });
-      if (!formData.mes) return setMessage({ text: "El Mes es obligatorio.", type: 'error' });
-      if (!formData.sucursal) return setMessage({ text: "Seleccione una Sucursal.", type: 'error' });
+const handleGuardar = async () => {
+      // Validaciones convertidas a warning visual
+      if (!formData.año) return setMessage({ text: "El Año es obligatorio.", type: 'warning' });
+      if (!formData.mes) return setMessage({ text: "El Mes es obligatorio.", type: 'warning' });
+      if (!formData.sucursal) return setMessage({ text: "Seleccione una Sucursal.", type: 'warning' });
       
       const metaVal = Number(formData.meta);
-      if (isNaN(metaVal) || metaVal < 0) return setMessage({ text: "La Meta debe ser un número válido.", type: 'error' });
+      if (isNaN(metaVal) || metaVal < 0) return setMessage({ text: "La Meta debe ser un número válido.", type: 'warning' });
 
       setSaving(true);
       try {
@@ -143,7 +158,7 @@ export default function MetasSucursales() {
 
           const res = await consumoApi.post('/api/MetasSucursales/sp_bw_cat_nominaMetasSucursal_ins', payload);
           if (res.status === 200) {
-              setMessage({ text: "✅ Meta registrada correctamente.", type: 'success' });
+              setMessage({ text: "Meta registrada correctamente.", type: 'success' });
               fetchTablaMetas();
               setFormData(prev => ({ ...prev, meta: 0 }));
           }
@@ -155,13 +170,24 @@ export default function MetasSucursales() {
   };
 
   const handleEliminar = async (id: number) => {
-      if (!window.confirm("¿Está seguro que desea eliminar esta meta?")) return;
+      const confirmacion = await Swal.fire({
+          title: '¿Estás seguro?',
+          text: "¿Desea eliminar esta meta?",
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d32f2f',
+          cancelButtonColor: '#333',
+          confirmButtonText: 'Sí, eliminar',
+          cancelButtonText: 'Cancelar'
+      });
+
+      if (!confirmacion.isConfirmed) return;
       
       setSaving(true);
       try {
           const res = await consumoApi.delete(`/api/MetasSucursales/sp_bw_cat_nominaMetasSucursal_del?id=${id}`);
           if (res.status === 200) {
-              setMessage({ text: "🗑️ Registro eliminado.", type: 'success' });
+              setMessage({ text: "Registro eliminado exitosamente.", type: 'success' });
               fetchTablaMetas();
           }
       } catch (error) {
@@ -308,10 +334,6 @@ export default function MetasSucursales() {
         </Box>
       </Paper>
 
-      {/* NOTIFICACIONES */}
-      <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage(null)}>
-        <Alert severity={message?.type} onClose={() => setMessage(null)} sx={{ width: '100%' }}>{message?.text}</Alert>
-      </Snackbar>
     </Box>
   );
 }

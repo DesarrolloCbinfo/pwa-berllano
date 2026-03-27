@@ -187,7 +187,7 @@ const handlePermisosMasivo = async (otorgarTodo: boolean) => {
     { field: 'descripcion_perfil', headerName: 'Descripción del Perfil', flex: 1 },
   ];
 
-  // --- COLUMNAS GRID PERMISOS ---
+// --- COLUMNAS GRID PERMISOS ---
   const colsPermisos: GridColDef[] = [
     { field: 'permiso', headerName: 'Acceso', width: 90, sortable: false, filterable: false,
       renderCell: (p) => (
@@ -198,12 +198,21 @@ const handlePermisosMasivo = async (otorgarTodo: boolean) => {
         />
       ),
     },
-    { field: 'formulario', headerName: 'Nombre del Módulo / Formulario', flex: 1 },
+    // Le quitamos el "flex: 1" y le ponemos un ancho fijo de 350px (puedes subir o bajar este número a tu gusto)
+    { field: 'formulario', headerName: 'Nombre del Módulo / Formulario', width: 350 },
+    
     { field: 'fecha_act', headerName: 'Últ. Modificación', width: 150, valueFormatter: (v) => v ? String(v).split('T')[0] : '' },
   ];
 
-  return (
+return (
     <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
+      
+      {/* 🚀 MAGIA AQUÍ: Forzamos a SweetAlert a saltar al frente de cualquier modal de MUI */}
+      <style>{`
+        .swal2-container {
+          z-index: 9999 !important;
+        }
+      `}</style>
       
       {/* HEADER */}
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
@@ -216,7 +225,7 @@ const handlePermisosMasivo = async (otorgarTodo: boolean) => {
       <Grid container spacing={3}>
 {/* PANEL IZQUIERDO: PERFILES */}
         <Grid item xs={12} md={5}>
-          <Box sx={{ bgcolor: 'white', p: 2, borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', height: 'calc(100vh - 120px)', display: 'flex', flexDirection: 'column' }}>
+          <Box sx={{ bgcolor: 'white', p: 2, borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', height: 'calc(100vh - 180px)', display: 'flex', flexDirection: 'column', mb: 2 }}>
             
             {/* Encabezado sin botón */}
             <Box sx={{ mb: 2 }}>
@@ -241,20 +250,17 @@ const handlePermisosMasivo = async (otorgarTodo: boolean) => {
                 }}
               />
             </Box>
-
-            {/* Botón abajo */}
-            <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
-              <Button 
-                variant="contained" 
-                fullWidth
-                onClick={() => { setPerfilForm({ clave_perfil: 0, descripcion_perfil: '' }); setOpenModal(true); }} 
-                sx={{ bgcolor: '#333', py: 1, fontWeight: 'bold' }}
-              >
-                + Nuevo Perfil
-              </Button>
-            </Box>
-
           </Box>
+
+          {/* Botón AFUERA del contenedor blanco */}
+          <Button 
+            variant="contained" 
+            fullWidth
+            onClick={() => { setPerfilForm({ clave_perfil: 0, descripcion_perfil: '' }); setOpenModal(true); }} 
+            sx={{ bgcolor: '#333', py: 1, fontWeight: 'bold' }}
+          >
+            + Nuevo Perfil
+          </Button>
         </Grid>
 
 {/* PANEL DERECHO: PERMISOS */}
@@ -264,20 +270,22 @@ const handlePermisosMasivo = async (otorgarTodo: boolean) => {
             p: 2, 
             borderRadius: 2, 
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)', 
-            height: 'calc(100vh - 120px)', 
+            height: 'calc(100vh - 180px)', 
             display: 'flex', 
             flexDirection: 'column',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            mb: 1.5, // Margen inferior
+            maxWidth: '750px' // <--- 1. Ampliamos un poco para que los botones quepan bien
           }}>
             
             {!perfilSeleccionado ? (
               <Box sx={{ display: 'flex', flexGrow: 1, alignItems: 'center', justifyContent: 'center', flexDirection: 'column', color: '#999' }}>
-                <Typography variant="h1">👈</Typography>
-                <Typography variant="h6">Seleccione un perfil de la lista para gestionar sus accesos</Typography>
+
+                <Typography variant="h6" align="center">Seleccione un perfil de la lista para gestionar sus accesos</Typography>
               </Box>
             ) : (
               <>
-                {/* Encabezado sin botones */}
+                {/* Encabezado */}
                 <Box sx={{ mb: 2, bgcolor: '#f8f9fa', p: 2, border: '1px solid #eee', borderRadius: 2 }}>
                   <Typography variant="subtitle2" color="textSecondary">Configurando permisos para:</Typography>
                   <Typography variant="h6" fontWeight="bold" color="primary">{perfilSeleccionado.descripcion_perfil}</Typography>
@@ -296,69 +304,236 @@ const handlePermisosMasivo = async (otorgarTodo: boolean) => {
                     slotProps={{ toolbar: { showQuickFilter: true } }}
                   />
                 </Box>
-
-               {/* Botones abajo */}
-                <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  
-                  {/* Botones Extra a la Izquierda */}
-                  <Box sx={{ display: 'flex', gap: 2 }}>
-                    <Button 
-                      variant="outlined" 
-                      color="primary" 
-                      onClick={() => setOpenModalMovProv(true)}
-                      sx={{ fontWeight: 'bold' }}
-                    >
-                      Permisos por movimientos
-                    </Button>
-                    
-                    <Button 
-  variant="outlined" 
-  color="secondary" 
-  onClick={() => setOpenModalCuentas(true)} // <-- AQUÍ
-  sx={{ fontWeight: 'bold' }}
->
-  Acceso a cuentas bancarias
-</Button>
-                  </Box>
-
-                  {/* Botones de Acción Masiva a la Derecha */}
-                  <Box sx={{ display: 'flex', gap: 2 }}>
-                    <Button variant="contained" color="success" startIcon={<CheckCircleIcon />} onClick={() => handlePermisosMasivo(true)}>
-                      Acceso Total
-                    </Button>
-                    <Button variant="contained" color="error" startIcon={<CancelIcon />} onClick={() => handlePermisosMasivo(false)}>
-                      Ningún Acceso
-                    </Button>
-                  </Box>
-                  
-                </Box>
               </>
             )}
           </Box>
+
+          {/* BOTONES AFUERA PERFECTAMENTE ALINEADOS EN UN RENGLÓN */}
+          {perfilSeleccionado && (
+             <Box sx={{ 
+               display: 'flex', 
+               justifyContent: 'space-between', 
+               alignItems: 'center', 
+               maxWidth: '750px', // <--- Debe coincidir con el maxWidth de la tabla de arriba
+               gap: 1 
+             }}>
+               
+               {/* Izquierda: Configuración Extra */}
+               <Box sx={{ display: 'flex', gap: 1 }}>
+                 <Button 
+                   size="small" 
+                   variant="outlined" 
+                   color="primary" 
+                   onClick={() => setOpenModalMovProv(true)} 
+                   sx={{ fontWeight: 'bold', bgcolor: 'white', whiteSpace: 'nowrap' }}
+                 >
+                   Movimientos
+                 </Button>
+                 <Button 
+                   size="small" 
+                   variant="outlined" 
+                   color="secondary" 
+                   onClick={() => setOpenModalCuentas(true)} 
+                   sx={{ fontWeight: 'bold', bgcolor: 'white', whiteSpace: 'nowrap' }}
+                 >
+                   Cuentas Bancarias
+                 </Button>
+               </Box>
+
+               {/* Derecha: Acciones Masivas */}
+               <Box sx={{ display: 'flex', gap: 1 }}>
+                 <Button 
+                   size="small" 
+                   variant="contained" 
+                   color="success" 
+                   startIcon={<CheckCircleIcon />} 
+                   onClick={() => handlePermisosMasivo(true)} 
+                   sx={{ whiteSpace: 'nowrap', fontWeight: 'bold' }}
+                 >
+                   Otorgar Todo
+                 </Button>
+                 <Button 
+                   size="small" 
+                   variant="contained" 
+                   color="error" 
+                   startIcon={<CancelIcon />} 
+                   onClick={() => handlePermisosMasivo(false)} 
+                   sx={{ whiteSpace: 'nowrap', fontWeight: 'bold' }}
+                 >
+                   Quitar Todo
+                 </Button>
+               </Box>
+               
+             </Box>
+          )}
         </Grid>
       </Grid>
 
       {/* MODAL CREAR/EDITAR PERFIL */}
-      <Dialog open={openModal} onClose={() => setOpenModal(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ bgcolor: '#333', color: 'white', fontWeight: 'bold' }}>
-          {perfilForm.clave_perfil === 0 ? "Crear Nuevo Perfil" : "Editar Perfil"}
-        </DialogTitle>
-        <DialogContent sx={{ mt: 2 }}>
-          <Typography variant="body2" sx={{ mb: 2, color: '#666' }}>
-            {perfilForm.clave_perfil === 0 ? "Al crear un nuevo perfil, se le asignarán automáticamente todos los módulos del sistema con acceso denegado (apagado)." : ""}
-          </Typography>
-          <TextField 
-            fullWidth 
-            label="Nombre / Descripción del Perfil" 
-            variant="outlined" 
-            value={perfilForm.descripcion_perfil}
-            onChange={(e) => setPerfilForm({ ...perfilForm, descripcion_perfil: e.target.value })}
-            autoFocus
-          />
+      <Dialog 
+        open={openModal} 
+        onClose={() => setOpenModal(false)} 
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 4,
+            overflow: 'hidden',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
+            background: 'white'
+          }
+        }}
+      >
+        {/* HEADER ELEGANTE BERLLANO */}
+        <Box sx={{ 
+          p: 3,
+          background: 'linear-gradient(135deg, #333333 0%, #555555 100%)',
+          color: 'white',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          position: 'relative',
+          overflow: 'hidden',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'linear-gradient(45deg, rgba(255,255,255,0.05) 0%, transparent 100%)',
+            pointerEvents: 'none'
+          }
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box sx={{ 
+              width: 48, 
+              height: 48, 
+              background: 'rgba(255,255,255,0.15)', 
+              borderRadius: '50%', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              fontSize: '24px',
+              backdropFilter: 'blur(10px)'
+            }}>
+              {perfilForm.clave_perfil === 0 ? "➕" : "✏️"}
+            </Box>
+            <Box>
+              <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
+                {perfilForm.clave_perfil === 0 ? "Crear Nuevo Perfil" : "Editar Perfil"}
+              </Typography>
+              <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+                {perfilForm.clave_perfil === 0 ? "Configura un nuevo perfil de acceso" : "Modifica los datos del perfil"}
+              </Typography>
+            </Box>
+          </Box>
+          <Button 
+            onClick={() => setOpenModal(false)} 
+            sx={{ 
+              color: 'white',
+              bgcolor: 'rgba(255,255,255,0.1)',
+              borderRadius: 3,
+              px: 2,
+              py: 1,
+              fontWeight: 600,
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                bgcolor: 'rgba(255,255,255,0.2)',
+                transform: 'translateY(-1px)'
+              }
+            }}
+          >
+            ✕ Cerrar
+          </Button>
+        </Box>
+        
+        <DialogContent sx={{ 
+          p: 3, 
+          bgcolor: '#f5f5f5',
+          mt: 0
+        }}>
+          <Box sx={{ 
+            p: 3, 
+            background: 'white',
+            borderRadius: 3,
+            border: '1px solid #e0e0e0',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.08)'
+          }}>
+            <Typography variant="body2" sx={{ mb: 3, color: '#666666', lineHeight: 1.6 }}>
+              {perfilForm.clave_perfil === 0 
+                ? "📝 Al crear un nuevo perfil, se le asignarán automáticamente todos los módulos del sistema con acceso denegado (apagado)." 
+                : "📝 Modifica el nombre del perfil según sea necesario."
+              }
+            </Typography>
+            <TextField 
+              fullWidth 
+              label="Nombre / Descripción del Perfil" 
+              variant="outlined" 
+              value={perfilForm.descripcion_perfil}
+              onChange={(e) => setPerfilForm({ ...perfilForm, descripcion_perfil: e.target.value })}
+              autoFocus
+              sx={{ 
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 3,
+                  fontSize: '1rem',
+                  '&:hover fieldset': { borderColor: '#333333' },
+                  '&.Mui-focused fieldset': { 
+                    borderColor: '#333333',
+                    borderWidth: 2
+                  }
+                },
+                '& .MuiInputLabel-root': {
+                  color: '#666666',
+                  '&.Mui-focused': { color: '#333333' }
+                }
+              }}
+            />
+          </Box>
         </DialogContent>
-        <DialogActions sx={{ p: 2, pt: 0 }}>
-          <Button onClick={() => setOpenModal(false)} color="inherit">Cancelar</Button>
-          <Button onClick={handleGuardarPerfil} variant="contained" color="primary">Guardar Perfil</Button>
+        
+        <DialogActions sx={{ 
+          p: 3, 
+          bgcolor: '#f5f5f5',
+          gap: 2
+        }}>
+          <Button 
+            onClick={() => setOpenModal(false)} 
+            sx={{ 
+              color: '#666666',
+              fontWeight: 600,
+              borderRadius: 3,
+              px: 3,
+              py: 1.5,
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                bgcolor: 'rgba(0,0,0,0.05)',
+                transform: 'translateY(-1px)'
+              }
+            }}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleGuardarPerfil} 
+            variant="contained"
+            sx={{ 
+              background: '#333333',
+              color: 'white',
+              fontWeight: 600,
+              borderRadius: 3,
+              px: 3,
+              py: 1.5,
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                background: '#555555',
+                transform: 'translateY(-2px)',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+              }
+            }}
+          >
+            💾 Guardar Perfil
+          </Button>
         </DialogActions>
       </Dialog>
       <ModalPermisosMovProv 
@@ -440,18 +615,122 @@ const handleMasivo = async (otorgarTodo: boolean) => {
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <Box sx={{ p: 2, bgcolor: '#333', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h6" fontWeight="bold">Permisos por Movimientos de Proveedor</Typography>
-        <Button onClick={onClose} sx={{ color: 'white' }}>Cerrar</Button>
+    <Dialog 
+      open={open} 
+      onClose={onClose} 
+      maxWidth="md" 
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 4,
+          overflow: 'hidden',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
+          background: 'white'
+        }
+      }}
+    >
+      {/* HEADER ELEGANTE BERLLANO */}
+      <Box sx={{ 
+        p: 3,
+        background: 'linear-gradient(135deg, #333333 0%, #555555 100%)',
+        color: 'white',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        position: 'relative',
+        overflow: 'hidden',
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'linear-gradient(45deg, rgba(255,255,255,0.05) 0%, transparent 100%)',
+          pointerEvents: 'none'
+        }
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box sx={{ 
+            width: 48, 
+            height: 48, 
+            background: 'rgba(255,255,255,0.15)', 
+            borderRadius: '50%', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            fontSize: '24px',
+            backdropFilter: 'blur(10px)'
+          }}>📋</Box>
+          <Box>
+            <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
+              Permisos por Movimientos de Proveedor
+            </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+              Gestiona los accesos a movimientos por perfil
+            </Typography>
+          </Box>
+        </Box>
+        <Button 
+          onClick={onClose} 
+          sx={{ 
+            color: 'white',
+            bgcolor: 'rgba(255,255,255,0.1)',
+            borderRadius: 3,
+            px: 2,
+            py: 1,
+            fontWeight: 600,
+            transition: 'all 0.2s ease',
+            '&:hover': {
+              bgcolor: 'rgba(255,255,255,0.2)',
+              transform: 'translateY(-1px)'
+            }
+          }}
+        >
+          ✕ Cerrar
+        </Button>
       </Box>
-      <DialogContent sx={{ p: 3, bgcolor: '#f5f5f5', height: '600px' }}>
-        <Grid container spacing={2} sx={{ height: '100%' }}>
+      
+      <DialogContent sx={{ 
+        p: 3, 
+        bgcolor: '#f5f5f5',
+        height: '600px' 
+      }}>
+        <Grid container spacing={3} sx={{ height: '100%' }}>
           
           {/* LADO IZQUIERDO: PERFILES */}
           <Grid item xs={5} sx={{ height: '100%' }}>
-            <Box sx={{ bgcolor: 'white', p: 1, borderRadius: 2, height: '100%', border: '1px solid #ccc', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-              <Typography fontWeight="bold" sx={{ mb: 1, p: 1 }}>Perfiles</Typography>
+            <Box sx={{ 
+              background: 'white',
+              p: 2, 
+              borderRadius: 3, 
+              height: '100%', 
+              border: '1px solid #e0e0e0', 
+              overflow: 'hidden', 
+              display: 'flex', 
+              flexDirection: 'column',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                boxShadow: '0 6px 20px rgba(0,0,0,0.12)',
+                transform: 'translateY(-1px)'
+              }
+            }}>
+              <Typography 
+                variant="h6" 
+                sx={{ 
+                  fontWeight: 700, 
+                  mb: 2, 
+                  p: 1.5, 
+                  color: '#333333',
+                  borderBottom: '2px solid #e0e0e0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1
+                }}
+              >
+                📁 Perfiles
+              </Typography>
               <Box sx={{ flexGrow: 1 }}>
                 <DataGrid 
                   rows={perfiles} 
@@ -462,49 +741,205 @@ const handleMasivo = async (otorgarTodo: boolean) => {
                     setPerfilSeleccionado(p.row);
                     fetchPermisosMov(p.row.clave_perfil);
                   }}
-                  sx={{ '& .MuiDataGrid-row': { cursor: 'pointer' }, '& .MuiDataGrid-row:hover': { bgcolor: '#f0f8ff' } }}
+                  sx={{ 
+                    border: 'none',
+                    '& .MuiDataGrid-root': { border: 'none' },
+                    '& .MuiDataGrid-columnHeaders': {
+                      backgroundColor: '#f8f9fa',
+                      borderBottom: '2px solid #e0e0e0',
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      color: '#495057'
+                    },
+                    '& .MuiDataGrid-row': { 
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      '&:hover': { 
+                        bgcolor: '#f0f0f0',
+                        transform: 'scale(1.005)'
+                      }
+                    },
+                    '& .MuiDataGrid-cell': {
+                      borderBottom: '1px solid #f1f3f4',
+                      fontSize: '0.875rem'
+                    }
+                  }}
                 />
               </Box>
             </Box>
           </Grid>
 
-          {/* LADO DERECHO: MOVIMIENTOS */}
+          {/* LADO DERECHO: PERMISOS */}
           <Grid item xs={7} sx={{ height: '100%' }}>
-            <Box sx={{ bgcolor: 'white', p: 1, borderRadius: 2, height: '100%', border: '1px solid #ccc', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <Box sx={{ 
+              background: 'white',
+              p: 2, 
+              borderRadius: 3, 
+              height: '100%', 
+              border: '1px solid #e0e0e0', 
+              overflow: 'hidden', 
+              display: 'flex', 
+              flexDirection: 'column',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                boxShadow: '0 6px 20px rgba(0,0,0,0.12)',
+                transform: 'translateY(-1px)'
+              }
+            }}>
               {!perfilSeleccionado ? (
-                 <Typography sx={{ p: 2, color: '#999', textAlign: 'center', mt: 10 }}>Seleccione un perfil a la izquierda</Typography>
+                <Box sx={{ 
+                  display: 'flex', 
+                  flexGrow: 1, 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  flexDirection: 'column', 
+                  color: '#666666',
+                  background: '#f5f5f5',
+                  borderRadius: 2,
+                  m: 2,
+                  p: 3
+                }}>
+                  <Typography variant="h2" sx={{ fontSize: '3rem', mb: 1, opacity: 0.7 }}>👈</Typography>
+                  <Typography variant="h6" align="center" sx={{ fontWeight: 500 }}>
+                    Seleccione un perfil<br/>para gestionar sus movimientos
+                  </Typography>
+                </Box>
               ) : (
                 <>
-                  <Typography fontWeight="bold" sx={{ mb: 1, p: 1, color: '#1976d2' }}>
-                    {perfilSeleccionado.descripcion_perfil}
+                  <Typography 
+                    fontWeight="bold" 
+                    sx={{ 
+                      mb: 2, 
+                      p: 1.5, 
+                      color: '#333333',
+                      borderBottom: '2px solid #e0e0e0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1
+                    }}
+                  >
+                    🔑 {perfilSeleccionado.descripcion_perfil}
                   </Typography>
                   <Box sx={{ flexGrow: 1 }}>
                     <DataGrid 
                       rows={permisosMov} 
                       columns={[
-                        { field: 'permiso', headerName: 'Acceso', width: 80, renderCell: (p) => <Checkbox checked={p.row.permiso} onChange={() => handleToggle(p.row.clave_movto, p.row.permiso)} color="success"/> },
+                        { 
+                          field: 'permiso', 
+                          headerName: 'Acceso', 
+                          width: 80, 
+                          renderCell: (p) => (
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <Checkbox 
+                                checked={p.row.permiso} 
+                                onChange={() => handleToggle(p.row.clave_movto, p.row.permiso)} 
+                                color="default"
+                                sx={{ 
+                                  '&.Mui-checked': {
+                                    color: '#333333'
+                                  }
+                                }}
+                              />
+                            </Box>
+                          )
+                        }, 
                         { field: 'clave_movto', headerName: 'Clave Movimiento', flex: 1 }
                       ]} 
                       getRowId={(row) => row.clave_movto} 
                       loading={loading}
                       density="compact"
                       disableRowSelectionOnClick
+                      sx={{ 
+                        border: 'none',
+                        '& .MuiDataGrid-root': { border: 'none' },
+                        '& .MuiDataGrid-columnHeaders': {
+                          backgroundColor: '#f8f9fa',
+                          borderBottom: '2px solid #e0e0e0',
+                          fontSize: '0.85rem',
+                          fontWeight: 600,
+                          color: '#495057'
+                        },
+                        '& .MuiDataGrid-row': { 
+                          transition: 'all 0.2s ease',
+                          '&:hover': { 
+                            bgcolor: '#f0f0f0',
+                            transform: 'scale(1.005)'
+                          }
+                        },
+                        '& .MuiDataGrid-cell': {
+                          borderBottom: '1px solid #f1f3f4',
+                          fontSize: '0.875rem'
+                        }
+                      }}
                     />
-                  </Box>
-                  <Box sx={{ display: 'flex', gap: 1, mt: 1, p: 1, borderTop: '1px solid #eee' }}>
-                    <Button size="small" variant="contained" color="success" onClick={() => handleMasivo(true)}>Acceso Total</Button>
-                    <Button size="small" variant="contained" color="error" onClick={() => handleMasivo(false)}>Ningún Acceso</Button>
                   </Box>
                 </>
               )}
             </Box>
           </Grid>
-
         </Grid>
       </DialogContent>
+
+      {/* BOTONES ELEGANTES */}
+      {perfilSeleccionado && (
+        <Box sx={{ 
+          p: 3, 
+          bgcolor: '#f5f5f5',
+          display: 'flex', 
+          gap: 2, 
+          justifyContent: 'flex-end',
+          borderTop: '1px solid #e0e0e0'
+        }}>
+          <Button 
+            size="small" 
+            variant="contained" 
+            onClick={() => handleMasivo(true)}
+            sx={{ 
+              background: '#333333',
+              color: 'white',
+              fontWeight: 600,
+              borderRadius: 3,
+              px: 3,
+              py: 1.5,
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                background: '#555555',
+                transform: 'translateY(-2px)',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+              }
+            }}
+          >
+            ✅ Acceso Total
+          </Button>
+          <Button 
+            size="small" 
+            variant="outlined" 
+            onClick={() => handleMasivo(false)}
+            sx={{ 
+              color: '#666666',
+              fontWeight: 600,
+              borderRadius: 3,
+              px: 3,
+              py: 1.5,
+              border: '2px solid #666666',
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                background: '#f0f0f0',
+                borderColor: '#333333',
+                transform: 'translateY(-2px)',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+              }
+            }}
+          >
+            ❌ Ningún Acceso
+          </Button>
+        </Box>
+      )}
     </Dialog>
   );
-};// =========================================================================================
+};
+// =========================================================================================
 // MODAL: ACCESO A CUENTAS BANCARIAS
 // =========================================================================================
 const ModalCuentasBancarias = ({ open, onClose, consumoApi, setMessage }: any) => {
@@ -612,18 +1047,121 @@ const ModalCuentasBancarias = ({ open, onClose, consumoApi, setMessage }: any) =
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
-      <Box sx={{ p: 2, bgcolor: '#9c27b0', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h6" fontWeight="bold">Acceso a Cuentas Bancarias y Usuarios</Typography>
-        <Button onClick={onClose} sx={{ color: 'white' }}>Cerrar</Button>
+    <Dialog 
+      open={open} 
+      onClose={onClose} 
+      maxWidth="lg" 
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 4,
+          overflow: 'hidden',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
+          background: 'white'
+        }
+      }}
+    >
+      {/* HEADER ELEGANTE BERLLANO */}
+      <Box sx={{ 
+        p: 3,
+        background: 'linear-gradient(135deg, #333333 0%, #555555 100%)',
+        color: 'white',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        position: 'relative',
+        overflow: 'hidden',
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'linear-gradient(45deg, rgba(255,255,255,0.05) 0%, transparent 100%)',
+          pointerEvents: 'none'
+        }
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box sx={{ 
+            width: 48, 
+            height: 48, 
+            background: 'rgba(255,255,255,0.15)', 
+            borderRadius: '50%', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            fontSize: '24px',
+            backdropFilter: 'blur(10px)'
+          }}>🏦</Box>
+          <Box>
+            <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
+              Acceso a Cuentas Bancarias
+            </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+              Gestiona los permisos de acceso a cuentas bancarias por usuario
+            </Typography>
+          </Box>
+        </Box>
+        <Button 
+          onClick={onClose} 
+          sx={{ 
+            color: 'white',
+            bgcolor: 'rgba(255,255,255,0.1)',
+            borderRadius: 3,
+            px: 2,
+            py: 1,
+            fontWeight: 600,
+            transition: 'all 0.2s ease',
+            '&:hover': {
+              bgcolor: 'rgba(255,255,255,0.2)',
+              transform: 'translateY(-1px)'
+            }
+          }}
+        >
+          ✕ Cerrar
+        </Button>
       </Box>
 
-      <DialogContent sx={{ p: 3, bgcolor: '#f5f5f5', minHeight: '500px', display: 'flex', flexDirection: 'column' }}>
+      <DialogContent sx={{ 
+        p: 3, 
+        bgcolor: '#f5f5f5',
+        minHeight: '500px', 
+        display: 'flex', 
+        flexDirection: 'column'
+      }}>
         
-        {/* Formulario para agregar (Con Combos Dinámicos) */}
-        <Box sx={{ display: 'flex', gap: 2, mb: 3, p: 2, bgcolor: 'white', borderRadius: 2, border: '1px solid #ddd', alignItems: 'center' }}>
+        {/* Formulario elegante para agregar */}
+        <Box sx={{ 
+          display: 'flex', 
+          gap: 2, 
+          mb: 3, 
+          p: 3, 
+          background: 'white',
+          borderRadius: 3,
+          border: '1px solid #e0e0e0',
+          alignItems: 'center',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+          transition: 'all 0.3s ease',
+          '&:hover': {
+            boxShadow: '0 6px 20px rgba(0,0,0,0.12)',
+            transform: 'translateY(-1px)'
+          }
+        }}>
           
-          <TextField select label="Cía" size="small" value={formNuevo.Cia} sx={{ minWidth: 150 }}
+          <TextField 
+            select 
+            label="Compañía" 
+            size="small" 
+            value={formNuevo.Cia} 
+            sx={{ 
+              minWidth: 180,
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 2,
+                '&:hover fieldset': { borderColor: '#333333' },
+                '&.Mui-focused fieldset': { borderColor: '#333333' }
+              }
+            }}
             onChange={e => {
               const nuevaCia = e.target.value;
               setFormNuevo({...formNuevo, Cia: nuevaCia, Cuenta: ''});
@@ -633,23 +1171,98 @@ const ModalCuentasBancarias = ({ open, onClose, consumoApi, setMessage }: any) =
             {catCias.map(c => <MenuItem key={c.id} value={c.id}>{c.descripcion}</MenuItem>)}
           </TextField>
 
-          <TextField select label="Cuenta Bancaria" size="small" value={formNuevo.Cuenta} onChange={e => setFormNuevo({...formNuevo, Cuenta: e.target.value})} sx={{ flex: 1 }} disabled={!formNuevo.Cia}>
+          <TextField 
+            select 
+            label="Cuenta Bancaria" 
+            size="small" 
+            value={formNuevo.Cuenta} 
+            onChange={e => setFormNuevo({...formNuevo, Cuenta: e.target.value})} 
+            sx={{ 
+              flex: 1,
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 2,
+                '&:hover fieldset': { borderColor: '#333333' },
+                '&.Mui-focused fieldset': { borderColor: '#333333' }
+              }
+            }} 
+            disabled={!formNuevo.Cia}
+          >
             {catCuentas.map(c => <MenuItem key={c.id} value={c.id}>{c.descripcion}</MenuItem>)}
           </TextField>
 
-          <TextField select label="Usuario" size="small" value={formNuevo.usuario} onChange={e => setFormNuevo({...formNuevo, usuario: e.target.value})} sx={{ flex: 1 }}>
+          <TextField 
+            select 
+            label="Usuario" 
+            size="small" 
+            value={formNuevo.usuario} 
+            onChange={e => setFormNuevo({...formNuevo, usuario: e.target.value})} 
+            sx={{ 
+              flex: 1,
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 2,
+                '&:hover fieldset': { borderColor: '#333333' },
+                '&.Mui-focused fieldset': { borderColor: '#333333' }
+              }
+            }}
+          >
             {catUsuarios.map(u => <MenuItem key={u.id} value={u.id}>{u.descripcion}</MenuItem>)}
           </TextField>
 
-          <TextField select label="Op. Tesorería" size="small" value={formNuevo.op_tesoreria} onChange={e => setFormNuevo({...formNuevo, op_tesoreria: e.target.value})} sx={{ minWidth: 180 }}>
+          <TextField 
+            select 
+            label="Op. Tesorería" 
+            size="small" 
+            value={formNuevo.op_tesoreria} 
+            onChange={e => setFormNuevo({...formNuevo, op_tesoreria: e.target.value})} 
+            sx={{ 
+              minWidth: 200,
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 2,
+                '&:hover fieldset': { borderColor: '#333333' },
+                '&.Mui-focused fieldset': { borderColor: '#333333' }
+              }
+            }}
+          >
             {catOpTesoreria.map(o => <MenuItem key={o.id} value={o.id}>{o.descripcion}</MenuItem>)}
           </TextField>
 
-          <Button variant="contained" color="secondary" onClick={handleAgregar}>+ Agregar</Button>
+          <Button 
+            variant="contained" 
+            onClick={handleAgregar}
+            sx={{ 
+              background: '#333333',
+              color: 'white',
+              fontWeight: 600,
+              borderRadius: 3,
+              px: 3,
+              py: 1.5,
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                background: '#555555',
+                transform: 'translateY(-2px)',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+              }
+            }}
+          >
+            ➕ Agregar
+          </Button>
         </Box>
 
-        {/* Grid de Datos (Muestra nombres descriptivos) */}
-        <Box sx={{ flexGrow: 1, bgcolor: 'white', borderRadius: 2, border: '1px solid #ddd', overflow: 'hidden' }}>
+{/* Grid de Datos elegante */}
+        <Box sx={{ 
+          height: 450, 
+          width: '100%',
+          background: 'white',
+          borderRadius: 3, 
+          border: '1px solid #e0e0e0', 
+          overflow: 'hidden',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+          transition: 'all 0.3s ease',
+          '&:hover': {
+            boxShadow: '0 6px 20px rgba(0,0,0,0.12)',
+            transform: 'translateY(-1px)'
+          }
+        }}>
           <DataGrid 
             rows={datos} 
             getRowId={(row) => `${row.Cia}-${row.Cuenta}-${row.usuario}-${row.op_tesoreria}`} 
@@ -658,16 +1271,72 @@ const ModalCuentasBancarias = ({ open, onClose, consumoApi, setMessage }: any) =
             disableRowSelectionOnClick
             slots={{ toolbar: GridToolbar }}
             slotProps={{ toolbar: { showQuickFilter: true } }}
+            sx={{ 
+              border: 'none',
+              '& .MuiDataGrid-root': { border: 'none' },
+              '& .MuiDataGrid-columnHeaders': {
+                backgroundColor: '#f8f9fa',
+                borderBottom: '2px solid #e0e0e0',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                color: '#495057'
+              },
+              '& .MuiDataGrid-row': { 
+                transition: 'all 0.2s ease',
+                '&:hover': { 
+                  bgcolor: '#f0f0f0',
+                  transform: 'scale(1.005)'
+                }
+              },
+              '& .MuiDataGrid-cell': {
+                borderBottom: '1px solid #f1f3f4',
+                fontSize: '0.875rem'
+              },
+              '& .MuiCheckbox-root': {
+                color: '#333333',
+                '&.Mui-checked': {
+                  color: '#555555'
+                }
+              }
+            }}
             columns={[
               { field: 'desc_cia', headerName: 'Compañía', width: 150 },
               { field: 'desc_cuenta', headerName: 'Cuenta Bancaria', flex: 1 },
               { field: 'nombre_usuario', headerName: 'Usuario', flex: 1 },
               { field: 'desc_op_tesoreria', headerName: 'Op. Tesorería', width: 200 },
               { field: 'permiso', headerName: 'Permiso', width: 90, sortable: false, filterable: false,
-                renderCell: (p) => <Checkbox checked={p.row.permiso} onChange={() => handleToggle(p.row, p.row.permiso)} color="success"/> 
+                renderCell: (p) => (
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Checkbox 
+                      checked={p.row.permiso} 
+                      onChange={() => handleToggle(p.row, p.row.permiso)} 
+                      color="default"
+                      sx={{ 
+                        '&.Mui-checked': {
+                          color: '#333333'
+                        }
+                      }}
+                    />
+                  </Box>
+                )
               },
-              { field: 'acciones', headerName: '', width: 50, sortable: false, filterable: false,
-                renderCell: (p) => <IconButton size="small" color="error" onClick={() => handleEliminar(p.row)}><DeleteIcon fontSize="small"/></IconButton>
+              { field: 'acciones', headerName: '', width: 80, sortable: false, filterable: false,
+                renderCell: (p) => (
+                  <IconButton 
+                    size="small" 
+                    color="error" 
+                    onClick={() => handleEliminar(p.row)}
+                    sx={{ 
+                      transition: 'all 0.2s ease',
+                      '&:hover': {
+                        bgcolor: '#ffebee',
+                        transform: 'scale(1.1)'
+                      }
+                    }}
+                  >
+                    <DeleteIcon fontSize="small"/>
+                  </IconButton>
+                )
               }
             ]} 
           />

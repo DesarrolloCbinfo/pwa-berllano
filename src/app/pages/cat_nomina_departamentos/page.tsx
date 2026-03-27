@@ -3,6 +3,7 @@ import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
 import { Box, CircularProgress, Alert, Typography, Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, Snackbar } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
+import Swal from 'sweetalert2';
 import useConsumoApi from "../../../hooks/useConsumoApi";
 import { useSessionContext } from '../../../context/SessionProvider'; 
 
@@ -36,9 +37,21 @@ export default function CatNominaDepartamentos() {
   const { consumoApi } = useConsumoApi();
   const { session } = useSessionContext();
   const [rows, setRows] = useState<CatNominaDepartamentos[]>([]);
-  const [loading, setLoading] = useState(true);
+const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' | 'info' } | null>(null);
+
+  // Función interceptora para SweetAlert2
+  const setMessage = (msg: { text: string, type: 'success' | 'error' | 'info' } | null) => {
+    if (!msg) return;
+    Swal.fire({
+      title: msg.type === 'success' ? '¡Éxito!' : (msg.type === 'error' ? 'Error' : 'Atención'),
+      text: msg.text,
+      icon: msg.type === 'info' ? 'warning' : msg.type,
+      timer: msg.type === 'success' ? 2000 : undefined,
+      showConfirmButton: msg.type !== 'success',
+      confirmButtonColor: '#333'
+    });
+  };
 
   // Elementos para agregar departamentos
   const [openAdd, setOpenAdd] = useState(false);
@@ -103,8 +116,9 @@ export default function CatNominaDepartamentos() {
     fetchDepartamentos();
   }, []);
 
-  const handleAdd = async () => {
-    if (!clave_departamento || !descripcion_departamento) return;
+const handleAdd = async () => {
+    if (!clave_departamento.trim()) return setMessage({ text: "La Clave del Departamento es obligatoria", type: 'info' });
+    if (!descripcion_departamento.trim()) return setMessage({ text: "La descripción es obligatoria", type: 'info' });
 
     try {
       setSaving(true);
@@ -114,8 +128,8 @@ export default function CatNominaDepartamentos() {
         null,
         {
           params: {
-            clave_departamento,
-            descripcion_departamento,
+            clave_departamento: clave_departamento.toUpperCase(),
+            descripcion_departamento: descripcion_departamento.toUpperCase(),
           },
         },
       );
@@ -127,11 +141,11 @@ export default function CatNominaDepartamentos() {
         return;
       }
 
-      setMessage({ text: '✅ Departamento agregado correctamente', type: 'success' });
+      setMessage({ text: 'Departamento agregado correctamente', type: 'success' });
       setOpenAdd(false);
       setClaveDepartamento('');
       setDescripcionDepartamento('');
-      fetchDepartamentos(); // refresca grid
+      fetchDepartamentos(); 
     } catch (err) {
       setMessage({ text: err instanceof Error ? err.message : 'Error desconocido', type: 'error' });
     } finally {
@@ -139,8 +153,10 @@ export default function CatNominaDepartamentos() {
     }
   };
 
-  const handleUpdate = async () => {
-    if (!editId || !editClaveDepartamento || !editDescripcionDepartamento) return;
+const handleUpdate = async () => {
+    if (!editId) return;
+    if (!editClaveDepartamento.trim()) return setMessage({ text: "La Clave del Departamento es obligatoria", type: 'info' });
+    if (!editDescripcionDepartamento.trim()) return setMessage({ text: "La descripción es obligatoria", type: 'info' });
 
     try {
       setSavingEdit(true);
@@ -150,8 +166,8 @@ export default function CatNominaDepartamentos() {
         null,
         {
           params: {
-            clave_departamento: editClaveDepartamento,
-            descripcion_departamento: editDescripcionDepartamento,
+            clave_departamento: editClaveDepartamento.toUpperCase(),
+            descripcion_departamento: editDescripcionDepartamento.toUpperCase(),
           },
         },
       );
@@ -163,12 +179,12 @@ export default function CatNominaDepartamentos() {
         return;
       }
 
-      setMessage({ text: '💾 Departamento actualizado correctamente', type: 'success' });
+      setMessage({ text: 'Departamento actualizado correctamente', type: 'success' });
       setOpenEdit(false);
       setEditId(null);
       setEditClaveDepartamento('');
       setEditDescripcionDepartamento('');
-      fetchDepartamentos(); // refresca grid
+      fetchDepartamentos(); 
     } catch (err) {
       setMessage({ text: err instanceof Error ? err.message : 'Error desconocido', type: 'error' });
     } finally {
@@ -176,8 +192,16 @@ export default function CatNominaDepartamentos() {
     }
   };
 
-  return (
+return (
     <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#ececec' }}>
+      
+      {/* MAGIA CSS: Forzamos a SweetAlert a saltar al frente de los modales de MUI */}
+      <style>{`
+        .swal2-container {
+          z-index: 9999 !important;
+        }
+      `}</style>
+
       <Paper sx={{ p: 3, borderRadius: '8px' }}>
         {/* ENCABEZADO BERLLANO ELEGANTE 2 */}
         <Box sx={{ border: '1px solid #2c3e50', borderRadius: '8px', backgroundColor: '#fff', p: 1.5, mb: 2, display: 'flex', justifyContent: 'space-between' }}>
@@ -364,10 +388,6 @@ export default function CatNominaDepartamentos() {
         </DialogActions>
       </Dialog>
 
-      {/* NOTIFICACIONES */}
-      <Snackbar open={!!message} autoHideDuration={3000} onClose={() => setMessage(null)}>
-        <Alert severity={message?.type} onClose={() => setMessage(null)} sx={{ width: '100%' }}>{message?.text}</Alert>
-      </Snackbar>
     </Box>
   );
 }

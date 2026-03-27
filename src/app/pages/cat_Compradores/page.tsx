@@ -8,6 +8,7 @@ import {
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
 import AddIcon from '@mui/icons-material/Add'
+import Swal from 'sweetalert2'
 import useConsumoApi from '../../../hooks/useConsumoApi'
 import { useSessionContext } from '../../../context/SessionProvider'
 import PWABadge from "../../../PWABadge"
@@ -123,43 +124,52 @@ export default function CatCompradores() {
 
   useEffect(() => { fetchCompradores() }, [])
 
-  // ADD - Agregar
+// ADD - Agregar
   const handleAdd = async () => {
-    if (!formData.clave_comprador || !formData.nombre) return;
+    if (!formData.clave_comprador || !formData.nombre) {
+      Swal.fire('Atención', 'Todos los campos son obligatorios', 'warning');
+      return;
+    }
     try {
       setActionLoading(true);
       const response = await consumoApi.post('/api/CatCompradores/sp_bw_cat_compradores_add', null, {
         params: formData
       });
       if (response.data?.[0]?.codigo === 0) {
+        Swal.fire({ title: '¡Éxito!', text: 'Comprador agregado correctamente', icon: 'success', timer: 2000, showConfirmButton: false });
         setOpenAdd(false);
         setFormData({ clave_comprador: '', nombre: '' });
         fetchCompradores();
       } else {
-        alert(response.data?.[0]?.mensaje1 || 'Error al guardar');
+        Swal.fire('Error', response.data?.[0]?.mensaje1 || 'Error al guardar', 'error');
       }
-    } catch (err) { alert('Error de conexión'); } 
+    } catch (err) { Swal.fire('Error', 'Error de conexión', 'error'); } 
     finally { setActionLoading(false); }
-  };
+  };;
 
-  // UPD - Actualizar
+// UPD - Actualizar
   const handleUpdate = async () => {
+    if (!editFormData.nombre) {
+      Swal.fire('Atención', 'El nombre es obligatorio', 'warning');
+      return;
+    }
     try {
       setActionLoading(true)
       const response = await consumoApi.put('/api/CatCompradores/sp_bw_cat_compradores_upd', null, {
         params: editFormData
       })
       if (response.data?.[0]?.codigo === 0) {
+        Swal.fire({ title: '¡Éxito!', text: 'Comprador actualizado correctamente', icon: 'success', timer: 2000, showConfirmButton: false });
         setOpenEdit(false)
         fetchCompradores()
       } else {
-        alert(response.data?.[0]?.mensaje1 || 'Error al actualizar')
+        Swal.fire('Error', response.data?.[0]?.mensaje1 || 'Error al actualizar', 'error')
       }
-    } catch (err) { alert('Error de conexión') } 
+    } catch (err) { Swal.fire('Error', 'Error de conexión', 'error') } 
     finally { setActionLoading(false) }
   }
 
-  // DEL - Eliminar
+// DEL - Eliminar
   const handleDelete = async () => {
     if (!deleteRow) return;
     try {
@@ -168,19 +178,26 @@ export default function CatCompradores() {
         params: { clave_comprador: deleteRow.clave_comprador },
       });
       if (response.data?.[0]?.codigo === 0) {
+        Swal.fire({ title: '¡Éxito!', text: 'Comprador eliminado correctamente', icon: 'success', timer: 2000, showConfirmButton: false });
         setOpenDelete(false);
         fetchCompradores();
       } else {
-        alert(response.data?.[0]?.mensaje1 || 'Error al eliminar');
+        Swal.fire('Error', response.data?.[0]?.mensaje1 || 'Error al eliminar', 'error');
       }
-    } catch (err) { alert('Error de conexión'); } 
+    } catch (err) { Swal.fire('Error', 'Error de conexión', 'error'); } 
     finally { setActionLoading(false); }
   };
 
   if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>
 
-  return (
+return (
     <>
+      {/* MAGIA CSS: Forzamos a SweetAlert a saltar al frente de los modales */}
+      <style>{`
+        .swal2-container {
+          z-index: 9999 !important;
+        }
+      `}</style>
       <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#ececec' }}>
         <Paper sx={{ p: 3, borderRadius: '8px' }}>
           {/* ENCABEZADO */}

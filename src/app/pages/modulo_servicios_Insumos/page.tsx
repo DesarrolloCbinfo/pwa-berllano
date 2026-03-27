@@ -3,6 +3,7 @@ import { Box, CircularProgress, Alert, Typography, Button, Dialog, DialogTitle, 
 import { DataGrid, GridColDef } from '@mui/x-data-grid'
 import DeleteIcon from '@mui/icons-material/Delete'
 import AddIcon from '@mui/icons-material/Add'
+import Swal from 'sweetalert2'
 import useConsumoApi from '../../../hooks/useConsumoApi'
 import { useSessionContext } from '../../../context/SessionProvider'
 import PWABadge from '../../../PWABadge'
@@ -183,8 +184,11 @@ export default function AdministracionServiciosInsumos() {
     }
   }, [selectedArea])
 
-  const handleAdd = async () => {
-    if (!selectedArea || !selectedDepto || !selectedServicio) return
+const handleAdd = async () => {
+    if (!selectedArea || !selectedDepto || !selectedServicio) {
+      Swal.fire('Atención', 'Todos los campos son obligatorios', 'warning')
+      return
+    }
 
     try {
       setSaving(true)
@@ -213,8 +217,10 @@ export default function AdministracionServiciosInsumos() {
       setSelectedDepto('')
       setSelectedServicio('')
 
+      Swal.fire({ title: '¡Éxito!', text: 'Servicio Insumo agregado correctamente', icon: 'success', timer: 2000, showConfirmButton: false });
+
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Error desconocido')
+      Swal.fire('Error', err instanceof Error ? err.message : 'Error desconocido', 'error')
     } finally {
       setSaving(false)
     }
@@ -225,7 +231,7 @@ export default function AdministracionServiciosInsumos() {
     setOpenDelete(true)
   }
 
-  const handleDelete = async () => {
+const handleDelete = async () => {
     if (!deleteId) return
 
     try {
@@ -260,9 +266,11 @@ export default function AdministracionServiciosInsumos() {
       setDeleteId(null)
       await fetchServiciosInsumos()
 
+      Swal.fire({ title: '¡Éxito!', text: 'Registro eliminado correctamente', icon: 'success', timer: 2000, showConfirmButton: false });
+
     } catch (err) {
       console.error('Error completo al eliminar:', err)
-      alert(err instanceof Error ? err.message : 'Error desconocido')
+      Swal.fire('Error', err instanceof Error ? err.message : 'Error desconocido', 'error')
     } finally {
       setDeleting(false)
     }
@@ -280,8 +288,14 @@ export default function AdministracionServiciosInsumos() {
     )
   }
 
-  return (
+return (
     <>
+      {/* MAGIA CSS: Evita que SweetAlert quede por detrás del Dialog de eliminar */}
+      <style>{`
+        .swal2-container {
+          z-index: 9999 !important;
+        }
+      `}</style>
       <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#ececec' }}>
         <Paper sx={{ p: 3, borderRadius: '8px' }}>
           {/* ENCABEZADO */}

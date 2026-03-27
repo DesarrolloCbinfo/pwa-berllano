@@ -96,6 +96,14 @@ export default function Catalogos() {
         Proveedores_Acreedores
       </button>
 
+      <button onClick={() => window.location.href = '/Cat_turnos_dobles'}>
+        Turnos Dobles
+      </button>
+
+      <button onClick={() => window.location.href = '/cat_perfiles_permisos'}>
+        Perfiles y Permisos
+      </button>
+
       <PWABadge />
     </>
   );

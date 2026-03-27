@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { Box, CircularProgress, Alert, Typography, Paper, Grid } from '@mui/material';
 import useConsumoApi from "../../../hooks/useConsumoApi";
-import { useSessionContext } from '../../../context/SessionProvider'; 
 import {
   Button,
   Dialog,
@@ -14,7 +13,6 @@ import {
 import EditIcon from '@mui/icons-material/Edit';
 import { IconButton } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
-import AddIcon from '@mui/icons-material/Add';
 
 import PWABadge from '../../../PWABadge';
 
@@ -25,7 +23,6 @@ interface CatMarcas {
 
 export default function CatMarcas() {
   const { consumoApi } = useConsumoApi();
-  const { session } = useSessionContext();
   const [rows, setRows] = useState<CatMarcas[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -261,36 +258,83 @@ export default function CatMarcas() {
   return (
     <>
       <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#ececec' }}>
-        <Paper sx={{ p: 3, borderRadius: '8px' }}>
-          {/* ENCABEZADO */}
-          <Box sx={{ border: '1px solid #2c3e50', p: 1.5, mb: 2, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
+        <Paper sx={{ p: 3 }}>
+          {/* Encabezado estilo Berllano Elegante */}
+          <Box sx={{ 
+            border: '1px solid #2c3e50', 
+            borderRadius: '6px', 
+            backgroundColor: '#fff', 
+            p: 1.5, 
+            mb: 2,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
             <Box>
-                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
-                    Catálogo de Marcas
-                </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
-                    Sucursal: {session?.dSucursal || 'Cargando...'}
-                </Typography>
+              <Typography 
+                variant="h4" 
+                component="h1" 
+                sx={{ 
+                  fontFamily: 'Georgia, "Times New Roman", serif',
+                  fontWeight: 'bold', 
+                  color: '#1a365d',
+                  fontSize: '1.1rem',
+                  mb: 0.5
+                }}
+              >
+                Catálogo de Marcas
+              </Typography>
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  fontWeight: 'bold', 
+                  color: '#555', 
+                  fontSize: '0.75rem' 
+                }}
+              >
+                Administración de marcas del sistema
+              </Typography>
             </Box>
-            <Box sx={{ textAlign: 'right' }}>
-                <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#333', lineHeight: 1.1, fontSize: '0.9rem' }}>
-                    {new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' }).replace('.', '')}
-                </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
-                    Usuario: {session?.nombre || 'Cargando...'}
-                </Typography>
-            </Box>
+            <Typography 
+              variant="body2" 
+              sx={{ 
+                fontWeight: 'bold', 
+                color: '#333', 
+                fontSize: '0.9rem' 
+              }}
+            >
+              {new Date().toLocaleDateString('es-ES', { 
+                day: '2-digit', 
+                month: '2-digit', 
+                year: 'numeric' 
+              })}
+            </Typography>
           </Box>
 
-          <Grid container spacing={2} justifyContent="flex-start" alignItems="center" sx={{ mb: 0.5 }}>
+          <Grid container spacing={2} justifyContent="center" alignItems="center" sx={{ mb: 2 }}>
+            <Grid item xs={12} md={10}></Grid> {/* Espaciador */}
             <Grid item xs={12} md={2}>
-              <Button variant="contained" onClick={() => setOpenAdd(true)} disabled={saving} fullWidth startIcon={<AddIcon />}
+              <Button 
+                variant="contained" 
+                onClick={() => setOpenAdd(true)}
+                fullWidth
                 sx={{ 
-                    height: '50px', backgroundColor: '#333333', color: 'white', fontWeight: 600, textTransform: 'none', borderRadius: '8px',
-                    boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)', transition: 'all 0.3s ease',
-                    '&:hover': { backgroundColor: '#555555', boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)', transform: 'translateY(-1px)' }
-                }}>
-                AGREGAR
+                  height: '50px', 
+                  backgroundColor: '#333333', 
+                  color: 'white', 
+                  fontWeight: 600, 
+                  textTransform: 'none', 
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)', 
+                  transition: 'all 0.3s ease',
+                  '&:hover': { 
+                    backgroundColor: '#555555', 
+                    boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)', 
+                    transform: 'translateY(-1px)' 
+                  }
+                }}
+              >
+                + AGREGAR
               </Button>
             </Grid>
           </Grid>
@@ -578,13 +622,8 @@ export default function CatMarcas() {
           </DialogActions>
         </Dialog>
 
-      {/* PIE DE PÁGINA */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 1 }}>
-        <Typography variant="caption" sx={{ fontWeight: 'bold', textTransform: 'uppercase' }}>
-          CAT_MARCAS, ARAUCARIAS, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/')}, USR:{session?.nombre || 'ADMIN'}
-        </Typography>
+
       </Box>
-    </Box>
       <PWABadge />
     </>
   );

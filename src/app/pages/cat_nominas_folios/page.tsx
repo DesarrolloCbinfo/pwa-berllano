@@ -11,6 +11,7 @@ import {
 } from '@mui/x-data-grid';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
+import Swal from 'sweetalert2';
 
 import useConsumoApi from '../../../hooks/useConsumoApi';
 import { useSessionContext } from '../../../context/SessionProvider'; 
@@ -53,10 +54,37 @@ export default function FoliosNomina() {
 
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
+const [saving, setSaving] = useState(false);
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({ page: 0, pageSize: 50 });
   const [formData, setFormData] = useState(initialFormState);
-  const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' | 'info' } | null>(null);
+  
+  // Función interceptora para SweetAlert2
+  const setMessage = (msg: { text: string, type: 'success' | 'error' | 'info' } | null) => {
+    if (!msg) return;
+    
+    // Si es info (guardado automático de DataGrid), hacemos un Toast chiquito que no estorbe
+    if (msg.type === 'info') {
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: msg.text,
+            showConfirmButton: false,
+            timer: 2000
+        });
+        return;
+    }
+
+    // Alertas normales para errores y éxitos grandes
+    Swal.fire({
+      title: msg.type === 'success' ? '¡Éxito!' : 'Error',
+      text: msg.text,
+      icon: msg.type,
+      timer: msg.type === 'success' ? 2000 : undefined,
+      showConfirmButton: msg.type !== 'success',
+      confirmButtonColor: '#333'
+    });
+  };
 
   useEffect(() => { fetchTabla(); }, []);
 
@@ -84,7 +112,7 @@ export default function FoliosNomina() {
       setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleAgregarNuevo = async () => {
+const handleAgregarNuevo = async () => {
         if (isSavingRef.current) return; 
 
         if (!formData.folio) return setMessage({ text: "El Folio es obligatorio.", type: 'error' });
@@ -95,7 +123,7 @@ export default function FoliosNomina() {
         setSaving(true);
         try {
             const payload = {
-                cia: 1, // Por defecto CIA 1, o puedes poner session?.cia si lo tienes en tu contexto
+                cia: 1, 
                 folio: Number(formData.folio),
                 fecha_folio: formData.fecha_folio,
                 descripcion: formData.descripcion.toUpperCase(),
@@ -105,7 +133,7 @@ export default function FoliosNomina() {
 
             const res = await consumoApi.post('/api/FoliosNomina/sp_bw_cat_nominas_folios_ins', payload);
             if (res.status === 200) {
-                setMessage({ text: `✅ Folio de nómina agregado exitosamente.`, type: 'success' });
+                setMessage({ text: `Folio de nómina agregado exitosamente.`, type: 'success' });
                 fetchTabla();
                 setFormData(initialFormState);
             }
@@ -147,13 +175,25 @@ export default function FoliosNomina() {
       }
   };
 
-  const handleEliminar = async (cia: number, folio: number, descripcion: string) => {
-      if (!window.confirm(`¿Está seguro que desea eliminar el folio: ${folio} - ${descripcion}?`)) return;
+const handleEliminar = async (cia: number, folio: number, descripcion: string) => {
+      const confirmacion = await Swal.fire({
+          title: '¿Estás seguro?',
+          text: `¿Desea eliminar el folio: ${folio} - ${descripcion}?`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d32f2f',
+          cancelButtonColor: '#333',
+          confirmButtonText: 'Sí, eliminar',
+          cancelButtonText: 'Cancelar'
+      });
+
+      if (!confirmacion.isConfirmed) return;
+
       setSaving(true);
       try {
           const res = await consumoApi.delete(`/api/FoliosNomina/sp_bw_cat_nominas_folios_del?cia=${cia}&folio=${folio}`);
           if (res.status === 200) {
-              setMessage({ text: "🗑️ Folio eliminado.", type: 'success' });
+              setMessage({ text: "Folio eliminado correctamente.", type: 'success' });
               fetchTabla();
           }
       } catch (error: any) {
@@ -270,9 +310,6 @@ export default function FoliosNomina() {
         </Typography>
       </Box>
 
-      <Snackbar open={!!message} autoHideDuration={3000} onClose={() => setMessage(null)}>
-        <Alert severity={message?.type} onClose={() => setMessage(null)} sx={{ width: '100%' }}>{message?.text}</Alert>
-      </Snackbar>
     </Box>
   );
 }

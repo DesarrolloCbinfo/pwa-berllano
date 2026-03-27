@@ -11,6 +11,7 @@ import {
 } from '@mui/x-data-grid';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
+import Swal from 'sweetalert2';
 
 import useConsumoApi from '../../../hooks/useConsumoApi';
 import { useSessionContext } from '../../../context/SessionProvider'; 
@@ -48,12 +49,39 @@ export default function ConceptosAjustes() {
 
   // Estados
   const [rows, setRows] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({ page: 0, pageSize: 50 });
   
   const [formData, setFormData] = useState(initialFormState);
-  const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' | 'info' } | null>(null);
+
+  // Función interceptora para SweetAlert2
+  const setMessage = (msg: { text: string, type: 'success' | 'error' | 'info' } | null) => {
+    if (!msg) return;
+    
+    // Toast rápido para el guardado automático de la tabla (DataGrid)
+    if (msg.type === 'info') {
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: msg.text,
+            showConfirmButton: false,
+            timer: 2000
+        });
+        return;
+    }
+
+    // Alertas estándar para validaciones, éxito o error
+    Swal.fire({
+      title: msg.type === 'success' ? '¡Éxito!' : 'Atención',
+      text: msg.text,
+      icon: msg.type === 'success' ? 'success' : (msg.type === 'error' ? 'error' : 'warning'),
+      timer: msg.type === 'success' ? 2000 : undefined,
+      showConfirmButton: msg.type !== 'success',
+      confirmButtonColor: '#333'
+    });
+  };
 
   useEffect(() => {
       fetchTablaConceptos();
@@ -74,10 +102,10 @@ export default function ConceptosAjustes() {
       setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // 1. GUARDAR NUEVO (Desde el formulario superior)
+// 1. GUARDAR NUEVO (Desde el formulario superior)
   const handleAgregarNuevo = async () => {
-        if (!formData.descripcion.trim()) return setMessage({ text: "La descripción es obligatoria.", type: 'error' });
-        if (formData.ajuste === '' || isNaN(Number(formData.ajuste))) return setMessage({ text: "El ajuste debe ser un número.", type: 'error' });
+        if (!formData.descripcion.trim()) return setMessage({ text: "La descripción es obligatoria.", type: 'info' });
+        if (formData.ajuste === '' || isNaN(Number(formData.ajuste))) return setMessage({ text: "El ajuste debe ser un número válido.", type: 'info' });
 
         setSaving(true);
         try {
@@ -89,7 +117,7 @@ export default function ConceptosAjustes() {
 
             const res = await consumoApi.post('/api/ConceptoAjuste/sp_bw_cat_concepto_ajuste_ins', payload);
             if (res.status === 200) {
-                setMessage({ text: `✅ Nuevo concepto agregado.`, type: 'success' });
+                setMessage({ text: `Nuevo concepto agregado exitosamente.`, type: 'success' });
                 fetchTablaConceptos();
                 setFormData(initialFormState); // Limpiar formulario
             }
@@ -117,25 +145,37 @@ export default function ConceptosAjustes() {
           const res = await consumoApi.put('/api/ConceptoAjuste/sp_bw_cat_concepto_ajuste_upd', payload);
           
           if (res.status === 200) {
-              setMessage({ text: "💾 Cambios guardados automáticamente.", type: 'info' });
+              setMessage({ text: "Cambios guardados automáticamente.", type: 'info' });
               return newRow; // Actualiza la celda en la pantalla
           } else {
               throw new Error("Error en la actualización");
           }
       } catch (error) {
-          setMessage({ text: "❌ Error al guardar los cambios.", type: 'error' });
+          setMessage({ text: "Error al guardar los cambios.", type: 'error' });
           return oldRow; // Si falla, regresa el texto a como estaba antes
       }
   };
 
   // 3. ELIMINAR
   const handleEliminar = async (concepto: number) => {
-      if (!window.confirm("¿Está seguro que desea eliminar este concepto?")) return;
+      const confirmacion = await Swal.fire({
+          title: '¿Estás seguro?',
+          text: "¿Desea eliminar este concepto de ajuste?",
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d32f2f',
+          cancelButtonColor: '#333',
+          confirmButtonText: 'Sí, eliminar',
+          cancelButtonText: 'Cancelar'
+      });
+
+      if (!confirmacion.isConfirmed) return;
+
       setSaving(true);
       try {
           const res = await consumoApi.delete(`/api/ConceptoAjuste/sp_bw_cat_concepto_ajuste_del?concepto=${concepto}`);
           if (res.status === 200) {
-              setMessage({ text: "🗑️ Concepto eliminado.", type: 'success' });
+              setMessage({ text: "Concepto eliminado exitosamente.", type: 'success' });
               fetchTablaConceptos();
           }
       } catch (error) {
@@ -274,10 +314,6 @@ export default function ConceptosAjustes() {
         </Typography>
       </Box>
 
-      {/* NOTIFICACIONES */}
-      <Snackbar open={!!message} autoHideDuration={3000} onClose={() => setMessage(null)}>
-        <Alert severity={message?.type} onClose={() => setMessage(null)} sx={{ width: '100%' }}>{message?.text}</Alert>
-      </Snackbar>
     </Box>
   );
 }

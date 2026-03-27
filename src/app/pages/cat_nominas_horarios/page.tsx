@@ -11,6 +11,7 @@ import {
 } from '@mui/x-data-grid';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
+import Swal from 'sweetalert2';
 
 import useConsumoApi from '../../../hooks/useConsumoApi';
 import { useSessionContext } from '../../../context/SessionProvider'; 
@@ -51,10 +52,37 @@ export default function Horarios() {
 
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
+const [saving, setSaving] = useState(false);
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({ page: 0, pageSize: 50 });
   const [formData, setFormData] = useState(initialFormState);
-  const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' | 'info' } | null>(null);
+
+  // Función interceptora para SweetAlert2
+  const setMessage = (msg: { text: string, type: 'success' | 'error' | 'info' } | null) => {
+    if (!msg) return;
+    
+    // Si es "info" (cuando editas directo en la tabla), lanzamos un Toast discreto
+    if (msg.type === 'info') {
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: msg.text,
+            showConfirmButton: false,
+            timer: 2000
+        });
+        return;
+    }
+
+    // Alertas estándar para validaciones, éxito o error
+    Swal.fire({
+      title: msg.type === 'success' ? '¡Éxito!' : 'Atención',
+      text: msg.text,
+      icon: msg.type === 'success' ? 'success' : (msg.type === 'error' ? 'error' : 'warning'),
+      timer: msg.type === 'success' ? 2000 : undefined,
+      showConfirmButton: msg.type !== 'success',
+      confirmButtonColor: '#333'
+    });
+  };
 
   useEffect(() => { fetchTabla(); }, []);
 
@@ -73,9 +101,10 @@ export default function Horarios() {
       setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleAgregarNuevo = async () => {
-        if (!formData.horario) return setMessage({ text: "La Clave es obligatoria.", type: 'error' });
-        if (!formData.descripcion.trim()) return setMessage({ text: "La descripción es obligatoria.", type: 'error' });
+const handleAgregarNuevo = async () => {
+        // Usamos 'info' para que dispare un warning visual en el interceptor
+        if (!formData.horario) return setMessage({ text: "La Clave es obligatoria.", type: 'info' });
+        if (!formData.descripcion.trim()) return setMessage({ text: "La descripción es obligatoria.", type: 'info' });
 
         setSaving(true);
         try {
@@ -90,7 +119,7 @@ export default function Horarios() {
 
             const res = await consumoApi.post('/api/Horarios/sp_bw_cat_horarios_ins', payload);
             if (res.status === 200) {
-                setMessage({ text: `✅ Horario agregado.`, type: 'success' });
+                setMessage({ text: `Horario agregado exitosamente.`, type: 'success' });
                 fetchTabla();
                 setFormData(initialFormState);
             }
@@ -131,13 +160,25 @@ export default function Horarios() {
       }
   };
 
-  const handleEliminar = async (clave: number) => {
-      if (!window.confirm("¿Está seguro que desea eliminar este horario?")) return;
+const handleEliminar = async (clave: number) => {
+      const confirmacion = await Swal.fire({
+          title: '¿Estás seguro?',
+          text: "¿Desea eliminar este horario?",
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d32f2f',
+          cancelButtonColor: '#333',
+          confirmButtonText: 'Sí, eliminar',
+          cancelButtonText: 'Cancelar'
+      });
+
+      if (!confirmacion.isConfirmed) return;
+
       setSaving(true);
       try {
           const res = await consumoApi.delete(`/api/Horarios/sp_bw_cat_horarios_del?horario=${clave}`);
           if (res.status === 200) {
-              setMessage({ text: "🗑️ Horario eliminado.", type: 'success' });
+              setMessage({ text: "Horario eliminado exitosamente.", type: 'success' });
               fetchTabla();
           }
       } catch (error: any) {
@@ -281,9 +322,6 @@ export default function Horarios() {
         </Typography>
       </Box>
 
-      <Snackbar open={!!message} autoHideDuration={3000} onClose={() => setMessage(null)}>
-        <Alert severity={message?.type} onClose={() => setMessage(null)} sx={{ width: '100%' }}>{message?.text}</Alert>
-      </Snackbar>
     </Box>
   );
 }

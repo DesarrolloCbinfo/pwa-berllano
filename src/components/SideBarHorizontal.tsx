@@ -259,6 +259,9 @@ const SidebarHorizontal = () => {
           <MenuItem onClick={() => navigate(routes.Cat_turnos_dobles)}>
             Turnos Dobles
           </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_perfiles_permisos)}>
+            Perfiles y Permisos
+          </MenuItem>
           
         </Menu>
 

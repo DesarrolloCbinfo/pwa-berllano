@@ -28,6 +28,8 @@ import {
 } from '@mui/icons-material';
 
 import useConsumoApi from '../../../hooks/useConsumoApi'; 
+import { useSessionContext } from '../../../context/SessionProvider'; 
+import Swal from 'sweetalert2';
 
 // --- ESTILOS BERLLANO ELEGANTE (TONALIDADES NEUTRAS) ---
 // 1. Estilo General (Altura fija de 50px con detalles elegantes)
@@ -91,9 +93,11 @@ interface ScheduleRow {
 
 const AsignacionHorarios: React.FC = () => {
   const { consumoApi } = useConsumoApi();
+  const { session } = useSessionContext();
 
   // --- ESTADOS ---
-  const [sucursalId, setSucursalId] = useState<string>("");
+  // El ID de sucursal ahora se obtiene automáticamente del login
+  const sucursalId = session?.sucursal?.toString() || "";
   
   // ESTE ES EL ESTADO IMPORTANTE QUE GUARDA EL ID DEL EMPLEADO SELECCIONADO
   const [empleado, setEmpleado] = useState(''); 
@@ -105,7 +109,31 @@ const AsignacionHorarios: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [loadingEmpleados, setLoadingEmpleados] = useState(false);
   const [replicating, setReplicating] = useState(false);
-  const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
+  // Función interceptora para SweetAlert2 (reemplaza el estado nativo)
+  const setMessage = (msg: { text: string, type: 'success' | 'error' | 'warning' | 'info' } | null) => {
+    if (!msg) return;
+
+    // Toast chiquito para los mensajes de éxito (ej. al cargar empleados o replicar)
+    if (msg.type === 'success') {
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'success',
+        title: msg.text,
+        showConfirmButton: false,
+        timer: 3000
+      });
+      return;
+    }
+
+    // Alertas grandes para los errores
+    Swal.fire({
+      title: msg.type === 'error' ? 'Error' : 'Atención',
+      text: msg.text,
+      icon: msg.type,
+      confirmButtonColor: '#333'
+    });
+  };
 
   // --- Utilidades ---
   const getMonday = (d: Date) => {
@@ -120,10 +148,13 @@ const AsignacionHorarios: React.FC = () => {
   };
 
   // --------------------------------------------------------------------------------------
-  // 1. CARGA DE EMPLEADOS (Filtro por Sucursal)
+  // 1. CARGA DE EMPLEADOS (Filtro por Sucursal del Login)
   // --------------------------------------------------------------------------------------
   const fetchEmpleados = async () => {
-    if(!sucursalId) return;
+    if(!sucursalId) {
+      setMessage({ text: 'No se ha detectado la sucursal del usuario', type: 'error' });
+      return;
+    }
 
     setLoadingEmpleados(true);
     setListaEmpleados([]); 
@@ -138,7 +169,7 @@ const AsignacionHorarios: React.FC = () => {
         setMessage({ text: 'No se encontraron empleados en esta sucursal', type: 'error' });
       } else {
         setListaEmpleados(response.data);
-        setMessage({ text: `Se encontraron ${response.data.length} empleados`, type: 'success' });
+        setMessage({ text: `Se encontraron ${response.data.length} empleados en ${session?.dSucursal || 'la sucursal'}`, type: 'success' });
       }
     } catch (error) {
       console.error("Error cargando empleados", error);
@@ -151,7 +182,7 @@ const AsignacionHorarios: React.FC = () => {
   useEffect(() => {
     fetchEmpleados();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); 
+  }, [sucursalId]); // Ahora se carga automáticamente cuando cambia la sucursal del login 
 
 
  // --------------------------------------------------------------------------------------
@@ -237,9 +268,21 @@ const AsignacionHorarios: React.FC = () => {
  // --------------------------------------------------------------------------------------
   // 5. REPLICAR HORARIOS (Modificado para esperar mucho tiempo)
   // --------------------------------------------------------------------------------------
-  const handleReplicar = async () => {
+const handleReplicar = async () => {
     if (!empleado) return;
-    if (!window.confirm("¿Copiar esta semana a la siguiente? Se sobrescribirán los datos futuros.")) return;
+
+    const confirmacion = await Swal.fire({
+      title: '¿Copiar horarios?',
+      text: "Se copiará esta semana a la siguiente. Los datos futuros se sobrescribirán.",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#333333',
+      cancelButtonColor: '#d32f2f',
+      confirmButtonText: 'Sí, replicar',
+      cancelButtonText: 'Cancelar'
+    });
+
+    if (!confirmacion.isConfirmed) return;
 
     setReplicating(true);
     try {
@@ -305,86 +348,44 @@ const AsignacionHorarios: React.FC = () => {
   };
 
 
-  // --- RENDER ---
+// --- RENDER ---
   return (
-    <Box sx={{ p: 0, minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
+    <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#ececec' }}>
       
-      <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage(null)}>
-        <Alert severity={message?.type} onClose={() => setMessage(null)}>{message?.text}</Alert>
-      </Snackbar>
+      {/* MAGIA CSS: Forzamos a SweetAlert a saltar al frente */}
+      <style>{`
+        .swal2-container {
+          z-index: 9999 !important;
+        }
+      `}</style>
 
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, p: 3 }}>
-        <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', color: '#333', display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Box sx={{ 
-            width: 40, 
-            height: 40, 
-            backgroundColor: '#333333', 
-            borderRadius: '50%', 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            color: 'white',
-            boxShadow: '0 4px 8px rgba(51, 51, 51, 0.3)',
-            transition: 'all 0.3s ease'
-          }}>📅</Box>
-          ASIGNACIÓN DE HORARIOS
-        </Typography>
-      </Box>
-
-      <Paper sx={{ 
-        p: 3, 
-        mb: 3, 
-        borderRadius: '12px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-        border: '1px solid #e0e0e0'
-      }}>
-
-        {/* FILTRO SUCURSAL */}
-        <Box sx={{ 
-          mb: 3, 
-          p: 2, 
-          border: '1.5px solid #e0e0e0', 
-          borderRadius: '8px', 
-          backgroundColor: '#fafafa',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-        }}>
-            <Typography variant="caption" sx={{ color: '#666', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 }}>Filtro Sucursal</Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1 }}>
-                <TextField 
-                    {...commonProps}
-                    label="ID Sucursal" 
-                    type="number" 
-                    value={sucursalId}
-                    onChange={(e) => setSucursalId(e.target.value)}
-                    sx={{ ...commonProps.sx, width: 150 }}
-                />
-                <Button 
-                    variant="contained" 
-                    onClick={fetchEmpleados} 
-                    disabled={loadingEmpleados}
-                    startIcon={loadingEmpleados ? <CircularProgress size={20} color="inherit"/> : <SearchIcon />}
-                    sx={{ 
-                      backgroundColor: '#333333', 
-                      color: 'white', 
-                      borderRadius: '8px',
-                      fontWeight: 600,
-                      textTransform: 'none',
-                      padding: '10px 20px',
-                      boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)',
-                      transition: 'all 0.3s ease',
-                      '&:hover': { 
-                        backgroundColor: '#555555',
-                        boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)',
-                        transform: 'translateY(-1px)'
-                      }
-                    }}
-                >
-                    {loadingEmpleados ? 'Cargando...' : 'Buscar'}
-                </Button>
+      {/* PAPER 1: ENCABEZADO Y CONTROLES */}
+      <Paper sx={{ p: 3, borderRadius: '8px', mb: 3, boxShadow: '0 4px 8px rgba(0,0,0,0.05)' }}>
+        
+        {/* ENCABEZADO RECTANGULAR ELEGANTE */}
+        <Box sx={{ border: '1px solid #2c3e50', p: 1.5, mb: 2, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
+            <Box>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
+                    ASIGNACIÓN DE HORARIOS
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                    Sucursal: {session?.dSucursal || 'Cargando...'}
+                </Typography>
+            </Box>
+            <Box sx={{ textAlign: 'right' }}>
+                <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#333', lineHeight: 1.1, fontSize: '0.9rem' }}>
+                    {new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' }).replace('.', '')}
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                    Usuario: {session?.nombre || 'Cargando...'}
+                </Typography>
             </Box>
         </Box>
-        
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3, alignItems: 'center', mb: 3 }}>
+
+        {/* CONTENEDOR DE SELECTORES */}
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3, alignItems: 'center', mt: 2 }}>
+          
+          {/* SELECT EMPLEADO: AQUÍ SE SELECCIONA Y SE GUARDA EN EL ESTADO 'empleado' */}
           
           {/* SELECT EMPLEADO: AQUÍ SE SELECCIONA Y SE GUARDA EN EL ESTADO 'empleado' */}
           <Box sx={{ flex: { xs: 1, md: 0.4 }, width: '100%' }}>
@@ -490,81 +491,81 @@ const AsignacionHorarios: React.FC = () => {
         </Box>
       </Paper>
 
-      {/* GRID DE HORARIOS */}
+{/* PAPER 2: GRID DE HORARIOS Y FOOTER */}
       <Paper sx={{ 
         p: 3, 
-        borderRadius: '12px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-        border: '1px solid #e0e0e0'
+        mt: 3,
+        borderRadius: '8px',
+        boxShadow: '0 4px 8px rgba(0,0,0,0.08)'
       }}>
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
-            <CircularProgress />
-          </Box>
-        ) : (
-          <TableContainer>
-            <Table>
-              <TableHead>
-                <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                  <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', color: '#333', borderBottom: '2px solid #e0e0e0' }}>Día</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', color: '#333', borderBottom: '2px solid #e0e0e0' }}>H1</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', color: '#333', borderBottom: '2px solid #e0e0e0' }}>H1C</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', color: '#333', borderBottom: '2px solid #e0e0e0' }}>H2C</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', color: '#333', borderBottom: '2px solid #e0e0e0' }}>H2</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', textAlign: 'center', color: '#333', borderBottom: '2px solid #e0e0e0' }}>Descanso</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {scheduleData.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} align="center">Seleccione un empleado para ver horarios</TableCell></TableRow>
-                ) : (
-                  scheduleData.map((row, index) => (
-                    <TableRow key={row.fecha} sx={{ '&:nth-of-type(odd)': { backgroundColor: '#fafafa' } }}>
-                      
-                      <TableCell sx={{ fontWeight: 'medium', textAlign: 'center' }}>
-                        {row.dayName} <br/>
-                        <Typography variant="caption" color="textSecondary">
-                            {new Date(row.fecha).toLocaleDateString()}
-                        </Typography>
-                      </TableCell>
-
-                      {['h1', 'h1c', 'h2c', 'h2'].map((field) => (
-                        <TableCell key={field} sx={{ textAlign: 'center' }}>
-                          <TextField
-                            {...commonProps}
-                            placeholder="HH:MM"
-                            value={row[field as keyof ScheduleRow]}
-                            onChange={(e) => handleInputChange(index, field as keyof ScheduleRow, e.target.value)}
-                            onBlur={() => handleSaveRow(row)} // GUARDA AL SALIR DEL INPUT
-                          />
-                        </TableCell>
-                      ))}
-
-                      <TableCell sx={{ textAlign: 'center' }}>
-                        <Checkbox 
-                            checked={row.descanso}
-                            onChange={(e) => {
-                                handleInputChange(index, 'descanso', e.target.checked);
-                                const updatedRow = { ...row, descanso: e.target.checked };
-                                handleSaveRow(updatedRow); // GUARDA AL CAMBIAR CHECKBOX
-                            }}
-                            sx={{
-                              color: '#333',
-                              '&.Mui-checked': {
-                                color: '#333'
-                              }
-                            }}
-                        />
+        <Box sx={{ width: '100%', minHeight: 400 }}>
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <TableContainer sx={{ border: 'none' }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+                    <TableCell sx={{ fontSize: '1rem', fontWeight: 'bold', textAlign: 'center', color: '#000', borderBottom: '2px solid #000' }}>Día</TableCell>
+                    <TableCell sx={{ fontSize: '1rem', fontWeight: 'bold', textAlign: 'center', color: '#000', borderBottom: '2px solid #000' }}>H1</TableCell>
+                    <TableCell sx={{ fontSize: '1rem', fontWeight: 'bold', textAlign: 'center', color: '#000', borderBottom: '2px solid #000' }}>H1C</TableCell>
+                    <TableCell sx={{ fontSize: '1rem', fontWeight: 'bold', textAlign: 'center', color: '#000', borderBottom: '2px solid #000' }}>H2C</TableCell>
+                    <TableCell sx={{ fontSize: '1rem', fontWeight: 'bold', textAlign: 'center', color: '#000', borderBottom: '2px solid #000' }}>H2</TableCell>
+                    <TableCell sx={{ fontSize: '1rem', fontWeight: 'bold', textAlign: 'center', color: '#000', borderBottom: '2px solid #000' }}>Descanso</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {scheduleData.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} align="center" sx={{ borderBottom: 'none', py: 4, color: '#666' }}>
+                        Seleccione un empleado para ver horarios
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
+                  ) : (
+                    scheduleData.map((row, index) => (
+                      <TableRow key={row.fecha} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                        <TableCell sx={{ fontWeight: '500', textAlign: 'center', borderBottom: '1px solid #e0e0e000', py: 2 }}>
+                          {row.dayName} <br/>
+                          <Typography variant="caption" sx={{ color: '#888' }}>
+                              {new Date(row.fecha).toLocaleDateString('es-MX', { timeZone: 'UTC' })}
+                          </Typography>
+                        </TableCell>
 
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 3 }}>
+                        {['h1', 'h1c', 'h2c', 'h2'].map((field) => (
+                          <TableCell key={field} sx={{ textAlign: 'center', borderBottom: '1px solid #e0e0e000', py: 2 }}>
+                            <TextField
+                              {...commonProps}
+                              placeholder="HH:MM"
+                              value={row[field as keyof ScheduleRow]}
+                              onChange={(e) => handleInputChange(index, field as keyof ScheduleRow, e.target.value)}
+                              onBlur={() => handleSaveRow(row)}
+                            />
+                          </TableCell>
+                        ))}
+
+                        <TableCell sx={{ textAlign: 'center', borderBottom: '1px solid #e0e0e000', py: 2 }}>
+                          <Checkbox 
+                              checked={row.descanso}
+                              onChange={(e) => {
+                                  handleInputChange(index, 'descanso', e.target.checked);
+                                  const updatedRow = { ...row, descanso: e.target.checked };
+                                  handleSaveRow(updatedRow);
+                              }}
+                              sx={{ color: '#333', '&.Mui-checked': { color: '#333' } }}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </Box>
+
+<Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 3 }}>
           <Button
             variant="contained"
             onClick={handleReplicar}
@@ -596,6 +597,8 @@ const AsignacionHorarios: React.FC = () => {
             {replicating ? 'Replicando...' : 'Replicar Horarios'}
           </Button>
         </Box>
+
+
       </Paper>
     </Box>
   );

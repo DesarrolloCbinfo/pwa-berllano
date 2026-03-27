@@ -11,6 +11,7 @@ import {
 import DeleteIcon from '@mui/icons-material/Delete';
 import SaveIcon from '@mui/icons-material/Save';
 import SearchIcon from '@mui/icons-material/Search';
+import Swal from 'sweetalert2';
 
 import useConsumoApi from '../../../hooks/useConsumoApi';
 import { useSessionContext } from '../../../context/SessionProvider'; 
@@ -41,9 +42,21 @@ export default function TurnosDobles() {
   const [formData, setFormData] = useState(initialFormState);
   const [historial, setHistorial] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' | 'info' } | null>(null);
-  const [empleados, setEmpleados] = useState<any[]>([]); // <-- NUEVO ESTADO
+const [saving, setSaving] = useState(false);
+  const [empleados, setEmpleados] = useState<any[]>([]); 
+
+  // Función interceptora para SweetAlert2
+  const setMessage = (msg: { text: string, type: 'success' | 'error' | 'info' } | null) => {
+    if (!msg) return;
+    Swal.fire({
+      title: msg.type === 'success' ? '¡Éxito!' : (msg.type === 'info' ? 'Atención' : 'Error'),
+      text: msg.text,
+      icon: msg.type === 'info' ? 'warning' : msg.type, // Ajuste para que 'info' muestre ícono de warning
+      timer: msg.type === 'success' ? 2000 : undefined,
+      showConfirmButton: msg.type !== 'success',
+      confirmButtonColor: '#333'
+    });
+  };
 
   // NUEVO USEEFFECT PARA DESCARGAR EMPLEADOS
   useEffect(() => {
@@ -87,7 +100,7 @@ export default function TurnosDobles() {
       fetchHistorial(formData.clave_empleado);
   };
 
-  const handleAutorizar = async () => {
+const handleAutorizar = async () => {
         if (isSavingRef.current) return; 
 
         if (!formData.clave_empleado.trim()) return setMessage({ text: "Seleccione un empleado.", type: 'error' });
@@ -95,7 +108,19 @@ export default function TurnosDobles() {
         if (!formData.observacion.trim()) return setMessage({ text: "Escriba las Observaciones.", type: 'error' });
         if (!formData.salario || Number(formData.salario) <= 0) return setMessage({ text: "Escriba un salario válido.", type: 'error' });
 
-        if (!window.confirm("¿Desea autorizar el turno doble de este empleado?")) return;
+        // Confirmación con SweetAlert2
+        const confirmacion = await Swal.fire({
+            title: 'Autorizar Turno',
+            text: "¿Desea autorizar el turno doble de este empleado?",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#2e7d32',
+            cancelButtonColor: '#333',
+            confirmButtonText: 'Sí, autorizar',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (!confirmacion.isConfirmed) return;
 
         isSavingRef.current = true;
         setSaving(true);
@@ -109,9 +134,8 @@ export default function TurnosDobles() {
 
             const res = await consumoApi.post('/api/TurnosDobles/sp_bw_cat_nominas_turnos_dobles_ins', payload);
             if (res.status === 200) {
-                setMessage({ text: `✅ Se registró la autorización.`, type: 'success' });
+                setMessage({ text: `Se registró la autorización correctamente.`, type: 'success' });
                 fetchHistorial(formData.clave_empleado); // Refresca la tabla
-                // Limpiamos solo observacion y salario, dejamos al empleado por si le quieren meter otro turno
                 setFormData(prev => ({ ...prev, observacion: '', salario: '' }));
             }
         } catch (error: any) {
@@ -122,16 +146,27 @@ export default function TurnosDobles() {
         }
     };
 
-  const handleEliminar = async (clave_empleado: string, fecha: string) => {
-      if (!window.confirm(`¿Está seguro que desea eliminar este turno doble del historial?`)) return;
+const handleEliminar = async (clave_empleado: string, fecha: string) => {
+      const confirmacion = await Swal.fire({
+          title: '¿Estás seguro?',
+          text: "¿Desea eliminar este turno doble del historial?",
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d32f2f',
+          cancelButtonColor: '#333',
+          confirmButtonText: 'Sí, eliminar',
+          cancelButtonText: 'Cancelar'
+      });
+
+      if (!confirmacion.isConfirmed) return;
+
       setSaving(true);
       try {
-          // Formateamos la fecha para mandarla segura por la URL
           const fechaLimpia = new Date(fecha).toISOString().split('T')[0];
           const res = await consumoApi.delete(`/api/TurnosDobles/sp_bw_cat_nominas_turnos_dobles_del?clave_empleado=${clave_empleado}&fecha=${fechaLimpia}`);
           
           if (res.status === 200) {
-              setMessage({ text: "🗑️ Turno eliminado.", type: 'success' });
+              setMessage({ text: "Turno eliminado exitosamente.", type: 'success' });
               fetchHistorial(formData.clave_empleado); // Refresca la tabla
           }
       } catch (error: any) {
@@ -305,10 +340,6 @@ const columns = useMemo<GridColDef[]>(() => [
           CAT_TURNOS_DOBLES, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/')}, USR:{session?.nombre || 'ADMIN'}
         </Typography>
       </Box>
-
-      <Snackbar open={!!message} autoHideDuration={3000} onClose={() => setMessage(null)}>
-        <Alert severity={message?.type} onClose={() => setMessage(null)} sx={{ width: '100%' }}>{message?.text}</Alert>
-      </Snackbar>
     </Box>
   );
 }

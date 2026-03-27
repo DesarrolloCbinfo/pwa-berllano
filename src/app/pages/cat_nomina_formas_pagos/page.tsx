@@ -3,6 +3,7 @@ import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
 import { Box, CircularProgress, Alert, Typography, Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, Snackbar } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
+import Swal from 'sweetalert2';
 import useConsumoApi from "../../../hooks/useConsumoApi";
 import { useSessionContext } from '../../../context/SessionProvider'; 
 
@@ -36,9 +37,21 @@ export default function CatNominaFormasPagos() {
   const { consumoApi } = useConsumoApi();
   const { session } = useSessionContext();
   const [rows, setRows] = useState<CatNominaFormasPagos[]>([]);
-  const [loading, setLoading] = useState(true);
+const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' | 'info' } | null>(null);
+  
+  // Función interceptora para SweetAlert2
+  const setMessage = (msg: { text: string, type: 'success' | 'error' | 'info' } | null) => {
+    if (!msg) return;
+    Swal.fire({
+      title: msg.type === 'success' ? '¡Éxito!' : (msg.type === 'error' ? 'Error' : 'Atención'),
+      text: msg.text,
+      icon: msg.type === 'info' ? 'warning' : msg.type,
+      timer: msg.type === 'success' ? 2000 : undefined,
+      showConfirmButton: msg.type !== 'success',
+      confirmButtonColor: '#333'
+    });
+  };
 
   // Elementos para agregar formas de pago
   const [openAdd, setOpenAdd] = useState(false);
@@ -103,16 +116,16 @@ export default function CatNominaFormasPagos() {
     fetchFormasPagos();
   }, []);
 
-  const handleAdd = async () => {
-    if (clave_forma_pago === '' || !descripcion_forma_pago) return;
+const handleAdd = async () => {
+    if (clave_forma_pago === '') return setMessage({ text: "La Clave es obligatoria", type: 'info' });
+    if (!descripcion_forma_pago.trim()) return setMessage({ text: "La descripción es obligatoria", type: 'info' });
 
     try {
       setSaving(true);
-
       const claveFormaPagoNumber = clave_forma_pago === '' ? 0 : clave_forma_pago;
 
       const response = await consumoApi.post(
-        `/api/CatNominaFormasPago/sp_bw_cat_nomina_forma_pago_add?clave_forma_pago=${claveFormaPagoNumber}&descripcion_forma_pago=${encodeURIComponent(descripcion_forma_pago)}`,
+        `/api/CatNominaFormasPago/sp_bw_cat_nomina_forma_pago_add?clave_forma_pago=${claveFormaPagoNumber}&descripcion_forma_pago=${encodeURIComponent(descripcion_forma_pago.toUpperCase())}`,
         null,
       );
 
@@ -123,11 +136,11 @@ export default function CatNominaFormasPagos() {
         return;
       }
 
-      setMessage({ text: '✅ Forma de pago agregada correctamente', type: 'success' });
+      setMessage({ text: 'Forma de pago agregada correctamente', type: 'success' });
       setOpenAdd(false);
       setClaveFormaPago('');
       setDescripcionFormaPago('');
-      fetchFormasPagos(); //  refresca grid
+      fetchFormasPagos(); 
     } catch (err) {
       setMessage({ text: err instanceof Error ? err.message : 'Error desconocido', type: 'error' });
     } finally {
@@ -135,16 +148,17 @@ export default function CatNominaFormasPagos() {
     }
   };
 
-  const handleUpdate = async () => {
-    if (!editId || editClaveFormaPago === '' || !editDescripcionFormaPago) return;
+const handleUpdate = async () => {
+    if (!editId) return;
+    if (editClaveFormaPago === '') return setMessage({ text: "La Clave es obligatoria", type: 'info' });
+    if (!editDescripcionFormaPago.trim()) return setMessage({ text: "La descripción es obligatoria", type: 'info' });
 
     try {
       setSavingEdit(true);
-
       const editClaveFormaPagoNumber = editClaveFormaPago === '' ? 0 : editClaveFormaPago;
 
       const response = await consumoApi.put(
-        `/api/CatNominaFormasPago/sp_bw_cat_nomina_forma_pago_upd?descripcion_forma_pago=${encodeURIComponent(editDescripcionFormaPago)}&clave_forma_pago=${editClaveFormaPagoNumber}`,
+        `/api/CatNominaFormasPago/sp_bw_cat_nomina_forma_pago_upd?descripcion_forma_pago=${encodeURIComponent(editDescripcionFormaPago.toUpperCase())}&clave_forma_pago=${editClaveFormaPagoNumber}`,
         null,
       );
 
@@ -155,12 +169,12 @@ export default function CatNominaFormasPagos() {
         return;
       }
 
-      setMessage({ text: '💾 Forma de pago actualizada correctamente', type: 'success' });
+      setMessage({ text: 'Forma de pago actualizada correctamente', type: 'success' });
       setOpenEdit(false);
       setEditId(null);
       setEditClaveFormaPago('');
       setEditDescripcionFormaPago('');
-      fetchFormasPagos(); // refresca grid
+      fetchFormasPagos(); 
     } catch (err) {
       setMessage({ text: err instanceof Error ? err.message : 'Error desconocido', type: 'error' });
     } finally {
@@ -168,8 +182,16 @@ export default function CatNominaFormasPagos() {
     }
   };
 
-  return (
+return (
     <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#ececec' }}>
+      
+      {/* MAGIA CSS: Forzamos a SweetAlert a saltar al frente de los modales de MUI */}
+      <style>{`
+        .swal2-container {
+          z-index: 9999 !important;
+        }
+      `}</style>
+
       <Paper sx={{ p: 3, borderRadius: '8px' }}>
         {/* ENCABEZADO BERLLANO ELEGANTE 2 */}
         <Box sx={{ border: '1px solid #2c3e50', borderRadius: '8px', backgroundColor: '#fff', p: 1.5, mb: 2, display: 'flex', justifyContent: 'space-between' }}>
@@ -374,10 +396,6 @@ export default function CatNominaFormasPagos() {
         </DialogActions>
       </Dialog>
 
-      {/* NOTIFICACIONES */}
-      <Snackbar open={!!message} autoHideDuration={3000} onClose={() => setMessage(null)}>
-        <Alert severity={message?.type} onClose={() => setMessage(null)} sx={{ width: '100%' }}>{message?.text}</Alert>
-      </Snackbar>
     </Box>
   );
 }

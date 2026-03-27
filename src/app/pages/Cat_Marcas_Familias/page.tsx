@@ -16,9 +16,14 @@ import {
   LinearProgress,
   Snackbar,
   Alert,
-  Grid
+  Grid,
+  Dialog,            // <--- NUEVO
+  DialogTitle,       // <--- NUEVO
+  DialogContent,     // <--- NUEVO
+  DialogActions      // <--- NUEVO
 } from '@mui/material';
 import useConsumoApi from '../../../hooks/useConsumoApi';
+import Swal from 'sweetalert2';
 import { useSessionContext } from '../../../context/SessionProvider'; 
 import AddIcon from '@mui/icons-material/Add';
 
@@ -88,8 +93,36 @@ const Cat_MarcasFamilias: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   
-  // Estado para mensajes de confirmación (Feedback visual)
-  const [mensaje, setMensaje] = useState<{ texto: string, tipo: 'success' | 'error' } | null>(null);
+// Función interceptora para SweetAlert2 (reemplaza el estado nativo)
+  const setMensaje = (msg: { texto: string, tipo: 'success' | 'error' | 'warning' | 'info' } | null) => {
+    if (!msg) return;
+    
+    // Toast chiquito para el guardado automático de la tabla para no estorbar visualmente
+    if (msg.tipo === 'success' && msg.texto === 'Guardado correctamente') {
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: msg.texto,
+            showConfirmButton: false,
+            timer: 2000
+        });
+        return;
+    }
+
+    // Alertas pop-up grandes para los errores
+    Swal.fire({
+      title: msg.tipo === 'success' ? '¡Éxito!' : (msg.tipo === 'error' ? 'Error' : 'Atención'),
+      text: msg.texto,
+      icon: (msg.tipo === 'info' || msg.tipo === 'warning') ? 'warning' : msg.tipo,
+      timer: msg.tipo === 'success' ? 2000 : undefined,
+      showConfirmButton: msg.tipo !== 'success',
+      confirmButtonColor: '#333'
+    });
+  };
+  // NUEVOS ESTADOS PARA EL MODAL DE AGREGAR
+  const [openAdd, setOpenAdd] = useState(false);
+  const [newFormData, setNewFormData] = useState({ id_marca: '', familia: '' });
 
   // --- CARGA INICIAL ---
   useEffect(() => {
@@ -97,17 +130,15 @@ const Cat_MarcasFamilias: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const cargarDatos = async () => {
+const cargarDatos = async () => {
     setLoading(true);
     try {
-      // 1. Cargar Catálogo de Marcas (Dropdown)
-      // Nota: Ruta actualizada a tu Controller nuevo
-      const resMarcas = await consumoApi.get('/api/CatMarcasFamilias/sp_bw_cat_marcasfamilias_list');
+      // 1. Cargar Catálogo de Marcas (Dropdown) - Burlando el caché
+      const resMarcas = await consumoApi.get(`/api/CatMarcasFamilias/sp_bw_cat_marcasfamilias_list?_t=${new Date().getTime()}`);
       setMarcas(resMarcas.data);
 
-      // 2. Cargar Filas de la Tabla
-      // Nota: Ruta actualizada a tu Controller nuevo
-      const resFamilias = await consumoApi.get('/api/CatMarcasFamilias/sp_bw_cat_marcasfamilias_sel');
+      // 2. Cargar Filas de la Tabla - Burlando el caché
+      const resFamilias = await consumoApi.get(`/api/CatMarcasFamilias/sp_bw_cat_marcasfamilias_sel?_t=${new Date().getTime()}`);
       setRows(resFamilias.data);
 
     } catch (error) {
@@ -117,7 +148,6 @@ const Cat_MarcasFamilias: React.FC = () => {
       setLoading(false);
     }
   };
-
   // --- LÓGICA DE GUARDADO (AUTO-SAVE) ---
   const guardarCambioEnBD = async (row: FamiliaRow) => {
     try {
@@ -156,8 +186,44 @@ const Cat_MarcasFamilias: React.FC = () => {
     guardarCambioEnBD(rows[index]);
   };
 
-  return (
+const handleAdd = async () => {
+    // Validar que no vengan vacíos ni indefinidos
+    if (!newFormData.id_marca || !newFormData.familia || newFormData.familia.trim() === '') {
+        setMensaje({ texto: 'Por favor selecciona una marca y escribe la familia', tipo: 'warning' });
+        return;
+    }
+
+    setSaving(true);
+    try {
+        await consumoApi.post('/api/CatMarcasFamilias/sp_bw_cat_marcasfamilias_ins', null, {
+            params: {
+                id_marca: Number(newFormData.id_marca),
+                familia: newFormData.familia.toUpperCase()
+            }
+        });
+
+        setMensaje({ texto: '¡Familia agregada exitosamente!', tipo: 'success' });
+        setOpenAdd(false); 
+        setNewFormData({ id_marca: '', familia: '' }); 
+        await cargarDatos(); // <--- LE AGREGAMOS 'await' AQUÍ PARA QUE ESPERE
+    } catch (error) {
+        console.error("Error al agregar:", error);
+        setMensaje({ texto: 'Error al agregar el registro', tipo: 'error' });
+    } finally {
+        setSaving(false);
+    }
+  };
+
+return (
     <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#ececec' }}>
+      
+      {/* MAGIA CSS: Forzamos a SweetAlert a saltar al frente */}
+      <style>{`
+        .swal2-container {
+          z-index: 9999 !important;
+        }
+      `}</style>
+
       <Paper sx={{ p: 3, borderRadius: '8px' }}>
         {/* ENCABEZADO */}
         <Box sx={{ border: '1px solid #2c3e50', p: 1.5, mb: 2, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
@@ -181,14 +247,15 @@ const Cat_MarcasFamilias: React.FC = () => {
 
         <Grid container spacing={2} justifyContent="flex-start" alignItems="center" sx={{ mb: 0.5 }}>
             <Grid item xs={12} md={2}>
-              <Button variant="contained" disabled={saving} fullWidth startIcon={<AddIcon />}
-                sx={{ 
-                    height: '50px', backgroundColor: '#333333', color: 'white', fontWeight: 600, textTransform: 'none', borderRadius: '8px',
-                    boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)', transition: 'all 0.3s ease',
-                    '&:hover': { backgroundColor: '#555555', boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)', transform: 'translateY(-1px)' }
-                }}>
-                AGREGAR
-              </Button>
+<Button variant="contained" disabled={saving} fullWidth startIcon={<AddIcon />}
+        onClick={() => setOpenAdd(true)} // <--- AGREGAR ESTA LÍNEA
+        sx={{ 
+            height: '50px', backgroundColor: '#333333', color: 'white', fontWeight: 600, textTransform: 'none', borderRadius: '8px',
+            boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)', transition: 'all 0.3s ease',
+            '&:hover': { backgroundColor: '#555555', boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)', transform: 'translateY(-1px)' }
+        }}>
+        AGREGAR
+      </Button>
             </Grid>
         </Grid>
       </Paper>
@@ -283,18 +350,58 @@ const Cat_MarcasFamilias: React.FC = () => {
           CAT_MARCAS_FAMILIAS, ARAUCARIAS, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/')}, USR:{session?.nombre || 'ADMIN'}
         </Typography>
       </Box>
-
-      {/* NOTIFICACIÓN FLOTANTE (FEEDBACK) */}
-      <Snackbar 
-        open={!!mensaje} 
-        autoHideDuration={2000} 
-        onClose={() => setMensaje(null)} 
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+{/* MODAL PARA AGREGAR NUEVO REGISTRO */}
+      <Dialog 
+        open={openAdd} 
+        onClose={() => setOpenAdd(false)}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{
+          sx: { borderRadius: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.15)', border: '1px solid #e0e0e0' }
+        }}
       >
-        <Alert severity={mensaje?.tipo} variant="filled">
-            {mensaje?.texto}
-        </Alert>
-      </Snackbar>
+        <DialogTitle sx={{ background: '#333333', color: 'white', fontFamily: 'Georgia, "Times New Roman", serif' }}>
+          Agregar Nueva Familia
+        </DialogTitle>
+        <DialogContent sx={{ p: 3, bgcolor: '#fff', display: 'flex', flexDirection: 'column', gap: 3, mt: 2 }}>
+          
+          <Select
+            {...selectProps}
+            displayEmpty
+            value={newFormData.id_marca}
+            onChange={(e) => setNewFormData({ ...newFormData, id_marca: e.target.value as string })}
+          >
+            <MenuItem value="" disabled>-- Seleccione una Marca --</MenuItem>
+            {marcas.map((m) => (
+              <MenuItem key={m.id} value={m.id}>{m.marca}</MenuItem>
+            ))}
+          </Select>
+
+          <TextField 
+            {...commonProps}
+            label="Nombre de la Familia"
+            value={newFormData.familia}
+            onChange={(e) => setNewFormData({ ...newFormData, familia: e.target.value })}
+          />
+
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2, bgcolor: '#f5f5f5', borderTop: '1px solid #e0e0e0' }}>
+          <Button 
+            onClick={() => setOpenAdd(false)}
+            sx={{ color: '#000', fontWeight: 600, textTransform: 'none' }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleAdd} 
+            variant="contained" 
+            disabled={saving}
+            sx={{ backgroundColor: '#333333', fontWeight: 600, textTransform: 'none', borderRadius: '8px', '&:hover': { backgroundColor: '#555555' } }}
+          >
+            {saving ? 'Guardando...' : 'Guardar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
