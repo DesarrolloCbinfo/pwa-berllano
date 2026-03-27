@@ -153,8 +153,8 @@ const SidebarHorizontal = () => {
           <MenuItem onClick={() => navigate(routes.modulo_porcentajes_puntos)}>
             Porcentajes y puntos
           </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_Areas)}>
-            Áreas
+          <MenuItem onClick={() => navigate(routes.cat_AreasDeptosClases)}>
+            Áreas, Departamentos y Clases
           </MenuItem>
           <MenuItem onClick={() => navigate(routes.cat_Tipo_Descuento)}>
             Tipo de descuentos
@@ -259,10 +259,19 @@ const SidebarHorizontal = () => {
           <MenuItem onClick={() => navigate(routes.Cat_turnos_dobles)}>
             Turnos Dobles
           </MenuItem>
+
           <MenuItem onClick={() => navigate(routes.cat_perfiles_permisos)}>
             Perfiles y Permisos
           </MenuItem>
           
+
+          <MenuItem onClick={() => navigate(routes.cat_Categorias)}>
+            Categorías de Gastos 
+          </MenuItem>
+          <MenuItem onClick={() => navigate(routes.cat_PermisosDeptos)}>
+            Perfiles y Permisos para Deptos Comerciales
+          </MenuItem>
+
         </Menu>
 
  {/* MODULO COMERCIAL */}

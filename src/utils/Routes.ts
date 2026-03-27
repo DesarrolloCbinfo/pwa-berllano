@@ -43,6 +43,7 @@ export const routes = {
   Cat_Marcas_Familias: "/cat_marcas_familias",
   modulo_servicios_insumos: "/modulo_servicios_insumos",
   modulo_porcentajes_puntos: "/modulo_porcentajes_puntos",
+  cat_AreasDeptosClases:"/cat_AreasDeptosClases",
   retiros: "/retiros",
   corte_parcial: "/corte-parcial",
   corte_dia: "/corte-dia",
@@ -58,6 +59,7 @@ export const routes = {
   cat_nomina_formas_pagos: "/cat_nomina_formas_pagos",
   cat_nomina_puestos: "/cat_nomina_puestos",
   cat_nomina_bajas: "/cat_nomina_bajas",
-
+  cat_Categorias: "/cat_Categorias",
+  cat_PermisosDeptos:"/cat_PermisosDeptos",
 };
 
