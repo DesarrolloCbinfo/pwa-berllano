@@ -108,9 +108,9 @@ function App() {
           <Route path='/cat_tipos_movimientos' element={<Layout><TiposMovimientos/></Layout>} />
 
         
-         <Route path='/zos_autorizados' element={<Layout><PlasticosAutorizados/></Layout>} />
-         <Route path='/medios_pagos' element={<Layout><MediosPagos/></Layout>} />
-         <Route path='/descuento_proveedores' element={<Layout><DescuentoProveedores/></Layout>} />
+         <Route path='/Cat_Plasticos_Autorizados' element={<Layout><PlasticosAutorizados/></Layout>} />
+         <Route path='/cat_medios_pago' element={<Layout><MediosPagos/></Layout>} />
+         <Route path='/cat_DescProveedores' element={<Layout><DescuentoProveedores/></Layout>} />
          <Route path='/cat_proveedores_acreedores' element={<Layout><ProveedoresAcreedores/></Layout>} />
          <Route path='/cat_trabajadores' element={<Layout><CatTrabajadores/></Layout>} />
          <Route path='/cat_nomina_departamentos' element={<Layout><CatNominaDepartamentos/></Layout>} />

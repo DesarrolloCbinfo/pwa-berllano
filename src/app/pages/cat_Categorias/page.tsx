@@ -12,6 +12,7 @@ import {
 import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
 
 import useConsumoApi from '../../../hooks/useConsumoApi';
+import { useSessionContext } from '../../../context/SessionProvider'; // <--- AGREGAR ESTA LÍNEA
 
 // --- INTERFACES ---
 interface CategoriaRow {
@@ -85,6 +86,7 @@ const initialCategoriaState: CategoriaForm = {
 // --- COMPONENTE PRINCIPAL ---
 export default function CatCategorias() {
   const consumoApi = useConsumoApi();
+  const { session } = useSessionContext(); // <--- AGREGAR ESTA LÍNEA
   
   // --- ESTADOS PRINCIPALES ---
   const [rows, setRows] = useState<CategoriaRow[]>([]);
@@ -715,24 +717,38 @@ export default function CatCategorias() {
     },
   ];
 
+// --- RENDER ---
   return (
-    <Box sx={{ p: 3, bgcolor: '#f5f5f5', minHeight: '100vh' }}>
-      {/* --- HEADER --- */}
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        mb: 3,
-        p: 2,
-        bgcolor: 'white',
-        borderRadius: '12px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-      }}>
-        <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#333' }}>
-          Categorías de Gastos
-        </Typography>
-        
-      </Box>
+    <Box sx={{ p: 3, bgcolor: '#ececec', minHeight: '100vh' }}>
+      
+      {/* MAGIA CSS: Forzamos a SweetAlert a saltar al frente de los modales */}
+      <style>{`
+        .swal2-container {
+          z-index: 9999 !important;
+        }
+      `}</style>
+
+      {/* PAPER 1: ENCABEZADO ESTILO BERLLANO */}
+      <Paper sx={{ p: 3, borderRadius: '8px', mb: 3 }}>
+        <Box sx={{ border: '1px solid #2c3e50', p: 1.5, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
+            <Box>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
+                    CATÁLOGO DE CATEGORÍAS DE GASTOS
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                    Sucursal: {session?.dSucursal || 'Cargando...'}
+                </Typography>
+            </Box>
+            <Box sx={{ textAlign: 'right' }}>
+                <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#333', lineHeight: 1.1, fontSize: '0.9rem' }}>
+                    {new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' }).replace('.', '')}
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                    Usuario Activo: {session?.nombre || 'Cargando...'}
+                </Typography>
+            </Box>
+        </Box>
+      </Paper>
 
       {/* --- TRES TABLAS EN LÍNEA --- */}
       <Grid container spacing={2}>
@@ -1462,7 +1478,15 @@ export default function CatCategorias() {
         >
           {message?.text}
         </Alert>
-      </Snackbar>
+    </Snackbar>
+
+      {/* PIE DE PÁGINA ESTILO ACCESS */}
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 3 }}>
+        <Typography variant="caption" sx={{ fontWeight: 'bold', textTransform: 'uppercase' }}>
+          CAT_CATEGORIAS, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/')}, USR: {session?.nombre || 'ADMIN'}
+        </Typography>
+      </Box>
+
     </Box>
   );
 }
