@@ -25,6 +25,8 @@ interface CatDepto {
   depto: string
   area: string
   descripcion: string
+  claveSAT: string
+  unidadMedidaSAT: string
   version: string | null
   fecha_alta: string | null
   fecha_act: string | null
@@ -55,6 +57,8 @@ interface DeptoForm {
   depto: string
   area: string
   descripcion: string
+  claveSAT: string
+  unidadMedidaSAT: string
 }
 
 interface ClaseForm {
@@ -81,14 +85,16 @@ export default function CatAreasDeptosClases() {
   // Estados para Departamentos
   const [deptos, setDeptos] = useState<CatDepto[]>([])
   const [openDeptoModal, setOpenDeptoModal] = useState(false)
-  const [deptoForm, setDeptoForm] = useState<DeptoForm>({ depto: '', area: '', descripcion: '' })
+  const [deptoForm, setDeptoForm] = useState<DeptoForm>({ depto: '', area: '', descripcion: '', claveSAT: '', unidadMedidaSAT: '' })
   const [editingDepto, setEditingDepto] = useState<CatDepto | null>(null)
+  const [selectedArea, setSelectedArea] = useState<string>('0') // Área seleccionada para filtrar deptos
   
   // Estados para Clases
   const [clases, setClases] = useState<CatClase[]>([])
   const [openClaseModal, setOpenClaseModal] = useState(false)
   const [claseForm, setClaseForm] = useState<ClaseForm>({ clase: '', depto: '', area: '', descripcion: '', dias_min: 0, dias_max: 0, dias_muestra: 0, margen_minimo_remates: 0, tasa_iva: 0 })
   const [editingClase, setEditingClase] = useState<CatClase | null>(null)
+  const [selectedDepto, setSelectedDepto] = useState<string>('0') // Departamento seleccionado para filtrar clases
   
   // Estados generales
   const [loading, setLoading] = useState(false)
@@ -109,10 +115,10 @@ export default function CatAreasDeptosClases() {
     }
   }
 
-  const fetchDeptos = async () => {
+  const fetchDeptos = async (areaId: string = '0') => {
     setLoading(true)
     try {
-      const res = await consumoApi.consumoApi.get('/api/CatPermisosDeptos/sp_bw_cat_deptos_sel?depto=0')
+      const res = await consumoApi.consumoApi.get(`/api/CatAreas/sp_bw_cat_deptos_sel?area=${areaId}`)
       if (res.status === 200) {
         setDeptos(res.data || [])
       }
@@ -123,10 +129,10 @@ export default function CatAreasDeptosClases() {
     }
   }
 
-  const fetchClases = async () => {
+  const fetchClases = async (areaId: string = '0', deptoId: string = '0') => {
     setLoading(true)
     try {
-      const res = await consumoApi.consumoApi.get('/api/CatAreas/sp_bw_cat_clases_sel?area=0&depto=0')
+      const res = await consumoApi.consumoApi.get(`/api/CatAreas/sp_bw_cat_clases_sel?area=${areaId}&depto=${deptoId}`)
       if (res.status === 200) {
         setClases(res.data || [])
       }
@@ -139,9 +145,9 @@ export default function CatAreasDeptosClases() {
 
   useEffect(() => {
     fetchAreas()
-    fetchDeptos()
-    fetchClases()
-  }, [])
+    fetchDeptos(selectedArea) // Usar el área seleccionada
+    fetchClases(selectedArea, selectedDepto) // Usar el área y departamento seleccionados
+  }, [selectedArea, selectedDepto])
 
   // Handlers para Áreas
   const handleOpenNewArea = () => {
@@ -206,15 +212,29 @@ export default function CatAreasDeptosClases() {
     }
   }
 
-  // Handlers para Departamentos
+  // Handler para cuando se selecciona un departamento
+  const handleDeptoSelect = (deptoId: string, areaId: string) => {
+    setSelectedDepto(deptoId)
+    fetchClases(areaId, deptoId) // Cargar clases filtradas por área y departamento
+  }
+  const handleAreaSelect = (areaId: string) => {
+    setSelectedArea(areaId)
+    fetchDeptos(areaId) // Cargar departamentos filtrados por área
+  }
   const handleOpenNewDepto = () => {
-    setDeptoForm({ depto: '', area: '', descripcion: '' })
+    setDeptoForm({ 
+      depto: '', 
+      area: selectedArea,  // Pre-seleccionar el área seleccionada
+      descripcion: '', 
+      claveSAT: '', 
+      unidadMedidaSAT: '' 
+    })
     setEditingDepto(null)
     setOpenDeptoModal(true)
   }
 
   const handleEditDepto = (depto: CatDepto) => {
-    setDeptoForm({ depto: depto.depto, area: depto.area, descripcion: depto.descripcion })
+    setDeptoForm({ depto: depto.depto, area: depto.area, descripcion: depto.descripcion, claveSAT: depto.claveSAT, unidadMedidaSAT: depto.unidadMedidaSAT })
     setEditingDepto(depto)
     setOpenDeptoModal(true)
   }
@@ -226,20 +246,32 @@ export default function CatAreasDeptosClases() {
     try {
       if (editingDepto) {
         const res = await consumoApi.consumoApi.put('/api/CatAreas/sp_bw_cat_deptos_upd', null, {
-          params: { depto: deptoForm.depto, area: deptoForm.area, descripcion: deptoForm.descripcion }
+          params: { 
+            depto: deptoForm.depto, 
+            area: deptoForm.area, 
+            descripcion: deptoForm.descripcion,
+            claveSAT: deptoForm.claveSAT,
+            unidadMedidaSAT: deptoForm.unidadMedidaSAT
+          }
         })
         if (res.data?.[0]?.codigo === 0) {
           setMessage({ text: "Departamento actualizado correctamente", type: 'success' })
         }
       } else {
         const res = await consumoApi.consumoApi.post('/api/CatAreas/sp_bw_cat_deptos_add', null, {
-          params: { depto: deptoForm.depto, area: deptoForm.area, descripcion: deptoForm.descripcion }
+          params: { 
+            depto: deptoForm.depto, 
+            area: deptoForm.area, 
+            descripcion: deptoForm.descripcion,
+            claveSAT: deptoForm.claveSAT,
+            unidadMedidaSAT: deptoForm.unidadMedidaSAT
+          }
         })
         if (res.data?.[0]?.codigo === 0) {
           setMessage({ text: "Departamento agregado correctamente", type: 'success' })
         }
       }
-      fetchDeptos()
+      fetchDeptos(selectedArea) // Usar el área seleccionada
       setOpenDeptoModal(false)
     } catch (error: any) {
       setMessage({ text: "Error al guardar departamento", type: 'error' })
@@ -254,11 +286,11 @@ export default function CatAreasDeptosClases() {
     setLoading(true)
     try {
       const res = await consumoApi.consumoApi.delete('/api/CatAreas/sp_bw_cat_deptos_del', {
-        params: { depto: depto.depto }
+        params: { area: depto.area, depto: depto.depto }
       })
       if (res.data?.[0]?.codigo === 0) {
         setMessage({ text: "Departamento eliminado correctamente", type: 'success' })
-        fetchDeptos()
+        fetchDeptos(selectedArea) // Usar el área seleccionada
       }
     } catch (error: any) {
       setMessage({ text: "Error al eliminar departamento", type: 'error' })
@@ -269,7 +301,17 @@ export default function CatAreasDeptosClases() {
 
   // Handlers para Clases
   const handleOpenNewClase = () => {
-    setClaseForm({ clase: '', depto: '', area: '', descripcion: '', dias_min: 0, dias_max: 0, dias_muestra: 0, margen_minimo_remates: 0, tasa_iva: 0 })
+    setClaseForm({ 
+      clase: '', 
+      depto: selectedDepto, 
+      area: selectedArea, 
+      descripcion: '', 
+      dias_min: 0, 
+      dias_max: 0, 
+      dias_muestra: 0, 
+      margen_minimo_remates: 0, 
+      tasa_iva: 0 
+    })
     setEditingClase(null)
     setOpenClaseModal(true)
   }
@@ -296,6 +338,7 @@ export default function CatAreasDeptosClases() {
     setLoading(true)
     try {
       if (editingClase) {
+        // Para edición: todos los campos (el servidor sí acepta campos nuevos)
         const res = await consumoApi.consumoApi.put('/api/CatAreas/sp_bw_cat_clases_upd', null, {
           params: { 
             clase: claseForm.clase, 
@@ -313,6 +356,7 @@ export default function CatAreasDeptosClases() {
           setMessage({ text: "Clase actualizada correctamente", type: 'success' })
         }
       } else {
+        // Para agregar: todos los campos
         const res = await consumoApi.consumoApi.post('/api/CatAreas/sp_bw_cat_clases_add', null, {
           params: { 
             clase: claseForm.clase, 
@@ -330,7 +374,7 @@ export default function CatAreasDeptosClases() {
           setMessage({ text: "Clase agregada correctamente", type: 'success' })
         }
       }
-      fetchClases()
+      fetchClases(selectedArea, selectedDepto) // Usar el área y departamento seleccionados
       setOpenClaseModal(false)
     } catch (error: any) {
       setMessage({ text: "Error al guardar clase", type: 'error' })
@@ -349,7 +393,7 @@ export default function CatAreasDeptosClases() {
       })
       if (res.data?.[0]?.codigo === 0) {
         setMessage({ text: "Clase eliminada correctamente", type: 'success' })
-        fetchClases()
+        fetchClases(selectedArea, selectedDepto) // Usar el área y departamento seleccionados
       }
     } catch (error: any) {
       setMessage({ text: "Error al eliminar clase", type: 'error' })
@@ -367,7 +411,6 @@ export default function CatAreasDeptosClases() {
         </Typography>
       </Box>
 
-      {/* --- TRES TABLAS EN LÍNEA --- */}
       <Grid container spacing={3}>
         {/* TABLA DE ÁREAS */}
         <Grid item xs={12} md={4}>
@@ -376,7 +419,7 @@ export default function CatAreasDeptosClases() {
             borderRadius: '12px', 
             boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
             '& .super-app-theme--header': {
-              backgroundColor: '#707070ff',
+              backgroundColor: '#818181ff',
               color: 'white',
               fontWeight: 'bold',
             }
@@ -431,7 +474,10 @@ export default function CatAreasDeptosClases() {
                       <IconButton 
                         size="small" 
                         sx={{ color: '#707070ff' }}
-                        onClick={() => handleEditArea(params.row)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditArea(params.row);
+                        }}
                         title="Editar Área"
                       >
                         <EditIcon fontSize="small" />
@@ -439,7 +485,10 @@ export default function CatAreasDeptosClases() {
                       <IconButton 
                         size="small" 
                         sx={{ color: '#555555ff' }}
-                        onClick={() => handleDeleteArea(params.row)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteArea(params.row);
+                        }}
                         title="Eliminar Área"
                       >
                         <DeleteIcon fontSize="small" />
@@ -449,8 +498,9 @@ export default function CatAreasDeptosClases() {
                 },
               ]}
               loading={loading}
-              getRowId={(row) => row.area}
+              getRowId={(row) => `area_${row.area}`}
               hideFooter
+              onRowClick={(params) => handleAreaSelect(params.row.area)}
               sx={{
                 height: 400,
                 '& .MuiDataGrid-root': {
@@ -458,7 +508,7 @@ export default function CatAreasDeptosClases() {
                 },
                 '& .MuiDataGrid-columnHeaders': {
                   backgroundColor: '#555555ff',
-                  color: 'white',
+                  color: 'black',
                   fontWeight: 'bold',
                 },
               }}
@@ -473,7 +523,7 @@ export default function CatAreasDeptosClases() {
             borderRadius: '12px', 
             boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
             '& .super-app-theme--header': {
-              backgroundColor: '#707070ff',
+              backgroundColor: '#818181ff',
               color: 'white',
               fontWeight: 'bold',
             }
@@ -525,6 +575,18 @@ export default function CatAreasDeptosClases() {
                   headerClassName: 'super-app-theme--header',
                 },
                 {
+                  field: 'claveSAT',
+                  headerName: 'Clave SAT',
+                  width: 100,
+                  headerClassName: 'super-app-theme--header',
+                },
+                {
+                  field: 'unidadMedidaSAT',
+                  headerName: 'Unidad SAT',
+                  width: 90,
+                  headerClassName: 'super-app-theme--header',
+                },
+                {
                   field: 'acciones',
                   headerName: 'Acciones',
                   width: 100,
@@ -534,7 +596,10 @@ export default function CatAreasDeptosClases() {
                       <IconButton 
                         size="small" 
                         sx={{ color: '#707070ff' }}
-                        onClick={() => handleEditDepto(params.row)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditDepto(params.row);
+                        }}
                         title="Editar Departamento"
                       >
                         <EditIcon fontSize="small" />
@@ -542,7 +607,10 @@ export default function CatAreasDeptosClases() {
                       <IconButton 
                         size="small" 
                         sx={{ color: '#555555ff' }}
-                        onClick={() => handleDeleteDepto(params.row)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteDepto(params.row);
+                        }}
                         title="Eliminar Departamento"
                       >
                         <DeleteIcon fontSize="small" />
@@ -552,8 +620,9 @@ export default function CatAreasDeptosClases() {
                 },
               ]}
               loading={loading}
-              getRowId={(row) => row.depto}
+              getRowId={(row) => `depto_${row.depto}`}
               hideFooter
+              onRowClick={(params) => handleDeptoSelect(params.row.depto, params.row.area)}
               sx={{
                 height: 400,
                 '& .MuiDataGrid-root': {
@@ -561,7 +630,7 @@ export default function CatAreasDeptosClases() {
                 },
                 '& .MuiDataGrid-columnHeaders': {
                   backgroundColor: '#555555ff',
-                  color: 'white',
+                  color: 'black',
                   fontWeight: 'bold',
                 },
               }}
@@ -576,7 +645,7 @@ export default function CatAreasDeptosClases() {
             borderRadius: '12px', 
             boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
             '& .super-app-theme--header': {
-              backgroundColor: '#707070ff',
+              backgroundColor: '#818181ff',
               color: 'white',
               fontWeight: 'bold',
             }
@@ -610,8 +679,8 @@ export default function CatAreasDeptosClases() {
               rows={clases}
               columns={[
                 {
-                  field: 'clase',
-                  headerName: 'ID',
+                  field: 'area',
+                  headerName: 'Área',
                   width: 60,
                   headerClassName: 'super-app-theme--header',
                 },
@@ -622,9 +691,45 @@ export default function CatAreasDeptosClases() {
                   headerClassName: 'super-app-theme--header',
                 },
                 {
+                  field: 'clase',
+                  headerName: 'ID',
+                  width: 60,
+                  headerClassName: 'super-app-theme--header',
+                },
+                {
                   field: 'descripcion',
                   headerName: 'Descripción',
                   width: 120,
+                  headerClassName: 'super-app-theme--header',
+                },
+                {
+                  field: 'dias_min',
+                  headerName: 'Días Min',
+                  width: 80,
+                  headerClassName: 'super-app-theme--header',
+                },
+                {
+                  field: 'dias_max',
+                  headerName: 'Días Max',
+                  width: 80,
+                  headerClassName: 'super-app-theme--header',
+                },
+                {
+                  field: 'dias_muestra',
+                  headerName: 'Días Muestra',
+                  width: 100,
+                  headerClassName: 'super-app-theme--header',
+                },
+                {
+                  field: 'margen_minimo_remates',
+                  headerName: 'Margen Remates',
+                  width: 100,
+                  headerClassName: 'super-app-theme--header',
+                },
+                {
+                  field: 'tasa_iva',
+                  headerName: 'Tasa IVA',
+                  width: 80,
                   headerClassName: 'super-app-theme--header',
                 },
                 {
@@ -655,7 +760,7 @@ export default function CatAreasDeptosClases() {
                 },
               ]}
               loading={loading}
-              getRowId={(row) => row.clase}
+              getRowId={(row) => `area_${row.area}_depto_${row.depto}_clase_${row.clase}`}
               hideFooter
               sx={{
                 height: 400,
@@ -664,7 +769,7 @@ export default function CatAreasDeptosClases() {
                 },
                 '& .MuiDataGrid-columnHeaders': {
                   backgroundColor: '#555555ff',
-                  color: 'white',
+                  color: 'black',
                   fontWeight: 'bold',
                 },
               }}
@@ -696,7 +801,7 @@ export default function CatAreasDeptosClases() {
           
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             <TextField
-              label="ID Área"
+              label=" Área"
               value={areaForm.area}
               onChange={(e) => setAreaForm({ ...areaForm, area: e.target.value })}
               disabled={!!editingArea}
@@ -741,7 +846,7 @@ export default function CatAreasDeptosClases() {
         <Box sx={{ p: 4, bgcolor: '#fdfdfd' }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
             <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#333' }}>
-              {editingDepto ? '✏️ Editar Departamento' : 'Nuevo Departamento'}
+              {editingDepto ? ' Editar Departamento' : 'Nuevo Departamento'}
             </Typography>
             <IconButton onClick={() => setOpenDeptoModal(false)}>
               <CloseIcon />
@@ -751,16 +856,17 @@ export default function CatAreasDeptosClases() {
           
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             <TextField
-              label="ID Departamento"
-              value={deptoForm.depto}
-              onChange={(e) => setDeptoForm({ ...deptoForm, depto: e.target.value })}
-              disabled={!!editingDepto}
+              label=" Área"
+              value={deptoForm.area}
+              onChange={(e) => setDeptoForm({ ...deptoForm, area: e.target.value })}
+              disabled={!!editingDepto} //No editable si está editando
               fullWidth
             />
             <TextField
-              label="ID Área"
-              value={deptoForm.area}
-              onChange={(e) => setDeptoForm({ ...deptoForm, area: e.target.value })}
+              label=" Departamento"
+              value={deptoForm.depto}
+              onChange={(e) => setDeptoForm({ ...deptoForm, depto: e.target.value })}
+              disabled={!!editingDepto}
               fullWidth
             />
             <TextField
@@ -770,6 +876,28 @@ export default function CatAreasDeptosClases() {
               fullWidth
               multiline
               rows={3}
+            />
+            <TextField
+              label="Clave SAT"
+              value={deptoForm.claveSAT || ''}
+              onChange={(e) => {
+                if (e.target.value.length <= 10) {
+                  setDeptoForm({ ...deptoForm, claveSAT: e.target.value })
+                }
+              }}
+              inputProps={{ maxLength: 10 }}
+              fullWidth
+            />
+            <TextField
+              label="Unidad SAT"
+              value={deptoForm.unidadMedidaSAT || ''}
+              onChange={(e) => {
+                if (e.target.value.length <= 3) {
+                  setDeptoForm({ ...deptoForm, unidadMedidaSAT: e.target.value })
+                }
+              }}
+              inputProps={{ maxLength: 3 }}
+              fullWidth
             />
           </Box>
           
@@ -802,7 +930,7 @@ export default function CatAreasDeptosClases() {
         <Box sx={{ p: 4, bgcolor: '#fdfdfd' }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
             <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#333' }}>
-              {editingClase ? '✏️ Editar Clase' : 'Nueva Clase'}
+              {editingClase ? ' Editar Clase' : 'Nueva Clase'}
             </Typography>
             <IconButton onClick={() => setOpenClaseModal(false)}>
               <CloseIcon />
@@ -812,16 +940,24 @@ export default function CatAreasDeptosClases() {
           
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             <TextField
-              label="ID Clase"
-              value={claseForm.clase}
-              onChange={(e) => setClaseForm({ ...claseForm, clase: e.target.value })}
-              disabled={!!editingClase}
+              label="Área"
+              value={claseForm.area}
+              onChange={(e) => setClaseForm({ ...claseForm, area: e.target.value })}
+              disabled={selectedArea !== '0'} //No editables si hay área seleccionada
               fullWidth
             />
             <TextField
-              label="ID Departamento"
+              label="Departamento"
               value={claseForm.depto}
               onChange={(e) => setClaseForm({ ...claseForm, depto: e.target.value })}
+              disabled={selectedDepto !== '0'} //No editables si hay depto seleccionado
+              fullWidth
+            />
+            <TextField
+              label="Clase"
+              value={claseForm.clase}
+              onChange={(e) => setClaseForm({ ...claseForm, clase: e.target.value })}
+              disabled={!!editingClase}
               fullWidth
             />
             <TextField
@@ -831,6 +967,41 @@ export default function CatAreasDeptosClases() {
               fullWidth
               multiline
               rows={3}
+            />
+            <TextField
+              label="Días Mínimos"
+              type="number"
+              value={claseForm.dias_min}
+              onChange={(e) => setClaseForm({ ...claseForm, dias_min: parseInt(e.target.value) || 0 })}
+              fullWidth
+            />
+            <TextField
+              label="Días Máximos"
+              type="number"
+              value={claseForm.dias_max}
+              onChange={(e) => setClaseForm({ ...claseForm, dias_max: parseInt(e.target.value) || 0 })}
+              fullWidth
+            />
+            <TextField
+              label="Días Muestra"
+              type="number"
+              value={claseForm.dias_muestra}
+              onChange={(e) => setClaseForm({ ...claseForm, dias_muestra: parseInt(e.target.value) || 0 })}
+              fullWidth
+            />
+            <TextField
+              label="Margen Mínimo Remates"
+              type="number"
+              value={claseForm.margen_minimo_remates}
+              onChange={(e) => setClaseForm({ ...claseForm, margen_minimo_remates: parseInt(e.target.value) || 0 })}
+              fullWidth
+            />
+            <TextField
+              label="Tasa IVA"
+              type="number"
+              value={claseForm.tasa_iva}
+              onChange={(e) => setClaseForm({ ...claseForm, tasa_iva: parseInt(e.target.value) || 0 })}
+              fullWidth
             />
           </Box>
           
