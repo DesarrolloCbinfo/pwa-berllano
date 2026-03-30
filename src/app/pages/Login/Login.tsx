@@ -67,7 +67,7 @@ const [sucData, setSucData] = useState({ idSuc: 0, dSuc: "" });
     };
     
     setAuthToken(tokenData);
-    navigate(routes.pos);
+    navigate(routes.mainMenu);
   };
 
 const handleNavigation = async () => {
@@ -132,7 +132,6 @@ const handleConfirmarSucursal = () => {
     return;
   }
 
-  // Asegurarnos de que el objeto tenga la estructura correcta de IUsuario
   const usuarioFinal = {
     ...responseData,
     sucursal: sucData.idSuc,
@@ -140,16 +139,23 @@ const handleConfirmarSucursal = () => {
     idCia: dataSucursales.find(s => s.sucursalId === sucData.idSuc)?.ciaId || 0,
   } as unknown as IUsuario;
 
-  // Guardar en localStorage
   localStorage.setItem("userLoggedv2", JSON.stringify(usuarioFinal));
-  
-  // Actualizar el contexto de sesión directamente
   setSession(usuarioFinal);
-  
+
+  const tokenData = {
+    claveDepartamento: usuarioFinal.idDepartamento || 0,
+    clavePerfiles: usuarioFinal.clavePerfil || 0,
+    contra: usuarioFinal.password || "",
+    mensaje: "Autenticación exitosa",
+    nombre: usuarioFinal.nombre || "",
+    usuario: usuarioFinal.claveEmpleado || ""
+  };
+  setAuthToken(tokenData);
+
   console.log("Sesión actualizada en contexto desde modal:", usuarioFinal);
-  
+
   setModalSucursal(false);
-  navigate(routes.pos);
+  navigate(routes.mainMenu);
 };
 
 
@@ -174,7 +180,7 @@ const handleConfirmarSucursal = () => {
         };
         
         setAuthToken(tokenData);
-        navigate(routes.pos);
+        navigate(routes.mainMenu);
       } 
     } catch (error) {
       Swal.fire({
