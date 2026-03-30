@@ -3,6 +3,7 @@ import { Box, CircularProgress, Alert, Typography, Button, TextField, Dialog, Di
 import { DataGrid, GridColDef } from '@mui/x-data-grid'
 import EditIcon from '@mui/icons-material/Edit'
 import useConsumoApi from '../../../hooks/useConsumoApi'
+import { useSessionContext } from '../../../context/SessionProvider'
 import PWABadge from '../../../PWABadge'
 
 // --- ESTILOS BERLLANO ELEGANTE 2 ---
@@ -60,6 +61,7 @@ interface FactorSucursal {
 
 export default function FactoresSucursal() {
   const { consumoApi } = useConsumoApi()
+  const { session } = useSessionContext() // <--- Extraemos la sesión
   const [rows, setRows] = useState<FactorSucursal[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -385,61 +387,41 @@ export default function FactoresSucursal() {
     }
   }
 
-  return (
+return (
     <>
       <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#ececec' }}>
-        <Paper sx={{ p: 2, borderRadius: '8px', mb: 2 }}>
-          {/* ENCABEZADO BERLLANO ELEGANTE 2 */}
-          <Box sx={{ border: '1px solid #2c3e50', borderRadius: '8px', backgroundColor: '#fff', p: 1.5, mb: 2, display: 'flex', justifyContent: 'space-between' }}>
+        
+        <style>{`
+          .swal2-container {
+            z-index: 9999 !important;
+          }
+        `}</style>
+
+        {/* CONTENEDOR BLANCO SUPERIOR (ENCABEZADO + FILTROS) */}
+        <Box sx={{ backgroundColor: 'white', p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.05)', mb: 3 }}>
+          
+          {/* RECUADRO INTERIOR ELEGANTE (SOLO TÍTULO Y DATOS) */}
+          <Box sx={{ border: '1px solid #2c3e50', p: 1.5, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between', mb: 3 }}>
             <Box>
-              <Typography
-                variant='h6'
-                component='h1'
-                sx={{
-                  fontFamily: 'Georgia, "Times New Roman", serif',
-                  fontWeight: 'bold',
-                  color: '#1a365d',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1,
-                  fontSize: '1.1rem'
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    backgroundColor: '#333333',
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white',
-                    boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)',
-                    transition: 'all 0.3s ease',
-                    fontSize: '20px',
-                  }}
-                >
-                  📊
-                </Box>
-                Factores por Sucursal
+              <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem', textTransform: 'uppercase' }}>
+                FACTORES POR SUCURSAL
               </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', fontSize: '0.75rem' }}>
-                Sistema de Gestión de Factores
+              <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                Sucursal: {session?.dSucursal || 'Cargando...'}
               </Typography>
             </Box>
             <Box sx={{ textAlign: 'right' }}>
-              <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#333', fontSize: '0.9rem' }}>
-                {new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' }).replace('.', '')}
+              <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#333', lineHeight: 1.1, fontSize: '0.9rem' }}>
+                {new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' }).replaceAll('/', '-')}
               </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', fontSize: '0.75rem' }}>
-                USR: ADMIN
+              <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                Usuario Activo: {session?.nombre || 'Cargando...'}
               </Typography>
             </Box>
           </Box>
 
-          {/* SECCIÓN DE FILTROS */}
-          <Box sx={{ display: 'flex', gap: 3, alignItems: 'center', flexWrap: 'wrap', mb: 3 }}>
+          {/* SECCIÓN DE FILTROS (FUERA DEL RECUADRO PERO DENTRO DEL BLANCO) */}
+          <Box sx={{ display: 'flex', gap: 3, alignItems: 'center', flexWrap: 'wrap' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Typography sx={{ fontWeight: 'bold', color: '#333' }}>Año</Typography>
               <TextField
@@ -447,7 +429,7 @@ export default function FactoresSucursal() {
                 value={anio}
                 onChange={(e) => setAnio(e.target.value)}
                 type="number"
-                sx={{ width: 120 }}
+                sx={{ width: 120, '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
                 inputProps={{ min: 2000, max: 2100 }}
               />
             </Box>
@@ -459,7 +441,7 @@ export default function FactoresSucursal() {
                 value={mes}
                 onChange={(e) => setMes(e.target.value)}
                 type="number"
-                sx={{ width: 100 }}
+                sx={{ width: 100, '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
                 inputProps={{ min: 1, max: 12 }}
               />
             </Box>
@@ -474,7 +456,7 @@ export default function FactoresSucursal() {
                 color: 'white',
                 fontWeight: 600,
                 textTransform: 'none',
-                borderRadius: '8px',
+                borderRadius: '12px',
                 boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)',
                 transition: 'all 0.3s ease',
                 '&:hover': { 
@@ -487,17 +469,10 @@ export default function FactoresSucursal() {
               {loading ? 'Consultando...' : 'Consultar'}
             </Button>
           </Box>
-        </Paper>
+        </Box>
 
-        {/* TABLA DE DATOS */}
-        <Paper
-          sx={{
-            p: 3,
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            boxShadow: '0 4px 8px rgba(0,0,0,0.08)',
-          }}
-        >
+        {/* CONTENEDOR BLANCO SOLO PARA LA TABLA */}
+        <Box sx={{ backgroundColor: 'white', p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)', mb: 3 }}>
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
               <CircularProgress />
@@ -509,46 +484,34 @@ export default function FactoresSucursal() {
                 columns={columns}
                 pageSizeOptions={[10, 25, 50, 100]}
                 onRowClick={(params) => handleViewOpen(params.row)}
-                density="compact"
+                disableRowSelectionOnClick
                 sx={{
                   border: 'none',
+                  height: '100%',
+                  fontSize: '0.95rem',
                   '& .MuiDataGrid-columnHeaders': { 
                     borderBottom: '2px solid #000', 
                     fontSize: '1rem', 
                     fontWeight: 'bold',
+                    backgroundColor: '#f5f5f5',
                     textAlign: 'center'
                   },
                   '& .MuiDataGrid-cell': { 
                     borderBottom: '1px solid #e0e0e000',
                     cursor: 'pointer'
                   },
-                  '& .MuiDataGrid-cell--editable': { 
-                    backgroundColor: '#f9fbfd', 
-                    cursor: 'pointer'
-                  }, 
-                  '& .MuiDataGrid-cell--editing': { 
-                    backgroundColor: '#fff', 
-                    boxShadow: '0 0 5px rgba(25,118,210,0.5)'
-                  },
-                  '& .MuiDataGrid-row:hover': {
-                    backgroundColor: '#fafafa',
-                  },
-                  '& .MuiDataGrid-row.Mui-selected': {
-                    backgroundColor: '#f0f0f0',
-                  },
+                  '& .MuiDataGrid-row': { transition: 'all 0.2s ease' },
+                  '& .MuiDataGrid-row:hover': { backgroundColor: '#fafafa' },
                 }}
               />
             </Box>
           )}
-        </Paper>
+        </Box>
 
-        {/* PIE DE PÁGINA BERLLANO ELEGANTE 2 */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 3 }}>
-          <Button variant="contained" sx={{ backgroundColor: '#e0e0e0', color: '#000', fontWeight: 'bold', px: 4, mb: 2, '&:hover': { backgroundColor: '#d0d0d0' } }}>
-            Salir
-          </Button>
-          <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
-            FACTORES_SUCURSAL, ARAUCARIAS, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/')}, USR:ADMIN
+        {/* PIE DE PÁGINA ESTILO ELEGANTE */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 3, mb: 2 }}>
+          <Typography variant="caption" sx={{ fontWeight: 'bold', textTransform: 'uppercase' }}>
+            FACTORES_SUCURSAL, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replaceAll('/', '-')}, USR: {session?.nombre || 'ADMIN'}
           </Typography>
         </Box>
 

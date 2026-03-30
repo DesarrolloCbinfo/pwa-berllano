@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Box, Typography, Button, TextField, Grid, 
   MenuItem, Snackbar, Alert, Paper, IconButton, TableContainer,
-  Checkbox, FormControlLabel, FormGroup
+  Checkbox, FormControlLabel, FormGroup, 
 } from '@mui/material'; 
 import { 
   DataGrid, GridColDef, GridToolbar, 
@@ -14,6 +14,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import SaveIcon from '@mui/icons-material/Save';
 
 import useConsumoApi from '../../../hooks/useConsumoApi'; 
+import { useSessionContext } from '../../../context/SessionProvider';
 
 // --- ESTILOS BERLLANO ELEGANTE ---
 const commonProps = {
@@ -77,6 +78,7 @@ const initialFormState = {
 
 export default function ConfigComisiones() {
   const { consumoApi } = useConsumoApi();
+  const { session } = useSessionContext(); // <--- Extraemos la sesión
 
   // Estados de la tabla
   const [rows, setRows] = useState<any[]>([]);
@@ -266,14 +268,38 @@ const handleGuardar = async () => {
     }
   ], []);
 
-  return (
-    <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#f5f5f5', overflow: 'hidden', p: 2 }}>
-      
-      {/* PANEL SUPERIOR: FORMULARIO */}
-      <Paper sx={{ p: 3, mb: 3, flexShrink: 0, borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-        <Typography variant="h5" component="h1" gutterBottom sx={{ fontWeight: 'bold', mb: 3, color: '#2c3e50', borderBottom: '2px solid #e0e0e0', pb: 1 }}>
-           CONFIGURACIÓN DE COMISIONES
-        </Typography>
+return (
+    <>
+      <Box sx={{ width: '100%', p: 3, backgroundColor: '#ececec', minHeight: '100vh' }}>
+        
+        <style>{`
+          .swal2-container {
+            z-index: 9999 !important;
+          }
+        `}</style>
+
+        {/* CONTENEDOR BLANCO SUPERIOR (ENCABEZADO + FORMULARIO) */}
+        <Box sx={{ backgroundColor: 'white', p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.05)', mb: 3 }}>
+          
+          {/* RECUADRO INTERIOR ELEGANTE */}
+          <Box sx={{ border: '1px solid #2c3e50', p: 1.5, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+              <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem', textTransform: 'uppercase' }}>
+                      CONFIGURACIÓN DE COMISIONES
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                      Sucursal: {session?.dSucursal || 'Cargando...'}
+                  </Typography>
+              </Box>
+              <Box sx={{ textAlign: 'right' }}>
+                  <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#333', lineHeight: 1.1, fontSize: '0.9rem' }}>
+                      {new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' }).replaceAll('/', '-')}
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                      Usuario Activo: {session?.nombre || 'Cargando...'}
+                  </Typography>
+              </Box>
+          </Box>
 
         <Grid container spacing={2}>
 
@@ -398,45 +424,54 @@ const handleGuardar = async () => {
                     }}>
                     GUARDAR
                 </Button>
-            </Grid>
+          </Grid>
         </Grid>
-      </Paper>
+      </Box>
 
-      {/* TABLA PRINCIPAL */}
-        <Box sx={{ mb: 3 }}>
-          <Paper sx={{ maxHeight: 600, mb: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
-            <DataGrid 
-                rows={Array.isArray(rows) ? rows : []} 
-                columns={columns} 
-                getRowId={(row) => row.id} 
-                loading={loading || saving} 
-                paginationModel={paginationModel} 
-                onPaginationModelChange={setPaginationModel} 
-                pageSizeOptions={[50, 100, 500]} 
-                slots={{ toolbar: GridToolbar, pagination: CustomPagination }} 
-                slotProps={{ toolbar: { showQuickFilter: true } }} 
-                density="compact"
-                disableRowSelectionOnClick
-                sx={{ 
-                    border: 'none', 
-                    '& .MuiDataGrid-columnHeaders': { 
-                        borderBottom: '2px solid #000',
-                        textAlign: 'center',
-                        fontSize: '1rem',
-                        fontWeight: 'bold'
-                    },
-                    '& .MuiDataGrid-cell': {
-                        borderBottom: '1px solid #e0e0e0'
-                    }
-                }} 
-            />
-          </Paper>
+      {/* TABLA PRINCIPAL ESTILO ELEGANTE */}
+      <Box sx={{ backgroundColor: 'white', p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)', mb: 3 }}>
+        <Box sx={{ height: 600, width: '100%' }}>
+          <DataGrid 
+            rows={Array.isArray(rows) ? rows : []} 
+            columns={columns} 
+            getRowId={(row) => row.id} 
+            loading={loading || saving} 
+            paginationModel={paginationModel} 
+            onPaginationModelChange={setPaginationModel} 
+            pageSizeOptions={[50, 100, 500]} 
+            slots={{ toolbar: GridToolbar, pagination: CustomPagination }} 
+            slotProps={{ toolbar: { showQuickFilter: true } }} 
+            disableRowSelectionOnClick
+            sx={{ 
+              border: 'none', 
+              height: '100%',
+              fontSize: '0.95rem',
+              '& .MuiDataGrid-columnHeaders': { 
+                borderBottom: '2px solid #000',
+                fontSize: '1rem',
+                fontWeight: 'bold',
+                backgroundColor: '#f5f5f5'
+              },
+              '& .MuiDataGrid-cell': {
+                borderBottom: '1px solid #e0e0e000'
+              },
+              '& .MuiDataGrid-row': { 
+                cursor: 'pointer', 
+                transition: 'all 0.2s ease' 
+              },
+              '& .MuiDataGrid-row:hover': { 
+                bgcolor: '#fafafa' 
+              }
+            }} 
+          />
         </Box>
-
-      {/* NOTIFICACIONES */}
-      <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage(null)}>
-        <Alert severity={message?.type} onClose={() => setMessage(null)} sx={{ width: '100%' }}>{message?.text}</Alert>
-      </Snackbar>
-    </Box>
+      </Box>
+        {/* NOTIFICACIONES */}
+        <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage(null)}>
+          <Alert severity={message?.type} onClose={() => setMessage(null)} sx={{ width: '100%' }}>{message?.text}</Alert>
+        </Snackbar>
+        
+      </Box>
+    </>
   );
 }

@@ -621,8 +621,6 @@ export default function CatMarcas() {
             </Button>
           </DialogActions>
         </Dialog>
-
-
       </Box>
       <PWABadge />
     </>

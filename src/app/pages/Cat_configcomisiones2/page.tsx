@@ -15,6 +15,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import Swal from 'sweetalert2';
 
 import useConsumoApi from '../../../hooks/useConsumoApi'; 
+import { useSessionContext } from '../../../context/SessionProvider';
 
 // --- ESTILOS BERLLANO ELEGANTE ---
 const commonProps = {
@@ -78,6 +79,7 @@ const initialFormState = {
 
 export default function ConfigComisiones2() {
   const { consumoApi } = useConsumoApi();
+  const { session } = useSessionContext();
 
   // Estados de la tabla
   const [rows, setRows] = useState<any[]>([]);
@@ -266,14 +268,40 @@ export default function ConfigComisiones2() {
     }
   ], []);
 
-  return (
-    <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
-      <Paper sx={{ p: 3, mb: 3, flexShrink: 0, borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-        <Typography variant="h4" component="h1" gutterBottom align="center" sx={{ fontWeight: 'bold', mb: 3, color: '#2c3e50', borderBottom: '2px solid #e0e0e0', pb: 1 }}>
-          CONFIGURACIÓN DE COMISIONES 2
-        </Typography>
+return (
+    <>
+      <Box sx={{ width: '100%', p: 3, backgroundColor: '#ececec', minHeight: '100vh' }}>
+        
+        <style>{`
+          .swal2-container {
+            z-index: 9999 !important;
+          }
+        `}</style>
 
-        <Grid container spacing={2}>
+        {/* CONTENEDOR BLANCO SUPERIOR (ENCABEZADO + FORMULARIO) */}
+        <Box sx={{ backgroundColor: 'white', p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.05)', mb: 3 }}>
+          
+          {/* RECUADRO INTERIOR ELEGANTE */}
+          <Box sx={{ border: '1px solid #2c3e50', p: 1.5, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+              <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem', textTransform: 'uppercase' }}>
+                      CONFIGURACIÓN DE COMISIONES 2
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                      Sucursal: {session?.dSucursal || 'Cargando...'}
+                  </Typography>
+              </Box>
+              <Box sx={{ textAlign: 'right' }}>
+                  <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#333', lineHeight: 1.1, fontSize: '0.9rem' }}>
+                      {new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' }).replaceAll('/', '-')}
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                      Usuario Activo: {session?.nombre || 'Cargando...'}
+                  </Typography>
+              </Box>
+          </Box>
+
+          <Grid container spacing={2}>
             {/* --- SECCIÓN 1: UBICACIÓN Y CLASIFICACIÓN --- */}
             <Grid item xs={12} md={3}>
                 <TextField {...selectProps} select label="Sucursal (Opcional)" name="sucursal" value={formData.sucursal} onChange={handleInputChange}
@@ -395,13 +423,13 @@ export default function ConfigComisiones2() {
                     }}>
                     GUARDAR
                 </Button>
-            </Grid>
+           </Grid>
         </Grid>
-      </Paper>
+      </Box>
 
-      {/* TABLA PRINCIPAL FLUIDA */}
-      <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-        <Paper sx={{ flex: 1, width: '100%', overflow: 'hidden', borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
+      {/* CONTENEDOR DE LA TABLA ESTILO ELEGANTE */}
+      <Box sx={{ backgroundColor: 'white', p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
+        <Box sx={{ height: 600, width: '100%' }}>
           <DataGrid 
               rows={Array.isArray(rows) ? rows : []} 
               columns={columns} 
@@ -412,21 +440,41 @@ export default function ConfigComisiones2() {
               pageSizeOptions={[50, 100, 500]} 
               slots={{ toolbar: GridToolbar, pagination: CustomPagination }} 
               slotProps={{ toolbar: { showQuickFilter: true } }} 
-              density="compact"
               disableRowSelectionOnClick
               sx={{ 
                   border: 'none', 
-                  height: '100%', 
-                  '& .MuiDataGrid-columnHeaders': { backgroundColor: '#f0f0f0', fontWeight: 'bold' } 
+                  height: '100%',
+                  fontSize: '0.95rem',
+                  '& .MuiDataGrid-columnHeaders': { 
+                      borderBottom: '2px solid #000',
+                      textAlign: 'center',
+                      fontSize: '1rem',
+                      fontWeight: 'bold',
+                      backgroundColor: '#f5f5f5'
+                  },
+                  '& .MuiDataGrid-cell': {
+                      borderBottom: '1px solid #e0e0e000'
+                  },
+                  '& .MuiDataGrid-row': { cursor: 'pointer', transition: 'all 0.2s ease' },
+                  '& .MuiDataGrid-row:hover': { bgcolor: '#fafafa' }
               }} 
           />
-        </Paper>
+        </Box>
+      </Box>
+
+      {/* PIE DE PÁGINA ESTILO ELEGANTE */}
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 3, mb: 2 }}>
+        <Typography variant="caption" sx={{ fontWeight: 'bold', textTransform: 'uppercase' }}>
+          CAT_CONFIG_COMISIONES_2, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replaceAll('/', '-')}, USR: {session?.nombre || 'ADMIN'}
+        </Typography>
       </Box>
 
       {/* NOTIFICACIONES */}
       <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage(null)}>
         <Alert severity={message?.type} onClose={() => setMessage(null)} sx={{ width: '100%' }}>{message?.text}</Alert>
       </Snackbar>
+      
     </Box>
+  </>
   );
 }
