@@ -3,8 +3,8 @@ import { Box, CircularProgress, Alert, Typography, Button, Dialog, DialogTitle, 
 import { DataGrid, GridColDef } from '@mui/x-data-grid'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
-
 import useConsumoApi from '../../../hooks/useConsumoApi'
+import { useSessionContext } from '../../../context/SessionProvider'
 import PWABadge from '../../../PWABadge'
 
 interface Proveedor {
@@ -17,6 +17,7 @@ interface Proveedor {
 
 export default function CatProveedoresAcreedores() {
   const { consumoApi } = useConsumoApi()
+  const { session } = useSessionContext()
   const [rows, setRows] = useState<Proveedor[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -362,16 +363,31 @@ export default function CatProveedoresAcreedores() {
     )
   }
 
-  return (
+return (
     <>
       <Box sx={{ width: '100%', p: 3, backgroundColor: '#ececec', minHeight: '100vh' }}>
-        <Box sx={{ backgroundColor: 'white', p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
-          <Typography variant="subtitle2" sx={{ color: '#666666', mb: 1, fontWeight: 500 }}>
-            CATÁLOGO DE
-          </Typography>
-          <Typography variant="h5" sx={{ mb: 3, fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1, fontFamily: 'Georgia, "Times New Roman", serif', color: '#1a365d' }}>
-            PROVEEDORES (ACREEDORES)
-          </Typography>
+        
+        {/* ENCABEZADO ESTILO ELEGANTE */}
+        <Box sx={{ p: 3, borderRadius: '8px', mb: 3, boxShadow: '0 4px 8px rgba(0,0,0,0.05)', bgcolor: 'white' }}>
+          
+          <Box sx={{ border: '1px solid #2c3e50', p: 1.5, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+              <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
+                      CATÁLOGO DE PROVEEDORES (ACREEDORES)
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                      Sucursal: {session?.dSucursal || 'Cargando...'}
+                  </Typography>
+              </Box>
+              <Box sx={{ textAlign: 'right' }}>
+                  <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#333', lineHeight: 1.1, fontSize: '0.9rem' }}>
+                      {new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' }).replace('.', '')}
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                      Usuario Activo: {session?.nombre || 'Cargando...'}
+                  </Typography>
+              </Box>
+          </Box>
 
           {error && (
             <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
@@ -379,29 +395,29 @@ export default function CatProveedoresAcreedores() {
             </Alert>
           )}
 
-          <Box sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'center' }}>
+          {/* BOTÓN Y BUSCADOR DENTRO DEL CONTENEDOR BLANCO */}
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
             <Button 
-              variant="contained" 
+              variant='contained' 
               onClick={handleAddOpen}
-              sx={{ 
-                height: '50px',
+              sx={{
                 backgroundColor: '#333333',
-                color: 'white',
-                fontWeight: 600,
+                color: '#fff',
                 textTransform: 'none',
                 borderRadius: '8px',
+                fontWeight: 600,
+                px: 3,
+                py: 1.5,
                 boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)',
                 transition: 'all 0.3s ease',
-                '&:hover': { 
+                '&:hover': {
                   backgroundColor: '#555555',
-                  boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)',
-                  transform: 'translateY(-1px)'
-                },
-                px: 3,
-                py: 1
+                  transform: 'translateY(-1px)',
+                  boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)'
+                }
               }}
             >
-              CREAR PROVEEDOR (ACREEDOR)
+              + CREAR PROVEEDOR
             </Button>
 
             <Box sx={{ flexGrow: 1 }} />
@@ -414,31 +430,18 @@ export default function CatProveedoresAcreedores() {
               sx={{ 
                 width: 300,
                 '& .MuiInputBase-root': {
-                  height: '50px',
-                  alignItems: 'center',
+                  height: '45px',
                   borderRadius: '8px',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-                  '&:hover': {
-                    boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
-                    borderColor: '#999'
-                  }
-                },
-                '& .MuiInputLabel-root': {
-                  transform: 'translate(14px, 14px) scale(1)',
-                  color: '#666',
-                  fontWeight: 500
-                },
-                '& .MuiInputLabel-shrink': {
-                  transform: 'translate(14px, -9px) scale(0.75)',
-                  color: '#333',
-                  fontWeight: 600
                 }
               }}
             />
           </Box>
+        </Box>
 
+        {/* CONTENEDOR DE LA TABLA */}
+        <Box sx={{ backgroundColor: 'white', p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
           <Box sx={{ height: 600, width: '100%' }}>
-            <DataGrid
+             <DataGrid
               rows={filteredRows}
               columns={columns}
               pageSizeOptions={[10, 25, 50, 100]}
@@ -1203,7 +1206,7 @@ export default function CatProveedoresAcreedores() {
         </DialogActions>
       </Dialog>
 
-      <PWABadge />
+   <PWABadge />
     </>
   )
 }

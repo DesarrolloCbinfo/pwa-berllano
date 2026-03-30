@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Box, CircularProgress, Alert, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material'
 import { DataGrid, GridColDef } from '@mui/x-data-grid'
 import useConsumoApi from '../../../hooks/useConsumoApi'
+import { useSessionContext } from '../../../context/SessionProvider'
 import PWABadge from '../../../PWABadge'
 
 interface Plastico {
@@ -11,6 +12,7 @@ interface Plastico {
 
 export default function CatPlasticosAutorizados() {
   const { consumoApi } = useConsumoApi()
+  const { session } = useSessionContext() // <--- Agregamos la sesión
   const [rows, setRows] = useState<Plastico[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -81,62 +83,125 @@ export default function CatPlasticosAutorizados() {
     )
   }
 
-  return (
+return (
     <>
-      <Box sx={{ width: '100%', p: 2, backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
-        <Box sx={{ backgroundColor: 'white', p: 3, borderRadius: 1, boxShadow: 1 }}>
-          <Typography variant="h6" sx={{ mb: 1, color: '#666' }}>
-            Módulo de
-          </Typography>
-          <Typography variant="h4" sx={{ mb: 3, fontWeight: 'bold' }}>
-            Alta de Plásticos Autorizados
-          </Typography>
+      <Box sx={{ width: '100%', p: 3, backgroundColor: '#ececec', minHeight: '100vh' }}>
+        
+        <style>{`
+          .swal2-container {
+            z-index: 9999 !important;
+          }
+        `}</style>
 
+        {/* CONTENEDOR BLANCO PRINCIPAL (ENCABEZADO) */}
+        <Box sx={{ backgroundColor: 'white', p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.05)', mb: 3 }}>
+          
+          {/* RECUADRO INTERIOR ELEGANTE */}
+          <Box sx={{ border: '1px solid #2c3e50', p: 1.5, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
+              <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
+                      ALTA DE PLÁSTICOS AUTORIZADOS
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                      Sucursal: {session?.dSucursal || 'Cargando...'}
+                  </Typography>
+              </Box>
+              <Box sx={{ textAlign: 'right' }}>
+                  <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#333', lineHeight: 1.1, fontSize: '0.9rem' }}>
+                      {new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' }).replaceAll('/', '-')}
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                      Usuario Activo: {session?.nombre || 'Cargando...'}
+                  </Typography>
+              </Box>
+          </Box>
+        </Box>
+
+        {/* CONTENEDOR DE LA TABLA */}
+        <Box sx={{ backgroundColor: 'white', p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
           <Box sx={{ height: 500, width: '100%', mb: 3 }}>
             <DataGrid
               rows={rows}
               columns={columns}
-              pageSizeOptions={[10, 25, 50]}
+              pageSizeOptions={[10, 25, 50, 100]}
+              initialState={{
+                pagination: {
+                  paginationModel: { pageSize: 50 },
+                },
+              }}
               disableRowSelectionOnClick
               sx={{
-                '& .MuiDataGrid-columnHeaders': {
-                  backgroundColor: '#f5f5f5',
-                  fontWeight: 'bold',
+                border: 'none',
+                height: '100%',
+                fontSize: '0.95rem', /* Tamaño de letra general */
+                '& .MuiDataGrid-columnHeaders': { 
+                  borderBottom: '2px solid #000', 
+                  fontSize: '1rem', /* Encabezados un poco más grandes */
+                  fontWeight: 'bold', 
+                  backgroundColor: '#f5f5f5' 
                 },
-                '& .MuiDataGrid-row:nth-of-type(even)': {
-                  backgroundColor: '#f9f9f9',
+                '& .MuiDataGrid-cell': { 
+                  borderBottom: '1px solid #e0e0e000' /* Quita líneas divisorias de las celdas */
                 },
+                '& .MuiDataGrid-row': { 
+                  cursor: 'pointer', 
+                  transition: 'all 0.2s ease' 
+                },
+                '& .MuiDataGrid-row:hover': { 
+                  bgcolor: '#fafafa' /* Efecto sutil al pasar el mouse */
+                }
               }}
             />
           </Box>
 
+          {/* BOTONERA INFERIOR */}
           <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mb: 2 }}>
             <Button
               variant="contained"
               onClick={handleReasignacion}
-              sx={{ minWidth: 200 }}
+              sx={{ 
+                minWidth: 200, 
+                bgcolor: '#333333', 
+                fontWeight: 600, 
+                borderRadius: '8px',
+                textTransform: 'none',
+                boxShadow: '0 4px 12px rgba(51,51,51,0.3)',
+                '&:hover': { bgcolor: '#555555' }
+              }}
             >
-              Reasignación de Plasticos
+              Reasignación de Plásticos
             </Button>
             <Button
               variant="contained"
               onClick={handleReporte}
-              sx={{ minWidth: 200 }}
+              sx={{ 
+                minWidth: 200, 
+                bgcolor: '#333333', 
+                fontWeight: 600, 
+                borderRadius: '8px',
+                textTransform: 'none',
+                boxShadow: '0 4px 12px rgba(51,51,51,0.3)',
+                '&:hover': { bgcolor: '#555555' }
+              }}
             >
-              Reporte de Reasignación de Plasticos
+              Reporte de Reasignación
             </Button>
             <Button
               variant="outlined"
               onClick={handleSalir}
-              sx={{ minWidth: 120 }}
+              sx={{ 
+                minWidth: 120, 
+                color: '#333', 
+                borderColor: '#333', 
+                fontWeight: 600, 
+                borderRadius: '8px',
+                textTransform: 'none',
+                '&:hover': { borderColor: '#555', bgcolor: 'rgba(0,0,0,0.05)' }
+              }}
             >
               Salir
             </Button>
           </Box>
-
-          <Typography variant="caption" sx={{ display: 'block', textAlign: 'center', color: '#666' }}>
-            ALTA DE PLÁSTICOS AUTORIZADOS, ARAUCARIAS, 13/02/2026, USR:ADMIN
-          </Typography>
         </Box>
       </Box>
 

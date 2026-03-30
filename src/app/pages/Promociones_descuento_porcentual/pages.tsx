@@ -3,6 +3,7 @@ import { Box, CircularProgress, Alert, Typography, Button, Dialog, DialogTitle, 
 import { DataGrid, GridColDef } from '@mui/x-data-grid'
 import DeleteIcon from '@mui/icons-material/Delete'
 import useConsumoApi from '../../../hooks/useConsumoApi'
+import { useSessionContext } from '../../../context/SessionProvider'
 import PWABadge from '../../../PWABadge'
 
 interface Promocion {
@@ -58,6 +59,7 @@ interface TipoDescuento {
 
 export default function ConfiguracionPromocionesDescuentoPorcentual() {
   const { consumoApi } = useConsumoApi()
+  const { session } = useSessionContext() // <--- Extraemos la sesión
   const [rows, setRows] = useState<Promocion[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -346,31 +348,55 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
     )
   }
 
-  return (
+return (
     <>
-      <Box sx={{ width: '100%', p: 1, backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
-        <Box sx={{ backgroundColor: 'white', p: 2, borderRadius: 1, boxShadow: 1, width: '100%', maxWidth: '100%' }}>
-          <Typography variant="h6" sx={{ color: '#999', mb: 0.5, fontSize: '0.9rem' }}>
-            CONFIGURACION DE PROMOCIONES CON DESCUENTOS
-          </Typography>
-          <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 3, borderBottom: '3px solid black', pb: 1 }}>
-            CONFIGURACION DE PROMOCIONES CON DESCUENTO PORCENTUAL
-          </Typography>
+      <Box sx={{ width: '100%', p: 3, backgroundColor: '#ececec', minHeight: '100vh' }}>
+        
+        <style>{`
+          .swal2-container {
+            z-index: 9999 !important;
+          }
+        `}</style>
 
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 3, alignItems: 'center' }}>
-            <TextField
+        {/* CONTENEDOR BLANCO SUPERIOR (ENCABEZADO + FORMULARIO) */}
+        <Box sx={{ backgroundColor: 'white', p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.05)', mb: 3 }}>
+          
+          {/* RECUADRO INTERIOR ELEGANTE */}
+          <Box sx={{ border: '1px solid #2c3e50', p: 1.5, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+              <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem', textTransform: 'uppercase' }}>
+                      CONFIGURACIÓN DE PROMOCIONES CON DESCUENTO PORCENTUAL
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                      Sucursal: {session?.dSucursal || 'Cargando...'}
+                  </Typography>
+              </Box>
+              <Box sx={{ textAlign: 'right' }}>
+                  <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#333', lineHeight: 1.1, fontSize: '0.9rem' }}>
+                      {new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' }).replaceAll('/', '-')}
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                      Usuario Activo: {session?.nombre || 'Cargando...'}
+                  </Typography>
+              </Box>
+          </Box>
+
+          {/* FORMULARIO DE AGREGAR DIRECTO EN EL CONTENEDOR PRINCIPAL */}
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'center', mt: 1 }}> <TextField
               label="Nombre Promo"
               value={nombrePromo}
               onChange={(e) => setNombrePromo(e.target.value)}
-              sx={{ minWidth: 100 }}
+              sx={{ minWidth: 100, bgcolor: 'white' }}
+              size="small"
             />
 
-            <FormControl sx={{ minWidth: 150 }}>
+            <FormControl sx={{ minWidth: 150 }} size="small">
               <InputLabel>Sucursal</InputLabel>
               <Select
                 value={selectedSucursal}
                 onChange={(e) => setSelectedSucursal(e.target.value)}
                 label="Sucursal"
+                sx={{ bgcolor: 'white' }}
               >
                 {sucursales.map((sucursal) => (
                   <MenuItem key={sucursal.cve_sucursal} value={String(sucursal.cve_sucursal)}>
@@ -385,7 +411,8 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
               type="date"
               value={fechaDel}
               onChange={(e) => setFechaDel(e.target.value)}
-              sx={{ minWidth: 120 }}
+              sx={{ minWidth: 130, bgcolor: 'white' }}
+              size="small"
               InputLabelProps={{ shrink: true }}
             />
 
@@ -394,16 +421,18 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
               type="date"
               value={fechaAl}
               onChange={(e) => setFechaAl(e.target.value)}
-              sx={{ minWidth: 120 }}
+              sx={{ minWidth: 130, bgcolor: 'white' }}
+              size="small"
               InputLabelProps={{ shrink: true }}
             />
 
-            <FormControl sx={{ minWidth: 120 }}>
+            <FormControl sx={{ minWidth: 120 }} size="small">
               <InputLabel>Área</InputLabel>
               <Select
                 value={selectedArea}
                 onChange={(e) => setSelectedArea(e.target.value)}
                 label="Área"
+                sx={{ bgcolor: 'white' }}
               >
                 {areas.map((area) => (
                   <MenuItem key={area.area} value={area.area}>
@@ -413,13 +442,14 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
               </Select>
             </FormControl>
 
-            <FormControl sx={{ minWidth: 120 }}>
+            <FormControl sx={{ minWidth: 120 }} size="small">
               <InputLabel>Depto</InputLabel>
               <Select
                 value={selectedDepto}
                 onChange={(e) => setSelectedDepto(e.target.value)}
                 label="Depto"
                 disabled={!selectedArea}
+                sx={{ bgcolor: 'white' }}
               >
                 {departamentos.map((depto) => (
                   <MenuItem key={depto.depto} value={depto.depto}>
@@ -429,12 +459,13 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
               </Select>
             </FormControl>
 
-            <FormControl sx={{ minWidth: 120 }}>
+            <FormControl sx={{ minWidth: 120 }} size="small">
               <InputLabel>Marca</InputLabel>
               <Select
                 value={selectedMarca}
                 onChange={(e) => setSelectedMarca(e.target.value)}
                 label="Marca"
+                sx={{ bgcolor: 'white' }}
               >
                 {marcas.map((marca) => (
                   <MenuItem key={marca.id} value={marca.marca}>
@@ -444,13 +475,14 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
               </Select>
             </FormControl>
 
-            <FormControl sx={{ minWidth: 120 }}>
+            <FormControl sx={{ minWidth: 120 }} size="small">
               <InputLabel>Familia</InputLabel>
               <Select
                 value={selectedFamilia}
                 onChange={(e) => setSelectedFamilia(e.target.value)}
                 label="Familia"
                 disabled={!selectedMarca}
+                sx={{ bgcolor: 'white' }}
               >
                 {familias.map((familia) => (
                   <MenuItem key={familia.clave} value={familia.descripcion}>
@@ -460,15 +492,16 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
               </Select>
             </FormControl>
 
-            <FormControl sx={{ minWidth: 150 }}>
+            <FormControl sx={{ minWidth: 150 }} size="small">
               <InputLabel>Producto</InputLabel>
               <Select
                 value={selectedProducto}
                 onChange={(e) => setSelectedProducto(e.target.value)}
                 label="Producto"
+                sx={{ bgcolor: 'white' }}
               >
                 {productos.map((producto) => (
-                  <MenuItem key={producto.clave_prod} value={producto.clave_prod}>
+                  <MenuItem key={producto.clave_prod} value={producto.descripcion}>
                     {producto.descripcion}
                   </MenuItem>
                 ))}
@@ -480,7 +513,8 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
               type="number"
               value={cantidad}
               onChange={(e) => setCantidad(e.target.value)}
-              sx={{ minWidth: 80 }}
+              sx={{ minWidth: 80, bgcolor: 'white' }}
+              size="small"
               inputProps={{ min: "1" }}
             />
 
@@ -489,16 +523,18 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
               type="number"
               value={descPorcentaje}
               onChange={(e) => setDescPorcentaje(e.target.value)}
-              sx={{ width: 120 }}
+              sx={{ width: 100, bgcolor: 'white' }}
+              size="small"
               inputProps={{ step: "0.01", min: "0", max: "1" }}
             />
 
-            <FormControl sx={{ minWidth: 200 }}>
+            <FormControl sx={{ minWidth: 180 }} size="small">
               <InputLabel>Tipo Descuento</InputLabel>
               <Select
                 value={selectedTipoDescuento}
                 onChange={(e) => setSelectedTipoDescuento(e.target.value)}
                 label="Tipo Descuento"
+                sx={{ bgcolor: 'white' }}
               >
                 {tiposDescuento.map((tipo) => (
                   <MenuItem key={tipo.tipo_descuento} value={tipo.descripcion}>
@@ -512,42 +548,61 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
               variant="contained"
               onClick={handleAdd}
               disabled={!nombrePromo || !selectedSucursal || !fechaDel || !fechaAl || !selectedArea || !selectedDepto || !selectedMarca || !selectedFamilia || !selectedProducto || !cantidad || !descPorcentaje || !selectedTipoDescuento || saving}
-              sx={{ height: 56 }}
+              sx={{ 
+                height: 40,
+                bgcolor: '#333333',
+                color: '#fff',
+                fontWeight: 600,
+                textTransform: 'none',
+                borderRadius: '8px',
+                boxShadow: '0 4px 12px rgba(51, 51, 51, 0.2)',
+                '&:hover': { bgcolor: '#555555' }
+              }}
             >
-              {saving ? 'Guardando...' : 'Agregar'}
+              {saving ? 'Guardando...' : '+ AGREGAR'}
             </Button>
           </Box>
+        </Box>
 
-          {error && <Alert severity="error" sx={{ mb: 2 }}>Error: {error}</Alert>}
+        {error && <Alert severity="error" sx={{ mb: 2 }}>Error: {error}</Alert>}
+
+        {/* CONTENEDOR BLANCO SOLO PARA LA TABLA */}
+        <Box sx={{ backgroundColor: 'white', p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
 
           <DataGrid
             rows={rows}
             columns={columns}
-            pageSizeOptions={[5, 10, 25, 50]}
+            pageSizeOptions={[10, 25, 50, 100]}
             initialState={{
               pagination: {
-                paginationModel: {
-                  pageSize: 25,
-                },
+                paginationModel: { pageSize: 50 },
               },
             }}
-            sx={{ 
+            disableRowSelectionOnClick
+            sx={{
+              border: 'none',
               height: 600,
-              backgroundColor: 'white',
-              '& .MuiDataGrid-row:nth-of-type(even)': {
-                backgroundColor: '#f9f9f9',
+              fontSize: '0.95rem',
+              '& .MuiDataGrid-columnHeaders': { 
+                borderBottom: '2px solid #000', 
+                fontSize: '1rem',
+                fontWeight: 'bold', 
+                backgroundColor: '#f5f5f5' 
               },
+              '& .MuiDataGrid-cell': { 
+                borderBottom: '1px solid #e0e0e000' 
+              },
+              '& .MuiDataGrid-row': { 
+                cursor: 'pointer', 
+                transition: 'all 0.2s ease' 
+              },
+              '& .MuiDataGrid-row:hover': { 
+                bgcolor: '#fafafa' 
+              }
             }}
           />
 
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
-            <Button
-              variant="outlined"
-              onClick={handleBack}
-              sx={{ minWidth: 120 }}
-            >
-              Salir
-            </Button>
           </Box>
         </Box>
       </Box>

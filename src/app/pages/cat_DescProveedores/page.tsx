@@ -4,6 +4,7 @@ import { DataGrid, GridColDef } from '@mui/x-data-grid'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
 import useConsumoApi from '../../../hooks/useConsumoApi'
+import { useSessionContext } from '../../../context/SessionProvider'
 import PWABadge from '../../../PWABadge'
 
 interface DescuentoProveedor {
@@ -15,6 +16,7 @@ interface DescuentoProveedor {
 
 export default function CatDescProveedores() {
   const { consumoApi } = useConsumoApi()
+  const { session } = useSessionContext() // <--- Extraemos la sesión
   const [rows, setRows] = useState<DescuentoProveedor[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -216,16 +218,39 @@ export default function CatDescProveedores() {
     )
   }
 
-  return (
+return (
     <>
-      <Box sx={{ width: '100%', p: 2, backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
-        <Box sx={{ backgroundColor: 'white', p: 3, borderRadius: 1, boxShadow: 1 }}>
-          <Typography variant="h6" sx={{ mb: 1, color: '#666' }}>
-            Catálogo de
-          </Typography>
-          <Typography variant="h4" sx={{ mb: 3, fontWeight: 'bold' }}>
-            Descuentos de Proveedores
-          </Typography>
+      <Box sx={{ width: '100%', p: 3, backgroundColor: '#ececec', minHeight: '100vh' }}>
+        
+        {/* MAGIA CSS */}
+        <style>{`
+          .swal2-container {
+            z-index: 9999 !important;
+          }
+        `}</style>
+
+        {/* CONTENEDOR BLANCO PRINCIPAL (ENCABEZADO Y BOTÓN) */}
+        <Box sx={{ backgroundColor: 'white', p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.05)', mb: 3 }}>
+          
+          {/* RECUADRO INTERIOR ELEGANTE */}
+          <Box sx={{ border: '1px solid #2c3e50', p: 1.5, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+              <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
+                      CATÁLOGO DE DESCUENTOS DE PROVEEDORES
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                      Sucursal: {session?.dSucursal || 'Cargando...'}
+                  </Typography>
+              </Box>
+              <Box sx={{ textAlign: 'right' }}>
+                  <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#333', lineHeight: 1.1, fontSize: '0.9rem' }}>
+                      {new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' }).replace('.', '')}
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                      Usuario Activo: {session?.nombre || 'Cargando...'}
+                  </Typography>
+              </Box>
+          </Box>
 
           {error && (
             <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
@@ -233,38 +258,66 @@ export default function CatDescProveedores() {
             </Alert>
           )}
 
-          <Box sx={{ mb: 2 }}>
+          {/* BOTÓN FUERA DEL RECUADRO PERO DENTRO DEL CONTENEDOR BLANCO */}
+          <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
             <Button 
               variant="contained" 
               onClick={handleAddOpen}
-              sx={{ borderRadius: 2 }}
+              sx={{
+                backgroundColor: '#333333',
+                color: '#fff',
+                textTransform: 'none',
+                borderRadius: '8px',
+                fontWeight: 600,
+                px: 3,
+                py: 1.5,
+                boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  backgroundColor: '#555555',
+                  transform: 'translateY(-1px)',
+                  boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)'
+                }
+              }}
             >
-              Agregar Descuento
+              + AGREGAR DESCUENTO
             </Button>
           </Box>
+        </Box>
 
+        {/* CONTENEDOR DE LA TABLA ESTILO ELEGANTE */}
+        <Box sx={{ backgroundColor: 'white', p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
           <Box sx={{ height: 600, width: '100%' }}>
             <DataGrid
               rows={rows}
               columns={columns}
               pageSizeOptions={[10, 25, 50, 100]}
+              initialState={{
+                pagination: {
+                  paginationModel: { pageSize: 100 },
+                },
+              }}
+              density="compact"
               disableRowSelectionOnClick
               sx={{
-                '& .MuiDataGrid-columnHeaders': {
-                  backgroundColor: '#f5f5f5',
-                  fontWeight: 'bold',
-                },
-                '& .MuiDataGrid-row:nth-of-type(even)': {
-                  backgroundColor: '#f9f9f9',
-                },
+                border: 'none',
+                height: '100%',
+                '& .MuiDataGrid-columnHeaders': { borderBottom: '2px solid #000', fontSize: '0.9rem', fontWeight: 'bold', backgroundColor: '#f5f5f5' },
+                '& .MuiDataGrid-cell': { borderBottom: '1px solid #e0e0e000' },
+                '& .MuiDataGrid-row': { cursor: 'pointer', transition: 'all 0.2s ease' },
+                '& .MuiDataGrid-row:hover': { bgcolor: '#fafafa' }
               }}
             />
           </Box>
+        </Box>
 
-          <Typography variant="caption" sx={{ display: 'block', textAlign: 'center', color: '#666', mt: 2 }}>
-            CATÁLOGO DE DESCUENTOS DE PROVEEDORES, {new Date().toLocaleDateString('es-MX')}, USR:ADMIN
+        {/* PIE DE PÁGINA ESTILO ELEGANTE */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 3 }}>
+          <Typography variant="caption" sx={{ fontWeight: 'bold', textTransform: 'uppercase' }}>
+            CAT_DESCPROVEEDORES, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/')}, USR: {session?.nombre || 'ADMIN'}
           </Typography>
         </Box>
+        
       </Box>
 
       {/* Dialog Agregar */}
@@ -537,7 +590,7 @@ export default function CatDescProveedores() {
         </DialogActions>
       </Dialog>
 
-      <PWABadge />
+     <PWABadge />
     </>
   )
 }

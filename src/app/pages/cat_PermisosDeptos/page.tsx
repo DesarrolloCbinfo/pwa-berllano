@@ -23,6 +23,7 @@ import {
   Close as CloseIcon
 } from '@mui/icons-material';
 import useConsumoApi from '../../../hooks/useConsumoApi';
+import { useSessionContext } from '../../../context/SessionProvider';
 
 // --- INTERFACES ---
 interface PerfilRow {
@@ -79,6 +80,7 @@ const modalSectionStyle = {
 // --- COMPONENTE PRINCIPAL ---
 export default function CatPermisosDeptos() {
   const consumoApi = useConsumoApi();
+  const { session } = useSessionContext();
   
   // --- ESTADOS PRINCIPALES ---
   const [perfiles, setPerfiles] = useState<PerfilRow[]>([]);
@@ -538,14 +540,37 @@ export default function CatPermisosDeptos() {
     fetchPerfiles();
   }, []);
 
-  return (
-    <Box sx={{ p: 3, bgcolor: '#f5f5f5', minHeight: '100vh' }}>
-      {/* --- HEADER --- */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-        <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#333' }}>
-          Permisos por Departamento
-        </Typography>
-      </Box>
+return (
+    <Box sx={{ p: 3, bgcolor: '#ececec', minHeight: '100vh' }}>
+      
+      {/* MAGIA CSS: Forzamos a SweetAlert a saltar al frente de los modales */}
+      <style>{`
+        .swal2-container {
+          z-index: 9999 !important;
+        }
+      `}</style>
+
+      {/* PAPER 1: ENCABEZADO ESTILO BERLLANO */}
+      <Paper sx={{ p: 3, borderRadius: '8px', mb: 3, boxShadow: '0 4px 8px rgba(0,0,0,0.05)' }}>
+        <Box sx={{ border: '1px solid #2c3e50', p: 1.5, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
+            <Box>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
+                    PERMISOS POR DEPARTAMENTO
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                    Sucursal: {session?.dSucursal || 'Cargando...'}
+                </Typography>
+            </Box>
+            <Box sx={{ textAlign: 'right' }}>
+                <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#333', lineHeight: 1.1, fontSize: '0.9rem' }}>
+                    {new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' }).replace('.', '')}
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                    Usuario Activo: {session?.nombre || 'Cargando...'}
+                </Typography>
+            </Box>
+        </Box>
+      </Paper>
 
       {/* --- DOS TABLAS EN LÍNEA --- */}
       <Grid container spacing={3}>

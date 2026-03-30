@@ -3,6 +3,7 @@ import { Box, CircularProgress, Alert, Typography, Button, Dialog, DialogTitle, 
 import { DataGrid, GridColDef } from '@mui/x-data-grid'
 import EditIcon from '@mui/icons-material/Edit'
 import useConsumoApi from '../../../hooks/useConsumoApi'
+import { useSessionContext } from '../../../context/SessionProvider'
 import PWABadge from '../../../PWABadge'
 
 interface MedioPago {
@@ -26,6 +27,7 @@ interface MedioPago {
 
 export default function CatMediosPago() {
   const { consumoApi } = useConsumoApi()
+  const { session } = useSessionContext() // <--- Agregamos esto
   const [rows, setRows] = useState<MedioPago[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -263,46 +265,118 @@ export default function CatMediosPago() {
     );
   }
 
-  return (
+return (
     <>
-      <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #f5f5f5 0%, #eaeaea 100%)', p: 4 }}>
-        <Box sx={{ backgroundColor: '#fff', borderRadius: 3, p: 4, boxShadow: '0 8px 25px rgba(0,0,0,0.08)' }}>
-           <Typography variant="subtitle2" sx={{ color: '#666666', mb: 1, fontWeight: 500 }}>
-                      CATÁLOGO DE
-                    </Typography>
-                    <Typography variant="h5" sx={{ mb: 3, fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
-                      MEDIOS DE PAGO
-                    </Typography>
-          <Button
-            variant="contained"
-            onClick={handleAddOpen}
-            sx={{ bgcolor: '#1e1e1e', px: 3, py: 1.2, borderRadius: 2, fontWeight: 600, textTransform: 'none', mb: 3, '&:hover': { bgcolor: '#333' } }}
-          >
-            Agregar Medio de Pago
-          </Button>
+      <Box sx={{ width: '100%', p: 3, backgroundColor: '#ececec', minHeight: '100vh' }}>
+        
+        {/* MAGIA CSS */}
+        <style>{`
+          .swal2-container {
+            z-index: 9999 !important;
+          }
+        `}</style>
+
+        {/* CONTENEDOR BLANCO PRINCIPAL (ENCABEZADO Y BOTÓN) */}
+        <Box sx={{ backgroundColor: 'white', p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.05)', mb: 3 }}>
+          
+          {/* RECUADRO INTERIOR ELEGANTE */}
+          <Box sx={{ border: '1px solid #2c3e50', p: 1.5, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+              <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
+                      CATÁLOGO DE MEDIOS DE PAGO
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                      Sucursal: {session?.dSucursal || 'Cargando...'}
+                  </Typography>
+              </Box>
+              <Box sx={{ textAlign: 'right' }}>
+                  <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#333', lineHeight: 1.1, fontSize: '0.9rem' }}>
+                      {new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' }).replaceAll('/', '-')}
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                      Usuario Activo: {session?.nombre || 'Cargando...'}
+                  </Typography>
+              </Box>
+          </Box>
 
           {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
+            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
               {error}
             </Alert>
           )}
 
+          {/* BOTÓN FUERA DEL RECUADRO PERO DENTRO DEL CONTENEDOR BLANCO */}
+          <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
+            <Button 
+              variant="contained" 
+              onClick={handleAddOpen}
+              sx={{
+                backgroundColor: '#333333',
+                color: '#fff',
+                textTransform: 'none',
+                borderRadius: '8px',
+                fontWeight: 600,
+                px: 3,
+                py: 1.5,
+                boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  backgroundColor: '#555555',
+                  transform: 'translateY(-1px)',
+                  boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)'
+                }
+              }}
+            >
+              + AGREGAR MEDIO DE PAGO
+            </Button>
+          </Box>
+        </Box>
+
+        {/* CONTENEDOR DE LA TABLA ESTILO ELEGANTE */}
+        <Box sx={{ backgroundColor: 'white', p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
           <Box sx={{ height: 600, width: '100%', minWidth: 800 }}>
-            <DataGrid
+          <DataGrid
               rows={rows}
               columns={columns}
               pageSizeOptions={[10, 25, 50, 100]}
+              initialState={{
+                pagination: {
+                  paginationModel: { pageSize: 100 },
+                },
+              }}
               disableRowSelectionOnClick
               sx={{
                 border: 'none',
-                '& .MuiDataGrid-columnHeaders': { backgroundColor: '#f4f6f8', fontWeight: 'bold', fontSize: '14px' },
-                '& .MuiDataGrid-row:nth-of-type(even)': { backgroundColor: '#fafafa' },
-                '& .MuiDataGrid-row:hover': { backgroundColor: '#f0f0f0' },
-                '& .MuiDataGrid-cell': { borderBottom: '1px solid #eee' }
+                height: '100%',
+                fontSize: '0.95rem', /* <--- Tamaño de letra general más legible */
+                '& .MuiDataGrid-columnHeaders': { 
+                  borderBottom: '2px solid #000', 
+                  fontSize: '1rem', /* <--- Encabezados un poco más grandes */
+                  fontWeight: 'bold', 
+                  backgroundColor: '#f5f5f5' 
+                },
+                '& .MuiDataGrid-cell': { 
+                  borderBottom: '1px solid #e0e0e000' 
+                },
+                '& .MuiDataGrid-row': { 
+                  cursor: 'pointer', 
+                  transition: 'all 0.2s ease' 
+                },
+                '& .MuiDataGrid-row:hover': { 
+                  bgcolor: '#fafafa' 
+                }
               }}
             />
           </Box>
         </Box>
+
+        {/* PIE DE PÁGINA ESTILO ELEGANTE */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 3 }}>
+          <Typography variant="caption" sx={{ fontWeight: 'bold', textTransform: 'uppercase' }}>
+            CAT_MEDIOS_PAGO, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replaceAll('/', '-')}, USR: {session?.nombre || 'ADMIN'}
+          </Typography>
+        </Box>
+        
       </Box>
 
       <Dialog open={openAdd} onClose={handleAddClose} maxWidth="md" fullWidth>

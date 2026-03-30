@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
-import { Box, CircularProgress, Alert, Typography, Grid } from '@mui/material';
+import { Box, CircularProgress, Alert, Typography, Grid, Paper } from '@mui/material';
 import useConsumoApi from '../../../hooks/useConsumoApi';
+import { useSessionContext } from '../../../context/SessionProvider';
 import {
   Button,
   Dialog,
@@ -41,6 +42,7 @@ interface CatSucursal {
 
 export default function CatSucursales() {
   const { consumoApi } = useConsumoApi();
+  const { session } = useSessionContext();
   const [rows, setRows] = useState<CatSucursal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -366,62 +368,87 @@ export default function CatSucursales() {
 
   return (
     <>
-      <Box sx={{ p: 3 }}>
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="subtitle2" sx={{ color: '#666', mb: 0.5 }}>
-            Catálogo de
-          </Typography>
-          <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 2 }}>
-            Sucursales
-          </Typography>
+<Box sx={{ p: 3, bgcolor: '#ececec', minHeight: '100vh' }}>
+        
+{/* ENCABEZADO ESTILO ELEGANTE */}
+        <Box sx={{ p: 3, borderRadius: '8px', mb: 3, boxShadow: '0 4px 8px rgba(0,0,0,0.05)', bgcolor: 'white' }}>
           
-          <Button 
-            variant='contained' 
-            onClick={() => setOpenAdd(true)}
-            sx={{
-              backgroundColor: '#000',
-              color: '#fff',
-              textTransform: 'none',
-              borderRadius: 1,
-              px: 3,
-              py: 1,
-              '&:hover': {
-                backgroundColor: '#333',
-              }
-            }}
-          >
-            AGREGAR SUCURSAL
-          </Button>
-        </Box>
+          {/* RECUADRO INTERIOR */}
+          <Box sx={{ border: '1px solid #2c3e50', p: 1.5, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+              <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
+                      CATÁLOGO DE SUCURSALES
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                      Sucursal: {session?.dSucursal || 'Cargando...'}
+                  </Typography>
+              </Box>
+              <Box sx={{ textAlign: 'right' }}>
+                  <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#333', lineHeight: 1.1, fontSize: '0.9rem' }}>
+                      {new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' }).replace('.', '')}
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                      Usuario Activo: {session?.nombre || 'Cargando...'}
+                  </Typography>
+              </Box>
+          </Box>
 
-        <Box sx={{ width: '100%', bgcolor: 'background.paper' }}>
-          <DataGrid
-            rows={rows}
-            columns={columns}
-            getRowId={(row) => row.cve_sucursal}
-            pageSizeOptions={[5, 10, 25, 100]}
-            initialState={{
-              pagination: {
-                paginationModel: {
-                  pageSize: 100,
+          {/* BOTÓN DENTRO DEL CONTENEDOR, PERO FUERA DEL RECUADRO */}
+          <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
+            <Button 
+              variant='contained' 
+              onClick={() => setOpenAdd(true)}
+              sx={{
+                backgroundColor: '#333333',
+                color: '#fff',
+                textTransform: 'none',
+                borderRadius: '8px',
+                fontWeight: 600,
+                px: 3,
+                py: 1.5,
+                boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  backgroundColor: '#555555',
+                  transform: 'translateY(-1px)',
+                  boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)'
+                }
+              }}
+            >
+              + AGREGAR SUCURSAL
+            </Button>
+          </Box>
+        </Box>
+        
+
+{/* CONTENEDOR DE LA TABLA ESTILO ELEGANTE */}
+        <Box sx={{ p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)', bgcolor: 'white' }}>
+          <Box sx={{ height: 600, width: '100%' }}>
+            <DataGrid
+              rows={rows}
+              columns={columns}
+              getRowId={(row) => row.cve_sucursal}
+              pageSizeOptions={[5, 10, 25, 100]}
+              initialState={{
+                pagination: {
+                  paginationModel: {
+                    pageSize: 100,
+                  },
                 },
-              },
-            }}
-            onRowClick={(params) => handleViewOpen(params.row)}
-            sx={{ 
-              height: 600,
-              '& .MuiDataGrid-cell': {
-                borderBottom: '1px solid #f0f0f0',
-              },
-              '& .MuiDataGrid-columnHeaders': {
-                backgroundColor: '#fafafa',
-                borderBottom: '2px solid #e0e0e0',
-              },
-              '& .MuiDataGrid-row': {
-                cursor: 'pointer',
-              }
-            }}
-          />
+              }}
+              onRowClick={(params) => handleViewOpen(params.row)}
+              density="compact"
+              disableRowSelectionOnClick
+              sx={{ 
+                border: 'none',
+                height: '100%',
+                '& .MuiDataGrid-columnHeaders': { borderBottom: '2px solid #000', fontSize: '0.9rem', fontWeight: 'bold', backgroundColor: '#f5f5f5' },
+                '& .MuiDataGrid-cell': { borderBottom: '1px solid #e0e0e000' },
+                '& .MuiDataGrid-row': { cursor: 'pointer', transition: 'all 0.2s ease' },
+                '& .MuiDataGrid-row:hover': { bgcolor: '#fafafa' }
+              }}
+            />
+          </Box>
         </Box>
       </Box>
 
