@@ -9,7 +9,7 @@ import DeleteIcon from '@mui/icons-material/Delete'
 import AddIcon from '@mui/icons-material/Add'
 import CloseIcon from '@mui/icons-material/Close'
 import { Divider } from '@mui/material'
-
+import { useSessionContext } from '../../../context/SessionProvider' // <--- Importamos la sesión
 import PWABadge from "../../../PWABadge"
 
 // Interfaces para las tres entidades
@@ -75,6 +75,7 @@ interface ClaseForm {
 
 export default function CatAreasDeptosClases() {
   const consumoApi = useConsumoApi()
+  const { session } = useSessionContext() // <--- Extraemos la sesión
   
   // Estados para Áreas
   const [areas, setAreas] = useState<CatArea[]>([])
@@ -402,15 +403,39 @@ export default function CatAreasDeptosClases() {
     }
   }
 
-  return (
-    <Box sx={{ p: 3, bgcolor: '#f5f5f5', minHeight: '100vh' }}>
-      {/* --- HEADER --- */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-        <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#333' }}>
-          Áreas, Departamentos y Clases
-        </Typography>
-      </Box>
+return (
+    <>
+      <Box sx={{ width: '100%', p: 3, backgroundColor: '#ececec', minHeight: '100vh' }}>
+        
+        <style>{`
+          .swal2-container {
+            z-index: 9999 !important;
+          }
+        `}</style>
 
+        {/* CONTENEDOR BLANCO PRINCIPAL (ENCABEZADO ELEGANTE) */}
+        <Box sx={{ backgroundColor: 'white', p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.05)', mb: 3 }}>
+          
+          {/* RECUADRO INTERIOR ELEGANTE */}
+          <Box sx={{ border: '1px solid #2c3e50', p: 1.5, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
+              <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem', textTransform: 'uppercase' }}>
+                      CATÁLOGO DE ÁREAS, DEPARTAMENTOS Y CLASES
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                      Sucursal: {session?.dSucursal || 'Cargando...'}
+                  </Typography>
+              </Box>
+              <Box sx={{ textAlign: 'right' }}>
+                  <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#333', lineHeight: 1.1, fontSize: '0.9rem' }}>
+                      {new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' }).replaceAll('/', '-')}
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                      Usuario Activo: {session?.nombre || 'Cargando...'}
+                  </Typography>
+              </Box>
+          </Box>
+        </Box>
       <Grid container spacing={3}>
         {/* TABLA DE ÁREAS */}
         <Grid item xs={12} md={4}>
@@ -1021,7 +1046,7 @@ export default function CatAreasDeptosClases() {
         </Box>
       </Dialog>
 
-      {/* --- SNACKBAR PARA MENSAJES --- */}
+{/* --- SNACKBAR PARA MENSAJES --- */}
       {message && (
         <Box sx={{ position: 'fixed', bottom: 20, right: 20, zIndex: 9999 }}>
           <Alert 
@@ -1033,8 +1058,9 @@ export default function CatAreasDeptosClases() {
           </Alert>
         </Box>
       )}
-
+      
       <PWABadge />
     </Box>
+  </>
   )
 }

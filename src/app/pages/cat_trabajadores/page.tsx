@@ -50,6 +50,7 @@ import { SelectChangeEvent } from '@mui/material';
 
 import useConsumoApi from '../../../hooks/useConsumoApi';
 import { IUsuario } from '../../../interfaces/IUsuario';
+import { useSessionContext } from '../../../context/SessionProvider'; // <--- Importamos la sesión
 
 // --- ESTILOS BERLLANO ELEGANTE ---
 const commonProps = {
@@ -180,6 +181,7 @@ function CatTrabajadoresWrapper() {
 
 export default function CatTrabajadores() {
   const { consumoApi } = useConsumoApi();
+  const { session } = useSessionContext(); // <--- Extraemos la sesión
 
   // --- ESTADOS ---
   const [rows, setRows] = useState<TrabajadorRow[]>([]);
@@ -1006,159 +1008,122 @@ export default function CatTrabajadores() {
   ];
 
   return (
-    <Box sx={{ p: 0, minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
-      {/* ENCABEZADO */}
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          mb: 3,
-          p: 3,
-        }}
-      >
-        <Typography
-          variant='h4'
-          component='h1'
-          sx={{
-            fontWeight: 'bold',
-            color: '#333',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1,
-          }}
-        >
-          <Box
-            sx={{
-              width: 40,
-              height: 40,
-              backgroundColor: '#333333',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
-              boxShadow: '0 4px 8px rgba(51, 51, 51, 0.3)',
-              transition: 'all 0.3s ease',
-              fontSize: '20px',
-            }}
-          >
-            👥
+    <>
+      <Box sx={{ width: '100%', p: 3, backgroundColor: '#ececec', minHeight: '100vh' }}>
+        
+        <style>{`
+          .swal2-container {
+            z-index: 9999 !important;
+          }
+        `}</style>
+
+        {/* CONTENEDOR BLANCO SUPERIOR (ENCABEZADO + FILTROS) */}
+        <Box sx={{ backgroundColor: 'white', p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.05)', mb: 3 }}>
+          
+          {/* RECUADRO INTERIOR ELEGANTE (SOLO TÍTULO Y DATOS) */}
+          <Box sx={{ border: '1px solid #2c3e50', p: 1.5, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+              <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem', textTransform: 'uppercase' }}>
+                      CATÁLOGO DE TRABAJADORES
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                      Sucursal: {session?.dSucursal || 'Cargando...'}
+                  </Typography>
+              </Box>
+              <Box sx={{ textAlign: 'right' }}>
+                  <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#333', lineHeight: 1.1, fontSize: '0.9rem' }}>
+                      {new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' }).replaceAll('/', '-')}
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                      Usuario Activo: {session?.nombre || 'Cargando...'}
+                  </Typography>
+              </Box>
           </Box>
-          TRABAJADORES
-        </Typography>
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <Tooltip title='Agregar nuevo trabajador'>
+
+          {/* FILTROS Y BOTÓN DE AGREGAR */}
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center', justifyContent: 'space-between' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
+              <Typography sx={{ fontWeight: 'bold', color: '#333' }}>
+                FILTRAR POR:
+              </Typography>
+              <TextField
+                {...commonProps}
+                placeholder='Nombre o Clave'
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                sx={{ ...commonProps.sx, maxWidth: '300px', '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+              />
+            </Box>
+            
             <Button
               variant='contained'
               startIcon={<AddIcon />}
               onClick={handleOpenCreate}
               sx={{
-                height: '50px',
+                height: '45px',
                 backgroundColor: '#333333',
+                color: 'white',
+                fontWeight: 600,
                 textTransform: 'none',
-                fontWeight: 'bold',
+                borderRadius: '12px',
+                boxShadow: '0 4px 12px rgba(51, 51, 51, 0.2)',
+                transition: 'all 0.3s ease',
                 '&:hover': {
-                  backgroundColor: '#555',
+                  backgroundColor: '#555555',
+                  transform: 'translateY(-1px)'
                 },
               }}
             >
-              AGREGAR TRABAJADOR
+              + AGREGAR TRABAJADOR
             </Button>
-          </Tooltip>
+          </Box>
         </Box>
-      </Box>
 
-      {/* SECCIÓN DE BÚSQUEDA */}
-      <Paper
-        sx={{
-          mx: 3,
-          mb: 3,
-          p: 3,
-          backgroundColor: 'white',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-        }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Typography sx={{ fontWeight: 'bold', color: '#333' }}>
-            FILTRAR POR:
-          </Typography>
-          <TextField
-            {...commonProps}
-            placeholder='Nombre o Clave'
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            sx={{
-              ...commonProps.sx,
-              width: '300px',
-            }}
-          />
-        </Box>
-      </Paper>
-
-      {/* TABLA DE TRABAJADORES */}
-      <Paper
-        sx={{
-          mx: 3,
-          backgroundColor: 'white',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-        }}
-      >
-        <Box
-          sx={{
-            height: 600,
-            width: '100%',
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-        >
-          {loading ? (
-            <Box
-              sx={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                height: '100%',
-              }}
-            >
-              <CircularProgress />
-            </Box>
-          ) : (
-            <DataGrid
-              rows={filteredRows}
-              columns={columns}
-              pageSizeOptions={[10, 25, 50]}
-              paginationModel={paginationModel}
-              onPaginationModelChange={setPaginationModel}
-              disableSelectionOnClick
-              sx={{
-                '& .MuiDataGrid-root': {
+        {/* CONTENEDOR DE LA TABLA ESTILO ELEGANTE */}
+        <Box sx={{ backgroundColor: 'white', p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
+          <Box sx={{ height: 600, width: '100%', display: 'flex', flexDirection: 'column' }}>
+            {loading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <DataGrid
+                rows={filteredRows}
+                columns={columns}
+                pageSizeOptions={[10, 25, 50, 100]}
+                paginationModel={paginationModel}
+                onPaginationModelChange={setPaginationModel}
+                disableRowSelectionOnClick
+                sx={{
                   border: 'none',
-                  fontSize: '14px',
-                },
-                '& .MuiDataGrid-cell': {
-                  padding: '8px 4px',
-                  borderBottom: '1px solid #f0f0f0',
-                  cursor: 'pointer',
-                },
-                '& .MuiDataGrid-columnHeader': {
-                  backgroundColor: '#f5f5f5',
-                  fontWeight: 'bold',
-                  color: '#333',
-                  borderBottom: '2px solid #ddd',
-                },
-                '& .MuiDataGrid-row:hover': {
-                  backgroundColor: '#fafafa',
-                },
-                '& .MuiDataGrid-row.Mui-selected': {
-                  backgroundColor: '#f0f0f0',
-                },
-              }}
-            />
-          )}
+                  height: '100%',
+                  fontSize: '0.95rem',
+                  '& .MuiDataGrid-columnHeaders': { 
+                    borderBottom: '2px solid #000',
+                    fontSize: '1rem',
+                    fontWeight: 'bold',
+                    backgroundColor: '#f5f5f5'
+                  },
+                  '& .MuiDataGrid-cell': {
+                    borderBottom: '1px solid #e0e0e000',
+                    cursor: 'pointer'
+                  },
+                  '& .MuiDataGrid-row': { cursor: 'pointer', transition: 'all 0.2s ease' },
+                  '& .MuiDataGrid-row:hover': { bgcolor: '#fafafa' }
+                }}
+              />
+            )}
+          </Box>
         </Box>
-      </Paper>
 
+        {/* PIE DE PÁGINA ESTILO ELEGANTE */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 3, mb: 2 }}>
+          <Typography variant="caption" sx={{ fontWeight: 'bold', textTransform: 'uppercase' }}>
+            CAT_TRABAJADORES, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replaceAll('/', '-')}, USR: {session?.nombre || 'ADMIN'}
+          </Typography>
+        </Box>
+
+        
       {/* DIÁLOGO DE EDICIÓN/AGREGAR */}
       <Dialog
         open={openEdit}
@@ -1884,7 +1849,8 @@ export default function CatTrabajadores() {
             {isEditing ? 'Actualizar' : 'Guardar'}
           </Button>
         </DialogActions>
-      </Dialog>
+   </Dialog>
     </Box>
+  </>
   );
 }
