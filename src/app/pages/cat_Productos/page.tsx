@@ -977,377 +977,6 @@ const ModalStockSucursal = ({ open, onClose, consumoApi, setMessage, productoFor
     );
 };
 
-// --- COMPONENTE AISLADO PARA ANÁLISIS POR CLAVE ---
-const ModalAnalisisPorClave = ({ open, onClose, onAbrirVentasComparativas }: any) => {
-    // Lista exacta de botones según la imagen de Access
-    const botonesReportes = [
-        "REPORTE DE VENTAS COMPARATIVAS",
-        "ANALISIS DE COMPRAS POR CLAVE",
-        "REPORTE DE CAMBIOS AL CATALOGO DE PRODUCTOS",
-        "REPORTE DE VENTAS COMPARATIVAS POR CLASE",
-        "REPORTE DE VENTAS - PRODUCTOS OFERTADOS",
-        "REPORTE DE VENTA CRUZADA",
-        "REPORTE DE VENTAS REMATES"
-    ];
-
-    const handleClick = (texto: string) => {
-        if (texto === "REPORTE DE VENTAS COMPARATIVAS") {
-            onClose(); // Cerramos el menú actual
-            onAbrirVentasComparativas(); // Abrimos el nuevo modal de filtros
-        } else {
-            alert(`Módulo en desarrollo: ${texto}`);
-        }
-    };
-
-    return (
-        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-            <Box sx={{ p: 4, bgcolor: '#fdfdfd', textAlign: 'center' }}>
-                <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#777', mb: 4 }}>
-                    Análisis por clave
-                </Typography>
-                
-                {/* Contenedor de la lista de botones */}
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 5, px: 2 }}>
-                    {botonesReportes.map((texto, idx) => (
-                        <Button 
-                            key={idx}
-                            variant="contained" 
-                            fullWidth
-                            sx={{ 
-                                bgcolor: '#e3f2fd', // Azul clarito estilo Access
-                                color: '#555', 
-                                fontWeight: 600, 
-                                border: '1px solid #90caf9',
-                                py: 1.5,
-                                boxShadow: 'none',
-                                '&:hover': { bgcolor: '#bbdefb', boxShadow: 'none' }
-                            }}
-                            // ⚠️ AQUÍ ESTABA EL ERROR: Ahora sí llama a la función
-                            onClick={() => handleClick(texto)}
-                        >
-                            {texto}
-                        </Button>
-                    ))}
-                </Box>
-
-                {/* Botón de Salir (más ancho y separado) */}
-                <Button 
-                    variant="contained" 
-                    onClick={onClose}
-                    sx={{ 
-                        bgcolor: '#e3f2fd', 
-                        color: '#555', 
-                        fontWeight: 600, 
-                        width: '70%',
-                        border: '1px solid #90caf9',
-                        py: 1.5,
-                        boxShadow: 'none',
-                        '&:hover': { bgcolor: '#bbdefb', boxShadow: 'none' }
-                    }}
-                >
-                    SALIR
-                </Button>
-            </Box>
-        </Dialog>
-    );
-};
-
-// --- COMPONENTE: REPORTE DE VENTAS COMPARATIVAS ---
-const ModalVentasComparativas = ({ open, onClose, consumoApi, setMessage }: any) => {
-    // --- ESTADOS DE LOS FILTROS ---
-    const [area, setArea] = useState('%');
-    const [depto, setDepto] = useState('%');
-    const [clase, setClase] = useState('%');
-    const [sucursal, setSucursal] = useState('%');
-    const [producto, setProducto] = useState<any>(null); // Para el Autocomplete
-    const [productoWildcard, setProductoWildcard] = useState('%'); // La cajita al lado de producto
-
-    // Fechas (Por defecto hoy)
-    const hoy = new Date().toISOString().split('T')[0];
-    const [fechaDel, setFechaDel] = useState(hoy);
-    const [fechaAl, setFechaAl] = useState(hoy);
-
-    // Checkboxes
-    const [chkTiendas, setChkTiendas] = useState(true);
-    const [chkRutas, setChkRutas] = useState(true);
-    const [chkBodegas, setChkBodegas] = useState(true);
-    const [chkNocturnas, setChkNocturnas] = useState(false);
-    const [chkConIva, setChkConIva] = useState(true);
-    const [chkPromociones, setChkPromociones] = useState(false);
-
-    // Radio buttons
-    const [tipoTiendas, setTipoTiendas] = useState('totales');
-
-    // --- ESTADOS DE LAS LISTAS DESPLEGABLES ---
-    const [listaAreas, setListaAreas] = useState<any[]>([]);
-    const [listaDeptos, setListaDeptos] = useState<any[]>([]);
-    const [listaClases, setListaClases] = useState<any[]>([]);
-    const [listaSucursales, setListaSucursales] = useState<any[]>([]);
-    const [catBusquedaProd, setCatBusquedaProd] = useState<any[]>([]);
-
-    // Cargar listas principales al abrir el modal
-    useEffect(() => {
-        if (open) {
-            cargarListasBase();
-        }
-    }, [open]);
-
-    const cargarListasBase = async () => {
-        try {
-            const [resAreas, resSuc] = await Promise.all([
-                consumoApi.get('/api/CatProductosC/sp_bw_cat_combo_areas'),
-                consumoApi.get('/api/CatProductosC/sp_bw_cat_combo_sucursales')
-            ]);
-            setListaAreas(resAreas.data);
-            
-            // Fíjate que aquí usamos "id" porque así viene la respuesta mapeada de la vista general que hiciste, pero
-            // dependiendo de tu API, las llaves originales pueden venir como cve_sucursal y nombre.
-            // Para asegurarnos, inyectamos la opción %
-            setListaSucursales([{ id: '%', descripcion: ' TODAS' }, ...resSuc.data]);
-            
-            // Cargar Deptos y Clases iniciales (con %)
-            cargarDeptos('%');
-            cargarClases('%', '%');
-        } catch (error) {
-            setMessage({ text: "Error al cargar los catálogos", type: 'error' });
-        }
-    };
-
-    const cargarDeptos = async (areaId: string) => {
-        const res = await consumoApi.get('/api/CatProductosC/sp_bw_cat_combo_deptos', { params: { area: areaId } });
-        setListaDeptos(res.data);
-    };
-
-    const cargarClases = async (areaId: string, deptoId: string) => {
-        const res = await consumoApi.get('/api/CatProductosC/sp_bw_cat_combo_clases', { params: { area: areaId, depto: deptoId } });
-        setListaClases(res.data);
-    };
-
-    // Buscador de productos (cuando escriben)
-    const buscarProductos = async (termino: string) => {
-        if (termino.length < 3) return; // Buscar solo si hay 3 o más letras
-        try {
-            const res = await consumoApi.get('/api/CatProductosC/sp_bw_cat_combo_productos_sel', {
-                params: { descripcion: termino, sucursal: 1 } // Pasamos sucursal 1 como genérico para búsqueda
-            });
-            setCatBusquedaProd(res.data || []);
-        } catch (e) {}
-    };
-
-    // Manejo de cambios en cascada
-    const handleCambioArea = (val: string) => {
-        setArea(val); setDepto('%'); setClase('%');
-        cargarDeptos(val); cargarClases(val, '%');
-    };
-    const handleCambioDepto = (val: string) => {
-        setDepto(val); setClase('%');
-        cargarClases(area, val);
-    };
-
-    // Función mockeada para los botones de reportes
-    const dispararReporte = (nombreReporte: string) => {
-        alert(`Falta conectar el SP para: ${nombreReporte}\nFiltros actuales:\nÁrea: ${area}, Depto: ${depto}\nFechas: ${fechaDel} al ${fechaAl}`);
-    };
-
-    return (
-        <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-            <Box sx={{ p: 4, bgcolor: '#fdfdfd' }}>
-                
-                {/* ENCABEZADO ESTILO ACCESS */}
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
-                    <Box>
-                        <Typography variant="h6" sx={{ color: '#999', mb: -1, ml: 1 }}>Reporte de</Typography>
-                        <Typography variant="h3" sx={{ fontWeight: 'bold', borderBottom: '6px solid black', display: 'inline-block', pb: 0.5, pr: 8, color: '#000' }}>
-                            Ventas Comparativas
-                        </Typography>
-                    </Box>
-                    <IconButton onClick={onClose}><CloseIcon /></IconButton>
-                </Box>
-
-                {/* ZONA DE FILTROS (GRID) */}
-                <Box sx={{ px: 4 }}>
-                    <Grid container spacing={2} alignItems="center" sx={{ mb: 2 }}>
-                        <Grid item xs={3} textAlign="right"><Typography fontWeight="bold">AREA</Typography></Grid>
-                        {/* ⚠️ CORRECCIÓN AQUÍ: Usamos (a.id || a.area) para que no falle si la API devuelve nombres distintos */}
-                        <Grid item xs={9}><TextField select size="small" fullWidth value={area} onChange={(e) => handleCambioArea(e.target.value)}>{listaAreas.map(a => <MenuItem key={a.id || a.area} value={a.id || a.area}>{a.descripcion}</MenuItem>)}</TextField></Grid>
-
-                        <Grid item xs={3} textAlign="right"><Typography fontWeight="bold">DEPTO</Typography></Grid>
-                        <Grid item xs={9}><TextField select size="small" fullWidth value={depto} onChange={(e) => handleCambioDepto(e.target.value)}>{listaDeptos.map(d => <MenuItem key={d.id || d.depto} value={d.id || d.depto}>{d.descripcion}</MenuItem>)}</TextField></Grid>
-
-                        <Grid item xs={3} textAlign="right"><Typography fontWeight="bold">CLASE</Typography></Grid>
-                        <Grid item xs={9}><TextField select size="small" fullWidth value={clase} onChange={(e) => setClase(e.target.value)}>{listaClases.map(c => <MenuItem key={c.id || c.clase} value={c.id || c.clase}>{c.descripcion}</MenuItem>)}</TextField></Grid>
-
-                        <Grid item xs={3} textAlign="right"><Typography fontWeight="bold">PRODUCTO</Typography></Grid>
-                        <Grid item xs={7}>
-                            <Autocomplete
-                                options={catBusquedaProd}
-                                getOptionLabel={(option: any) => `${option.Clave || option.clave_prod} - ${option.Descripcion || option.descripcion}`}
-                                value={producto}
-                                onChange={(e, val) => setProducto(val)}
-                                onInputChange={(e, val) => buscarProductos(val)}
-                                renderInput={(params) => <TextField {...params} size="small" placeholder="Buscar producto..." />}
-                            />
-                        </Grid>
-                        <Grid item xs={2}><TextField size="small" fullWidth value={productoWildcard} onChange={(e)=>setProductoWildcard(e.target.value)} /></Grid>
-
-                        <Grid item xs={3} textAlign="right"><Typography fontWeight="bold">SUCURSAL</Typography></Grid>
-                        <Grid item xs={9}><TextField select size="small" fullWidth value={sucursal} onChange={(e) => setSucursal(e.target.value)}>{listaSucursales.map(s => <MenuItem key={s.id || s.cve_sucursal} value={s.id || s.cve_sucursal}>{s.descripcion || s.nombre}</MenuItem>)}</TextField></Grid>
-
-                        <Grid item xs={3} textAlign="right"><Typography fontWeight="bold">DEL</Typography></Grid>
-                        <Grid item xs={4}><TextField type="date" size="small" fullWidth value={fechaDel} onChange={(e)=>setFechaDel(e.target.value)}/></Grid>
-                        <Grid item xs={1} textAlign="center"><Typography fontWeight="bold">AL</Typography></Grid>
-                        <Grid item xs={4}><TextField type="date" size="small" fullWidth value={fechaAl} onChange={(e)=>setFechaAl(e.target.value)}/></Grid>
-                    </Grid>
-
-                    {/* ZONA DE CHECKBOXES */}
-                    <Grid container spacing={2} sx={{ mb: 4, pl: 3 }}>
-                        <Grid item xs={8}>
-                            <Box sx={{ display: 'flex', gap: 2, mb: 1 }}>
-                                <FormControlLabel control={<Checkbox checked={chkTiendas} onChange={(e)=>setChkTiendas(e.target.checked)} />} label="TIENDAS" />
-                                <FormControlLabel control={<Checkbox checked={chkRutas} onChange={(e)=>setChkRutas(e.target.checked)} />} label="RUTAS" />
-                                <FormControlLabel control={<Checkbox checked={chkBodegas} onChange={(e)=>setChkBodegas(e.target.checked)} />} label="BODEGAS" />
-                            </Box>
-                            <Box sx={{ border: '1px solid #ccc', borderRadius: 1, p: 1, position: 'relative', mt: 2 }}>
-                                <Typography variant="caption" sx={{ position: 'absolute', top: -10, left: 10, bgcolor: '#fdfdfd', px: 1, color: '#666' }}>Tiendas</Typography>
-                                <Box sx={{ display: 'flex', justifyContent: 'center', gap: 4 }}>
-                                    <FormControlLabel control={<Checkbox checked={tipoTiendas === 'totales'} onChange={() => setTipoTiendas('totales')} icon={<Box sx={{width:16,height:16,borderRadius:'50%',border:'1px solid gray'}}/>} checkedIcon={<Box sx={{width:16,height:16,borderRadius:'50%',border:'1px solid gray', bgcolor:'black'}}/>} />} label="Totales" />
-                                    <FormControlLabel control={<Checkbox checked={tipoTiendas === 'iguales'} onChange={() => setTipoTiendas('iguales')} icon={<Box sx={{width:16,height:16,borderRadius:'50%',border:'1px solid gray'}}/>} checkedIcon={<Box sx={{width:16,height:16,borderRadius:'50%',border:'1px solid gray', bgcolor:'black'}}/>} />} label="Iguales" />
-                                </Box>
-                            </Box>
-                        </Grid>
-                        <Grid item xs={4} sx={{ display: 'flex', flexDirection: 'column' }}>
-                            <FormControlLabel control={<Checkbox checked={chkNocturnas} onChange={(e)=>setChkNocturnas(e.target.checked)} />} label="SOLO NOCTURNAS" />
-                            <FormControlLabel control={<Checkbox checked={chkConIva} onChange={(e)=>setChkConIva(e.target.checked)} />} label="VENTAS CON IVA" />
-                            <FormControlLabel control={<Checkbox checked={chkPromociones} onChange={(e)=>setChkPromociones(e.target.checked)} />} label="SOLO PROMOCIONES" />
-                        </Grid>
-                    </Grid>
-
-                    {/* BOTONES DE REPORTES */}
-                    <Grid container spacing={2}>
-                        {["RESUMEN POR CLAVE", "RESUMEN POR DEPTO", "RESUMEN POR SUCURSAL", "RESUMEN POR CLASE", "RESUMEN POR AREA", "RESUMEN POR SUC. GLOBAL", "RESUMEN AÑO-MES"].map((btn, idx) => (
-                            <Grid item xs={4} key={idx}>
-                                <Button 
-                                    fullWidth 
-                                    variant="contained" 
-                                    onClick={() => dispararReporte(btn)}
-                                    sx={{ 
-                                        bgcolor: '#e3f2fd', color: '#333', fontWeight: 'bold', 
-                                        border: '1px solid #90caf9', boxShadow: 'none',
-                                        '&:hover': { bgcolor: '#bbdefb', boxShadow: 'none' }
-                                    }}
-                                >
-                                    {btn} 📊
-                                </Button>
-                            </Grid>
-                        ))}
-                    </Grid>
-                </Box>
-            </Box>
-        </Dialog>
-    );
-};
-
-// --- COMPONENTE AISLADO PARA REASIGNACIÓN MASIVA ---
-const ModalReasignacionMasiva = ({ open, onClose, consumoApi, setMessage, rows, onSuccess }: any) => {
-    const [lista, setLista] = useState<any[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [saving, setSaving] = useState(false);
-    const [seleccion, setSeleccion] = useState<any>(null);
-
-    useEffect(() => {
-        if (open) {
-            setSeleccion(null);
-            fetchLista();
-        }
-    }, [open]);
-
-    const fetchLista = async () => {
-        setLoading(true);
-        try {
-            const res = await consumoApi.get('/api/CatProductosC/sp_bw_cat_combo_jerarquia_plana');
-            setLista(res.data || []);
-        } catch (error) {
-            setMessage({ text: "Error al cargar clasificaciones", type: 'error' });
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleConfirmar = async () => {
-        if (!seleccion) return;
-        if (rows.length === 0) {
-            alert("No hay productos en la tabla para actualizar.");
-            return;
-        }
-
-        // Aquí le decimos al usuario exactamente a cuántos va a afectar
-        const confirmar = window.confirm(`¿Está seguro de reasignar los ${rows.length} productos filtrados en la tabla a la clasificación:\n\n${seleccion.d_area} > ${seleccion.d_depto} > ${seleccion.d_clase}?`);
-        if (!confirmar) return;
-
-        setSaving(true);
-        try {
-            // MAGIA: Aquí sacamos SOLO las claves de los productos que están en la tabla
-            const clavesSeparadasPorComa = rows.map((r: any) => r.clave).join(',');
-
-            const res = await consumoApi.post('/api/CatProductosC/sp_bw_cat_combo_reasignar', {
-                claves_prod: clavesSeparadasPorComa,
-                nuevo_area: seleccion.area,
-                nuevo_depto: seleccion.depto,
-                nuevo_clase: seleccion.clase
-            });
-
-            if (res.status === 200) {
-                setMessage({ text: `✅ ${rows.length} productos reasignados con éxito.`, type: 'success' });
-                onClose();
-                onSuccess(); // Dispara la recarga de la tabla principal
-            }
-        } catch (error) {
-            setMessage({ text: "Error al aplicar la reasignación masiva", type: 'error' });
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    return (
-        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-            <Box sx={{ p: 3, bgcolor: '#fdfdfd' }}>
-                <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#d32f2f', mb: 1 }}>
-                    ⚠️ Reasignación Masiva
-                </Typography>
-                <Typography variant="body2" sx={{ color: '#555', mb: 3 }}>
-                    Se cambiará el Área, Departamento y Clase de los <strong>{rows.length} productos</strong> que tienes filtrados actualmente. Selecciona la nueva clasificación:
-                </Typography>
-
-                <Autocomplete
-                    options={lista}
-                    loading={loading}
-                    getOptionLabel={(opt) => `${opt.d_area} > ${opt.d_depto} > ${opt.d_clase}`}
-                    value={seleccion}
-                    onChange={(e, newValue) => setSeleccion(newValue)}
-                    disabled={saving}
-                    renderInput={(params) => (
-                        <TextField {...params} label="Buscar nueva clasificación..." variant="outlined" autoFocus />
-                    )}
-                />
-
-                <Box sx={{ mt: 4, display: 'flex', justifyContent: 'space-between' }}>
-                    <Button onClick={onClose} variant="outlined" color="inherit" disabled={saving}>
-                        Cancelar
-                    </Button>
-                    <Button 
-                        variant="contained" 
-                        onClick={handleConfirmar} 
-                        disabled={!seleccion || saving}
-                        sx={{ bgcolor: '#d32f2f', color: '#fff', fontWeight: 'bold' }}
-                    >
-                        {saving ? "Procesando..." : "Confirmar Reasignación"}
-                    </Button>
-                </Box>
-            </Box>
-        </Dialog>
-    );
-};
-
 // --- COMPONENTE AISLADO PARA INFO STOCK ---
 const ModalInfoStock = ({ open, onClose, consumoApi, setMessage, productoForm }: any) => {
     const [datos, setDatos] = useState<any[]>([]);
@@ -1848,11 +1477,8 @@ const handleOpenProveedores = () => {
     setOpenProveedores(true);
 };
 
-const [openAnalisis, setOpenAnalisis] = useState(false);
 
-const [openReasignacionMasiva, setOpenReasignacionMasiva] = useState(false);
 
-const [openVentasComparativas, setOpenVentasComparativas] = useState(false);
 
 
 const handleSaveKit = async () => {
@@ -2191,6 +1817,7 @@ const handleOpenEdit = async (row: ProductoRow) => {
 
         // 3. Llenar el formulario con los 41 campos del objeto 'd'
 // --- BLOQUE 1: CALCULAR COSTOS CON IVA ANTES DE ABRIR EL MODAL ---
+const redondear = (num: number) => Math.round((Number(num || 0) + Number.EPSILON) * 100) / 100;
         const valTasaIva = Number(d.tasa_iva) || 0;
         const valCosto = Number(d.costo) || 0;
         const valCostoUnit = Number(d.costo_unitario) || 0;
@@ -2404,10 +2031,13 @@ const handleEjecutarClon = async () => {
 
 
 const calculateCosts = (name: string, val: number) => {
-    const tasa = productoForm.tasa_iva || 0.16;
-    const paq = productoForm.unidad_paq || 1;
+    const tasa = name === 'tasa_iva' ? val : (productoForm.tasa_iva || 0);
+    const paq = name === 'unidad_paq' ? val : (productoForm.unidad_paq || 1);
     let newForm = { ...productoForm, [name]: val };
     let valorIva = val;if (name === 'tasa_iva' && val > 1) {valorIva = val / 100;}
+
+// MAGIA: Forzamos matemáticamente a 2 decimales en cada cálculo
+const redondear = (num: number) => Math.round((Number(num || 0) + Number.EPSILON) * 100) / 100;
 
     switch (name) {
       case 'costo_sin_iva':
@@ -2458,7 +2088,12 @@ const calculateCosts = (name: string, val: number) => {
   };
 const handleProductoChange = (e: any) => {
     const { name, value, type, checked } = e.target;
-    const val = type === 'checkbox' ? checked : value;
+    let val = type === 'checkbox' ? checked : value;
+
+// --- MAGIA VISUAL: IVA y Comisiones (De entero a decimal interno) ---
+    if ((name === 'tasa_iva' || name === 'comision') && val !== '') {
+        val = Number(val) / 100;
+    }
 
     // Lista de campos que disparan cálculos automáticos
     const costFields = ['costo_sin_iva', 'costo_con_iva', 'costo_unitario', 'costo_unitario_iva', 'unidad_paq', 'tasa_iva', 'unidad_paq_traspaso'];
@@ -2603,7 +2238,85 @@ const handleSaveProducto = async () => {
     }
 };
 
+// --- NUEVA LÓGICA: ACTUALIZACIÓN RÁPIDA DE BANDERAS DESDE EL DATAGRID (Con reglas de negocio) ---
+  const processRowUpdate = async (newRow: ProductoRow, oldRow: ProductoRow) => {
+    const banderas = ['inv', 'obs', 'cont', 'prom', 'kit', 'ins', 'serv', 'prod', 'prod_libre'];
+    
+    // 1. Detectar exactamente qué bandera cambió
+    const changedField = banderas.find(b => (newRow as any)[b] !== (oldRow as any)[b]);
+    if (!changedField) return oldRow;
 
+    // 2. Clonamos la fila para aplicar las reglas de exclusión
+    let updatedRow = { ...newRow };
+
+    // 3. Reglas de negocio (Solo aplican si el usuario ENCENDIÓ un checkbox)
+    if ((updatedRow as any)[changedField] === true) {
+        switch (changedField) {
+            case 'ins': // Si es insumo...
+                updatedRow.serv = false;
+                updatedRow.prod = false;
+                updatedRow.kit = false;
+                break;
+            case 'serv': // Si es servicio o kit...
+            case 'kit':
+                updatedRow.ins = false;
+                updatedRow.inv = false;
+                updatedRow.prod = false;
+                updatedRow.cont = false;
+                updatedRow.prod_libre = false;
+                break;
+            case 'prod': // Si es producto...
+                updatedRow.ins = false;
+                updatedRow.serv = false;
+                updatedRow.kit = false;
+                break;
+            case 'inv': // Si es inventariable, controlado o libre...
+            case 'cont':
+            case 'prod_libre':
+                updatedRow.serv = false;
+                updatedRow.kit = false;
+                break;
+        }
+    }
+
+    // 4. Preparamos el Payload con la fila ya validada
+    try {
+        const payload = {
+            clave: updatedRow.clave,
+            inv: updatedRow.inv,
+            obs: updatedRow.obs,
+            cont: updatedRow.cont,
+            prom: updatedRow.prom,
+            kit: updatedRow.kit,
+            ins: updatedRow.ins,
+            serv: updatedRow.serv,
+            prod: updatedRow.prod,
+            prod_libre: updatedRow.prod_libre
+        };
+
+        // 5. Enviamos a la BD
+        const res = await consumoApi.put('/api/CatProductosC/sp_bw_cat_producto_update_banderas', payload);
+        
+        if (res.status === 200) {
+            setMessage({ text: `✅ Banderas actualizadas para la clave: ${updatedRow.clave}`, type: 'success' });
+            // Actualizamos la tabla visualmente con las reglas aplicadas
+            setRows(prevRows => prevRows.map(r => r.id === updatedRow.id ? updatedRow : r));
+            return updatedRow; 
+        }
+    } catch (error: any) {
+        console.error(error);
+        const errorMsg = error.response?.data?.mensaje || "Error al actualizar las banderas.";
+        setMessage({ text: `❌ ${errorMsg}`, type: 'error' });
+        return oldRow; // Revertimos el cambio visual si falla la red/BD
+    }
+    
+    return oldRow;
+  };
+
+  const handleProcessRowUpdateError = (error: any) => {
+      setMessage({ text: "Error interno en la tabla al actualizar.", type: 'error' });
+  };
+  // -----------------------------------------------------------------------
   const columns = useMemo<GridColDef[]>(() => [
     {
       field: 'acciones', headerName: 'Acci.', width: 100, sortable: false, filterable: false, headerAlign: 'center', align: 'center',       
@@ -2634,15 +2347,15 @@ return `${valorPorcentaje.toFixed(2)}%`;
 { field: 'clase', headerName: 'Clase', width: 150 },
 
 // --- BORRA LAS LÍNEAS QUE DECÍAN valueFormatter: (v: any) => areas.find(...) ---
-    { field: 'inv', headerName: 'INV', width: 60, type: 'boolean' },
-    { field: 'obs', headerName: 'OBS', width: 60, type: 'boolean' },
-    { field: 'cont', headerName: 'CONT', width: 60, type: 'boolean' },
-    { field: 'prom', headerName: 'PROM', width: 60, type: 'boolean' },
-    { field: 'kit', headerName: 'KIT', width: 60, type: 'boolean' },
-    { field: 'ins', headerName: 'INS', width: 60, type: 'boolean' },
-    { field: 'serv', headerName: 'SERV', width: 60, type: 'boolean' },
-    { field: 'prod', headerName: 'PROD', width: 60, type: 'boolean' },
-    { field: 'prod_libre', headerName: 'PROD. LIBRE', width: 100, type: 'boolean' },
+    { field: 'inv', headerName: 'INV', width: 60, type: 'boolean', editable: true },
+    { field: 'obs', headerName: 'OBS', width: 60, type: 'boolean', editable: true },
+    { field: 'cont', headerName: 'CONT', width: 60, type: 'boolean', editable: true },
+    { field: 'prom', headerName: 'PROM', width: 60, type: 'boolean', editable: true },
+    { field: 'kit', headerName: 'KIT', width: 60, type: 'boolean', editable: true },
+    { field: 'ins', headerName: 'INS', width: 60, type: 'boolean', editable: true },
+    { field: 'serv', headerName: 'SERV', width: 60, type: 'boolean', editable: true },
+    { field: 'prod', headerName: 'PROD', width: 60, type: 'boolean', editable: true },
+    { field: 'prod_libre', headerName: 'PROD. LIBRE', width: 100, type: 'boolean', editable: true },
   ], [areas, deptos, clases]);
 
   return (
@@ -2696,25 +2409,13 @@ return `${valorPorcentaje.toFixed(2)}%`;
 
       <Box sx={{ flex: 1, minHeight: 0, p: 2, pt: 0, display: 'flex', flexDirection: 'column' }}>
         <Paper sx={{ flex: 1, width: '100%', overflow: 'hidden', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', bgcolor: 'white', mb: 2 }}>
-          <DataGrid rows={rows} columns={columns} getRowId={(row) => row.id} loading={loading} paginationModel={paginationModel} onPaginationModelChange={setPaginationModel} pageSizeOptions={[10, 20, 30, 50, 100]} slots={{ toolbar: GridToolbar, pagination: CustomPagination }} slotProps={{ toolbar: { showQuickFilter: true } }} sx={{ border: 'none', height: '100%' }} />
+          <DataGrid rows={rows} columns={columns} getRowId={(row) => row.id} loading={loading} paginationModel={paginationModel} onPaginationModelChange={setPaginationModel} pageSizeOptions={[10, 20, 30, 50, 100]} slots={{ toolbar: GridToolbar, pagination: CustomPagination }} slotProps={{ toolbar: { showQuickFilter: true } }} sx={{ border: 'none', height: '100%' }} processRowUpdate={processRowUpdate}
+            onProcessRowUpdateError={handleProcessRowUpdateError}/>
         </Paper>
         <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
            <Button variant="contained" onClick={handleOpenAdd} sx={{ backgroundColor: '#333333', color: 'white', borderRadius: '8px', fontWeight: 'bold', padding: '10px 24px' }}>+ ALTA DE CLAVES</Button>
-            <Button 
-             variant="contained" 
-             onClick={() => setOpenReasignacionMasiva(true)}
-             disabled={rows.length === 0}
-             sx={{ backgroundColor: '#d32f2f', color: 'white', borderRadius: '8px', fontWeight: 'bold', padding: '10px 24px', '&:hover': { backgroundColor: '#b71c1c' } }}
-           >
-             🔄 REASIGNAR FILTRADOS
-           </Button>
-           <Button 
-             variant="contained" 
-             onClick={() => setOpenAnalisis(true)}
-             sx={{ backgroundColor: '#1976d2', color: 'white', borderRadius: '8px', fontWeight: 'bold', padding: '10px 24px', '&:hover': { backgroundColor: '#115293' } }}
-           >
-             📈 REPORTE POR CLAVE
-           </Button>
+            
+
 <Button 
              variant="contained" 
              onClick={handleExportExcel}
@@ -2826,15 +2527,26 @@ return `${valorPorcentaje.toFixed(2)}%`;
                 Estructura de Costos y Precios
             </Typography>
             <Grid container spacing={3}>
-              <Grid item xs={12} md={4}><TextField {...modalCommonProps} label="Unidades x Paquete" name="unidad_paq" type="number" value={productoForm.unidad_paq} onChange={handleProductoChange} /></Grid>
-                <Grid item xs={12} md={4}><TextField {...modalCommonProps} label="Tasa IVA (Ej. 0.16)" type="number" name="tasa_iva" value={productoForm.tasa_iva} onChange={handleProductoChange}inputProps={{ step: "0.01" }}/></Grid>
-                <Grid item xs={12} md={4}><TextField {...modalCommonProps} label="Costo sin IVA" type="number" name="costo_sin_iva" value={productoForm.costo_sin_iva} onChange={handleProductoChange} /></Grid>
-                <Grid item xs={12} md={4}><TextField {...modalCommonProps} label="Costo con IVA" type="number" name="costo_con_iva" value={productoForm.costo_con_iva} onChange={handleProductoChange} /></Grid>
-                <Grid item xs={12} md={4}><TextField {...modalCommonProps} label="Costo Promedio" type="number" name="costo_promedio" value={productoForm.costo_promedio} onChange={handleProductoChange} /></Grid>
-                <Grid item xs={12} md={4}><TextField {...modalCommonProps} label="Costo Unitario" type="number" name="costo_unitario" value={productoForm.costo_unitario} onChange={handleProductoChange} /></Grid>
-                <Grid item xs={12} md={4}><TextField {...modalCommonProps} label="Cto. Unit. c. IVA" type="number" name="costo_unitario_iva" value={productoForm.costo_unitario_iva} onChange={handleProductoChange} /></Grid>
-                <Grid item xs={12} md={4}><TextField {...modalCommonProps} label="Costo Auto." type="number" name="costo_autorizado" value={productoForm.costo_autorizado} onChange={handleProductoChange} /></Grid>
-            </Grid>
+              <Grid item xs={12} md={4}><TextField {...modalCommonProps} label="Unidades x Paquete" name="unidad_paq" type="number" value={productoForm.unidad_paq} onChange={handleProductoChange} /></Grid>
+               <Grid item xs={12} md={4}>
+    <TextField 
+        {...modalCommonProps} 
+        label="Tasa IVA (%)" 
+        type="number" 
+        name="tasa_iva" 
+        value={Math.round(Number(productoForm.tasa_iva || 0) * 100)} 
+        onChange={handleProductoChange} 
+        inputProps={{ step: "1" }}
+    />
+</Grid>
+                {/* APLICAMOS EL TOFIXED(2) DIRECTO EN EL VALUE */}
+                <Grid item xs={12} md={4}><TextField {...modalCommonProps} label="Costo sin IVA" type="number" name="costo_sin_iva" value={Number(productoForm.costo_sin_iva).toFixed(2)} onChange={handleProductoChange} inputProps={{ step: "0.01" }}/></Grid>
+                <Grid item xs={12} md={4}><TextField {...modalCommonProps} label="Costo con IVA" type="number" name="costo_con_iva" value={Number(productoForm.costo_con_iva).toFixed(2)} onChange={handleProductoChange} inputProps={{ step: "0.01" }}/></Grid>
+                <Grid item xs={12} md={4}><TextField {...modalCommonProps} label="Costo Promedio" type="number" name="costo_promedio" value={Number(productoForm.costo_promedio).toFixed(2)} onChange={handleProductoChange} inputProps={{ step: "0.01" }}/></Grid>
+                <Grid item xs={12} md={4}><TextField {...modalCommonProps} label="Costo Unitario" type="number" name="costo_unitario" value={Number(productoForm.costo_unitario).toFixed(2)} onChange={handleProductoChange} inputProps={{ step: "0.01" }}/></Grid>
+                <Grid item xs={12} md={4}><TextField {...modalCommonProps} label="Cto. Unit. c. IVA" type="number" name="costo_unitario_iva" value={Number(productoForm.costo_unitario_iva).toFixed(2)} onChange={handleProductoChange} inputProps={{ step: "0.01" }}/></Grid>
+                <Grid item xs={12} md={4}><TextField {...modalCommonProps} label="Costo Auto." type="number" name="costo_autorizado" value={Number(productoForm.costo_autorizado).toFixed(2)} onChange={handleProductoChange} inputProps={{ step: "0.01" }}/></Grid>
+            </Grid>
         </Box>
 
         {/* CONTENEDOR DE PROMOCIONES */}
@@ -2954,8 +2666,17 @@ return `${valorPorcentaje.toFixed(2)}%`;
                 <TextField {...modalSelectProps} select label="Finalidad" name="finalidad" value={productoForm.finalidad} onChange={handleProductoChange}>
                   {finalidades.map((f) => (<MenuItem key={f.id} value={f.id}>{f.descripcion}</MenuItem>))}
                 </TextField>
-              </Grid><Grid item xs={12} md={4}><TextField {...modalCommonProps} label="Comisión (%)" type="number" name="comision" value={productoForm.comision} onChange={handleProductoChange} /></Grid>
-                            </Grid>
+              </Grid><Grid item xs={12} md={3}>
+    <TextField 
+        {...modalCommonProps} 
+        label="Comisión (%)" 
+        name="comision" 
+        type="number" 
+        value={Math.round(Number(productoForm.comision || 0) * 100)} 
+        onChange={handleProductoChange} 
+        inputProps={{ step: "1" }} 
+    />
+</Grid> </Grid>
                         </Box>
                     </Grid>
                     <Grid item xs={12} md={6}>
@@ -3548,29 +3269,6 @@ return `${valorPorcentaje.toFixed(2)}%`;
     sucursales={sucursales}
 />
 
-{/* --- MODAL DE REASIGNACIÓN MASIVA --- */}
-<ModalReasignacionMasiva 
-    open={openReasignacionMasiva} 
-    onClose={() => setOpenReasignacionMasiva(false)} 
-    consumoApi={consumoApi} 
-    setMessage={setMessage} 
-    rows={rows} 
-    onSuccess={fetchProductos} 
-/>
-
-<ModalAnalisisPorClave 
-    open={openAnalisis} 
-    onClose={() => setOpenAnalisis(false)} 
-    onAbrirVentasComparativas={() => setOpenVentasComparativas(true)}
-/>
-
-{/* --- MODAL DE FILTROS: VENTAS COMPARATIVAS --- */}
-<ModalVentasComparativas
-    open={openVentasComparativas}
-    onClose={() => setOpenVentasComparativas(false)}
-    consumoApi={consumoApi}
-    setMessage={setMessage}
-/>
 
 <ModalInfoStock 
     open={openInfoStock} 

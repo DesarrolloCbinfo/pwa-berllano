@@ -143,7 +143,7 @@ const handleConfirmarSucursal = () => {
   setSession(usuarioFinal);
 
   const tokenData = {
-    claveDepartamento: usuarioFinal.idDepartamento || 0,
+    claveDepartamento: usuarioFinal.sucursal || 0,
     clavePerfiles: usuarioFinal.clavePerfil || 0,
     contra: usuarioFinal.password || "",
     mensaje: "Autenticación exitosa",
