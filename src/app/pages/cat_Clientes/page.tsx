@@ -33,6 +33,7 @@ interface ClienteRow {
   id: string;
   nombre_completo: string;
   fecha_alta: string;
+  fecha_act_formateada?: string;
   sucursal_nombre: string;
   ciudad: string;
   TotalRegistros?: number;
@@ -71,6 +72,8 @@ const initialFormState = {
   genero: '',
   clave_registro: '',
   suspendido: false,
+  fecha_alta: '',
+  fecha_act: '',
 };
 
 // --- PAGINACIÓN PERSONALIZADA ---
@@ -150,6 +153,22 @@ export default function CatClientes() {
 
   const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+
+  // --- FUNCIONES AUXILIARES ---
+  const formatDateForInput = (dateString: string | null | undefined): string => {
+    if (!dateString) return '';
+    try {
+      // Si viene en formato ISO "2019-11-06T11:53:00", extraer solo la fecha
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '';
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    } catch {
+      return '';
+    }
+  };
 
   // --- CARGAS DE DATOS ---
   const fetchSucursales = async () => {
@@ -260,6 +279,8 @@ export default function CatClientes() {
       genero: row.genero || '',
       clave_registro: '',
       suspendido: row.suspendido || false,
+      fecha_alta: row.fecha_alta || '',
+      fecha_act: row.fecha_act_formateada || '',
     });
     if (row.cp) fetchColonias(row.cp);
     setIsEditing(true);
@@ -290,7 +311,9 @@ const handleSave = async () => {
         sucursal_id: formData.sucursal_id,
         genero: formData.genero,
         clave_registro: formData.clave_registro,
-        suspendido: formData.suspendido
+        suspendido: formData.suspendido,
+        fecha_alta: formData.fecha_alta,
+        fecha_act: formData.fecha_act
     };
     try {
       if (isEditing) {
@@ -727,7 +750,28 @@ return (
                   Configuración y Estatus
                 </Typography>
                 <Grid container spacing={3}>
-                  <Grid item xs={12} sm={8}>
+                  <Grid item xs={12} sm={3}>
+                    <TextField 
+                      {...commonProps} 
+                      type="date"
+                      label='Fecha Alta' 
+                      name="fecha_alta" 
+                      value={formatDateForInput(formData.fecha_alta)} 
+                      onChange={handleInputChange}
+                      InputLabelProps={{ shrink: true }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={3}>
+                    <TextField 
+                      {...commonProps} 
+                      label='Fecha Registro' 
+                      name="fecha_act" 
+                      value={formData.fecha_act} 
+                      onChange={handleInputChange}
+                      placeholder="DD/MM/YYYY"
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={3}>
                     <TextField 
                       {...selectProps} 
                       select 
@@ -743,7 +787,7 @@ return (
                       ))}
                     </TextField>
                   </Grid>
-                  <Grid item xs={12} sm={4}>
+                  <Grid item xs={12} sm={3}>
                     <Box sx={{
                       p: 2,
                       border: '1.5px solid #e0e0e0',
