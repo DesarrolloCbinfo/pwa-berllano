@@ -1748,7 +1748,7 @@ const handleOpenStock = () => {
       const rowsMapped: ProductoRow[] = data.map((item: any) => ({
         id: item.id, clave: item.Clave || '', descripcion: item.descripcion || item.Descripcion || '', marca: item.Marca || '',
         ex: Number(item.Ex) || 0, costo: Number(item.Costo) || 0, precio: Number(item.Precio) || 0,
-        margen: Number(item.Margen) || 0, iva: Number(item.IVA) || 0, area: item.Area || '', 
+        margen: Number(item.Margen) || 0, iva: (Number(item.IVA) || 0) * 100, area: item.Area || '', 
         depto: item.Depto || '', clase: item.Clase || '', inv: item.INV ?? false, obs: item.OBS ?? false,
         cont: item.CONT ?? false, prom: item.PROM ?? false, kit: item.KIT ?? false, ins: item.INS ?? false,
         serv: item.SERV ?? false, prod: item.PROD ?? false, prod_libre: item.PROD_LIBRE ?? false,
@@ -1983,7 +1983,7 @@ const handleEjecutarClon = async () => {
         "CLAVE PROD": row.clave,
         "DESCRIPCION 1": row.descripcion1 || row.descripcion,
         "SUCURSAL ORIGEN": row.sucursal_origen,
-        "TASA IVA": row.tasa_iva || row.iva,
+        "TASA IVA": `${Number(row.iva || 0).toFixed(2)}%`,
         "AREA": row.area,
         "DESCRIPCION": row.descripcion,
         "DEPTO": row.depto,
@@ -2198,6 +2198,18 @@ const handleSaveProducto = async () => {
         setMessage({ text: "Clave, descripción y familia son obligatorios", type: 'error' });
         return;
     }
+const cantidadesValidas = cantidadesDescarga
+        .map(c => Number(c.cantidad ?? c.Cantidad))
+        .filter(n => !isNaN(n) && n > 0);
+
+    // Usamos un Set (conjunto) que automáticamente elimina duplicados. 
+    // Si el tamaño del Set es menor que el arreglo original, ¡hay un duplicado!
+    const cantidadesUnicas = new Set(cantidadesValidas);
+    if (cantidadesValidas.length !== cantidadesUnicas.size) {
+        setMessage({ text: "❌ Error: Hay cantidades duplicadas en la pestaña de Logística.", type: 'error' });
+        setModalTabValue(2); // Mandamos al usuario directo a la pestaña Logística para que lo corrija
+        return;
+    }
 
     try {
         const marcaRel = marcasUnicasModal.find(m => String(m.id) === String(productoForm.marca));
@@ -2381,14 +2393,23 @@ const handleSaveProducto = async () => {
     { field: 'ex', headerName: 'Ex', width: 80, type: 'number' },
     { field: 'costo', headerName: 'Costo', width: 100, type: 'number', valueFormatter: (v: any) => v == null ? '$0.00' : `$${Number(v).toFixed(2)}` },
     { field: 'precio', headerName: 'Precio', width: 100, type: 'number', valueFormatter: (v: any) => v == null ? '$0.00' : `$${Number(v).toFixed(2)}` },
-{field: 'margen', headerName: 'Margen', width: 100, type: 'number', valueFormatter: (params: any) => {if (params == null) return '0.00%';
-// Multiplicamos por 100 para convertir el decimal a porcentaje entero/decimal
-const valorPorcentaje = Number(params) * 100;
-return `${valorPorcentaje.toFixed(2)}%`;
-} 
-},
- { field: 'iva', headerName: 'IVA', width: 80, type: 'number', valueFormatter: (v: any) => v == null ? '0.00' : Number(v).toFixed(2) },
-    // --- BUSCA ESTO Y REEMPLÁZALO ---
+{ 
+      field: 'margen', 
+      headerName: 'Margen', 
+      width: 100, 
+      type: 'number', 
+      renderCell: (params: GridRenderCellParams) => {
+          const valor = Number(params.row.margen) || 0;
+          return `${(valor * 100).toFixed(2)}%`;
+      } 
+    },
+    { 
+    field: 'iva', 
+    headerName: 'IVA', 
+    width: 80, 
+    type: 'number', 
+    valueFormatter: (params: any) => `${Number(params ?? 0).toFixed(2)}%` 
+}, // --- BUSCA ESTO Y REEMPLÁZALO ---
 
 { field: 'area', headerName: 'Área', width: 150 },
 { field: 'depto', headerName: 'Depto.', width: 150 },
@@ -2457,8 +2478,60 @@ return `${valorPorcentaje.toFixed(2)}%`;
 
       <Box sx={{ flex: 1, minHeight: 0, p: 2, pt: 0, display: 'flex', flexDirection: 'column' }}>
         <Paper sx={{ flex: 1, width: '100%', overflow: 'hidden', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', bgcolor: 'white', mb: 2 }}>
-          <DataGrid rows={rows} columns={columns} getRowId={(row) => row.id} loading={loading} paginationModel={paginationModel} onPaginationModelChange={setPaginationModel} pageSizeOptions={[10, 20, 30, 50, 100]} slots={{ toolbar: GridToolbar, pagination: CustomPagination }} slotProps={{ toolbar: { showQuickFilter: true } }} sx={{ border: 'none', height: '100%' }} processRowUpdate={processRowUpdate}
-            onProcessRowUpdateError={handleProcessRowUpdateError}/>
+          <DataGrid 
+  rows={rows} 
+  columns={columns} 
+  getRowId={(row) => row.id} 
+  loading={loading} 
+  paginationModel={paginationModel} 
+  onPaginationModelChange={setPaginationModel} 
+  pageSizeOptions={[10, 20, 30, 50, 100]} 
+  slots={{ toolbar: GridToolbar, pagination: CustomPagination }} 
+  slotProps={{ toolbar: { showQuickFilter: true } }} 
+  processRowUpdate={processRowUpdate}
+  onProcessRowUpdateError={handleProcessRowUpdateError}
+  
+  // 1. APAGAR LA VIRTUALIZACIÓN (Esto permite que el CSS Sticky funcione)
+  disableVirtualization
+
+  sx={{ 
+    border: 'none', 
+    height: '100%',
+    
+    // 2. MATAR EL TRANSFORM INTERNO DE MUI
+    '& .MuiDataGrid-virtualScrollerContent': { transform: 'none !important' },
+    '& .MuiDataGrid-virtualScrollerRenderZone': { transform: 'none !important' },
+
+    // 3. CONGELAR COLUMNA 1: ACCIONES (Empieza en 0)
+    '& .MuiDataGrid-cell[data-field="acciones"]': { position: 'sticky', left: 0, zIndex: 3, backgroundColor: '#fff' },
+    '& .MuiDataGrid-columnHeader[data-field="acciones"]': { position: 'sticky', left: 0, zIndex: 4, backgroundColor: '#fff' },
+    
+    // 4. CONGELAR COLUMNA 2: CLAVE (Empieza en 100)
+    '& .MuiDataGrid-cell[data-field="clave"]': { position: 'sticky', left: 100, zIndex: 3, backgroundColor: '#fff' },
+    '& .MuiDataGrid-columnHeader[data-field="clave"]': { position: 'sticky', left: 100, zIndex: 4, backgroundColor: '#fff' },
+
+    // 5. CONGELAR COLUMNA 3: DESCRIPCIÓN (Empieza en 220)
+    '& .MuiDataGrid-cell[data-field="descripcion"]': { 
+        position: 'sticky', 
+        left: 220, 
+        zIndex: 3, 
+        backgroundColor: '#fff',
+        boxShadow: '4px 0px 5px -2px rgba(0,0,0,0.1)' // Sombra elegante para notar el corte
+    },
+    '& .MuiDataGrid-columnHeader[data-field="descripcion"]': { 
+        position: 'sticky', 
+        left: 220, 
+        zIndex: 4, 
+        backgroundColor: '#fff',
+        boxShadow: '4px 0px 5px -2px rgba(0,0,0,0.1)' 
+    },
+
+    // MAGIA EXTRA: Iluminar la fila donde está el mouse para que el usuario no se pierda al hacer scroll
+    '& .MuiDataGrid-row:hover .MuiDataGrid-cell': {
+        backgroundColor: '#e3f2fd', 
+    }
+  }} 
+/>
         </Paper>
         <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
            <Button variant="contained" onClick={handleOpenAdd} sx={{ backgroundColor: '#333333', color: 'white', borderRadius: '8px', fontWeight: 'bold', padding: '10px 24px' }}>+ ALTA DE CLAVES</Button>
