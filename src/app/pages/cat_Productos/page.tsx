@@ -212,7 +212,6 @@ const initialProductoState: ProductoForm = {
   controlado: false,
   producto_libre: true,
   clave_proveedor: '',
-  clave_sas: '',
   clave_sap: '',
   sucursal_origen: '',
   finalidad: '',
@@ -1477,6 +1476,38 @@ const handleOpenProveedores = () => {
     setOpenProveedores(true);
 };
 
+const handleAddCantidad = () => {
+    setCantidadesDescarga([...cantidadesDescarga, { cantidad: 0 }]);
+};
+
+const handleDeleteCantidad = (index: number) => {
+    const nuevas = [...cantidadesDescarga];
+    nuevas.splice(index, 1);
+    setCantidadesDescarga(nuevas);
+};
+
+const handleCantidadChange = (index: number, valor: any) => {
+    const nuevas = [...cantidadesDescarga];
+    nuevas[index] = { ...nuevas[index], cantidad: valor === '' ? '' : Number(valor) };
+    setCantidadesDescarga(nuevas);
+};
+
+const handlePrecioLocalChange = (index: number, campo: string, valor: any) => {
+    const copiaPrecios = [...precios];
+    
+    // Convertimos a número. Si el usuario borra todo el input, ponemos 0 para evitar errores
+    const valorNumerico = valor === '' ? 0 : Number(valor);
+    
+    // Actualizamos tanto la versión en minúscula como en mayúscula 
+    // para que la tabla y la API no se confundan
+    copiaPrecios[index] = { 
+        ...copiaPrecios[index], 
+        [campo.toLowerCase()]: valorNumerico,
+        [campo.charAt(0).toUpperCase() + campo.slice(1)]: valorNumerico 
+    };
+    
+    setPrecios(copiaPrecios);
+};
 
 
 
@@ -2191,7 +2222,6 @@ const handleSaveProducto = async () => {
             sucursal_origen: Number(productoForm.sucursal_origen) || 0,
 
             unidad_paq_traspaso: Number(productoForm.unidad_paq_traspaso) || 1,
-            clave_sas: productoForm.clave_sas || productoForm.clave_prod,
             clave_prov: productoForm.clave_proveedor || '',
 
             inventariable: productoForm.inventariable,
@@ -2223,14 +2253,32 @@ const handleSaveProducto = async () => {
         }
 
         if (response.status === 200) {
-            setMessage({ 
-                text: claveSeleccionada ? "✅ Producto actualizado correctamente" : "✅ Producto registrado con éxito", 
-                type: 'success' 
-            });
+    // 1. Preparamos los datos de la tabla de precios
+    // Mapeamos para que los nombres coincidan con los parámetros de la API (clave_lista, precio, margen)
+    const payloadPrecios = precios.map(p => ({
+        clave_lista: Number(p.Lista || p.lista || p.clave_lista),
+        precio: Number(p.precio ?? p.Precio ?? 0),
+        margen: Number(p.margen ?? p.Margen ?? 0)
+    }));
 
-            handleCloseModal();
-            fetchProductos();
-        }
+    // --- NUEVO: GUARDAR CANTIDADES ---
+    const payloadCantidades = cantidadesDescarga
+        .map(c => Number(c.cantidad ?? c.Cantidad))
+        .filter(n => !isNaN(n) && n > 0); // Solo mandamos números válidos mayores a 0
+
+    await consumoApi.post(`/api/CatProductosC/sp_bw_cat_producto_cantidades_save?clave=${productoForm.clave_prod}`, payloadCantidades);
+
+    await consumoApi.put(`/api/CatProductosC/sp_bw_cat_producto_precios_update?clave=${productoForm.clave_prod}`, payloadPrecios);
+
+    // 3. Finalizamos el flujo
+    setMessage({ 
+        text: claveSeleccionada ? "✅ Producto y Precios actualizados" : "✅ Producto registrado con éxito", 
+        type: 'success' 
+    });
+
+    handleCloseModal();
+    fetchProductos();
+}
     } catch (error: any) {
         console.error(error);
         const errorMsg = error.response?.data?.mensaje || "Error al procesar el registro";
@@ -2597,50 +2645,78 @@ return `${valorPorcentaje.toFixed(2)}%`;
                     </TableHead>
                     <TableBody>
     {precios.length > 0 ? (
-        precios.map((p, index) => {
-            // Extraemos los valores con nombres exactos del SP
-            const numLista = p.Lista || p.lista || '';
-            const descLista = p["Lista de Precios"] || p["lista de precios"] || '';
-            const valPrecio = Number(p.Precio || p.precio) || 0;
-            const valMargen = Number(p.Margen || p.margen) || 0;
-            const costoUnitario = Number(productoForm.costo_unitario) || 0;
-            const tasaIva = Number(productoForm.tasa_iva) || 0;
-            const costoConIva = costoUnitario * (1 + tasaIva);
-            //real
-            let valReal = 0;
-            if (costoConIva > 0) {
-                valReal = (valPrecio - costoConIva) / costoConIva;
-            } else if (valPrecio > 0) {
-                valReal = 1; // Si no hay costo pero sí precio, el margen es 100%
-            }
+    precios.map((p, index) => {
+        // Normalizamos los nombres de las columnas que vienen del SP
+        const numLista  = p.Lista || p.lista || p.clave_lista;
+        const descLista = p["Lista de Precios"] || p["lista de precios"] || '';
+        const valPrecio = p.precio ?? p.Precio ?? 0;
+        const valMargen = p.margen ?? p.Margen ?? 0;
+        
+        // --- Cálculo visual del Real % ---
+        const costoUnitario = Number(productoForm.costo_unitario) || 0;
+        const tasaIva = Number(productoForm.tasa_iva) || 0;
+        const costoConIva = costoUnitario * (1 + tasaIva);
+        let valReal = 0;
+        if (costoConIva > 0) {
+            valReal = (valPrecio - costoConIva) / costoConIva;
+        }
 
-            return (
-                <TableRow key={index} hover>
-                    <TableCell>{numLista}</TableCell>
-                    <TableCell>{descLista}</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 600 }}>
-                        ${valPrecio.toFixed(2)}
-                    </TableCell>
-                    <TableCell align="right" sx={{ color: valMargen < 0 ? 'error.main' : 'success.main', fontWeight: 600 }}>
-                        {(valMargen * 100).toFixed(2)}%
-                    </TableCell>
-                <TableCell align="right" sx={{ 
-                        fontWeight: 'bold', 
-                        color: valReal < 0 ? '#d32f2f' : '#2e7d32',
-                        bgcolor: valReal < 0 ? '#fff5f5' : 'transparent' 
-                    }}>
-                        {(valReal * 100).toFixed(2)}%
-                    </TableCell>
-                </TableRow>
-            );
-        })
-    ) : (
-        <TableRow>
-            <TableCell colSpan={4} align="center" sx={{ py: 3, color: '#999' }}>
-                {claveSeleccionada ? "Consultando precios..." : "Las listas de precios se generarán al guardar el producto."}
-            </TableCell>
-        </TableRow>
-    )}
+        return (
+            <TableRow key={index} hover>
+                <TableCell>{numLista}</TableCell>
+                <TableCell>{descLista}</TableCell>
+                
+                {/* PRECIO EDITABLE */}
+                <TableCell align="right">
+                   <TextField
+        type="number"
+        variant="standard"
+        // Leemos p.precio (lo nuevo) o p.Precio (lo que viene de BD)
+        value={p.precio ?? p.Precio ?? 0}
+        onChange={(e) => handlePrecioLocalChange(index, 'precio', e.target.value)}
+        onFocus={(e) => e.target.select()} // Selecciona todo al dar clic para borrar rápido
+        onWheel={(e) => e.target instanceof HTMLElement && e.target.blur()} // Evita cambios con el scroll
+        inputProps={{ 
+            step: "any", 
+            style: { textAlign: 'right', fontWeight: 'bold', width: '100px' } 
+        }}
+    />
+                </TableCell>
+
+                {/* MARGEN EDITABLE */}
+                <TableCell align="right">
+                    <TextField
+        type="number"
+        variant="standard"
+        value={p.margen ?? p.Margen ?? 0}
+        onChange={(e) => handlePrecioLocalChange(index, 'margen', e.target.value)}
+        onFocus={(e) => e.target.select()}
+        onWheel={(e) => e.target instanceof HTMLElement && e.target.blur()}
+        inputProps={{ 
+            step: "any", 
+            style: { textAlign: 'right', width: '80px' } 
+        }}
+    />
+                </TableCell>
+
+                {/* REAL % (SOLO LECTURA CALCULADO) */}
+                <TableCell align="right" sx={{ 
+                    fontWeight: 'bold', 
+                    color: valReal < 0 ? '#d32f2f' : '#2e7d32',
+                    bgcolor: valReal < 0 ? '#fff5f5' : 'transparent'
+                }}>
+                    {(valReal * 100).toFixed(2)}%
+                </TableCell>
+            </TableRow>
+        );
+    })
+) : (
+    <TableRow>
+        <TableCell colSpan={5} align="center" sx={{ py: 3, color: '#999' }}>
+            {claveSeleccionada ? "Cargando precios..." : "Se generarán al guardar."}
+        </TableCell>
+    </TableRow>
+)}
 </TableBody>
                 </Table>
             </TableContainer>
@@ -2660,7 +2736,6 @@ return `${valorPorcentaje.toFixed(2)}%`;
                             </Typography>
                             <Grid container spacing={2}>
                                 <Grid item xs={12}><TextField {...modalSelectProps} select label="Proveedor" name="clave_proveedor" value={productoForm.clave_proveedor} onChange={handleProductoChange}>{proveedores.map((p) => (<MenuItem key={p.id} value={p.id}>{p.descripcion}</MenuItem>))}</TextField></Grid>
-                                <Grid item xs={12}><TextField {...modalCommonProps} label="Clave SAS" name="clave_sas" value={productoForm.clave_sas} onChange={handleProductoChange} /></Grid>
                                 <Grid item xs={12}><TextField {...modalCommonProps} label="Clave SAP" name="clave_sap" value={productoForm.clave_sap} onChange={handleProductoChange} /></Grid> 
                                 <Grid item xs={12}>
                 <TextField {...modalSelectProps} select label="Finalidad" name="finalidad" value={productoForm.finalidad} onChange={handleProductoChange}>
@@ -2701,34 +2776,45 @@ return `${valorPorcentaje.toFixed(2)}%`;
                     Cantidades a Descargar
                 </Typography>
                 
-                <TableContainer component={Paper} sx={{ maxWidth: '100%', maxHeight: 200, borderRadius: '8px', border: '1px solid #e0e0e0' }}>
-                    <Table stickyHeader size="small">
-                        <TableHead>
-                            <TableRow>
-                                <TableCell sx={{ bgcolor: '#b71c1c', color: 'white', fontWeight: 'bold', textAlign: 'center' }}>
-                                    Cantidad
-                                </TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {cantidadesDescarga.length > 0 ? (
-                                cantidadesDescarga.map((c, index) => (
-                                    <TableRow key={index} hover>
-                                        <TableCell align="center" sx={{ fontSize: '0.9rem', fontWeight: 500 }}>
-                                            {Number(c.cantidad || c.Cantidad).toFixed(3)}
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            ) : (
-                                <TableRow>
-                                    <TableCell align="center" sx={{ py: 2, color: '#999', fontSize: '0.8rem' }}>
-                                        {claveSeleccionada ? "Sin registros" : "Se definen en el ERP"}
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
+                <TableContainer component={Paper} sx={{ maxWidth: '100%', maxHeight: 250, borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+    <Table stickyHeader size="small">
+        <TableHead>
+            <TableRow>
+                <TableCell sx={{ bgcolor: '#b71c1c', color: 'white', fontWeight: 'bold', textAlign: 'center' }}>Cantidad</TableCell>
+                <TableCell sx={{ bgcolor: '#b71c1c', color: 'white', fontWeight: 'bold', textAlign: 'center', width: '50px' }}>Acción</TableCell>
+            </TableRow>
+        </TableHead>
+        <TableBody>
+            {cantidadesDescarga.map((c, index) => (
+                <TableRow key={index} hover>
+                    <TableCell align="center">
+                        <TextField
+                            type="number"
+                            variant="standard"
+                            value={c.cantidad ?? c.Cantidad ?? 0}
+                            onChange={(e) => handleCantidadChange(index, e.target.value)}
+                            onFocus={(e) => e.target.select()}
+                            inputProps={{ step: "any", style: { textAlign: 'center' } }}
+                            fullWidth
+                        />
+                    </TableCell>
+                    <TableCell align="center">
+                        <IconButton size="small" color="error" onClick={() => handleDeleteCantidad(index)}>
+                            <DeleteIcon fontSize="small" />
+                        </IconButton>
+                    </TableCell>
+                </TableRow>
+            ))}
+            <TableRow>
+                <TableCell colSpan={2} align="center">
+                    <Button size="small" onClick={handleAddCantidad} sx={{ color: '#b71c1c', fontWeight: 'bold' }}>
+                        + Agregar Fila
+                    </Button>
+                </TableCell>
+            </TableRow>
+        </TableBody>
+    </Table>
+</TableContainer>
             </Box>
         </Grid>
                 </Grid>
@@ -2746,11 +2832,16 @@ return `${valorPorcentaje.toFixed(2)}%`;
       </Typography>
       <Grid container spacing={2}>
         {[
-          { label: "Es Insumo", name: "es_insumo" }, { label: "Es Servicio", name: "es_servicio" },
-          { label: "Inventariable", name: "inventariable" }, { label: "Entrega Directa", name: "entrega_directa" },
-          { label: "Fraccionable", name: "fraccionable" }, { label: "Obsoleto", name: "obsoleto" },
-          { label: "Es Producto", name: "es_producto" }, { label: "Es Kit", name: "es_kit" },
-          { label: "Controlado", name: "controlado" }, { label: "Producto Libre", name: "producto_libre" }
+         { label: "Es Insumo", name: "es_insumo" },
+          { label: "Fraccionable", name: "fraccionable" },
+          { label: "Es Kit", name: "es_kit" },
+          { label: "Es Servicio", name: "es_servicio" },
+          { label: "Obsoleto", name: "obsoleto" },
+          { label: "Controlado", name: "controlado" },
+          { label: "Inventariable", name: "inventariable" },
+          { label: "Es Producto", name: "es_producto" },
+          { label: "Producto Libre", name: "producto_libre" },
+          { label: "Entrega Directa de Proveedor", name: "entrega_directa" }
         ].map((item) => (
           <Grid item xs={6} sm={4} md={2.4} key={item.name}>
             <Box sx={{ p: 1, border: '1px solid #eee', borderRadius: '8px', height: '100%', display: 'flex', alignItems: 'center', bgcolor: '#fafafa' }}>
