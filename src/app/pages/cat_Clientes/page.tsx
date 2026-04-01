@@ -289,38 +289,32 @@ export default function CatClientes() {
   };
 
 const handleSave = async () => {
-    if (!formData.clave_cliente || !formData.nombre || !formData.sucursal_id) {
-      Swal.fire('Atención', 'La Clave, Nombre y Sucursal son obligatorios', 'warning');
+    if (!formData.nombre || !formData.sucursal_id) {
+      Swal.fire('Atención', 'El Nombre y Sucursal son obligatorios', 'warning');
       return;
     }
     const paramsToSend = {
-        clave_cliente: formData.clave_cliente, 
-        No_cliente: formData.clave_cliente,    
         nombre: formData.nombre,
-        apellido_paterno: formData.apellido_paterno, 
-        ap_paterno: formData.apellido_paterno,       
-        apellido_materno: formData.apellido_materno, 
-        ap_materno: formData.apellido_materno,       
+        sucursal_id: Number(formData.sucursal_id),
+        suspendido: formData.suspendido,
+        apellido_paterno: formData.apellido_paterno,
+        apellido_materno: formData.apellido_materno,
         email: formData.email,
         telefono: formData.telefono,
-        domicilio: formData.domicilio,
         ciudad: formData.ciudad,
-        estado: formData.estado,
         cp: formData.cp,
         colonia: formData.colonia,
-        sucursal_id: formData.sucursal_id,
+        estado: formData.estado,
+        domicilio: formData.domicilio,
         genero: formData.genero,
-        clave_registro: formData.clave_registro,
-        suspendido: formData.suspendido,
-        fecha_alta: formData.fecha_alta,
-        fecha_act: formData.fecha_act
+        clave_registro: formData.clave_registro
     };
     try {
       if (isEditing) {
-        await consumoApi.put('/api/CatClientesSuc/sp_bw_cat_clientes_upd', null, { params: paramsToSend });
+        await consumoApi.put('/api/CatClientesSuc/sp_bw_cat_clientes_upd', paramsToSend);
         Swal.fire({ title: '¡Éxito!', text: 'Cliente actualizado correctamente', icon: 'success', confirmButtonColor: '#333333' });
       } else {
-        await consumoApi.post('/api/CatClientesSuc/sp_bw_cat_clientes_ins', null, { params: paramsToSend });
+        await consumoApi.post('/api/CatClientesSuc/sp_bw_cat_clientes_ins', paramsToSend);
         Swal.fire({ title: '¡Éxito!', text: 'Cliente creado correctamente', icon: 'success', confirmButtonColor: '#333333' });
       }
       setOpenModal(false);
@@ -626,57 +620,6 @@ return (
           {/* --- PESTAÑA 1: INFORMACIÓN GENERAL --- */}
           {tabValue === 0 && (
             <Box sx={{ animation: 'fadeIn 0.3s ease-in-out' }}>
-              {/* Sección: Identificación */}
-              <Box sx={{ mb: 4 }}>
-                <Typography variant="subtitle1" sx={{ 
-                  fontWeight: 600, 
-                  color: '#333', 
-                  mb: 2,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1
-                }}>
-                  <Box sx={{ 
-                    width: 4, 
-                    height: 20, 
-                    backgroundColor: '#333333', 
-                    borderRadius: 2 
-                  }} />
-                  Identificación del Cliente
-                </Typography>
-                <Grid container spacing={3}>
-                  <Grid item xs={12} sm={4}>
-                    <TextField 
-                      {...commonProps} 
-                      label='Clave Cliente' 
-                      name="clave_cliente" 
-                      value={formData.clave_cliente} 
-                      onChange={handleInputChange} 
-                      disabled={isEditing}
-                      sx={{
-                        ...commonProps.sx,
-                        '& .MuiOutlinedInput-root.Mui-disabled': {
-                          backgroundColor: '#f5f5f5',
-                          '& .MuiInputBase-input': {
-                            color: '#666'
-                          }
-                        }
-                      }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={8}>
-                    <TextField 
-                      {...commonProps} 
-                      label='Nombre Completo' 
-                      name="nombre" 
-                      value={formData.nombre} 
-                      onChange={handleInputChange} 
-                      required
-                    />
-                  </Grid>
-                </Grid>
-              </Box>
-
               {/* Sección: Información Personal */}
               <Box sx={{ mb: 4 }}>
                 <Typography variant="subtitle1" sx={{ 
@@ -696,6 +639,16 @@ return (
                   Información Personal
                 </Typography>
                 <Grid container spacing={3}>
+                  <Grid item xs={12} sm={8}>
+                    <TextField 
+                      {...commonProps} 
+                      label='Nombre' 
+                      name="nombre" 
+                      value={formData.nombre} 
+                      onChange={handleInputChange} 
+                      required
+                    />
+                  </Grid>
                   <Grid item xs={12} sm={4}>
                     <TextField 
                       {...commonProps} 
