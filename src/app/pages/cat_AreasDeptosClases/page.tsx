@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import Swal from 'sweetalert2'
 import { DataGrid, GridColDef } from '@mui/x-data-grid'
 import { Box, CircularProgress, Alert, Typography, Paper, Grid } from '@mui/material'
 import useConsumoApi from '../../../hooks/useConsumoApi'
@@ -164,7 +165,15 @@ export default function CatAreasDeptosClases() {
   }
 
   const handleSaveArea = async () => {
-    if (!areaForm.area || !areaForm.descripcion) return
+    if (!areaForm.area || !areaForm.descripcion) {
+      Swal.fire({
+        title: 'Atención',
+        text: 'El área y la descripción son obligatorios',
+        icon: 'warning',
+        confirmButtonColor: '#333333'
+      });
+      return;
+    }
 
     setLoading(true)
     try {
@@ -174,6 +183,12 @@ export default function CatAreasDeptosClases() {
           params: { area: areaForm.area, descripcion: areaForm.descripcion }
         })
         if (res.data?.[0]?.codigo === 0) {
+          Swal.fire({
+            title: '¡Éxito!',
+            text: 'Área actualizada correctamente',
+            icon: 'success',
+            confirmButtonColor: '#333333'
+          });
           setMessage({ text: "Área actualizada correctamente", type: 'success' })
         }
       } else {
@@ -182,12 +197,24 @@ export default function CatAreasDeptosClases() {
           params: { area: areaForm.area, descripcion: areaForm.descripcion }
         })
         if (res.data?.[0]?.codigo === 0) {
+          Swal.fire({
+            title: '¡Éxito!',
+            text: 'Área agregada correctamente',
+            icon: 'success',
+            confirmButtonColor: '#333333'
+          });
           setMessage({ text: "Área agregada correctamente", type: 'success' })
         }
       }
       fetchAreas()
       setOpenAreaModal(false)
     } catch (error: any) {
+      Swal.fire({
+        title: 'Error',
+        text: 'Error al guardar área',
+        icon: 'error',
+        confirmButtonColor: '#333333'
+      });
       setMessage({ text: "Error al guardar área", type: 'error' })
     } finally {
       setLoading(false)
@@ -195,7 +222,18 @@ export default function CatAreasDeptosClases() {
   }
 
   const handleDeleteArea = async (area: CatArea) => {
-    if (!window.confirm(`¿Seguro que desea eliminar el área "${area.descripcion}"?`)) return
+    const result = await Swal.fire({
+      title: '¿Eliminar Área?',
+      text: `¿Seguro que desea eliminar el área "${area.descripcion}"? Esta acción no se puede deshacer.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d32f2f',
+      cancelButtonColor: '#333333',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar'
+    });
+    
+    if (!result.isConfirmed) return;
 
     setLoading(true)
     try {
@@ -203,10 +241,22 @@ export default function CatAreasDeptosClases() {
         params: { area: area.area }
       })
       if (res.data?.[0]?.codigo === 0) {
+        Swal.fire({
+          title: '¡Éxito!',
+          text: 'Área eliminada correctamente',
+          icon: 'success',
+          confirmButtonColor: '#333333'
+        });
         setMessage({ text: "Área eliminada correctamente", type: 'success' })
         fetchAreas()
       }
     } catch (error: any) {
+      Swal.fire({
+        title: 'Error',
+        text: 'Error al eliminar área',
+        icon: 'error',
+        confirmButtonColor: '#333333'
+      });
       setMessage({ text: "Error al eliminar área", type: 'error' })
     } finally {
       setLoading(false)
@@ -241,7 +291,15 @@ export default function CatAreasDeptosClases() {
   }
 
   const handleSaveDepto = async () => {
-    if (!deptoForm.depto || !deptoForm.area || !deptoForm.descripcion) return
+    if (!deptoForm.depto || !deptoForm.area || !deptoForm.descripcion) {
+      Swal.fire({
+        title: 'Atención',
+        text: 'El departamento, área y descripción son obligatorios',
+        icon: 'warning',
+        confirmButtonColor: '#333333'
+      });
+      return;
+    }
 
     setLoading(true)
     try {
@@ -251,12 +309,28 @@ export default function CatAreasDeptosClases() {
             depto: deptoForm.depto, 
             area: deptoForm.area, 
             descripcion: deptoForm.descripcion,
-            claveSAT: deptoForm.claveSAT,
-            unidadMedidaSAT: deptoForm.unidadMedidaSAT
+            claveSAT: deptoForm.claveSAT || '',
+            unidadMedidaSAT: deptoForm.unidadMedidaSAT || ''
           }
         })
         if (res.data?.[0]?.codigo === 0) {
+          Swal.fire({
+            title: '¡Éxito!',
+            text: 'Departamento actualizado correctamente',
+            icon: 'success',
+            confirmButtonColor: '#333333'
+          });
           setMessage({ text: "Departamento actualizado correctamente", type: 'success' })
+        } else {
+          // Mostrar mensaje específico del servidor si hay error
+          const errorMessage = res.data?.[0]?.mensaje || 'Error desconocido al actualizar departamento';
+          Swal.fire({
+            title: 'Error',
+            text: errorMessage,
+            icon: 'error',
+            confirmButtonColor: '#333333'
+          });
+          setMessage({ text: errorMessage, type: 'error' })
         }
       } else {
         const res = await consumoApi.consumoApi.post('/api/CatAreas/sp_bw_cat_deptos_add', null, {
@@ -264,25 +338,72 @@ export default function CatAreasDeptosClases() {
             depto: deptoForm.depto, 
             area: deptoForm.area, 
             descripcion: deptoForm.descripcion,
-            claveSAT: deptoForm.claveSAT,
-            unidadMedidaSAT: deptoForm.unidadMedidaSAT
+            claveSAT: deptoForm.claveSAT || '',
+            unidadMedidaSAT: deptoForm.unidadMedidaSAT || ''
           }
         })
         if (res.data?.[0]?.codigo === 0) {
+          Swal.fire({
+            title: '¡Éxito!',
+            text: 'Departamento agregado correctamente',
+            icon: 'success',
+            confirmButtonColor: '#333333'
+          });
           setMessage({ text: "Departamento agregado correctamente", type: 'success' })
+        } else {
+          // Mostrar mensaje específico del servidor si hay error
+          const errorMessage = res.data?.[0]?.mensaje || 'Error desconocido al agregar departamento';
+          Swal.fire({
+            title: 'Error',
+            text: errorMessage,
+            icon: 'error',
+            confirmButtonColor: '#333333'
+          });
+          setMessage({ text: errorMessage, type: 'error' })
         }
       }
       fetchDeptos(selectedArea) // Usar el área seleccionada
       setOpenDeptoModal(false)
     } catch (error: any) {
-      setMessage({ text: "Error al guardar departamento", type: 'error' })
+      console.error('Error completo:', error);
+      let errorMessage = 'Error al guardar departamento';
+      
+      // Extraer mensaje de error más específico si está disponible
+      if (error.response?.data?.[0]?.mensaje) {
+        errorMessage = error.response.data[0].mensaje;
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response?.status === 400) {
+        errorMessage = 'Datos inválidos o incompletos. Verifique que todos los campos obligatorios estén completos.';
+      } else if (error.response?.statusText) {
+        errorMessage = `Error del servidor: ${error.response.statusText}`;
+      }
+      
+      Swal.fire({
+        title: 'Error',
+        text: errorMessage,
+        icon: 'error',
+        confirmButtonColor: '#333333'
+      });
+      setMessage({ text: errorMessage, type: 'error' })
     } finally {
       setLoading(false)
     }
   }
 
   const handleDeleteDepto = async (depto: CatDepto) => {
-    if (!window.confirm(`¿Seguro que desea eliminar el departamento "${depto.descripcion}"?`)) return
+    const result = await Swal.fire({
+      title: '¿Eliminar Departamento?',
+      text: `¿Seguro que desea eliminar el departamento "${depto.descripcion}"? Esta acción no se puede deshacer.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d32f2f',
+      cancelButtonColor: '#333333',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar'
+    });
+    
+    if (!result.isConfirmed) return;
 
     setLoading(true)
     try {
@@ -290,10 +411,22 @@ export default function CatAreasDeptosClases() {
         params: { area: depto.area, depto: depto.depto }
       })
       if (res.data?.[0]?.codigo === 0) {
+        Swal.fire({
+          title: '¡Éxito!',
+          text: 'Departamento eliminado correctamente',
+          icon: 'success',
+          confirmButtonColor: '#333333'
+        });
         setMessage({ text: "Departamento eliminado correctamente", type: 'success' })
         fetchDeptos(selectedArea) // Usar el área seleccionada
       }
     } catch (error: any) {
+      Swal.fire({
+        title: 'Error',
+        text: 'Error al eliminar departamento',
+        icon: 'error',
+        confirmButtonColor: '#333333'
+      });
       setMessage({ text: "Error al eliminar departamento", type: 'error' })
     } finally {
       setLoading(false)
@@ -334,7 +467,15 @@ export default function CatAreasDeptosClases() {
   }
 
   const handleSaveClase = async () => {
-    if (!claseForm.clase || !claseForm.depto || !claseForm.descripcion) return
+    if (!claseForm.clase || !claseForm.depto || !claseForm.descripcion) {
+      Swal.fire({
+        title: 'Atención',
+        text: 'La clase, departamento y descripción son obligatorios',
+        icon: 'warning',
+        confirmButtonColor: '#333333'
+      });
+      return;
+    }
 
     setLoading(true)
     try {
@@ -354,6 +495,12 @@ export default function CatAreasDeptosClases() {
           }
         })
         if (res.data?.[0]?.codigo === 0) {
+          Swal.fire({
+            title: '¡Éxito!',
+            text: 'Clase actualizada correctamente',
+            icon: 'success',
+            confirmButtonColor: '#333333'
+          });
           setMessage({ text: "Clase actualizada correctamente", type: 'success' })
         }
       } else {
@@ -372,12 +519,24 @@ export default function CatAreasDeptosClases() {
           }
         })
         if (res.data?.[0]?.codigo === 0) {
+          Swal.fire({
+            title: '¡Éxito!',
+            text: 'Clase agregada correctamente',
+            icon: 'success',
+            confirmButtonColor: '#333333'
+          });
           setMessage({ text: "Clase agregada correctamente", type: 'success' })
         }
       }
       fetchClases(selectedArea, selectedDepto) // Usar el área y departamento seleccionados
       setOpenClaseModal(false)
     } catch (error: any) {
+      Swal.fire({
+        title: 'Error',
+        text: 'Error al guardar clase',
+        icon: 'error',
+        confirmButtonColor: '#333333'
+      });
       setMessage({ text: "Error al guardar clase", type: 'error' })
     } finally {
       setLoading(false)
@@ -385,7 +544,18 @@ export default function CatAreasDeptosClases() {
   }
 
   const handleDeleteClase = async (clase: CatClase) => {
-    if (!window.confirm(`¿Seguro que desea eliminar la clase "${clase.descripcion}"?`)) return
+    const result = await Swal.fire({
+      title: '¿Eliminar Clase?',
+      text: `¿Seguro que desea eliminar la clase "${clase.descripcion}"? Esta acción no se puede deshacer.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d32f2f',
+      cancelButtonColor: '#333333',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar'
+    });
+    
+    if (!result.isConfirmed) return;
 
     setLoading(true)
     try {
@@ -393,10 +563,22 @@ export default function CatAreasDeptosClases() {
         params: { area: clase.area, depto: clase.depto, clase: clase.clase }
       })
       if (res.data?.[0]?.codigo === 0) {
+        Swal.fire({
+          title: '¡Éxito!',
+          text: 'Clase eliminada correctamente',
+          icon: 'success',
+          confirmButtonColor: '#333333'
+        });
         setMessage({ text: "Clase eliminada correctamente", type: 'success' })
         fetchClases(selectedArea, selectedDepto) // Usar el área y departamento seleccionados
       }
     } catch (error: any) {
+      Swal.fire({
+        title: 'Error',
+        text: 'Error al eliminar clase',
+        icon: 'error',
+        confirmButtonColor: '#333333'
+      });
       setMessage({ text: "Error al eliminar clase", type: 'error' })
     } finally {
       setLoading(false)
@@ -816,7 +998,7 @@ return (
         <Box sx={{ p: 4, bgcolor: '#fdfdfd' }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
             <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#333' }}>
-              {editingArea ? '✏️ Editar Área' : 'Nueva Área'}
+              {editingArea ? ' Editar Área' : 'Nueva Área'}
             </Typography>
             <IconButton onClick={() => setOpenAreaModal(false)}>
               <CloseIcon />
@@ -884,7 +1066,7 @@ return (
               label=" Área"
               value={deptoForm.area}
               onChange={(e) => setDeptoForm({ ...deptoForm, area: e.target.value })}
-              disabled={!!editingDepto} //No editable si está editando
+              disabled={!editingDepto} // No editable si está agregando (solo editable al editar)
               fullWidth
             />
             <TextField
@@ -997,35 +1179,65 @@ return (
               label="Días Mínimos"
               type="number"
               value={claseForm.dias_min}
-              onChange={(e) => setClaseForm({ ...claseForm, dias_min: parseInt(e.target.value) || 0 })}
+              onChange={(e) => {
+                const value = parseInt(e.target.value) || 0;
+                if (value >= 0) {
+                  setClaseForm({ ...claseForm, dias_min: value });
+                }
+              }}
+              inputProps={{ min: 0, step: 1 }}
               fullWidth
             />
             <TextField
               label="Días Máximos"
               type="number"
               value={claseForm.dias_max}
-              onChange={(e) => setClaseForm({ ...claseForm, dias_max: parseInt(e.target.value) || 0 })}
+              onChange={(e) => {
+                const value = parseInt(e.target.value) || 0;
+                if (value >= 0) {
+                  setClaseForm({ ...claseForm, dias_max: value });
+                }
+              }}
+              inputProps={{ min: 0, step: 1 }}
               fullWidth
             />
             <TextField
               label="Días Muestra"
               type="number"
               value={claseForm.dias_muestra}
-              onChange={(e) => setClaseForm({ ...claseForm, dias_muestra: parseInt(e.target.value) || 0 })}
+              onChange={(e) => {
+                const value = parseInt(e.target.value) || 0;
+                if (value >= 0) {
+                  setClaseForm({ ...claseForm, dias_muestra: value });
+                }
+              }}
+              inputProps={{ min: 0, step: 1 }}
               fullWidth
             />
             <TextField
               label="Margen Mínimo Remates"
               type="number"
               value={claseForm.margen_minimo_remates}
-              onChange={(e) => setClaseForm({ ...claseForm, margen_minimo_remates: parseInt(e.target.value) || 0 })}
+              onChange={(e) => {
+                const value = parseInt(e.target.value) || 0;
+                if (value >= 0) {
+                  setClaseForm({ ...claseForm, margen_minimo_remates: value });
+                }
+              }}
+              inputProps={{ min: 0, step: 1 }}
               fullWidth
             />
             <TextField
               label="Tasa IVA"
               type="number"
               value={claseForm.tasa_iva}
-              onChange={(e) => setClaseForm({ ...claseForm, tasa_iva: parseInt(e.target.value) || 0 })}
+              onChange={(e) => {
+                const value = parseInt(e.target.value) || 0;
+                if (value >= 0) {
+                  setClaseForm({ ...claseForm, tasa_iva: value });
+                }
+              }}
+              inputProps={{ min: 0, step: 1 }}
               fullWidth
             />
           </Box>
