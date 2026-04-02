@@ -112,6 +112,7 @@ export default function AdministracionPorcentajesPuntos() {
   const [selectedDepto, setSelectedDepto] = useState('')
   const [selectedFormaPago, setSelectedFormaPago] = useState('')
   const [porcentaje, setPorcentaje] = useState('')
+  const [celdaSeleccionada, setCeldaSeleccionada] = useState<string | null>(null)
 
   const [saving, setSaving] = useState(false)
 
@@ -140,7 +141,37 @@ export default function AdministracionPorcentajesPuntos() {
     { field: 'area', headerName: 'Área', width: 200 },
     { field: 'depto', headerName: 'Depto.', width: 200 },
     { field: 'forma_pago', headerName: 'Forma Pago', width: 150 },
-    { field: 'porcentaje', headerName: 'Porcentaje', width: 120 },
+    { 
+      field: 'porcentaje', 
+      headerName: 'Porcentaje', 
+      width: 120,
+      renderCell: (params) => {
+        const valor = params.row.porcentaje || 0;
+        const rowId = params.row.id;
+        const esSeleccionada = celdaSeleccionada === rowId;
+        
+        return (
+          <Box
+            onClick={() => setCeldaSeleccionada(esSeleccionada ? null : rowId)}
+            sx={{
+              cursor: 'pointer',
+              padding: '4px 8px',
+              borderRadius: '4px',
+              backgroundColor: esSeleccionada ? '#c5c5c5ff' : 'transparent',
+              '&:hover': {
+                backgroundColor: '#f5f5f5'
+              },
+              transition: 'all 0.2s ease',
+              fontSize: '0.875rem',
+              fontWeight: esSeleccionada ? 600 : 400,
+              color: esSeleccionada ? '#252525ff' : 'inherit'
+            }}
+          >
+            {esSeleccionada ? valor.toFixed(2) : `${Math.round(valor * 100)}%`}
+          </Box>
+        );
+      }
+    },
   ]
 
   const fetchSucursales = async () => {
@@ -533,9 +564,7 @@ export default function AdministracionPorcentajesPuntos() {
           >
             Salir
           </Button>
-          <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
-            ADMINISTRACIÓN DE PORCENTAJES DE PUNTOS, ARAUCARIAS, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/')}, USR:{session?.nombre || 'ADMIN'}
-          </Typography>
+          
         </Box>
 
         <Dialog 
