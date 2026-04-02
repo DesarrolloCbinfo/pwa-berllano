@@ -13,6 +13,7 @@ import {
 import EditIcon from '@mui/icons-material/Edit';
 import { IconButton } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import Swal from 'sweetalert2';
 
 import PWABadge from '../../../PWABadge';
 
@@ -38,10 +39,7 @@ export default function CatMarcas() {
   const [editMarca, setEditMarca] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
 
-  // Elementos para eliminar marcas
-  const [openDelete, setOpenDelete] = useState(false);
-  const [deleteId, setDeleteId] = useState<number | null>(null);
-  const [deleteMarca, setDeleteMarca] = useState<string | null>(null);
+  // Estado para eliminar marcas (solo para el loading)
   const [deleting, setDeleting] = useState(false);
 
   // Props comunes para campos de formulario estilo Berllano Elegante
@@ -122,10 +120,57 @@ export default function CatMarcas() {
     setOpenEdit(true);
   };
 
-  const handleDeleteOpen = (row: CatMarcas) => {
-    setDeleteId(row.id);
-    setDeleteMarca(row.marca);
-    setOpenDelete(true);
+  const handleDeleteOpen = async (row: CatMarcas) => {
+    const result = await Swal.fire({
+      title: '¿Eliminar Marca?',
+      text: `¿Seguro que desea eliminar la marca "${row.marca}"? Esta acción no se puede deshacer.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#000000ff',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar'
+    });
+    
+    if (!result.isConfirmed) return;
+
+    try {
+      setDeleting(true);
+
+      const response = await consumoApi.delete(
+        `/api/CatMarcas/sp_bw_cat_marcas_del`,
+        {
+          params: {
+            id: row.id,
+          },
+        },
+      );
+
+      const result = response.data?.[0];
+
+      if (result?.codigo !== 0) {
+        throw new Error(result?.mensaje || 'Error al eliminar');
+      }
+
+      await Swal.fire({
+        title: '¡Éxito!',
+        text: 'Marca eliminada correctamente',
+        icon: 'success',
+        confirmButtonColor: '#000000ff'
+      });
+
+      fetchMarcas(); // 🔄 refresca grid
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
+      await Swal.fire({
+        title: 'Error',
+        text: errorMessage,
+        icon: 'error',
+        confirmButtonColor: '#000000ff'
+      });
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const fetchMarcas = async () => {
@@ -171,8 +216,21 @@ export default function CatMarcas() {
       setOpenAdd(false);
       setMarca('');
       fetchMarcas(); // 🔁 refresca grid
+      
+      await Swal.fire({
+        title: '¡Éxito!',
+        text: 'Marca agregada correctamente',
+        icon: 'success',
+        confirmButtonColor: '#000000ff'
+      });
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Error desconocido');
+      const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
+      await Swal.fire({
+        title: 'Error',
+        text: errorMessage,
+        icon: 'error',
+        confirmButtonColor: '#000000ff'
+      });
     } finally {
       setSaving(false);
     }
@@ -204,42 +262,23 @@ export default function CatMarcas() {
       setOpenEdit(false);
       setEditId(null);
       fetchMarcas(); // 🔄 refrescar grid
+      
+      await Swal.fire({
+        title: '¡Éxito!',
+        text: 'Marca actualizada correctamente',
+        icon: 'success',
+        confirmButtonColor: '#000000ff'
+      });
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Error desconocido');
+      const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
+      await Swal.fire({
+        title: 'Error',
+        text: errorMessage,
+        icon: 'error',
+        confirmButtonColor: '#000000ff'
+      });
     } finally {
       setSavingEdit(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!deleteId) return;
-
-    try {
-      setDeleting(true);
-
-      const response = await consumoApi.delete(
-        `/api/CatMarcas/sp_bw_cat_marcas_del`,
-        {
-          params: {
-            id: deleteId,
-          },
-        },
-      );
-
-      const result = response.data?.[0];
-
-      if (result?.codigo !== 0) {
-        throw new Error(result?.mensaje || 'Error al eliminar');
-      }
-
-      setOpenDelete(false);
-      setDeleteId(null);
-      setDeleteMarca(null);
-      fetchMarcas(); // 🔄 refresca grid
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Error desconocido');
-    } finally {
-      setDeleting(false);
     }
   };
 
@@ -258,6 +297,13 @@ export default function CatMarcas() {
   return (
     <>
       <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#ececec' }}>
+        
+        <style>{`
+          .swal2-container {
+            z-index: 9999 !important;
+          }
+        `}</style>
+
         <Paper sx={{ p: 3 }}>
           {/* Encabezado estilo Berllano Elegante */}
           <Box sx={{ 
@@ -546,78 +592,6 @@ export default function CatMarcas() {
               }}
             >
               Actualizar
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        <Dialog 
-          open={openDelete} 
-          onClose={() => setOpenDelete(false)}
-          PaperProps={{
-            sx: {
-              borderRadius: '12px',
-              boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-              border: '1px solid #e0e0e0'
-            }
-          }}
-        >
-          <DialogTitle sx={{ 
-            background: 'linear-gradient(135deg, #d32f2f 0%, #f44336 100%)', 
-            color: 'white',
-            fontFamily: 'Georgia, "Times New Roman", serif'
-          }}>
-            Eliminar Marca
-          </DialogTitle>
-
-          <DialogContent sx={{ p: 3, bgcolor: '#fff' }}>
-            <Typography sx={{ fontSize: '1.1rem', mb: 2 }}>
-              ¿Seguro que deseas eliminar la marca{' '}
-              <strong>{deleteMarca}</strong>?
-            </Typography>
-            <Typography variant="body2" sx={{ color: '#666' }}>
-              Esta acción no se puede deshacer.
-            </Typography>
-          </DialogContent>
-
-          <DialogActions sx={{ px: 3, py: 2, bgcolor: '#f5f5f5', borderTop: '1px solid #e0e0e0' }}>
-            <Button 
-              onClick={() => setOpenDelete(false)}
-              sx={{ 
-                backgroundColor: '#e0e0e0', 
-                color: '#000', 
-                fontWeight: 600,
-                textTransform: 'none',
-                borderRadius: '8px',
-                padding: '8px 16px',
-                transition: 'all 0.3s ease',
-                '&:hover': { 
-                  backgroundColor: '#d0d0d0' 
-                }
-              }}
-            >
-              Cancelar
-            </Button>
-            <Button
-              color='error'
-              variant='contained'
-              onClick={handleDelete}
-              disabled={deleting}
-              sx={{ 
-                backgroundColor: '#d32f2f',
-                fontWeight: 600,
-                textTransform: 'none',
-                borderRadius: '8px',
-                padding: '8px 16px',
-                boxShadow: '0 4px 12px rgba(211, 47, 47, 0.3)',
-                transition: 'all 0.3s ease',
-                '&:hover': { 
-                  backgroundColor: '#b71c1c',
-                  boxShadow: '0 6px 16px rgba(211, 47, 47, 0.4)',
-                  transform: 'translateY(-1px)'
-                }
-              }}
-            >
-              Eliminar
             </Button>
           </DialogActions>
         </Dialog>
