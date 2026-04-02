@@ -914,9 +914,32 @@ return (
           justifyContent: 'space-between',
           alignItems: 'center'
         }}>
-          <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
-            Los campos marcados con * son obligatorios
-          </Typography>
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+            <Typography variant="caption" sx={{ color: '#666', fontStyle: 'italic' }}>
+              Los campos marcados con * son obligatorios
+            </Typography>
+            <Button 
+              onClick={() => console.log('Email APP clicked')}
+              variant="outlined"
+              sx={{
+                borderRadius: '8px',
+                fontWeight: 600,
+                px: 3,
+                py: 1,
+                borderColor: '#222222ff',
+                color: '#000000ff',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  backgroundColor: '#131313ff',
+                  color: 'white',
+                  transform: 'translateY(-1px)',
+                  boxShadow: '0 4px 8px rgba(151, 151, 151, 0.3)'
+                }
+              }}
+            >
+              Email APP
+            </Button>
+          </Box>
           <Box sx={{ display: 'flex', gap: 2 }}>
             <Button 
               onClick={() => setOpenModal(false)} 
