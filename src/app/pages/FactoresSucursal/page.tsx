@@ -1,6 +1,8 @@
-import { useState } from 'react'
-import { Box, CircularProgress, Alert, Typography, Button, TextField, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Grid, Paper, Snackbar } from '@mui/material'
+import { useEffect, useState } from 'react'
+import { Box, CircularProgress, Alert, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions, MenuItem, Select, FormControl, InputLabel, IconButton, TextField, Paper, Grid, Snackbar } from '@mui/material'
 import { DataGrid, GridColDef } from '@mui/x-data-grid'
+import DeleteIcon from '@mui/icons-material/Delete'
+import AddIcon from '@mui/icons-material/Add'
 import EditIcon from '@mui/icons-material/Edit'
 import useConsumoApi from '../../../hooks/useConsumoApi'
 import { useSessionContext } from '../../../context/SessionProvider'
@@ -29,9 +31,10 @@ const commonProps = {
       fontWeight: 500,
     },
     '& .MuiInputLabel-shrink': {
-      transform: 'translate(14px, -9px) scale(0.75)',
+      transform: 'translate(14px, -9px) scale(0.85)',
       color: '#333',
       fontWeight: 600,
+      whiteSpace: 'nowrap',
     },
     '& .MuiOutlinedInput-notchedOutline': {
       borderColor: '#e0e0e0',
@@ -66,6 +69,20 @@ export default function FactoresSucursal() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
+  // Función para crear encabezados con salto de línea
+  const createHeader = (title: string, subtitle: string) => {
+    return (
+      <Box sx={{ textAlign: 'center', lineHeight: 1.2 }}>
+        <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.7rem', display: 'block' }}>
+          {title}
+        </Typography>
+        <Typography variant="caption" sx={{ fontSize: '0.65rem', color: '#666', display: 'block' }}>
+          {subtitle}
+        </Typography>
+      </Box>
+    );
+  };
+  
   const currentYear = new Date().getFullYear()
   const currentMonth = new Date().getMonth() + 1
   
@@ -83,7 +100,7 @@ export default function FactoresSucursal() {
     {
       field: 'acciones',
       headerName: 'Acciones',
-      width: 80,
+      width: 85,
       sortable: false,
       filterable: false,
       renderCell: (params) => {
@@ -110,17 +127,18 @@ export default function FactoresSucursal() {
     },
     { 
       field: 'fecha', 
-      headerName: 'fecha', 
+      headerName: 'Fecha', 
       width: 110,
       headerAlign: 'center',
       align: 'center',
     },
     { 
       field: 'reventa_ara', 
-      headerName: 'Reventa_Ara', 
-      width: 100,
+      headerName: 'Reventa Ara', 
+      width: 105,
       headerAlign: 'center',
       align: 'center',
+      renderHeader: () => createHeader('Reventa', '_Ara'),
       valueFormatter: (value) => {
         const val = value ?? 0;
         return `${(val * 100).toFixed(1)}%`;
@@ -128,10 +146,11 @@ export default function FactoresSucursal() {
     },
     { 
       field: 'reventa_p1', 
-      headerName: 'Reventa_P1', 
+      headerName: 'Reventa P1', 
       width: 100,
       headerAlign: 'center',
       align: 'center',
+      renderHeader: () => createHeader('Reventa', '_P1'),
       valueFormatter: (value) => {
         const val = value ?? 0;
         return `${(val * 100).toFixed(1)}%`;
@@ -139,10 +158,11 @@ export default function FactoresSucursal() {
     },
     { 
       field: 'reventa_p2', 
-      headerName: 'Reventa_P2', 
+      headerName: 'Reventa P2', 
       width: 100,
       headerAlign: 'center',
       align: 'center',
+      renderHeader: () => createHeader('Reventa', '_P2'),
       valueFormatter: (value) => {
         const val = value ?? 0;
         return `${(val * 100).toFixed(1)}%`;
@@ -150,10 +170,11 @@ export default function FactoresSucursal() {
     },
     { 
       field: 'reventa_ver', 
-      headerName: 'Reventa_Ver', 
+      headerName: 'Reventa Ver', 
       width: 100,
       headerAlign: 'center',
       align: 'center',
+      renderHeader: () => createHeader('Reventa', '_Ver'),
       valueFormatter: (value) => {
         const val = value ?? 0;
         return `${(val * 100).toFixed(1)}%`;
@@ -161,10 +182,11 @@ export default function FactoresSucursal() {
     },
     { 
       field: 'reventa_dor', 
-      headerName: 'Reventa_Dor', 
+      headerName: 'Reventa Dor', 
       width: 100,
       headerAlign: 'center',
       align: 'center',
+      renderHeader: () => createHeader('Reventa', '_Dor'),
       valueFormatter: (value) => {
         const val = value ?? 0;
         return `${(val * 100).toFixed(1)}%`;
@@ -172,10 +194,11 @@ export default function FactoresSucursal() {
     },
     { 
       field: 'reventa_and', 
-      headerName: 'Reventa_And', 
+      headerName: 'Reventa And', 
       width: 100,
       headerAlign: 'center',
       align: 'center',
+      renderHeader: () => createHeader('Reventa', '_And'),
       valueFormatter: (value) => {
         const val = value ?? 0;
         return `${(val * 100).toFixed(1)}%`;
@@ -183,10 +206,11 @@ export default function FactoresSucursal() {
     },
     { 
       field: 'reventa_leju', 
-      headerName: 'Reventa_Leju', 
-      width: 110,
+      headerName: 'Reventa Leju', 
+      width: 100,
       headerAlign: 'center',
       align: 'center',
+      renderHeader: () => createHeader('Reventa', '_Leju'),
       valueFormatter: (value) => {
         const val = value ?? 0;
         return `${(val * 100).toFixed(1)}%`;
@@ -194,10 +218,11 @@ export default function FactoresSucursal() {
     },
     { 
       field: 'servicio_ara', 
-      headerName: 'Servicio_Ara', 
+      headerName: 'Servicio Ara', 
       width: 100,
       headerAlign: 'center',
       align: 'center',
+      renderHeader: () => createHeader('Servicio', '_Ara'),
       valueFormatter: (value) => {
         const val = value ?? 0;
         return `${(val * 100).toFixed(1)}%`;
@@ -205,10 +230,11 @@ export default function FactoresSucursal() {
     },
     { 
       field: 'servicio_p1', 
-      headerName: 'Servicio_P1', 
+      headerName: 'Servicio P1', 
       width: 100,
       headerAlign: 'center',
       align: 'center',
+      renderHeader: () => createHeader('Servicio', '_P1'),
       valueFormatter: (value) => {
         const val = value ?? 0;
         return `${(val * 100).toFixed(1)}%`;
@@ -216,10 +242,11 @@ export default function FactoresSucursal() {
     },
     { 
       field: 'servicio_p2', 
-      headerName: 'Servicio_P2', 
+      headerName: 'Servicio P2', 
       width: 100,
       headerAlign: 'center',
       align: 'center',
+      renderHeader: () => createHeader('Servicio', '_P2'),
       valueFormatter: (value) => {
         const val = value ?? 0;
         return `${(val * 100).toFixed(1)}%`;
@@ -227,10 +254,11 @@ export default function FactoresSucursal() {
     },
     { 
       field: 'servicio_ver', 
-      headerName: 'Servicio_Ver', 
+      headerName: 'Servicio Ver', 
       width: 100,
       headerAlign: 'center',
       align: 'center',
+      renderHeader: () => createHeader('Servicio', '_Ver'),
       valueFormatter: (value) => {
         const val = value ?? 0;
         return `${(val * 100).toFixed(1)}%`;
@@ -238,10 +266,11 @@ export default function FactoresSucursal() {
     },
     { 
       field: 'servicio_dor', 
-      headerName: 'Servicio_Dor', 
+      headerName: 'Servicio Dor', 
       width: 100,
       headerAlign: 'center',
       align: 'center',
+      renderHeader: () => createHeader('Servicio', '_Dor'),
       valueFormatter: (value) => {
         const val = value ?? 0;
         return `${(val * 100).toFixed(1)}%`;
@@ -249,10 +278,11 @@ export default function FactoresSucursal() {
     },
     { 
       field: 'servicio_and', 
-      headerName: 'Servicio_And', 
+      headerName: 'Servicio And', 
       width: 100,
       headerAlign: 'center',
       align: 'center',
+      renderHeader: () => createHeader('Servicio', '_And'),
       valueFormatter: (value) => {
         const val = value ?? 0;
         return `${(val * 100).toFixed(1)}%`;
@@ -260,10 +290,11 @@ export default function FactoresSucursal() {
     },
     { 
       field: 'servicio_leju', 
-      headerName: 'Servicio_Leju', 
+      headerName: 'Servicio Leju', 
       width: 110,
       headerAlign: 'center',
       align: 'center',
+      renderHeader: () => createHeader('Servicio', '_Leju'),
       valueFormatter: (value) => {
         const val = value ?? 0;
         return `${(val * 100).toFixed(1)}%`;
@@ -508,12 +539,7 @@ return (
           )}
         </Box>
 
-        {/* PIE DE PÁGINA ESTILO ELEGANTE */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 3, mb: 2 }}>
-          <Typography variant="caption" sx={{ fontWeight: 'bold', textTransform: 'uppercase' }}>
-            FACTORES_SUCURSAL, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replaceAll('/', '-')}, USR: {session?.nombre || 'ADMIN'}
-          </Typography>
-        </Box>
+        
 
         {/* NOTIFICACIONES */}
         <Snackbar open={!!message} autoHideDuration={3000} onClose={() => setMessage(null)}>
@@ -538,7 +564,7 @@ return (
         <DialogTitle sx={{ 
           fontFamily: 'Georgia, "Times New Roman", serif',
           fontWeight: 'bold', 
-          color: '#1a365d',
+          color: '#000000ff',
           borderBottom: '1px solid #e0e0e0',
           py: 2
         }}>
@@ -561,10 +587,10 @@ return (
                   alignItems: 'center', 
                   gap: 1, 
                   mb: 2,
-                  borderLeft: '3px solid #1a365d',
+                  borderLeft: '3px solid #000000ff',
                   pl: 1.5
                 }}>
-                  <Typography variant='subtitle1' sx={{ fontWeight: 600, color: '#1a365d' }}>
+                  <Typography variant='subtitle1' sx={{ fontWeight: 600, color: '#000000ff' }}>
                     Factores de Reventa
                   </Typography>
                 </Box>
@@ -580,7 +606,7 @@ return (
                   ].map((item, index) => (
                     <Box key={index}>
                       <Typography variant='caption' sx={{ color: '#666', fontWeight: 500 }}>{item.label}</Typography>
-                      <Typography variant='body2' sx={{ fontWeight: 600, color: '#333' }}>
+                      <Typography variant='body2' sx={{ fontWeight: 600, color: '#000000ff' }}>
                         {((item.value ?? 0) * 100).toFixed(1)}%
                       </Typography>
                     </Box>
@@ -595,10 +621,10 @@ return (
                   alignItems: 'center', 
                   gap: 1, 
                   mb: 2,
-                  borderLeft: '3px solid #1a365d',
+                  borderLeft: '3px solid #000000ff',
                   pl: 1.5
                 }}>
-                  <Typography variant='subtitle1' sx={{ fontWeight: 600, color: '#1a365d' }}>
+                  <Typography variant='subtitle1' sx={{ fontWeight: 600, color: '#000000ff' }}>
                     Factores de Servicio
                   </Typography>
                 </Box>
@@ -658,7 +684,7 @@ return (
         <DialogTitle sx={{ 
           fontFamily: 'Georgia, "Times New Roman", serif',
           fontWeight: 'bold', 
-          color: '#1a365d',
+          color: '#000000ff',
           borderBottom: '1px solid #e0e0e0',
           py: 2
         }}>
@@ -672,11 +698,11 @@ return (
         <DialogContent sx={{ p: 3 }}>
           {editingRow && (
             <Box sx={{ mt: 2 }}>
-              <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 'bold', color: '#1a365d' }}>
+              <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 'bold', color: '#000000ff' }}>
                 Fecha: {editingRow.fecha}
               </Typography>
               
-              <Typography variant="h6" sx={{ mt: 3, mb: 2, fontWeight: 'bold', color: '#1a365d' }}>Reventa</Typography>
+              <Typography variant="h6" sx={{ mt: 3, mb: 3, fontWeight: 'bold', color: '#000000ff', fontSize: '1.25rem', lineHeight: 1.2 }}>Reventa</Typography>
               <Grid container spacing={2}>
                 {[
                   { label: "Reventa Ara", field: 'reventa_ara' },
@@ -687,7 +713,7 @@ return (
                   { label: "Reventa And", field: 'reventa_and' },
                   { label: "Reventa Leju", field: 'reventa_leju' },
                 ].map((item, index) => (
-                  <Grid item xs={6} sm={4} key={index}>
+                  <Grid item xs={12} sm={6} key={index}>
                     <TextField
                       {...commonProps}
                       label={item.label}
@@ -695,12 +721,24 @@ return (
                       value={editingRow[item.field as keyof FactorSucursal]}
                       onChange={(e) => handleFieldChange(item.field as keyof FactorSucursal, e.target.value)}
                       inputProps={{ step: 0.01, min: 0, max: 1 }}
+                      sx={{
+                        ...commonProps.sx,
+                        '& .MuiInputLabel-root': {
+                          ...commonProps.sx['& .MuiInputLabel-root'],
+                          fontSize: '0.875rem',
+                        },
+                        '& .MuiInputLabel-shrink': {
+                          ...commonProps.sx['& .MuiInputLabel-shrink'],
+                          fontSize: '0.75rem',
+                          transform: 'translate(14px, -9px) scale(0.9)',
+                        }
+                      }}
                     />
                   </Grid>
                 ))}
               </Grid>
 
-              <Typography variant="h6" sx={{ mt: 3, mb: 2, fontWeight: 'bold', color: '#1a365d' }}>Servicio</Typography>
+              <Typography variant="h6" sx={{ mt: 3, mb: 2, fontWeight: 'bold', color: '#000000ff' }}>Servicio</Typography>
               <Grid container spacing={2}>
                 {[
                   { label: "Servicio Ara", field: 'servicio_ara' },
@@ -719,6 +757,18 @@ return (
                       value={editingRow[item.field as keyof FactorSucursal]}
                       onChange={(e) => handleFieldChange(item.field as keyof FactorSucursal, e.target.value)}
                       inputProps={{ step: 0.01, min: 0, max: 1 }}
+                      sx={{
+                        ...commonProps.sx,
+                        '& .MuiInputLabel-root': {
+                          ...commonProps.sx['& .MuiInputLabel-root'],
+                          fontSize: '0.875rem',
+                        },
+                        '& .MuiInputLabel-shrink': {
+                          ...commonProps.sx['& .MuiInputLabel-shrink'],
+                          fontSize: '0.75rem',
+                          transform: 'translate(14px, -9px) scale(0.9)',
+                        }
+                      }}
                     />
                   </Grid>
                 ))}

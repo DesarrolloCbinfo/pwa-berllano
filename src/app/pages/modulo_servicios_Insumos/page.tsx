@@ -460,9 +460,6 @@ return (
           >
             Salir
           </Button>
-          <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
-            ADMINISTRACIÓN DE SERVICIOS INSUMOS, ARAUCARIAS, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/')}, USR:{session?.nombre || 'ADMIN'}
-          </Typography>
         </Box>
 
         <Dialog 
