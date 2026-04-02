@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
+import Swal from 'sweetalert2';
 import { 
   Box, Typography, Button, IconButton, Dialog, DialogTitle, 
   DialogContent, DialogActions, TextField, Grid, 
@@ -190,9 +191,20 @@ export default function CatProveedores() {
   useEffect(() => { fetchProveedores(); }, [paginationModel]);
   useEffect(() => { fetchSucursales(); }, []);
   // --- 2. LÓGICA FORMULARIO ---
-  const handleInputChange = (e: any) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, checked, type } = e.target;
-    const newValue = type === 'checkbox' ? checked : value;
+    let newValue = type === 'checkbox' ? checked : value;
+    
+    // Validación específica para días_financiamiento
+    if (name === 'dias_financiamiento') {
+      const numValue = parseFloat(value);
+      if (!isNaN(numValue) && numValue < 0) {
+        newValue = '0'; // Forzar a 0 si es negativo
+      } else if (value === '' || value === '-') {
+        newValue = '0'; // Evitar valores vacíos o negativos
+      }
+    }
+    
     setFormData(prev => ({ ...prev, [name]: newValue }));
   };
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
@@ -232,7 +244,12 @@ export default function CatProveedores() {
   };
   const handleSave = async () => {
     if (!formData.cve_prov || !formData.nombre) {
-        setMessage({ text: 'Clave y Nombre son obligatorios', type: 'error' });
+        Swal.fire({
+            title: 'Atención',
+            text: 'Clave y Nombre son obligatorios',
+            icon: 'warning',
+            confirmButtonColor: '#333333'
+        });
         return;
     }
    
@@ -241,29 +258,72 @@ export default function CatProveedores() {
         dias_financiamiento: Number(formData.dias_financiamiento),
         sucursal_origen: Number(formData.sucursal_origen)
     };
+    
     try {
       if (isEditing) {
         await consumoApi.put('/api/CatProveedores/sp_bw_cat_proveedores_upd', null, { params: paramsToSend });
+        Swal.fire({
+            title: '¡Éxito!',
+            text: 'Proveedor actualizado correctamente',
+            icon: 'success',
+            confirmButtonColor: '#333333'
+        });
         setMessage({ text: 'Actualizado correctamente', type: 'success' });
       } else {
         await consumoApi.post('/api/CatProveedores/sp_bw_cat_proveedores_add', null, { params: paramsToSend });
+        Swal.fire({
+            title: '¡Éxito!',
+            text: 'Proveedor creado correctamente',
+            icon: 'success',
+            confirmButtonColor: '#333333'
+        });
         setMessage({ text: 'Creado correctamente', type: 'success' });
       }
       setOpenModal(false);
       fetchProveedores();
     } catch (error: any) {
         const errorMsg = error.response?.data?.mensaje || 'Error al guardar';
+        Swal.fire({
+            title: 'Error',
+            text: errorMsg,
+            icon: 'error',
+            confirmButtonColor: '#333333'
+        });
         setMessage({ text: errorMsg, type: 'error' });
     }
   };
   const handleDelete = async (id: string) => {
-    if (!window.confirm(`¿Eliminar proveedor ${id}?`)) return;
+    const result = await Swal.fire({
+      title: '¿Eliminar Proveedor?',
+      text: `¿Está seguro de eliminar el proveedor ${id}? Esta acción no se puede deshacer.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d32f2f',
+      cancelButtonColor: '#333333',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar'
+    });
+    
+    if (!result.isConfirmed) return;
+    
     try {
       await consumoApi.delete('/api/CatProveedores/sp_bw_cat_proveedores_del', { params: { cve_prov: id } });
+      Swal.fire({
+        title: '¡Éxito!',
+        text: 'Proveedor eliminado correctamente',
+        icon: 'success',
+        confirmButtonColor: '#333333'
+      });
       setMessage({ text: 'Eliminado', type: 'success' });
       fetchProveedores();
     } catch (error: any) {
       const errorMsg = error.response?.data?.mensaje || 'Error al eliminar';
+      Swal.fire({
+        title: 'Error',
+        text: errorMsg,
+        icon: 'error',
+        confirmButtonColor: '#333333'
+      });
       setMessage({ text: errorMsg, type: 'error' });
     }
   };
@@ -288,7 +348,7 @@ export default function CatProveedores() {
 return (
     <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#ececec' }}>
       
-      {/* MAGIA CSS: Forzamos a SweetAlert a saltar al frente de los modales */}
+      {/* Forzamos a SweetAlert a saltar al frente de los modales */}
       <style>{`
         .swal2-container {
           z-index: 9999 !important;
@@ -299,9 +359,9 @@ return (
       <Paper sx={{ p: 3, borderRadius: '8px', mb: 3 }}>
         
         {/* ENCABEZADO RECTANGULAR ELEGANTE */}
-        <Box sx={{ border: '1px solid #2c3e50', p: 1.5, mb: 2, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
+        <Box sx={{ border: '1px solid #000000ff', p: 1.5, mb: 2, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
             <Box>
-                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#000000ff', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
                     CATÁLOGO DE PROVEEDORES
                 </Typography>
                 <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
@@ -660,6 +720,15 @@ return (
                       type="number"
                       value={formData.dias_financiamiento}
                       onChange={handleInputChange}
+                      inputProps={{
+                        min: 0,
+                        step: 1,
+                        onKeyPress: (e) => {
+                          if (e.key === '-' || e.key === 'e' || e.key === 'E') {
+                            e.preventDefault();
+                          }
+                        }
+                      }}
                     />
                   </Grid>
                   <Grid item xs={12} sm={3}>
@@ -956,12 +1025,36 @@ const ModalListaAcuerdos = ({ open, onClose, proveedor, consumoApi, setMessage }
         }
     };
     const handleDelete = async (id_acuerdo: number) => {
-        if (!window.confirm("¿Seguro que desea eliminar este acuerdo y todas sus configuraciones?")) return;
+        const result = await Swal.fire({
+            title: '¿Eliminar Acuerdo?',
+            text: '¿Seguro que desea eliminar este acuerdo y todas sus configuraciones? Esta acción no se puede deshacer.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d32f2f',
+            cancelButtonColor: '#333333',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        });
+        
+        if (!result.isConfirmed) return;
+        
         try {
             await consumoApi.delete(`/api/CatProveedores/acuerdos_del?id_acuerdo=${id_acuerdo}`);
+            Swal.fire({
+                title: '¡Éxito!',
+                text: 'Acuerdo eliminado correctamente',
+                icon: 'success',
+                confirmButtonColor: '#333333'
+            });
             setMessage({ text: "Acuerdo eliminado", type: 'success' });
             fetchAcuerdos();
         } catch (error) {
+            Swal.fire({
+                title: 'Error',
+                text: 'Error al eliminar acuerdo',
+                icon: 'error',
+                confirmButtonColor: '#333333'
+            });
             setMessage({ text: "Error al eliminar", type: 'error' });
         }
     };
@@ -1215,11 +1308,38 @@ const ModalCapturaAcuerdo = ({ open, onClose, acuerdoBase, proveedor, consumoApi
     };
 
     const handleBorrarExcluido = async (id_registro: number) => {
+        const result = await Swal.fire({
+            title: '¿Eliminar Excepción?',
+            text: '¿Está seguro de eliminar esta excepción del acuerdo?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d32f2f',
+            cancelButtonColor: '#333333',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        });
+        
+        if (!result.isConfirmed) return;
+        
         try {
             await consumoApi.delete(`/api/CatProveedores/acuerdos_excluidos_del?id=${id_registro}`);
             const resEx = await consumoApi.get(`/api/CatProveedores/acuerdos_excluidos_sel?id_acuerdo=${form.id_acuerdo}`);
             setExcluidos(resEx.data || []);
-        } catch (e) { setMessage({ text: "Error al eliminar excepción", type: 'error' }); }
+            Swal.fire({
+                title: '¡Éxito!',
+                text: 'Excepción eliminada correctamente',
+                icon: 'success',
+                confirmButtonColor: '#333333'
+            });
+        } catch (e) { 
+            Swal.fire({
+                title: 'Error',
+                text: 'Error al eliminar excepción',
+                icon: 'error',
+                confirmButtonColor: '#333333'
+            });
+            setMessage({ text: "Error al eliminar excepción", type: 'error' }); 
+        }
     };
 
     return (
