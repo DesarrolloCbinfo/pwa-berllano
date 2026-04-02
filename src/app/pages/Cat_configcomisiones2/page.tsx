@@ -125,7 +125,12 @@ export default function ConfigComisiones2() {
       setLoading(true);
       try {
           const res = await consumoApi.get('/api/ConfigComisiones2/sp_bw_cat_configComisiones2_sel');
-          setRows(Array.isArray(res?.data) ? res.data : []);
+        const dataMapeada = (Array.isArray(res?.data) ? res.data : []).map(row => ({
+              ...row,
+              comision: Number(row.comision || 0) * 100
+          }));
+
+          setRows(dataMapeada);
       } catch (error) {
           setRows([]);
           setMessage({ text: 'Error al cargar la tabla de comisiones.', type: 'error' });
@@ -201,7 +206,7 @@ export default function ConfigComisiones2() {
                 clase: formData.clase?.toString(),
                 idMarca: formData.idMarca?.toString(),
                 idFamilia: formData.idFamilia?.toString(),
-                comision: comisionVal, 
+                comision: comisionVal / 100,
                 puesto: Number(formData.puesto)
             };
             
@@ -255,8 +260,14 @@ export default function ConfigComisiones2() {
     { field: 'nombre_puesto', headerName: 'Puesto', width: 150 },
     { field: 'fechaInicial', headerName: 'F. Inicial', width: 100, valueFormatter: (v: any) => new Date(v).toLocaleDateString() },
     { field: 'fechaFinal', headerName: 'F. Final', width: 100, valueFormatter: (v: any) => new Date(v).toLocaleDateString() },
-    { field: 'comision', headerName: 'Comisión', width: 90, type: 'number', valueFormatter: (v: any) => `${Number(v).toFixed(2)}%` },
-    { field: 'iva', headerName: 'Base IVA', width: 100, valueGetter: (params, row) => row.basePrecioConIva ? 'CON IVA' : 'SIN IVA' },
+   // Reemplaza la definición de 'comision' en tus columns por esta:
+    { 
+        field: 'comision', 
+        headerName: 'Comisión', 
+        width: 90, 
+        type: 'number', 
+        valueFormatter: (v: any) => v == null ? '0%' : `${Number(v).toFixed(0)}%` 
+    },  { field: 'iva', headerName: 'Base IVA', width: 100, valueGetter: (params, row) => row.basePrecioConIva ? 'CON IVA' : 'SIN IVA' },
     { field: 'dias', headerName: 'Días Aplica', width: 150, renderCell: renderDias },
     { 
         field: 'acciones', headerName: 'Eliminar', width: 80, sortable: false, filterable: false, align: 'center',
@@ -388,8 +399,16 @@ return (
             </Grid>
 
             <Grid item xs={12} md={1.5} sx={{ display: 'flex', alignItems: 'flex-end', pb: 0.5 }}>
-                <TextField {...commonProps} type="number" label="Comisión (%)" name="comision" value={formData.comision} onChange={handleInputChange} inputProps={{ step: "0.01" }} 
-                    sx={{ width: '120px', ...commonProps.sx }} />
+                <TextField 
+                    {...commonProps} 
+                    type="number" 
+                    label="Comisión (Ej: 10 = 10%)" 
+                    name="comision" 
+                    value={formData.comision} 
+                    onChange={handleInputChange} 
+                    inputProps={{ step: "1" }} 
+                    sx={{ width: '120px', ...commonProps.sx }} 
+                />
             </Grid>
 
             {/* Días de la semana pegaditos como en Access */}

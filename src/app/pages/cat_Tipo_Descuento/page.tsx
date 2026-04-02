@@ -71,11 +71,19 @@ const [loading, setLoading] = useState(false);
 
   useEffect(() => { fetchTabla(); }, []);
 
-  const fetchTabla = async () => {
+const fetchTabla = async () => {
       setLoading(true);
       try {
           const res = await consumoApi.get('/api/CatTipoDescuento/sp_bw_cat_tipos_descuento_sel');
-          setRows(Array.isArray(res?.data) ? res.data : []);
+          
+          // Mapeamos para que la tabla reciba enteros en lugar de decimales
+          const dataMapeada = (Array.isArray(res?.data) ? res.data : []).map(row => ({
+    ...row,
+    min_descto: Number(row.min_descto || 0) * 100,
+    max_descto: Number(row.max_descto || 0) * 100
+}));
+
+          setRows(dataMapeada);
       } catch (error) {
           setMessage({ text: 'Error al cargar la tabla.', type: 'error' });
       } finally { setLoading(false); }
@@ -93,11 +101,12 @@ const handleAgregarNuevo = async () => {
         isSavingRef.current = true;
         setSaving(true);
         try {
-            const payload = {
-                descripcion: formData.descripcion.toUpperCase(),
-                min_descto: Number(formData.min_descto),
-                max_descto: Number(formData.max_descto)
-            };
+            // CÓMO DEBE QUEDAR (Convierte 10 a 0.10 y 20 a 0.20):
+const payload = {
+    descripcion: formData.descripcion.toUpperCase(),
+    min_descto: Number(formData.min_descto) / 100,
+    max_descto: Number(formData.max_descto) / 100
+};
 
             const res = await consumoApi.post('/api/CatTipoDescuento/sp_bw_cat_tipos_descuento_ins', payload);
             if (res.status === 200) {
@@ -121,12 +130,13 @@ const handleAgregarNuevo = async () => {
       ) return oldRow;
 
       try {
-          const payload = {
-              tipo_descuento: newRow.tipo_descuento,
-              descripcion: newRow.descripcion?.toUpperCase() || '',
-              min_descto: Number(newRow.min_descto),
-              max_descto: Number(newRow.max_descto)
-          };
+         const payload = {
+    tipo_descuento: newRow.tipo_descuento,
+    descripcion: newRow.descripcion?.toUpperCase() || '',
+    // Convertimos el entero editado en la celda a decimal para la BD
+    min_descto: Number(newRow.min_descto) / 100,
+    max_descto: Number(newRow.max_descto) / 100
+};
 
           const res = await consumoApi.put('/api/CatTipoDescuento/sp_bw_cat_tipos_descuento_upd', payload);
           if (res.status === 200) {
@@ -167,16 +177,18 @@ const handleAgregarNuevo = async () => {
       }
   };
 
-  const columns = useMemo<GridColDef[]>(() => [
+const columns = useMemo<GridColDef[]>(() => [
     { field: 'tipo_descuento', headerName: 'ID', width: 90, fontWeight: 'bold', align: 'center', headerAlign: 'center' },
     { field: 'descripcion', headerName: 'Descripción (Doble clic para editar)', flex: 1, minWidth: 250, editable: true, align: 'left', headerAlign: 'center' },
     { 
-        field: 'min_descto', headerName: 'Min Dto', width: 120, editable: true, align: 'center', headerAlign: 'center',
-        type: 'number', valueFormatter: (value) => value == null ? '0%' : `${(Number(value) * 100).toFixed(0)}%`
-    },
+    field: 'min_descto', headerName: 'Min Dto (%)', width: 120, editable: true, align: 'center', headerAlign: 'center',
+    type: 'number' 
+    // Sin valueFormatter. Perfecto.
+},
     { 
-        field: 'max_descto', headerName: 'Max Dto', width: 120, editable: true, align: 'center', headerAlign: 'center',
-        type: 'number', valueFormatter: (value) => value == null ? '0%' : `${(Number(value) * 100).toFixed(0)}%`
+        field: 'max_descto', headerName: 'Max Dto (%)', width: 120, editable: true, align: 'center', headerAlign: 'center',
+        type: 'number'
+        // ¡QUITAMOS EL valueFormatter POR COMPLETO!
     },
     { 
         field: 'acciones', headerName: 'Eliminar', width: 100, sortable: false, filterable: false, align: 'center', headerAlign: 'center',
@@ -187,7 +199,6 @@ const handleAgregarNuevo = async () => {
         )
     }
   ], []);
-
   return (
     <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
       <Paper sx={{ p: 3 }}>
@@ -217,12 +228,12 @@ const handleAgregarNuevo = async () => {
             <Grid item xs={12} md={4}>
                 <TextField {...commonProps} label="Descripción del Descuento*" name="descripcion" value={formData.descripcion} onChange={handleInputChange} />
             </Grid>
-            <Grid item xs={6} md={2}>
-                <TextField {...commonProps} type="number" inputProps={{ step: "0.01" }} label="Min Dto (Ej: 0.15 = 15%)" name="min_descto" value={formData.min_descto} onChange={handleInputChange} />
-            </Grid>
-            <Grid item xs={6} md={2}>
-                <TextField {...commonProps} type="number" inputProps={{ step: "0.01" }} label="Max Dto (Ej: 1 = 100%)" name="max_descto" value={formData.max_descto} onChange={handleInputChange} />
-            </Grid>
+           <Grid item xs={6} md={2}>
+    <TextField {...commonProps} type="number" inputProps={{ step: "1" }} label="Min Dto (Ej: 15 = 15%)" name="min_descto" value={formData.min_descto} onChange={handleInputChange} />
+</Grid>
+<Grid item xs={6} md={2}>
+    <TextField {...commonProps} type="number" inputProps={{ step: "1" }} label="Max Dto (Ej: 100 = 100%)" name="max_descto" value={formData.max_descto} onChange={handleInputChange} />
+</Grid>
             
             <Grid item xs={12} md={2}>
                 <Button variant="contained" onClick={handleAgregarNuevo} disabled={saving} fullWidth startIcon={<AddIcon />}
