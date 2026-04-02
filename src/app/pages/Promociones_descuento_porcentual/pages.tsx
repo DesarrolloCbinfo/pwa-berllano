@@ -118,7 +118,17 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
     { field: 'familia', headerName: 'Familia', width: 100 },
     { field: 'clave_prod', headerName: 'Producto', width: 220 },
     { field: 'cantidad', headerName: 'Cant', width: 60 },
-    { field: 'descuento', headerName: 'Desc %', width: 70 },
+
+ { 
+      field: 'descuento', 
+      headerName: 'Desc (%)', 
+      width: 90,
+      type: 'number',
+      renderCell: (params) => {
+          const valor = Number(params.row.descuento) || 0;
+          return `${valor.toFixed(0)}%`;
+      }
+    }, 
     { field: 'idDescuento', headerName: 'Descuento', width: 100 },
   ]
 
@@ -185,12 +195,14 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
     }
   }
 
-  const fetchPromociones = async () => {
+const fetchPromociones = async () => {
     try {
       const res = await consumoApi.get('/api/CatConfigPromoDescPorcen/sp_bw_t_promocionesDescuentos_sel')
       const data = res.data.map((item: any, index: number) => ({ 
         ...item, 
-        id: item.id ?? index 
+        id: item.id ?? index,
+        // MAGIA: Leemos con mayúscula y minúscula para blindar el dato
+        descuento: Number(item.descuento ?? item.Descuento ?? 0) * 100
       }))
       setRows(data)
     } catch (err) {
@@ -221,13 +233,11 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
     }
   }, [selectedArea])
 
-  useEffect(() => {
+useEffect(() => {
     if (selectedMarca) {
-      const marca = marcas.find(m => m.marca === selectedMarca)
-      if (marca) {
-        fetchFamilias(marca.id)
-        setSelectedFamilia('')
-      }
+      // Como selectedMarca ya es el ID, lo pasamos directo a la función
+      fetchFamilias(Number(selectedMarca))
+      setSelectedFamilia('')
     } else {
       setFamilias([])
       setSelectedFamilia('')
@@ -261,7 +271,7 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
             familia: selectedFamilia,
             clave_prod: selectedProducto,
             cantidad: parseInt(cantidad),
-            descuento: parseFloat(descPorcentaje),
+            descuento: parseFloat(descPorcentaje) / 100,
             idDescuento: tipoDescuento.tipo_descuento,
           },
         }
@@ -459,7 +469,7 @@ return (
               </Select>
             </FormControl>
 
-            <FormControl sx={{ minWidth: 120 }} size="small">
+           <FormControl sx={{ minWidth: 120 }} size="small">
               <InputLabel>Marca</InputLabel>
               <Select
                 value={selectedMarca}
@@ -468,7 +478,8 @@ return (
                 sx={{ bgcolor: 'white' }}
               >
                 {marcas.map((marca) => (
-                  <MenuItem key={marca.id} value={marca.marca}>
+                  // MAGIA: value ahora es el ID, pero mostramos la marca
+                  <MenuItem key={marca.id} value={String(marca.id)}>
                     {marca.marca}
                   </MenuItem>
                 ))}
@@ -485,7 +496,8 @@ return (
                 sx={{ bgcolor: 'white' }}
               >
                 {familias.map((familia) => (
-                  <MenuItem key={familia.clave} value={familia.descripcion}>
+                  // MAGIA: value ahora es la clave
+                  <MenuItem key={familia.clave} value={String(familia.clave)}>
                     {familia.descripcion}
                   </MenuItem>
                 ))}
@@ -501,7 +513,8 @@ return (
                 sx={{ bgcolor: 'white' }}
               >
                 {productos.map((producto) => (
-                  <MenuItem key={producto.clave_prod} value={producto.descripcion}>
+                  // MAGIA: value ahora es la clave del producto
+                  <MenuItem key={producto.clave_prod} value={producto.clave_prod}>
                     {producto.descripcion}
                   </MenuItem>
                 ))}
@@ -519,13 +532,14 @@ return (
             />
 
             <TextField
-              label="Desc %"
+              label="Desc (Ej. 10 = 10%)"
               type="number"
               value={descPorcentaje}
               onChange={(e) => setDescPorcentaje(e.target.value)}
-              sx={{ width: 100, bgcolor: 'white' }}
+              sx={{ width: 160, bgcolor: 'white' }}
               size="small"
-              inputProps={{ step: "0.01", min: "0", max: "1" }}
+              // step a "1" para enteros, máximo 100
+              inputProps={{ step: "1", min: "0", max: "100" }} 
             />
 
             <FormControl sx={{ minWidth: 180 }} size="small">
