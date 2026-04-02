@@ -885,13 +885,13 @@ return (
                 variant="contained" 
                 onClick={() => setOpenListaAcuerdos(true)} 
                 sx={{ 
-                  backgroundColor: '#1976d2', color: 'white', borderRadius: '8px',
+                  backgroundColor: '#000000ff', color: 'white', borderRadius: '8px',
                   fontWeight: 600, textTransform: 'none',
-                  boxShadow: '0 2px 8px rgba(25, 118, 210, 0.3)', transition: 'all 0.3s ease',
-                  '&:hover': { backgroundColor: '#115293', transform: 'translateY(-1px)' }
+                  boxShadow: '0 2px 8px rgba(255, 255, 255, 0.4)', transition: 'all 0.3s ease',
+                  '&:hover': { backgroundColor: '#636363ff', transform: 'translateY(-1px)' }
                 }}
               >
-                📋 ACUERDOS CON PROVEEDOR
+                ACUERDOS CON PROVEEDOR
               </Button>
             )}
           </Box>
@@ -910,8 +910,8 @@ return (
               color="primary"
               sx={{
                 borderRadius: '8px', fontWeight: 600, textTransform: 'none',
-                boxShadow: '0 2px 8px rgba(25, 118, 210, 0.3)', transition: 'all 0.3s ease',
-                '&:hover': { boxShadow: '0 4px 12px rgba(25, 118, 210, 0.4)', transform: 'translateY(-1px)' }
+                boxShadow: '0 2px 8px rgba(255, 255, 255, 0.4)', transition: 'all 0.3s ease',
+                '&:hover': { boxShadow: '0 4px 12px rgba(255, 255, 255, 0.4)', transform: 'translateY(-1px)' }
               }}
             >
               Guardar
@@ -978,14 +978,14 @@ const ModalListaAcuerdos = ({ open, onClose, proveedor, consumoApi, setMessage }
         { field: 'descripcion', headerName: 'Descripción', flex: 1, minWidth: 200 },
         { field: 'fecha_inicio', headerName: 'F. Inicio', width: 110, valueFormatter: (v) => v ? String(v).split('T')[0] : '' },
         { field: 'fecha_final', headerName: 'F. Final', width: 110, valueFormatter: (v) => v ? String(v).split('T')[0] : '' },
-        { field: 'porcent_desc', headerName: 'Descto (%)', width: 100, valueFormatter: (v) => v ? `${v}%` : '0%' },
+        { field: 'porcent_desc', headerName: 'Descto (%)', width: 100, valueFormatter: (v) => v ? `${Math.round(Number(v) * 100)}%` : '0%' },
     ];
     return (
         <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
             <Box sx={{ p: 3, bgcolor: '#fdfdfd' }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                     <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#333' }}>
-                        Acuerdos: <span style={{ color: '#1976d2' }}>{proveedor?.nombre}</span>
+                        Acuerdos: <span style={{ color: '#000000ff' }}>{proveedor?.nombre}</span>
                     </Typography>
                     <Button variant="contained" onClick={() => { setAcuerdoEdit(null); setOpenCaptura(true); }} sx={{ bgcolor: '#333', color: 'white', fontWeight: 'bold' }}>
                         + NUEVO ACUERDO
@@ -1423,8 +1423,8 @@ const ModalCapturaAcuerdo = ({ open, onClose, acuerdoBase, proveedor, consumoApi
                     </Typography>
                     <Box sx={{ display: 'flex', gap: 2 }}>
                         <Button onClick={onClose} variant="outlined" color="inherit">Cancelar</Button>
-                        <Button onClick={handleSave} variant="contained" sx={{ bgcolor: '#2e7d32', color: 'white' }}>
-                            💾 Guardar Acuerdo
+                        <Button onClick={handleSave} variant="contained" sx={{ bgcolor: '#000000ff', color: 'white' }}>
+                            Guardar Acuerdo
                         </Button>
                     </Box>
                 </Box>

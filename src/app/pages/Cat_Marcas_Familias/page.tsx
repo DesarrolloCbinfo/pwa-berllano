@@ -248,11 +248,11 @@ return (
         <Grid container spacing={2} justifyContent="flex-start" alignItems="center" sx={{ mb: 0.5 }}>
             <Grid item xs={12} md={2}>
 <Button variant="contained" disabled={saving} fullWidth startIcon={<AddIcon />}
-        onClick={() => setOpenAdd(true)} // <--- AGREGAR ESTA LÍNEA
+        onClick={() => setOpenAdd(true)} 
         sx={{ 
             height: '50px', backgroundColor: '#333333', color: 'white', fontWeight: 600, textTransform: 'none', borderRadius: '8px',
             boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)', transition: 'all 0.3s ease',
-            '&:hover': { backgroundColor: '#555555', boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)', transform: 'translateY(-1px)' }
+            '&:hover': { backgroundColor: '#555555', boxShadow: '0 6px 16px rgba(255, 255, 255, 0.4)', transform: 'translateY(-1px)' }
         }}>
         AGREGAR
       </Button>
@@ -344,12 +344,7 @@ return (
           </Paper>
         </Box>
 
-      {/* PIE DE PÁGINA */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 1 }}>
-        <Typography variant="caption" sx={{ fontWeight: 'bold', textTransform: 'uppercase' }}>
-          CAT_MARCAS_FAMILIAS, ARAUCARIAS, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/')}, USR:{session?.nombre || 'ADMIN'}
-        </Typography>
-      </Box>
+      
 {/* MODAL PARA AGREGAR NUEVO REGISTRO */}
       <Dialog 
         open={openAdd} 
