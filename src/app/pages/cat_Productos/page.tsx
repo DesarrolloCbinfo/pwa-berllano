@@ -14,6 +14,7 @@ import { 
 import { Edit as EditIcon, Delete as DeleteIcon, Close as CloseIcon } from '@mui/icons-material';
 
 import useConsumoApi from '../../../hooks/useConsumoApi'; 
+import Swal from 'sweetalert2';
 
 const Transition = React.forwardRef(function Transition(
   props: TransitionProps & { children: React.ReactElement<any, any> },
@@ -1412,8 +1413,30 @@ export default function CatProductos() {
   const [searchPerformed, setSearchPerformed] = useState(false);
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({ page: 0, pageSize: 20 });
   const [formData, setFormData] = useState(initialFormState);
-  const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
-  const [openModal, setOpenModal] = useState(false);
+// ✅ PEGA ESTA NUEVA FUNCIÓN EN EL MISMO LUGAR:
+  const setMessage = (msg: { text: string, type: 'success' | 'error' | 'warning' | 'info' } | null) => {
+      if (!msg) return;
+
+      // UX TÁCTICA: Si es el mensaje de la bandera (cuando el usuario da clic rápido en los checkbox de la tabla), 
+      // mostramos un "Toast" pequeñito para no interrumpir su trabajo bloqueándole la pantalla.
+      if (msg.text.includes("Banderas actualizadas")) {
+          Swal.fire({
+              toast: true, position: 'top-end', icon: 'success',
+              title: msg.text.replace('✅ ', ''), showConfirmButton: false, timer: 2000
+          });
+          return;
+      }
+
+      // Alerta Pop-up Profesional para todo lo demás (Guardar producto, Errores de BD, etc)
+      Swal.fire({
+          title: msg.type === 'success' ? '¡Éxito!' : 'Atención',
+          text: msg.text.replace('✅ ', '').replace('❌ ', ''), // Limpiamos los emojis de tu texto original
+          icon: msg.type === 'error' ? 'error' : 'success',
+          timer: msg.type === 'success' ? 2500 : undefined,
+          showConfirmButton: msg.type !== 'success',
+          confirmButtonColor: '#333'
+      });
+  }; const [openModal, setOpenModal] = useState(false);
   const [claveSeleccionada, setClaveSeleccionada] = useState<string | null>(null);
   const [productoForm, setProductoForm] = useState<ProductoForm>(initialProductoState);
   const [modalTabValue, setModalTabValue] = useState(0);
@@ -2058,8 +2081,24 @@ const handleEjecutarClon = async () => {
     }
   };
 
-  const handleDelete = async (id: string) => { if (window.confirm(`¿Eliminar?`)) setMessage({ text: 'Desarrollo', type: 'success' }); };
+ // ✅ PEGA ESTA FUNCIÓN:
+  const handleDelete = async (id: string) => { 
+      const confirmacion = await Swal.fire({
+          title: '¿Estás seguro?',
+          text: "Esta acción no se puede revertir.",
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d32f2f',
+          cancelButtonColor: '#333',
+          confirmButtonText: 'Sí, eliminar',
+          cancelButtonText: 'Cancelar'
+      });
 
+      if (confirmacion.isConfirmed) {
+          // Aquí en un futuro pondrás tu endpoint DELETE. Por ahora dejamos el aviso visual de éxito:
+          setMessage({ text: 'Producto eliminado correctamente (Modo Desarrollo)', type: 'success' });
+      }
+  };
 
 const calculateCosts = (name: string, val: number) => {
     const tasa = name === 'tasa_iva' ? val : (productoForm.tasa_iva || 0);
@@ -2429,7 +2468,12 @@ const cantidadesValidas = cantidadesDescarga
 
   return (
     <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', bgcolor: '#f5f5f5', overflow: 'hidden' }}>
-      
+      <style>{`
+        .swal2-container {
+          z-index: 9999 !important;
+        }
+      `}</style>
+
       <Box sx={{ height: 'auto', flexShrink: 0, p: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
           <Typography variant="h6" component="h1" sx={{ fontWeight: 'bold', color: '#333', display: 'flex', alignItems: 'center', gap: 1, fontSize: '1rem' }}>
@@ -3458,9 +3502,6 @@ const cantidadesValidas = cantidadesDescarga
     productoForm={productoForm}
     sucursales={sucursales}
 />
-      <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage(null)}>
-        <Alert severity={message?.type} onClose={() => setMessage(null)} sx={{ width: '100%' }}>{message?.text}</Alert>
-      </Snackbar>
     </Box>
   );
 }
