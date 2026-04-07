@@ -6,6 +6,7 @@ import AddIcon from '@mui/icons-material/Add'
 import useConsumoApi from '../../../hooks/useConsumoApi'
 import { useSessionContext } from '../../../context/SessionProvider'
 import PWABadge from '../../../PWABadge'
+import Swal from 'sweetalert2'
 
 // Props comunes para campos de formulario estilo Berllano Elegante
 const commonProps = {
@@ -305,8 +306,24 @@ export default function AdministracionPorcentajesPuntos() {
       setSelectedFormaPago('')
       setPorcentaje('')
 
+      // SweetAlert de éxito
+      Swal.fire({
+        title: '¡Éxito!',
+        text: 'Porcentaje de puntos agregado correctamente',
+        icon: 'success',
+        confirmButtonColor: '#000000ff',
+        timer: 2500,
+        showConfirmButton: false
+      })
+
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Error desconocido')
+      // SweetAlert de error
+      Swal.fire({
+        title: 'Error',
+        text: err instanceof Error ? err.message : 'Error desconocido',
+        icon: 'error',
+        confirmButtonColor: '#000000ff'
+      })
     } finally {
       setSaving(false)
     }
@@ -373,9 +390,9 @@ export default function AdministracionPorcentajesPuntos() {
       <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#ececec' }}>
         <Paper sx={{ p: 3, borderRadius: '8px' }}>
           {/* ENCABEZADO */}
-          <Box sx={{ border: '1px solid #2c3e50', p: 1.5, mb: 2, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
+          <Box sx={{ border: '1px solid #000000ff', p: 1.5, mb: 2, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
             <Box>
-                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#000000ff', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
                     Administración de Porcentajes de Puntos
                 </Typography>
                 <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
@@ -548,25 +565,6 @@ export default function AdministracionPorcentajesPuntos() {
           </Paper>
         </Box>
 
-        {/* PIE DE PÁGINA */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 1 }}>
-          <Button 
-            variant="contained" 
-            onClick={handleSalir}
-            sx={{ 
-              backgroundColor: '#e0e0e0', 
-              color: '#000', 
-              fontWeight: 'bold', 
-              px: 4, 
-              mb: 2, 
-              '&:hover': { backgroundColor: '#d0d0d0' } 
-            }}
-          >
-            Salir
-          </Button>
-          
-        </Box>
-
         <Dialog 
           open={openDelete} 
           onClose={() => setOpenDelete(false)}
@@ -579,7 +577,7 @@ export default function AdministracionPorcentajesPuntos() {
           }}
         >
           <DialogTitle sx={{ 
-            background: 'linear-gradient(135deg, #d32f2f 0%, #f44336 100%)', 
+            background: 'linear-gradient(135deg, #000000ff 0%)', 
             color: 'white',
             fontFamily: 'Georgia, "Times New Roman", serif'
           }}>
@@ -619,16 +617,16 @@ export default function AdministracionPorcentajesPuntos() {
               onClick={handleDelete}
               disabled={deleting}
               sx={{ 
-                backgroundColor: '#d32f2f',
+                backgroundColor: '#000000ff',
                 fontWeight: 600,
                 textTransform: 'none',
                 borderRadius: '8px',
                 padding: '8px 16px',
-                boxShadow: '0 4px 12px rgba(211, 47, 47, 0.3)',
+                boxShadow: '0 4px 12px rgba(255, 255, 255, 0.4)',
                 transition: 'all 0.3s ease',
                 '&:hover': { 
-                  backgroundColor: '#b71c1c',
-                  boxShadow: '0 6px 16px rgba(211, 47, 47, 0.4)',
+                  backgroundColor: '#727272ff',
+                  boxShadow: '0 4px 12px rgba(255, 255, 255, 0.4)',
                   transform: 'translateY(-1px)'
                 }
               }}
