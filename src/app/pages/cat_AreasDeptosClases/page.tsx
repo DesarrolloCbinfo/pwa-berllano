@@ -301,17 +301,36 @@ export default function CatAreasDeptosClases() {
       return;
     }
 
+    // Validar campos SAT 
+    // No se requiere validación obligatoria para claveSAT y unidadMedidaSAT
+
+    // Limpiar descripción: eliminar saltos de línea y caracteres especiales
+    const descripcionLimpia = deptoForm.descripcion
+      .replace(/[\r\n]+/g, ' ')  // Reemplazar saltos de línea con espacios
+      .replace(/\s+/g, ' ')       // Reemplazar múltiples espacios con uno solo
+      .trim();                    // Eliminar espacios al inicio y final
+
+    // Limpiar campos SAT también (enviar null si están vacíos, SP ahora lo soporta)
+    const claveSATLimpia = deptoForm.claveSAT.trim() || null;
+    const unidadMedidaSATLimpia = deptoForm.unidadMedidaSAT.trim() || null;
+
+    console.log('Enviando datos:', {
+      depto: deptoForm.depto,
+      area: deptoForm.area,
+      descripcion: descripcionLimpia,
+      claveSAT: claveSATLimpia,
+      unidadMedidaSAT: unidadMedidaSATLimpia
+    });
+
     setLoading(true)
     try {
       if (editingDepto) {
-        const res = await consumoApi.consumoApi.put('/api/CatAreas/sp_bw_cat_deptos_upd', null, {
-          params: { 
-            depto: deptoForm.depto, 
-            area: deptoForm.area, 
-            descripcion: deptoForm.descripcion,
-            claveSAT: deptoForm.claveSAT || '',
-            unidadMedidaSAT: deptoForm.unidadMedidaSAT || ''
-          }
+        const res = await consumoApi.consumoApi.put('/api/CatAreas/sp_bw_cat_deptos_upd', {
+          area: deptoForm.area,
+          depto: deptoForm.depto,
+          descripcion: descripcionLimpia,
+          claveSAT: claveSATLimpia,
+          unidadMedidaSAT: unidadMedidaSATLimpia
         })
         if (res.data?.[0]?.codigo === 0) {
           Swal.fire({
@@ -328,19 +347,16 @@ export default function CatAreasDeptosClases() {
             title: 'Error',
             text: errorMessage,
             icon: 'error',
-            confirmButtonColor: '#333333'
           });
           setMessage({ text: errorMessage, type: 'error' })
         }
       } else {
-        const res = await consumoApi.consumoApi.post('/api/CatAreas/sp_bw_cat_deptos_add', null, {
-          params: { 
-            depto: deptoForm.depto, 
-            area: deptoForm.area, 
-            descripcion: deptoForm.descripcion,
-            claveSAT: deptoForm.claveSAT || '',
-            unidadMedidaSAT: deptoForm.unidadMedidaSAT || ''
-          }
+        const res = await consumoApi.consumoApi.post('/api/CatAreas/sp_bw_cat_deptos_add', {
+          area: deptoForm.area.trim(),
+          depto: deptoForm.depto.trim(),
+          descripcion: descripcionLimpia,
+          claveSAT: claveSATLimpia,
+          unidadMedidaSAT: unidadMedidaSATLimpia
         })
         if (res.data?.[0]?.codigo === 0) {
           Swal.fire({
@@ -366,6 +382,15 @@ export default function CatAreasDeptosClases() {
       setOpenDeptoModal(false)
     } catch (error: any) {
       console.error('Error completo:', error);
+      console.error('Detalles del error 400:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        config: error.response?.config,
+        params: error.response?.config?.params,
+        url: error.response?.config?.url
+      });
+      
       let errorMessage = 'Error al guardar departamento';
       
       // Extraer mensaje de error más específico si está disponible
@@ -1053,7 +1078,7 @@ return (
         <Box sx={{ p: 4, bgcolor: '#fdfdfd' }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
             <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#333' }}>
-              {editingDepto ? ' Editar Departamento' : 'Nuevo Departamento'}
+              {editingDepto ? 'Editar Departamento' : 'Nuevo Departamento'}
             </Typography>
             <IconButton onClick={() => setOpenDeptoModal(false)}>
               <CloseIcon />
@@ -1070,14 +1095,14 @@ return (
               fullWidth
             />
             <TextField
-              label=" Departamento"
+              label=" Departamento *"
               value={deptoForm.depto}
               onChange={(e) => setDeptoForm({ ...deptoForm, depto: e.target.value })}
               disabled={!!editingDepto}
               fullWidth
             />
             <TextField
-              label="Descripción"
+              label="Descripción *"
               value={deptoForm.descripcion}
               onChange={(e) => setDeptoForm({ ...deptoForm, descripcion: e.target.value })}
               fullWidth
@@ -1147,28 +1172,28 @@ return (
           
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             <TextField
-              label="Área"
+              label="Área *"
               value={claseForm.area}
               onChange={(e) => setClaseForm({ ...claseForm, area: e.target.value })}
               disabled={selectedArea !== '0'} //No editables si hay área seleccionada
               fullWidth
             />
             <TextField
-              label="Departamento"
+              label="Departamento *"
               value={claseForm.depto}
               onChange={(e) => setClaseForm({ ...claseForm, depto: e.target.value })}
               disabled={selectedDepto !== '0'} //No editables si hay depto seleccionado
               fullWidth
             />
             <TextField
-              label="Clase"
+              label="Clase *"
               value={claseForm.clase}
               onChange={(e) => setClaseForm({ ...claseForm, clase: e.target.value })}
               disabled={!!editingClase}
               fullWidth
             />
             <TextField
-              label="Descripción"
+              label="Descripción *"
               value={claseForm.descripcion}
               onChange={(e) => setClaseForm({ ...claseForm, descripcion: e.target.value })}
               fullWidth
@@ -1215,7 +1240,7 @@ return (
               fullWidth
             />
             <TextField
-              label="Margen Mínimo Remates"
+              label="Margen Mínimo Remates *"
               type="number"
               value={claseForm.margen_minimo_remates}
               onChange={(e) => {
@@ -1228,7 +1253,7 @@ return (
               fullWidth
             />
             <TextField
-              label="Tasa IVA"
+              label="Tasa IVA *"
               type="number"
               value={claseForm.tasa_iva}
               onChange={(e) => {
