@@ -301,17 +301,33 @@ export default function CatAreasDeptosClases() {
       return;
     }
 
+    // Limpiar descripción: eliminar saltos de línea y caracteres especiales
+    const descripcionLimpia = deptoForm.descripcion
+      .replace(/[\r\n]+/g, ' ')  // Reemplazar saltos de línea con espacios
+      .replace(/\s+/g, ' ')       // Reemplazar múltiples espacios con uno solo
+      .trim();                    // Eliminar espacios al inicio y final
+
+    // Limpiar campos SAT también (enviar null si están vacíos, SP ahora lo soporta)
+    const claveSATLimpia = deptoForm.claveSAT ? deptoForm.claveSAT.trim() || null : null;
+    const unidadMedidaSATLimpia = deptoForm.unidadMedidaSAT ? deptoForm.unidadMedidaSAT.trim() || null : null;
+
+    console.log('Enviando datos:', {
+      depto: deptoForm.depto,
+      area: deptoForm.area,
+      descripcion: descripcionLimpia,
+      claveSAT: claveSATLimpia,
+      unidadMedidaSAT: unidadMedidaSATLimpia
+    });
+
     setLoading(true)
     try {
       if (editingDepto) {
-        const res = await consumoApi.consumoApi.put('/api/CatAreas/sp_bw_cat_deptos_upd', null, {
-          params: { 
-            depto: deptoForm.depto, 
-            area: deptoForm.area, 
-            descripcion: deptoForm.descripcion,
-            claveSAT: deptoForm.claveSAT || '',
-            unidadMedidaSAT: deptoForm.unidadMedidaSAT || ''
-          }
+        const res = await consumoApi.consumoApi.put('/api/CatAreas/sp_bw_cat_deptos_upd', {
+          area: deptoForm.area,
+          depto: deptoForm.depto,
+          descripcion: descripcionLimpia,
+          claveSAT: claveSATLimpia,
+          unidadMedidaSAT: unidadMedidaSATLimpia
         })
         if (res.data?.[0]?.codigo === 0) {
           Swal.fire({
@@ -328,19 +344,16 @@ export default function CatAreasDeptosClases() {
             title: 'Error',
             text: errorMessage,
             icon: 'error',
-            confirmButtonColor: '#333333'
           });
           setMessage({ text: errorMessage, type: 'error' })
         }
       } else {
-        const res = await consumoApi.consumoApi.post('/api/CatAreas/sp_bw_cat_deptos_add', null, {
-          params: { 
-            depto: deptoForm.depto, 
-            area: deptoForm.area, 
-            descripcion: deptoForm.descripcion,
-            claveSAT: deptoForm.claveSAT || '',
-            unidadMedidaSAT: deptoForm.unidadMedidaSAT || ''
-          }
+        const res = await consumoApi.consumoApi.post('/api/CatAreas/sp_bw_cat_deptos_add', {
+          area: deptoForm.area.trim(),
+          depto: deptoForm.depto.trim(),
+          descripcion: descripcionLimpia,
+          claveSAT: claveSATLimpia,
+          unidadMedidaSAT: unidadMedidaSATLimpia
         })
         if (res.data?.[0]?.codigo === 0) {
           Swal.fire({
@@ -366,6 +379,15 @@ export default function CatAreasDeptosClases() {
       setOpenDeptoModal(false)
     } catch (error: any) {
       console.error('Error completo:', error);
+      console.error('Detalles del error 400:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        config: error.response?.config,
+        params: error.response?.config?.params,
+        url: error.response?.config?.url
+      });
+      
       let errorMessage = 'Error al guardar departamento';
       
       // Extraer mensaje de error más específico si está disponible
@@ -480,7 +502,6 @@ export default function CatAreasDeptosClases() {
     setLoading(true)
     try {
       if (editingClase) {
-        // Para edición: todos los campos (el servidor sí acepta campos nuevos)
         const res = await consumoApi.consumoApi.put('/api/CatAreas/sp_bw_cat_clases_upd', null, {
           params: { 
             clase: claseForm.clase, 
@@ -599,9 +620,9 @@ return (
         <Box sx={{ backgroundColor: 'white', p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.05)', mb: 3 }}>
           
           {/* RECUADRO INTERIOR ELEGANTE */}
-          <Box sx={{ border: '1px solid #2c3e50', p: 1.5, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
+          <Box sx={{ border: '1px solid #000000ff', p: 1.5, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
               <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem', textTransform: 'uppercase' }}>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#000000ff', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem', textTransform: 'uppercase' }}>
                       CATÁLOGO DE ÁREAS, DEPARTAMENTOS Y CLASES
                   </Typography>
                   <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
@@ -730,7 +751,7 @@ return (
             borderRadius: '12px', 
             boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
             '& .super-app-theme--header': {
-              backgroundColor: '#818181ff',
+              backgroundColor: '#9b9b9bff',
               color: 'white',
               fontWeight: 'bold',
             }
@@ -746,18 +767,22 @@ return (
                 size="small"
                 startIcon={<AddIcon />}
                 onClick={handleOpenNewDepto}
+                disabled={selectedArea === '0'}
                 sx={{ 
-                  bgcolor: '#000000ff', 
+                  bgcolor: selectedArea === '0' ? '#cccccc' : '#000000ff', 
                   color: 'white',
                   fontWeight: 'bold',
                   fontSize: '12px',
                   px: 2,
                   py: 0.5,
                   borderRadius: '6px',
-                  width: '100%'
+                  width: '100%',
+                  '&:hover': {
+                    bgcolor: selectedArea === '0' ? '#bbbbbb' : '#333333ff'
+                  }
                 }}
               >
-                Agregar Departamento
+                {selectedArea === '0' ? 'Seleccione un área primero' : 'Agregar Departamento'}
               </Button>
             </Box>
             <DataGrid
@@ -868,18 +893,22 @@ return (
                 size="small"
                 startIcon={<AddIcon />}
                 onClick={handleOpenNewClase}
+                disabled={selectedDepto === '0'}
                 sx={{ 
-                  bgcolor: '#000000ff', 
+                  bgcolor: selectedDepto === '0' ? '#cccccc' : '#000000ff', 
                   color: 'white',
                   fontWeight: 'bold',
                   fontSize: '12px',
                   px: 2,
                   py: 0.5,
                   borderRadius: '6px',
-                  width: '100%'
+                  width: '100%',
+                  '&:hover': {
+                    bgcolor: selectedDepto === '0' ? '#bbbbbb' : '#333333ff'
+                  }
                 }}
               >
-                Agregar Clase
+                {selectedDepto === '0' ? 'Seleccione un departamento primero' : 'Agregar Clase'}
               </Button>
             </Box>
             <DataGrid
@@ -996,26 +1025,38 @@ return (
         }}
       >
         <Box sx={{ p: 4, bgcolor: '#fdfdfd' }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#333' }}>
-              {editingArea ? ' Editar Área' : 'Nueva Área'}
+          <Box sx={{ bgcolor: '#000000ff', p: 3, borderRadius: '8px 8px 0 0', ml: -4, mr: -4, mt: -4 }}>
+            <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'white', mb: 1 }}>
+              {editingArea ? 'Editar Área' : 'Nueva Área'}
             </Typography>
-            <IconButton onClick={() => setOpenAreaModal(false)}>
+            <Typography variant="body2" sx={{ color: 'white', opacity: 0.9 }}>
+              Complete la información del proveedor en los campos correspondientes
+            </Typography>
+            <IconButton 
+              onClick={() => setOpenAreaModal(false)}
+              sx={{ 
+                position: 'absolute', 
+                top: 16, 
+                right: 16, 
+                color: 'white',
+                bgcolor: 'rgba(255,255,255,0.1)',
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' }
+              }}
+            >
               <CloseIcon />
             </IconButton>
           </Box>
-          <Divider sx={{ mb: 3, borderBottomWidth: 2, borderColor: '#000000ff' }} />
           
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 3 }}>
             <TextField
-              label=" Área"
+              label="Área *"
               value={areaForm.area}
               onChange={(e) => setAreaForm({ ...areaForm, area: e.target.value })}
               disabled={!!editingArea}
               fullWidth
             />
             <TextField
-              label="Descripción"
+              label="Descripción *"
               value={areaForm.descripcion}
               onChange={(e) => setAreaForm({ ...areaForm, descripcion: e.target.value })}
               fullWidth
@@ -1051,33 +1092,45 @@ return (
         }}
       >
         <Box sx={{ p: 4, bgcolor: '#fdfdfd' }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#333' }}>
-              {editingDepto ? ' Editar Departamento' : 'Nuevo Departamento'}
+          <Box sx={{ bgcolor: '#000000ff', p: 3, borderRadius: '8px 8px 0 0', ml: -4, mr: -4, mt: -4 }}>
+            <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'white', mb: 1 }}>
+              {editingDepto ? 'Editar Departamento' : 'Nuevo Departamento'}
             </Typography>
-            <IconButton onClick={() => setOpenDeptoModal(false)}>
+            <Typography variant="body2" sx={{ color: 'white', opacity: 0.9 }}>
+              Complete la información del departamento en los campos correspondientes
+            </Typography>
+            <IconButton 
+              onClick={() => setOpenDeptoModal(false)}
+              sx={{ 
+                position: 'absolute', 
+                top: 16, 
+                right: 16, 
+                color: 'white',
+                bgcolor: 'rgba(255,255,255,0.1)',
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' }
+              }}
+            >
               <CloseIcon />
             </IconButton>
           </Box>
-          <Divider sx={{ mb: 3, borderBottomWidth: 2, borderColor: '#000000ff' }} />
           
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 3 }}>
             <TextField
-              label=" Área"
+              label="Área"
               value={deptoForm.area}
               onChange={(e) => setDeptoForm({ ...deptoForm, area: e.target.value })}
-              disabled={!editingDepto} // No editable si está agregando (solo editable al editar)
+              disabled={!editingDepto}
               fullWidth
             />
             <TextField
-              label=" Departamento"
+              label="Departamento *"
               value={deptoForm.depto}
               onChange={(e) => setDeptoForm({ ...deptoForm, depto: e.target.value })}
               disabled={!!editingDepto}
               fullWidth
             />
             <TextField
-              label="Descripción"
+              label="Descripción *"
               value={deptoForm.descripcion}
               onChange={(e) => setDeptoForm({ ...deptoForm, descripcion: e.target.value })}
               fullWidth
@@ -1135,40 +1188,52 @@ return (
         }}
       >
         <Box sx={{ p: 4, bgcolor: '#fdfdfd' }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#333' }}>
-              {editingClase ? ' Editar Clase' : 'Nueva Clase'}
+          <Box sx={{ bgcolor: '#000000ff', p: 3, borderRadius: '8px 8px 0 0', ml: -4, mr: -4, mt: -4 }}>
+            <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'white', mb: 1 }}>
+              {editingClase ? 'Editar Clase' : 'Nueva Clase'}
             </Typography>
-            <IconButton onClick={() => setOpenClaseModal(false)}>
+            <Typography variant="body2" sx={{ color: 'white', opacity: 0.9 }}>
+              Complete la información de la clase en los campos correspondientes
+            </Typography>
+            <IconButton 
+              onClick={() => setOpenClaseModal(false)}
+              sx={{ 
+                position: 'absolute', 
+                top: 16, 
+                right: 16, 
+                color: 'white',
+                bgcolor: 'rgba(255,255,255,0.1)',
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' }
+              }}
+            >
               <CloseIcon />
             </IconButton>
           </Box>
-          <Divider sx={{ mb: 3, borderBottomWidth: 2, borderColor: '#000000ff' }} />
           
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 3 }}>
             <TextField
-              label="Área"
+              label="Área *"
               value={claseForm.area}
               onChange={(e) => setClaseForm({ ...claseForm, area: e.target.value })}
-              disabled={selectedArea !== '0'} //No editables si hay área seleccionada
+              disabled={selectedArea !== '0'}
               fullWidth
             />
             <TextField
-              label="Departamento"
+              label="Departamento *"
               value={claseForm.depto}
               onChange={(e) => setClaseForm({ ...claseForm, depto: e.target.value })}
-              disabled={selectedDepto !== '0'} //No editables si hay depto seleccionado
+              disabled={selectedDepto !== '0'}
               fullWidth
             />
             <TextField
-              label="Clase"
+              label="Clase *"
               value={claseForm.clase}
               onChange={(e) => setClaseForm({ ...claseForm, clase: e.target.value })}
               disabled={!!editingClase}
               fullWidth
             />
             <TextField
-              label="Descripción"
+              label="Descripción *"
               value={claseForm.descripcion}
               onChange={(e) => setClaseForm({ ...claseForm, descripcion: e.target.value })}
               fullWidth
@@ -1215,7 +1280,7 @@ return (
               fullWidth
             />
             <TextField
-              label="Margen Mínimo Remates"
+              label="Margen Mínimo Remates *"
               type="number"
               value={claseForm.margen_minimo_remates}
               onChange={(e) => {
@@ -1228,7 +1293,7 @@ return (
               fullWidth
             />
             <TextField
-              label="Tasa IVA"
+              label="Tasa IVA *"
               type="number"
               value={claseForm.tasa_iva}
               onChange={(e) => {
