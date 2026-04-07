@@ -248,9 +248,11 @@ const columns = useMemo<GridColDef[]>(() => [
         </Grid>
       </Paper>
 
-        {/* TABLA PRINCIPAL */}
+{/* ============================================================ */}
+        {/* --- TABLA PRINCIPAL AL ESTILO OFICIAL (TURNOS DOBLES) --- */}
+        {/* ============================================================ */}
         <Box sx={{ mt: 3 }}>
-          <Paper sx={{ width: '100%', maxHeight: 600, mb: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
+          <Paper sx={{ p: 3, width: '100%', maxHeight: 600, mb: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
             <DataGrid 
                 rows={Array.isArray(rows) ? rows : []} 
                 columns={columns} 
@@ -267,14 +269,31 @@ const columns = useMemo<GridColDef[]>(() => [
                 onProcessRowUpdateError={(error) => console.error(error)}
                 sx={{ 
                     border: 'none', 
-                    '& .MuiDataGrid-columnHeaders': { borderBottom: '2px solid #000', fontSize: '1rem', fontWeight: 'bold' },
-                    '& .MuiDataGrid-cell': { borderBottom: '1px solid #e0e0e0' },
-                    '& .MuiDataGrid-cell--editable': { backgroundColor: '#f9fbfd', cursor: 'text' }, 
-                    '& .MuiDataGrid-cell--editing': { backgroundColor: '#fff', boxShadow: '0 0 5px rgba(25,118,210,0.5)' }
+                    // Encabezados estilo oficial (Borde inferior grueso, centrado, letra clara)
+                    '& .MuiDataGrid-columnHeaders': { 
+                        borderBottom: '2px solid #000',
+                        textAlign: 'center',
+                        fontSize: '1rem',
+                        fontWeight: 'bold'
+                    },
+                    // Línea divisoria muy sutil entre celdas
+                    '& .MuiDataGrid-cell': {
+                        borderBottom: '1px solid #e0e0e000' // Borde invisible para diseño limpio
+                    },
+                    // Estilos de edición (Igual a tu base oficial)
+                    '& .MuiDataGrid-cell--editable': { 
+                        backgroundColor: '#f9fbfd', 
+                        cursor: 'text' 
+                    }, 
+                    '& .MuiDataGrid-cell--editing': { 
+                        backgroundColor: '#fff', 
+                        boxShadow: '0 0 5px rgba(25,118,210,0.5)' 
+                    }
                 }} 
             />
           </Paper>
         </Box>
+        {/* ============================================================ */}
 
       {/* PIE DE PÁGINA */}
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 1 }}>

@@ -1840,10 +1840,21 @@ const handleOpenEdit = async (row: ProductoRow) => {
         const d = res.data; // Los datos completos de la tabla
 
 
-        const resPrecios = await consumoApi.get('/api/CatProductosC/sp_bw_cat_producto_precios', { 
-            params: { clave: row.clave } 
-        });
-        setPrecios(resPrecios.data || []);
+        //const resPrecios = await consumoApi.get('/api/CatProductosC/sp_bw_cat_producto_precios', { 
+          //  params: { clave: row.clave } 
+        //});
+       // setPrecios(resPrecios.data || []);
+const resPrecios = await consumoApi.get('/api/CatProductosC/sp_bw_cat_producto_precios', { 
+            params: { clave: row.clave } 
+        });
+        
+        // MAGIA 1: Convertimos el margen decimal a entero (ej. 0.15 -> 15)
+        const preciosMapeados = (resPrecios.data || []).map((p: any) => ({
+            ...p,
+            margen: Number(p.margen ?? p.Margen ?? 0) * 100,
+            Margen: Number(p.margen ?? p.Margen ?? 0) * 100
+        }));
+        setPrecios(preciosMapeados);
 
         const resCant = await consumoApi.get('/api/CatProductosC/sp_bw_cat_producto_cantidades', { 
             params: { clave: row.clave } 
@@ -2306,10 +2317,17 @@ const cantidadesValidas = cantidadesDescarga
         if (response.status === 200) {
     // 1. Preparamos los datos de la tabla de precios
     // Mapeamos para que los nombres coincidan con los parámetros de la API (clave_lista, precio, margen)
+    //const payloadPrecios = precios.map(p => ({
+       // clave_lista: Number(p.Lista || p.lista || p.clave_lista),
+        //precio: Number(p.precio ?? p.Precio ?? 0),
+        //margen: Number(p.margen ?? p.Margen ?? 0)
+    //}));
+
     const payloadPrecios = precios.map(p => ({
         clave_lista: Number(p.Lista || p.lista || p.clave_lista),
         precio: Number(p.precio ?? p.Precio ?? 0),
-        margen: Number(p.margen ?? p.Margen ?? 0)
+        // MAGIA 2: Convertimos el entero de vuelta a decimal (ej. 15 -> 0.15)
+        margen: Number(p.margen ?? p.Margen ?? 0) / 100
     }));
 
     // --- NUEVO: GUARDAR CANTIDADES ---
@@ -2702,16 +2720,29 @@ const cantidadesValidas = cantidadesDescarga
         value={Math.round(Number(productoForm.tasa_iva || 0) * 100)} 
         onChange={handleProductoChange} 
         inputProps={{ step: "1" }}
+        InputProps={{ endAdornment: <Typography sx={{ color: '#666', fontWeight: 'bold' }}>%</Typography> }}
     />
 </Grid>
                 {/* APLICAMOS EL TOFIXED(2) DIRECTO EN EL VALUE */}
-                <Grid item xs={12} md={4}><TextField {...modalCommonProps} label="Costo sin IVA" type="number" name="costo_sin_iva" value={Number(productoForm.costo_sin_iva).toFixed(2)} onChange={handleProductoChange} inputProps={{ step: "0.01" }}/></Grid>
-                <Grid item xs={12} md={4}><TextField {...modalCommonProps} label="Costo con IVA" type="number" name="costo_con_iva" value={Number(productoForm.costo_con_iva).toFixed(2)} onChange={handleProductoChange} inputProps={{ step: "0.01" }}/></Grid>
-                <Grid item xs={12} md={4}><TextField {...modalCommonProps} label="Costo Promedio" type="number" name="costo_promedio" value={Number(productoForm.costo_promedio).toFixed(2)} onChange={handleProductoChange} inputProps={{ step: "0.01" }}/></Grid>
-                <Grid item xs={12} md={4}><TextField {...modalCommonProps} label="Costo Unitario" type="number" name="costo_unitario" value={Number(productoForm.costo_unitario).toFixed(2)} onChange={handleProductoChange} inputProps={{ step: "0.01" }}/></Grid>
-                <Grid item xs={12} md={4}><TextField {...modalCommonProps} label="Cto. Unit. c. IVA" type="number" name="costo_unitario_iva" value={Number(productoForm.costo_unitario_iva).toFixed(2)} onChange={handleProductoChange} inputProps={{ step: "0.01" }}/></Grid>
-                <Grid item xs={12} md={4}><TextField {...modalCommonProps} label="Costo Auto." type="number" name="costo_autorizado" value={Number(productoForm.costo_autorizado).toFixed(2)} onChange={handleProductoChange} inputProps={{ step: "0.01" }}/></Grid>
-            </Grid>
+                {/* APLICAMOS EL SÍMBOLO $ AL INICIO DE TODOS LOS COSTOS */}
+                <Grid item xs={12} md={4}>
+                    <TextField {...modalCommonProps} label="Costo sin IVA" type="number" name="costo_sin_iva" value={Number(productoForm.costo_sin_iva).toFixed(2)} onChange={handleProductoChange} inputProps={{ step: "0.01" }} InputProps={{ startAdornment: <Typography sx={{ color: '#666', fontWeight: 'bold', mr: 1 }}>$</Typography> }} />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                    <TextField {...modalCommonProps} label="Costo con IVA" type="number" name="costo_con_iva" value={Number(productoForm.costo_con_iva).toFixed(2)} onChange={handleProductoChange} inputProps={{ step: "0.01" }} InputProps={{ startAdornment: <Typography sx={{ color: '#666', fontWeight: 'bold', mr: 1 }}>$</Typography> }} />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                    <TextField {...modalCommonProps} label="Costo Promedio" type="number" name="costo_promedio" value={Number(productoForm.costo_promedio).toFixed(2)} onChange={handleProductoChange} inputProps={{ step: "0.01" }} InputProps={{ startAdornment: <Typography sx={{ color: '#666', fontWeight: 'bold', mr: 1 }}>$</Typography> }} />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                    <TextField {...modalCommonProps} label="Costo Unitario" type="number" name="costo_unitario" value={Number(productoForm.costo_unitario).toFixed(2)} onChange={handleProductoChange} inputProps={{ step: "0.01" }} InputProps={{ startAdornment: <Typography sx={{ color: '#666', fontWeight: 'bold', mr: 1 }}>$</Typography> }} />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                    <TextField {...modalCommonProps} label="Cto. Unit. c. IVA" type="number" name="costo_unitario_iva" value={Number(productoForm.costo_unitario_iva).toFixed(2)} onChange={handleProductoChange} inputProps={{ step: "0.01" }} InputProps={{ startAdornment: <Typography sx={{ color: '#666', fontWeight: 'bold', mr: 1 }}>$</Typography> }} />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                    <TextField {...modalCommonProps} label="Costo Auto." type="number" name="costo_autorizado" value={Number(productoForm.costo_autorizado).toFixed(2)} onChange={handleProductoChange} inputProps={{ step: "0.01" }} InputProps={{ startAdornment: <Typography sx={{ color: '#666', fontWeight: 'bold', mr: 1 }}>$</Typography> }} />
+                </Grid> </Grid>
         </Box>
 
         {/* CONTENEDOR DE PROMOCIONES */}
@@ -2736,8 +2767,18 @@ const cantidadesValidas = cantidadesDescarga
                     <TextField {...modalCommonProps} label="Final Promo" type="date" name="fecha_final_promo" value={productoForm.fecha_final_promo} onChange={handleProductoChange} InputLabelProps={{ shrink: true }} disabled={!productoForm.en_promocion} />
                 </Grid>
                 <Grid item xs={12} md={3}>
-                    <TextField {...modalCommonProps} label="Precio Promo" type="number" name="precio_promocion" value={productoForm.precio_promocion} onChange={handleProductoChange} disabled={!productoForm.en_promocion} />
-                </Grid>
+                    <TextField 
+                        {...modalCommonProps} 
+                        label="Precio Promo" 
+                        type="number" 
+                        name="precio_promocion" 
+                        value={productoForm.precio_promocion} 
+                        onChange={handleProductoChange} 
+                        disabled={!productoForm.en_promocion} 
+                        // 👇 EL SÍMBOLO $ AL INICIO 👇
+                        InputProps={{ startAdornment: <Typography sx={{ color: '#666', fontWeight: 'bold', mr: 1 }}>$</Typography> }}
+                    />
+                </Grid>
             </Grid>
         </Box>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -2797,23 +2838,26 @@ const cantidadesValidas = cantidadesDescarga
             step: "any", 
             style: { textAlign: 'right', fontWeight: 'bold', width: '100px' } 
         }}
+        InputProps={{ startAdornment: <Typography sx={{ color: '#666', fontWeight: 'bold', mr: 1 }}>$</Typography> }}
     />
                 </TableCell>
 
                 {/* MARGEN EDITABLE */}
                 <TableCell align="right">
                     <TextField
-        type="number"
-        variant="standard"
-        value={p.margen ?? p.Margen ?? 0}
-        onChange={(e) => handlePrecioLocalChange(index, 'margen', e.target.value)}
-        onFocus={(e) => e.target.select()}
-        onWheel={(e) => e.target instanceof HTMLElement && e.target.blur()}
-        inputProps={{ 
-            step: "any", 
-            style: { textAlign: 'right', width: '80px' } 
-        }}
-    />
+                        type="number"
+                        variant="standard"
+                        value={p.margen ?? p.Margen ?? 0}
+                        onChange={(e) => handlePrecioLocalChange(index, 'margen', e.target.value)}
+                        onFocus={(e) => e.target.select()}
+                        onWheel={(e) => e.target instanceof HTMLElement && e.target.blur()}
+                        inputProps={{ 
+                            // MAGIA 3: Cambiamos "any" por "1" para que las flechitas suban de entero en entero
+                            step: "1", 
+                            style: { textAlign: 'right', width: '80px' } 
+                        }}
+                        InputProps={{ endAdornment: <Typography sx={{ color: '#666', fontWeight: 'bold', ml: 0.5 }}>%</Typography> }}
+                    />
                 </TableCell>
 
                 {/* REAL % (SOLO LECTURA CALCULADO) */}
@@ -2867,6 +2911,7 @@ const cantidadesValidas = cantidadesDescarga
         value={Math.round(Number(productoForm.comision || 0) * 100)} 
         onChange={handleProductoChange} 
         inputProps={{ step: "1" }} 
+        InputProps={{ endAdornment: <Typography sx={{ color: '#666', fontWeight: 'bold' }}>%</Typography> }}
     />
 </Grid> </Grid>
                         </Box>
