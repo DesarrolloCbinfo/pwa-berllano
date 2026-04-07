@@ -214,9 +214,9 @@ export default function CatSucursales() {
   };
 
   // Función para validar y manejar cambios en campos numéricos (solo positivos)
-  const handleNumericChange = (value: string, setter: (value: string) => void, allowZero: boolean = true) => {
+  const handleNumericChange = (value: string, setter: (value: string) => void, allowZero: boolean = true, formatDecimals: boolean = false) => {
     // Solo permitir números, punto decimal y signo negativo para validación
-    const numericValue = value.replace(/[^0-9.-]/g, '');
+    let numericValue = value.replace(/[^0-9.-]/g, '');
     
     // Si está vacío, permitir
     if (numericValue === '') {
@@ -224,12 +224,36 @@ export default function CatSucursales() {
       return;
     }
     
+    // Limitar a 2 decimales si hay punto decimal
+    if (numericValue.includes('.')) {
+      const parts = numericValue.split('.');
+      if (parts.length > 2) {
+        // Múltiples puntos, mantener solo el primero
+        numericValue = parts[0] + '.' + parts.slice(1).join('');
+      }
+      if (parts[1] && parts[1].length > 2) {
+        // Más de 2 decimales, truncar a 2
+        numericValue = parts[0] + '.' + parts[1].substring(0, 2);
+      }
+    }
+    
     // Convertir a número para validar
     const numValue = parseFloat(numericValue);
     
     // Validar que no sea NaN y que sea positivo (o cero si se permite)
     if (!isNaN(numValue) && (allowZero ? numValue >= 0 : numValue > 0)) {
-      setter(numericValue);
+      // Si se requiere formato de 2 decimales, aplicarlo solo si no tiene decimales o si es un número redondo
+      if (formatDecimals && !isNaN(numValue)) {
+        // Si el valor no tiene decimales, formatear a 2 decimales
+        if (!numericValue.includes('.')) {
+          setter(numValue.toFixed(2));
+        } else {
+          // Si ya tiene decimales, mantener el valor truncado a 2 decimales
+          setter(numericValue);
+        }
+      } else {
+        setter(numericValue);
+      }
     }
   };
   
@@ -346,7 +370,7 @@ export default function CatSucursales() {
     },
     { 
       field: 'importe_retiros', 
-      headerName: 'Importe Retiros', 
+      headerName: 'Monto Aviso', 
       width: 150,
       renderCell: (params) => (
         <span>
@@ -563,6 +587,25 @@ export default function CatSucursales() {
     fetchSucursales();
   }, []);
 
+  // Función para limpiar el formulario de agregar
+  const clearAddForm = () => {
+    setCveSucursal('');
+    setNombre('');
+    setDireccion('');
+    setDiasDevolucion('0');
+    setEnLinea(true);
+    setVersion('');
+    setValidar_tx(false);
+    setClave_timbrador('1');
+    setRecibe_prov_all(false);
+    setEdita_costos_rm(false);
+    setCredito(false);
+    setFondo('');
+    setImporte_retiros('');
+    setNumeroAvisos('');
+    setImporteCajaDespuesRetiros('');
+  };
+
   const handleAdd = async () => {
     if (!nombre) {
       Swal.fire({
@@ -595,7 +638,7 @@ export default function CatSucursales() {
             EDITA_COSTOS_RM: edita_costos_rm ? 1 : 0,
             CREDITO: credito ? 1 : 0,
             fondo: parseFloat(fondo) || 0,
-            montoAviso: parseFloat(importe_retiros) || 0,
+            importe_retiros: parseFloat(importe_retiros) || 0,
             numeroAvisos: parseInt(numeroAvisos) || 0,
             importeCajaDespuesRetiros: parseFloat(importeCajaDespuesRetiros) || 0,
           },
@@ -693,7 +736,7 @@ export default function CatSucursales() {
             EDITA_COSTOS_RM: editEditaCostosRm ? 1 : 0,
             CREDITO: editCredito ? 1 : 0,
             fondo: parseFloat(editFondo) || 0,
-            montoAviso: parseFloat(editImporte_retiros) || 0,
+            importe_retiros: parseFloat(editImporte_retiros) || 0,
             numeroAvisos: parseInt(editNumeroAvisos) || 0,
             importeCajaDespuesRetiros: parseFloat(editImporteCajaDespuesRetiros) || 0,
           },
@@ -780,7 +823,10 @@ export default function CatSucursales() {
           <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
             <Button 
               variant='contained' 
-              onClick={() => setOpenAdd(true)}
+              onClick={() => {
+                clearAddForm();
+                setOpenAdd(true);
+              }}
               sx={{
                 backgroundColor: '#333333',
                 color: '#fff',
@@ -950,24 +996,24 @@ export default function CatSucursales() {
                     <TextField
                       label='Fondo de Caja'
                       value={fondo}
-                      onChange={(e) => handleNumericChange(e.target.value, setFondo, true)}
+                      onChange={(e) => handleNumericChange(e.target.value, setFondo, true, true)}
                       type='number'
                       fullWidth
                       size='small'
                       sx={{ bgcolor: 'white' }}
-                      inputProps={{ min: 0 }}
+                      inputProps={{ min: 0, step: 0.01 }}
                     />
                   </Grid>
                   <Grid item xs={12} sm={4}>
                     <TextField
-                      label='Importe Retiros'
+                      label='Monto Aviso'
                       value={importe_retiros}
-                      onChange={(e) => handleNumericChange(e.target.value, setImporte_retiros, true)}
+                      onChange={(e) => handleNumericChange(e.target.value, setImporte_retiros, true, true)}
                       type='number'
                       fullWidth
                       size='small'
                       sx={{ bgcolor: 'white' }}
-                      inputProps={{ min: 0 }}
+                      inputProps={{ min: 0, step: 0.01 }}
                     />
                   </Grid>
                   <Grid item xs={12} sm={6}>
@@ -986,12 +1032,12 @@ export default function CatSucursales() {
                     <TextField
                       label='Importe Caja Después Retiros'
                       value={importeCajaDespuesRetiros}
-                      onChange={(e) => handleNumericChange(e.target.value, setImporteCajaDespuesRetiros, true)}
+                      onChange={(e) => handleNumericChange(e.target.value, setImporteCajaDespuesRetiros, true, true)}
                       type='number'
                       fullWidth
                       size='small'
                       sx={{ bgcolor: 'white' }}
-                      inputProps={{ min: 0 }}
+                      inputProps={{ min: 0, step: 0.01 }}
                     />
                   </Grid>
                 </Grid>
@@ -1441,7 +1487,7 @@ export default function CatSucursales() {
                   </Grid>
                   <Grid item xs={12} sm={4}>
                     <TextField
-                      label='Importe Retiros'
+                      label='Monto Aviso'
                       value={editImporte_retiros}
                       onChange={(e) => handleNumericChange(e.target.value, setEditImporte_retiros, true)}
                       type='number'
