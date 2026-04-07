@@ -149,7 +149,20 @@ const cargarDatos = async () => {
     }
   };
   // --- LÓGICA DE GUARDADO (AUTO-SAVE) ---
-  const guardarCambioEnBD = async (row: FamiliaRow) => {
+  const guardarCambioEnBD = async (row: FamiliaRow, originalRow?: FamiliaRow) => {
+    // Verificar si realmente hubo cambios
+    if (originalRow) {
+      const sinCambios = (
+        originalRow.id_familia === row.id_familia &&
+        originalRow.id_marca === row.id_marca &&
+        originalRow.familia === row.familia
+      );
+      
+      if (sinCambios) {
+        return; // No hay cambios, no mostrar alerta
+      }
+    }
+
     try {
         await consumoApi.put('/api/CatMarcasFamilias/sp_bw_cat_marcasfamilias_upd', null, { 
             params: { 
@@ -158,11 +171,24 @@ const cargarDatos = async () => {
                 familia: row.familia 
             }
         });
-        // Mensaje discreto
-        setMensaje({ texto: 'Guardado correctamente', tipo: 'success' });
+        // SweetAlert de éxito
+        Swal.fire({
+          title: '¡Actualizado!',
+          text: 'El campo se ha actualizado correctamente',
+          icon: 'success',
+          confirmButtonColor: '#000000ff',
+          timer: 2000,
+          showConfirmButton: false
+        });
     } catch (error) {
         console.error(error);
-        setMensaje({ texto: 'Error al guardar el cambio', tipo: 'error' });
+        // SweetAlert de error
+        Swal.fire({
+          title: 'Error',
+          text: 'No se pudo actualizar el campo',
+          icon: 'error',
+          confirmButtonColor: '#000000ff'
+        });
     }
   };
 
@@ -171,19 +197,20 @@ const cargarDatos = async () => {
   // 1. Actualización visual inmediata
   const handleRowChange = (index: number, field: keyof FamiliaRow, value: any) => {
     const newRows = [...rows];
+    const originalRow = { ...newRows[index] }; // Guardar valor original
     newRows[index] = { ...newRows[index], [field]: value };
     setRows(newRows);
 
     // CASO ESPECIAL: Si cambiaron el Combo (Marca), guardamos YA.
     if (field === 'id_marca') {
-        guardarCambioEnBD(newRows[index]);
+        guardarCambioEnBD(newRows[index], originalRow);
     }
   };
 
   // 2. Evento al salir de la caja de texto (onBlur)
   const handleBlur = (index: number) => {
-    // Aquí guardamos el texto que escribió el usuario
-    guardarCambioEnBD(rows[index]);
+    const originalRow = rows[index]; // Valor actual antes del cambio
+    guardarCambioEnBD(rows[index], originalRow);
   };
 
 const handleAdd = async () => {
@@ -226,9 +253,9 @@ return (
 
       <Paper sx={{ p: 3, borderRadius: '8px' }}>
         {/* ENCABEZADO */}
-        <Box sx={{ border: '1px solid #2c3e50', p: 1.5, mb: 2, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
+        <Box sx={{ border: '1px solid #000000ff', p: 1.5, mb: 2, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
             <Box>
-                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#000000ff', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
                     Catálogo de Marcas y Familias
                 </Typography>
                 <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>

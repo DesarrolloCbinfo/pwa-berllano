@@ -58,6 +58,7 @@ interface CatalogoItem {
 
 const initialFormState = {
   clave_cliente: '',
+  id_cliente: '', // Agregar id_cliente para edición
   nombre: '',
   apellido_paterno: '',
   apellido_materno: '',
@@ -263,8 +264,12 @@ export default function CatClientes() {
   };
 
   const handleOpenEdit = (row: ClienteRow) => {
+    // Validar y convertir el ID de forma segura
+    const idCliente = row.id ? String(row.id).trim() : '';
+    
     setFormData({
-      clave_cliente: row.id, 
+      clave_cliente: idCliente, 
+      id_cliente: idCliente, // Mantener como string para evitar NaN
       nombre: row.nombre || '',    
       apellido_paterno: row.ap_paterno || '',
       apellido_materno: row.ap_materno || '',
@@ -293,12 +298,14 @@ const handleSave = async () => {
       Swal.fire('Atención', 'El Nombre y Sucursal son obligatorios', 'warning');
       return;
     }
-    const paramsToSend = {
+    
+    // Parámetros base para ambos casos
+    const baseParams = {
         nombre: formData.nombre,
         sucursal_id: Number(formData.sucursal_id),
         suspendido: formData.suspendido,
-        apellido_paterno: formData.apellido_paterno,
-        apellido_materno: formData.apellido_materno,
+        ap_paterno: formData.apellido_paterno, // Corregir nombre de campo
+        ap_materno: formData.apellido_materno,  // Corregir nombre de campo
         email: formData.email,
         telefono: formData.telefono,
         ciudad: formData.ciudad,
@@ -306,15 +313,29 @@ const handleSave = async () => {
         colonia: formData.colonia,
         estado: formData.estado,
         domicilio: formData.domicilio,
-        genero: formData.genero,
-        clave_registro: formData.clave_registro
+        genero: formData.genero
     };
+    
     try {
       if (isEditing) {
-        await consumoApi.put('/api/CatClientesSuc/sp_bw_cat_clientes_upd', paramsToSend);
+        // Validar que id_cliente no esté vacío antes de convertir
+        if (!formData.id_cliente || formData.id_cliente.trim() === '') {
+          Swal.fire('Error', 'No se puede actualizar: ID de cliente no válido', 'error');
+          return;
+        }
+        
+        // Para actualización: agregar no_cliente y enviar en body JSON
+        const updateParams = {
+          no_cliente: formData.id_cliente.trim(), // Usar no_cliente en lugar de id_cliente
+          ...baseParams
+        };
+        
+        // Enviar como body JSON, no como query params
+        await consumoApi.put('/api/CatClientesSuc/sp_bw_cat_clientes_upd', updateParams);
         Swal.fire({ title: '¡Éxito!', text: 'Cliente actualizado correctamente', icon: 'success', confirmButtonColor: '#333333' });
       } else {
-        await consumoApi.post('/api/CatClientesSuc/sp_bw_cat_clientes_ins', paramsToSend);
+        // Para inserción: enviar en body JSON
+        await consumoApi.post('/api/CatClientesSuc/sp_bw_cat_clientes_ins', baseParams);
         Swal.fire({ title: '¡Éxito!', text: 'Cliente creado correctamente', icon: 'success', confirmButtonColor: '#333333' });
       }
       setOpenModal(false);
@@ -379,9 +400,9 @@ return (
       {/* PAPER 1: ENCABEZADO Y TÍTULO */}
       <Paper sx={{ p: 3, borderRadius: '8px', mb: 3 }}>
         {/* ENCABEZADO */}
-        <Box sx={{ border: '1px solid #2c3e50', p: 1.5, mb: 2, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
+        <Box sx={{ border: '1px solid #000000ff', p: 1.5, mb: 2, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
             <Box>
-                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#000000ff', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
                     CATÁLOGO DE CLIENTES
                 </Typography>
                 <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
@@ -717,11 +738,20 @@ return (
                   <Grid item xs={12} sm={3}>
                     <TextField 
                       {...commonProps} 
+                      type="date"
                       label='Fecha Registro' 
                       name="fecha_act" 
-                      value={formData.fecha_act} 
+                      value={formatDateForInput(formData.fecha_act)} 
                       onChange={handleInputChange}
-                      placeholder="DD/MM/YYYY"
+                      InputLabelProps={{ shrink: true }}
+                      sx={{
+                        '& .MuiInputBase-input': { py: 1.5 },
+                        '& .MuiOutlinedInput-root': {
+                          borderRadius: '8px',
+                          '&:hover fieldset': { borderColor: '#333' },
+                          '&.Mui-focused fieldset': { borderColor: '#000000ff' }
+                        }
+                      }}
                     />
                   </Grid>
                   <Grid item xs={12} sm={3}>
@@ -986,7 +1016,6 @@ return (
           </Box>
         </Box>
       </Dialog>
-
     </Box>
   );
 }
