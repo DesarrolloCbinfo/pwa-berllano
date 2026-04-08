@@ -425,25 +425,54 @@ export default function CatPlasticosAutorizados() {
       </Dialog>
 
       {/* Dialog de Agregar Plástico */}
-      <Dialog open={openAgregar} onClose={() => setOpenAgregar(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Agregar Plástico Autorizado</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Ingrese el número de plástico a agregar:
-          </Typography>
-          <TextField
-            fullWidth
-            label="Número de Plástico"
-            value={nuevoPlasticoAgregar}
-            onChange={(e) => setNuevoPlasticoAgregar(e.target.value)}
-            variant="outlined"
-            placeholder="Ej: 1234567890123"
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenAgregar(false)}>Cancelar</Button>
-          <Button variant="contained" onClick={handleAgregarPlastico}>Agregar</Button>
-        </DialogActions>
+      <Dialog 
+        open={openAgregar} 
+        onClose={() => setOpenAgregar(false)} 
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          sx: { borderRadius: '12px' }
+        }}
+      >
+        <Box sx={{ p: 4, bgcolor: '#fdfdfd' }}>
+          <Box sx={{ bgcolor: '#000000ff', p: 3, borderRadius: '8px 8px 0 0', ml: -4, mr: -4, mt: -4 }}>
+            <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'white', mb: 1 }}>
+              Agregar Plástico Autorizado
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'white', opacity: 0.9 }}>
+              Ingrese el número de plástico a agregar:
+            </Typography>
+            <IconButton 
+              onClick={() => setOpenAgregar(false)}
+              sx={{ 
+                position: 'absolute', 
+                top: 16, 
+                right: 16, 
+                color: 'white',
+                bgcolor: 'rgba(255,255,255,0.1)',
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' }
+              }}
+            >
+              <EditIcon />
+            </IconButton>
+          </Box>
+          
+          <DialogContent sx={{ p: 0, mt: 3 }}>
+            <TextField
+              fullWidth
+              label="Número de Plástico"
+              value={nuevoPlasticoAgregar}
+              onChange={(e) => setNuevoPlasticoAgregar(e.target.value)}
+              variant="outlined"
+              placeholder="Ej: 1234567890123"
+            />
+          </DialogContent>
+          
+          <DialogActions sx={{ p: 0, mt: 3 }}>
+            <Button onClick={() => setOpenAgregar(false)}>Cancelar</Button>
+            <Button variant="contained" onClick={handleAgregarPlastico}>Agregar</Button>
+          </DialogActions>
+        </Box>
       </Dialog>
 
       {/* Dialog de Editar Plástico */}
@@ -452,26 +481,49 @@ export default function CatPlasticosAutorizados() {
         onClose={() => setOpenEditar(false)} 
         maxWidth="sm" 
         fullWidth
+        PaperProps={{
+          sx: { borderRadius: '12px' }
+        }}
       >
-        <DialogTitle>Editar Plástico Autorizado</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Modifique el número de plástico:
-          </Typography>
-          <TextField
-            fullWidth
-            label="Número de Plástico"
-            value={nuevoPlastico}
-            onChange={(e) => setNuevoPlastico(e.target.value)}
-            variant="outlined"
-            sx={{ mb: 2 }}
-          />
+        <Box sx={{ p: 4, bgcolor: '#fdfdfd' }}>
+          <Box sx={{ bgcolor: '#000000ff', p: 3, borderRadius: '8px 8px 0 0', ml: -4, mr: -4, mt: -4 }}>
+            <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'white', mb: 1 }}>
+              Editar Plástico Autorizado
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'white', opacity: 0.9 }}>
+              Modifique el número de plástico:
+            </Typography>
+            <IconButton 
+              onClick={() => setOpenEditar(false)}
+              sx={{ 
+                position: 'absolute', 
+                top: 16, 
+                right: 16, 
+                color: 'white',
+                bgcolor: 'rgba(255,255,255,0.1)',
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' }
+              }}
+            >
+              <EditIcon />
+            </IconButton>
+          </Box>
           
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenEditar(false)}>Cancelar</Button>
-          <Button variant="contained" onClick={handleActualizarPlastico}>Actualizar</Button>
-        </DialogActions>
+          <DialogContent sx={{ p: 0, mt: 3 }}>
+            <TextField
+              fullWidth
+              label="Número de Plástico"
+              value={nuevoPlastico}
+              onChange={(e) => setNuevoPlastico(e.target.value)}
+              variant="outlined"
+              sx={{ mb: 2 }}
+            />
+          </DialogContent>
+          
+          <DialogActions sx={{ p: 0, mt: 3 }}>
+            <Button onClick={() => setOpenEditar(false)}>Cancelar</Button>
+            <Button variant="contained" onClick={handleActualizarPlastico}>Actualizar</Button>
+          </DialogActions>
+        </Box>
       </Dialog>
 
       <PWABadge />
