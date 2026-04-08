@@ -188,17 +188,13 @@ return (
                 <Typography variant="h6" sx={{ fontFamily: 'Georgia, "Times New Roman", serif', fontWeight: 'bold', color: '#1a365d', fontSize: '1.1rem' }}>
                     Catálogo de Motivos de Baja
                 </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', fontSize: '0.75rem' }}>
-                    Sucursal: {session?.dSucursal || 'Cargando...'}
-                </Typography>
+                
             </Box>
             <Box sx={{ textAlign: 'right' }}>
                 <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#333', fontSize: '0.9rem' }}>
                     {new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' }).replace('.', '')}
                 </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', fontSize: '0.75rem' }}>
-                    USR: {session?.nombre || 'ADMIN'}
-                </Typography>
+                
             </Box>
         </Box>
 
