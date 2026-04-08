@@ -214,6 +214,14 @@ const [saving, setSaving] = useState(false);
   };
 
   const columns = useMemo<GridColDef[]>(() => [
+        { 
+        field: 'acciones', headerName: 'Eliminar', width: 90, sortable: false, filterable: false, align: 'center', headerAlign: 'center',
+        renderCell: (params: GridRenderCellParams) => (
+            <IconButton size="small" sx={{ color: '#d32f2f' }} onClick={() => handleEliminar(params.row.cia, params.row.id_movimiento)}>
+                <DeleteIcon />
+            </IconButton>
+        )
+    },
     { field: 'id_movimiento', headerName: 'Clave', width: 80, fontWeight: 'bold', align: 'center', headerAlign: 'center' },
     { field: 'descripcion', headerName: 'Descripción (Editar)', flex: 1, minWidth: 200, editable: true, align: 'left', headerAlign: 'center' },
     { field: 'id_gasto', headerName: 'Gasto', width: 80, type: 'number', editable: true, align: 'center', headerAlign: 'center' },
@@ -228,15 +236,8 @@ const [saving, setSaving] = useState(false);
         type: 'singleSelect', // Hace que en la tabla sea una lista desplegable
         valueOptions: tiposMovimiento.map(t => ({ value: t.id, label: t.descripcion })),
         align: 'center', headerAlign: 'center' 
-    },
-    { 
-        field: 'acciones', headerName: 'Eliminar', width: 90, sortable: false, filterable: false, align: 'center', headerAlign: 'center',
-        renderCell: (params: GridRenderCellParams) => (
-            <IconButton size="small" sx={{ color: '#d32f2f' }} onClick={() => handleEliminar(params.row.cia, params.row.id_movimiento)}>
-                <DeleteIcon />
-            </IconButton>
-        )
     }
+
   ], [tiposMovimiento]); // Importante incluir la dependencia para que la lista se cargue en la tabla
 
   return (

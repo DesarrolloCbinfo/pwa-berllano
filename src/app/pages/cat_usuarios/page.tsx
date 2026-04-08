@@ -198,6 +198,14 @@ const handleEliminar = async (clave: string) => {
   };
 
   const columns = useMemo<GridColDef[]>(() => [
+        { 
+        field: 'acciones', headerName: 'Eliminar', width: 90, sortable: false, filterable: false, align: 'center', headerAlign: 'center',
+        renderCell: (params: GridRenderCellParams) => (
+            <IconButton size="small" sx={{ color: '#d32f2f' }} onClick={() => handleEliminar(params.row.usuario)}>
+                <DeleteIcon />
+            </IconButton>
+        )
+    },
     { field: 'usuario', headerName: 'Usuario', width: 120, fontWeight: 'bold', align: 'center', headerAlign: 'center' },
     { field: 'nombre', headerName: 'Nombre', flex: 1, minWidth: 200, editable: true, align: 'left', headerAlign: 'center' },
     { 
@@ -211,14 +219,7 @@ const handleEliminar = async (clave: string) => {
     { field: 'celular', headerName: 'Celular', width: 120, editable: true, align: 'center', headerAlign: 'center' },
     { field: 'telefono', headerName: 'Teléfono', width: 120, editable: true, align: 'center', headerAlign: 'center' },
     { field: 'email', headerName: 'Email', width: 200, editable: true, align: 'left', headerAlign: 'center' },
-    { 
-        field: 'acciones', headerName: 'Eliminar', width: 90, sortable: false, filterable: false, align: 'center', headerAlign: 'center',
-        renderCell: (params: GridRenderCellParams) => (
-            <IconButton size="small" sx={{ color: '#d32f2f' }} onClick={() => handleEliminar(params.row.usuario)}>
-                <DeleteIcon />
-            </IconButton>
-        )
-    }
+
   ], [perfiles]);
 
   return (

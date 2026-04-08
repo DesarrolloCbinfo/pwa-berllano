@@ -198,21 +198,22 @@ const handleGuardar = async () => {
   };
 
   const columns = useMemo<GridColDef[]>(() => [
-    { field: 'año', headerName: 'Año', width: 100, align: 'center', headerAlign: 'center' },
-    { field: 'mes', headerName: 'Mes', width: 100, align: 'center', headerAlign: 'center' },
-    { field: 'nombre_sucursal', headerName: 'Sucursal', flex: 1, minWidth: 300 },
-    { 
-        field: 'meta', headerName: 'Meta', width: 180, type: 'number',
-        valueFormatter: (v: any) => isNaN(Number(v)) ? '$0.00' : `$${Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
-    },
-    { 
+     { 
         field: 'acciones', headerName: 'Eliminar', width: 100, sortable: false, filterable: false, align: 'center', headerAlign: 'center',
         renderCell: (params: GridRenderCellParams) => (
             <IconButton size="small" sx={{ color: '#d32f2f' }} onClick={() => handleEliminar(params.row.id)}>
                 <DeleteIcon />
             </IconButton>
         )
+    },
+    { field: 'año', headerName: 'Año', width: 100, align: 'center', headerAlign: 'center' },
+    { field: 'mes', headerName: 'Mes', width: 100, align: 'center', headerAlign: 'center' },
+    { field: 'nombre_sucursal', headerName: 'Sucursal', flex: 1, minWidth: 300 },
+    { 
+        field: 'meta', headerName: 'Meta', width: 180, type: 'number',
+        valueFormatter: (v: any) => isNaN(Number(v)) ? '$0.00' : `$${Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
     }
+   
   ], []);
 
   return (

@@ -615,18 +615,6 @@ return (
               rows={perfiles}
               columns={[
                 {
-                  field: 'clave_perfil',
-                  headerName: 'ID',
-                  width: 80,
-                  headerClassName: 'super-app-theme--header',
-                },
-                {
-                  field: 'descripcion_perfil',
-                  headerName: 'Descripción',
-                  width: 200,
-                  headerClassName: 'super-app-theme--header',
-                },
-                {
                   field: 'acciones',
                   headerName: 'Acciones',
                   width: 120,
@@ -652,6 +640,19 @@ return (
                     </Box>
                   ),
                 },
+                {
+                  field: 'clave_perfil',
+                  headerName: 'ID',
+                  width: 80,
+                  headerClassName: 'super-app-theme--header',
+                },
+                {
+                  field: 'descripcion_perfil',
+                  headerName: 'Descripción',
+                  width: 200,
+                  headerClassName: 'super-app-theme--header',
+                },
+                
               ]}
               loading={loading}
               getRowId={(row) => row.clave_perfil}

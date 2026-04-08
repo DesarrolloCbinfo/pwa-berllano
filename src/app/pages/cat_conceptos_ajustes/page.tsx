@@ -186,18 +186,19 @@ const [loading, setLoading] = useState(false);
   };
 
   const columns = useMemo<GridColDef[]>(() => [
-    { field: 'concepto', headerName: 'Concepto (ID)', width: 150, fontWeight: 'bold', align: 'center', headerAlign: 'center' },
-    // Agregamos editable: true a las columnas que queremos modificar directo en la tabla
-    { field: 'descripcion', headerName: 'Descripción del Ajuste (Doble clic para editar)', flex: 1, minWidth: 200, editable: true, align: 'center', headerAlign: 'center' },
-    { field: 'ajuste', headerName: 'Ajuste', width: 120, type: 'number', editable: true, align: 'center', headerAlign: 'center' },
-    { 
+        { 
         field: 'acciones', headerName: 'Eliminar', width: 120, sortable: false, filterable: false, align: 'center', headerAlign: 'center',
         renderCell: (params: GridRenderCellParams) => (
             <IconButton size="small" sx={{ color: '#d32f2f' }} onClick={() => handleEliminar(params.row.concepto)}>
                 <DeleteIcon />
             </IconButton>
         )
-    }
+    },
+    { field: 'concepto', headerName: 'Concepto (ID)', width: 150, fontWeight: 'bold', align: 'center', headerAlign: 'center' },
+    // Agregamos editable: true a las columnas que queremos modificar directo en la tabla
+    { field: 'descripcion', headerName: 'Descripción del Ajuste (Doble clic para editar)', flex: 1, minWidth: 200, editable: true, align: 'center', headerAlign: 'center' },
+    { field: 'ajuste', headerName: 'Ajuste', width: 120, type: 'number', editable: true, align: 'center', headerAlign: 'center' },
+
   ], []);
 
   return (

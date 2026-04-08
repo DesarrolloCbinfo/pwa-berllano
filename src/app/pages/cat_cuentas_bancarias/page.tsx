@@ -202,6 +202,15 @@ const handleEliminar = async (clave: string) => {
   };
 
 const columns = useMemo<GridColDef[]>(() => [
+        { 
+        field: 'acciones', headerName: 'Eliminar', width: 90, sortable: false, filterable: false, align: 'center', headerAlign: 'center',
+        renderCell: (params: GridRenderCellParams) => (
+            // IMPORTANTE: params.row.Cuenta lleva la "C" mayúscula porque así viene de tu SQL
+            <IconButton size="small" sx={{ color: '#d32f2f' }} onClick={() => handleEliminar(params.row.Cuenta)}>
+                <DeleteIcon />
+            </IconButton>
+        )
+    },
     { field: 'Cuenta', headerName: 'Clave', width: 90, fontWeight: 'bold', align: 'center', headerAlign: 'center' },
     { field: 'Descripcion', headerName: 'Descripción', flex: 1, minWidth: 200, editable: true, align: 'left', headerAlign: 'center' },
     { field: 'No_cuenta', headerName: 'No. Cuenta', width: 150, editable: true, align: 'center', headerAlign: 'center' },
@@ -215,16 +224,8 @@ const columns = useMemo<GridColDef[]>(() => [
     },
     { field: 'cuenta_contable', headerName: 'Cta Contable', width: 150, editable: true, align: 'center', headerAlign: 'center' },
     { field: 'Tipo_poliza', headerName: 'Tipo Póliza', width: 120, type: 'number', editable: true, align: 'center', headerAlign: 'center' },
-    // --- NUEVA COLUMNA DE ELIMINAR ---
-    { 
-        field: 'acciones', headerName: 'Eliminar', width: 90, sortable: false, filterable: false, align: 'center', headerAlign: 'center',
-        renderCell: (params: GridRenderCellParams) => (
-            // IMPORTANTE: params.row.Cuenta lleva la "C" mayúscula porque así viene de tu SQL
-            <IconButton size="small" sx={{ color: '#d32f2f' }} onClick={() => handleEliminar(params.row.Cuenta)}>
-                <DeleteIcon />
-            </IconButton>
-        )
-    }
+
+
   ], [tiposCuentas, bancos]);
 
   return (

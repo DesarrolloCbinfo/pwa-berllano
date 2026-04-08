@@ -169,18 +169,19 @@ const handleEliminar = async (clave: number) => {
   };
 
   const columns = useMemo<GridColDef[]>(() => [
-    { field: 'Tipo_cuenta', headerName: 'Clave', width: 100, fontWeight: 'bold', align: 'center', headerAlign: 'center' },
-    { field: 'Descripcion', headerName: 'Descripción (Doble clic para editar)', flex: 1, minWidth: 250, editable: true, align: 'left', headerAlign: 'center' },
-    { field: 'Acreedora', headerName: 'Acreedora', width: 120, type: 'boolean', editable: true, align: 'center', headerAlign: 'center' },
-    { field: 'Deudora', headerName: 'Deudora', width: 120, type: 'boolean', editable: true, align: 'center', headerAlign: 'center' },
-    { 
+        { 
         field: 'acciones', headerName: 'Eliminar', width: 100, sortable: false, filterable: false, align: 'center', headerAlign: 'center',
         renderCell: (params: GridRenderCellParams) => (
             <IconButton size="small" sx={{ color: '#d32f2f' }} onClick={() => handleEliminar(params.row.Tipo_cuenta)}>
                 <DeleteIcon />
             </IconButton>
         )
-    }
+    },
+    { field: 'Tipo_cuenta', headerName: 'Clave', width: 100, fontWeight: 'bold', align: 'center', headerAlign: 'center' },
+    { field: 'Descripcion', headerName: 'Descripción (Doble clic para editar)', flex: 1, minWidth: 250, editable: true, align: 'left', headerAlign: 'center' },
+    { field: 'Acreedora', headerName: 'Acreedora', width: 120, type: 'boolean', editable: true, align: 'center', headerAlign: 'center' },
+    { field: 'Deudora', headerName: 'Deudora', width: 120, type: 'boolean', editable: true, align: 'center', headerAlign: 'center' },
+
   ], []);
 
   return (
