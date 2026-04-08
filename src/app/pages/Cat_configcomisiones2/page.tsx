@@ -528,12 +528,6 @@ return (
         </Box>
       </Box>
 
-      {/* PIE DE PÁGINA ESTILO ELEGANTE */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 3, mb: 2 }}>
-        <Typography variant="caption" sx={{ fontWeight: 'bold', textTransform: 'uppercase' }}>
-          CAT_CONFIG_COMISIONES_2, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replaceAll('/', '-')}, USR: {session?.nombre || 'ADMIN'}
-        </Typography>
-      </Box>
 
       {/* NOTIFICACIONES */}
       <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage(null)}>
@@ -544,3 +538,5 @@ return (
   </>
   );
 }
+
+

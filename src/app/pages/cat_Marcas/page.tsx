@@ -347,18 +347,17 @@ export default function CatMarcas() {
             </Typography>
           </Box>
 
-          <Grid container spacing={2} justifyContent="center" alignItems="center" sx={{ mb: 2 }}>
-            <Grid item xs={12} md={10}></Grid> {/* Espaciador */}
-            <Grid item xs={12} md={2}>
+         <Grid container spacing={2} justifyContent="flex-start" alignItems="center" sx={{ mb: 2 }}>
+            <Grid item xs={12} md={3}>
               <Button 
                 variant="contained" 
                 onClick={() => setOpenAdd(true)}
                 fullWidth
                 sx={{ 
-                  height: '50px', 
+                  height: '40px', 
                   backgroundColor: '#333333', 
                   color: 'white', 
-                  fontWeight: 600, 
+                  fontWeight: 'bold', 
                   textTransform: 'none', 
                   borderRadius: '8px',
                   boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)', 
@@ -370,7 +369,7 @@ export default function CatMarcas() {
                   }
                 }}
               >
-                + AGREGAR
+                + AGREGAR MARCA
               </Button>
             </Grid>
           </Grid>

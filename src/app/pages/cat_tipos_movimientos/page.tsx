@@ -324,12 +324,7 @@ const [loading, setLoading] = useState(false);
           </Paper>
         </Box>
 
-      {/* PIE DE PÁGINA ESTILO ACCESS */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 3 }}>
-        <Typography variant="caption" sx={{ fontWeight: 'bold', textTransform: 'uppercase' }}>
-          CAT_MOVIMIENTOS, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/')}, USR:{session?.nombre || 'ADMIN'}
-        </Typography>
-      </Box>
+     
 
     </Box>
   );
