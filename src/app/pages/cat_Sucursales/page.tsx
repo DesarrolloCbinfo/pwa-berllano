@@ -850,26 +850,66 @@ export default function CatSucursales() {
         </Box>
  
 {/* CONTENEDOR DE LA TABLA ESTILO ELEGANTE CON COLUMNAS FIJAS */}
-        <Box sx={{ p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)', bgcolor: 'white' }}>
+        <Box sx={{ p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)', bgcolor: 'white', mb: 3 }}>
           <Box sx={{ height: 600, width: '100%' }}>
             <DataGrid
               rows={rows}
-              columns={columns} // Aquí le pasas la variable que definiste arriba
+              columns={columns}
               getRowId={(row) => row.cve_sucursal}
               pageSizeOptions={[5, 10, 25, 100]}
               disableRowSelectionOnClick
-              initialState={{
-                pinnedColumns: {
-                  left: ['acciones', 'cve_sucursal', 'nombre'], // Refuerza el fijado al cargar
-                },
-              }}
+              
+              // 1. APAGAR LA VIRTUALIZACIÓN (Fundamental para el Sticky en MUI)
+              disableVirtualization
+
               sx={{ 
                 border: 'none',
                 height: '100%',
-                '& .MuiDataGrid-columnHeaders': { borderBottom: '2px solid #000', fontSize: '0.9rem', fontWeight: 'bold', backgroundColor: '#f5f5f5' },
-                '& .MuiDataGrid-cell': { borderBottom: '1px solid #e0e0e000' },
+
+                // 2. MATAR EL TRANSFORM INTERNO DE MUI
+                '& .MuiDataGrid-virtualScrollerContent': { transform: 'none !important' },
+                '& .MuiDataGrid-virtualScrollerRenderZone': { transform: 'none !important' },
+
+                // --- DISEÑO DE ENCABEZADOS Y CELDAS ---
+                '& .MuiDataGrid-columnHeaders': { 
+                  borderBottom: '2px solid #000', 
+                  fontSize: '0.9rem', 
+                  fontWeight: 'bold', 
+                  backgroundColor: '#f5f5f5' 
+                },
+                '& .MuiDataGrid-cell': { 
+                  borderBottom: '1px solid #e0e0e000' 
+                },
                 '& .MuiDataGrid-row': { cursor: 'default', transition: 'all 0.2s ease' },
-                '& .MuiDataGrid-row:hover': { bgcolor: '#fafafa' }
+                '& .MuiDataGrid-row:hover .MuiDataGrid-cell': { bgcolor: '#e3f2fd' },
+
+                // ==========================================
+                // 3. CONGELAR COLUMNAS (Acciones, Clave, Nombre)
+                // ==========================================
+                
+                // Columna 1: ACCIONES (Ancho 100px. Inicia en 0)
+                '& .MuiDataGrid-cell[data-field="acciones"]': { position: 'sticky', left: 0, zIndex: 3, backgroundColor: '#fff' },
+                '& .MuiDataGrid-columnHeader[data-field="acciones"]': { position: 'sticky', left: 0, zIndex: 4, backgroundColor: '#f5f5f5' },
+                
+                // Columna 2: CLAVE (Ancho 80px. Inicia en 100)
+                '& .MuiDataGrid-cell[data-field="cve_sucursal"]': { position: 'sticky', left: 100, zIndex: 3, backgroundColor: '#fff' },
+                '& .MuiDataGrid-columnHeader[data-field="cve_sucursal"]': { position: 'sticky', left: 100, zIndex: 4, backgroundColor: '#f5f5f5' },
+
+                // Columna 3: NOMBRE (Ancho 150px. Inicia en 180. Le ponemos sombra a esta para indicar el corte)
+                '& .MuiDataGrid-cell[data-field="nombre"]': { 
+                    position: 'sticky', 
+                    left: 180, 
+                    zIndex: 3, 
+                    backgroundColor: '#fff',
+                    boxShadow: '4px 0px 5px -2px rgba(0,0,0,0.1)' // Sombra divisoria
+                },
+                '& .MuiDataGrid-columnHeader[data-field="nombre"]': { 
+                    position: 'sticky', 
+                    left: 180, 
+                    zIndex: 4, 
+                    backgroundColor: '#f5f5f5',
+                    boxShadow: '4px 0px 5px -2px rgba(0,0,0,0.1)' // Sombra divisoria
+                }
               }}
             />
           </Box>

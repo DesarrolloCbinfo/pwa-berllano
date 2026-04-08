@@ -516,10 +516,19 @@ return (
                 pageSizeOptions={[10, 25, 50, 100]}
                 onRowClick={(params) => handleViewOpen(params.row)}
                 disableRowSelectionOnClick
+                
+                // 1. APAGAR LA VIRTUALIZACIÓN (Obligatorio para que funcione CSS Sticky)
+                disableVirtualization
+
                 sx={{
                   border: 'none',
                   height: '100%',
                   fontSize: '0.95rem',
+                  
+                  // 2. MATAR EL TRANSFORM INTERNO DE MUI
+                  '& .MuiDataGrid-virtualScrollerContent': { transform: 'none !important' },
+                  '& .MuiDataGrid-virtualScrollerRenderZone': { transform: 'none !important' },
+
                   '& .MuiDataGrid-columnHeaders': { 
                     borderBottom: '2px solid #000', 
                     fontSize: '1rem', 
@@ -532,7 +541,44 @@ return (
                     cursor: 'pointer'
                   },
                   '& .MuiDataGrid-row': { transition: 'all 0.2s ease' },
-                  '& .MuiDataGrid-row:hover': { backgroundColor: '#fafafa' },
+                  
+                  // Efecto hover y fondo de celdas
+                  '& .MuiDataGrid-row:hover .MuiDataGrid-cell': { backgroundColor: '#e3f2fd' },
+
+                  // ------------------------------------------------------------------
+                  // 3. CONGELAR COLUMNAS (Acciones y Fecha)
+                  // ------------------------------------------------------------------
+
+                  // Columna 1: ACCIONES (Empieza en 0px)
+                  '& .MuiDataGrid-cell[data-field="acciones"]': { 
+                      position: 'sticky', 
+                      left: 0, 
+                      zIndex: 3, 
+                      backgroundColor: '#fff' 
+                  },
+                  '& .MuiDataGrid-columnHeader[data-field="acciones"]': { 
+                      position: 'sticky', 
+                      left: 0, 
+                      zIndex: 4, 
+                      backgroundColor: '#f5f5f5' 
+                  },
+                  
+                  // Columna 2: FECHA (La columna anterior medía 85px de ancho)
+                  '& .MuiDataGrid-cell[data-field="fecha"]': { 
+                      position: 'sticky', 
+                      left: 85, 
+                      zIndex: 3, 
+                      backgroundColor: '#fff',
+                      // Le agregamos la sombra sutil para indicar que aquí se esconde la tabla
+                      boxShadow: '4px 0px 5px -2px rgba(0,0,0,0.1)'
+                  },
+                  '& .MuiDataGrid-columnHeader[data-field="fecha"]': { 
+                      position: 'sticky', 
+                      left: 85, 
+                      zIndex: 4, 
+                      backgroundColor: '#f5f5f5',
+                      boxShadow: '4px 0px 5px -2px rgba(0,0,0,0.1)'
+                  }
                 }}
               />
             </Box>
