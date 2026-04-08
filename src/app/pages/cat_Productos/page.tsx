@@ -14,6 +14,7 @@ import { 
 import { Edit as EditIcon, Delete as DeleteIcon, Close as CloseIcon } from '@mui/icons-material';
 
 import useConsumoApi from '../../../hooks/useConsumoApi'; 
+import { useSessionContext } from '../../../context/SessionProvider';
 import Swal from 'sweetalert2';
 
 const Transition = React.forwardRef(function Transition(
@@ -1388,6 +1389,8 @@ const ModalKardex = ({ open, onClose, consumoApi, setMessage, productoForm, sucu
 export default function CatProductos() {
   const { consumoApi } = useConsumoApi();
 
+const { session } = useSessionContext();
+
   // --- ESTADOS ---
   const [rows, setRows] = useState<ProductoRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -1452,7 +1455,7 @@ const [itemSeleccionado, setItemSeleccionado] = useState<any>(null);
 const [nuevaCantKit, setNuevaCantKit] = useState(1);
 const [busquedaClave, setBusquedaClave] = useState(""); // Nueva
 const [busquedaDesc, setBusquedaDesc] = useState("");   // Nueva
-const [loadingSaveKit, setLoadingSaveKit] = useState(false); // Para el botón guardar
+const [loadingSaveKit, setLoadingSaveKit] = useState(false); 
 
 // --- ESTADOS PARA BITÁCORA ---
 const [openBitacora, setOpenBitacora] = useState(false);
@@ -2492,122 +2495,157 @@ const cantidadesValidas = cantidadesDescarga
         }
       `}</style>
 
-      <Box sx={{ height: 'auto', flexShrink: 0, p: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-          <Typography variant="h6" component="h1" sx={{ fontWeight: 'bold', color: '#333', display: 'flex', alignItems: 'center', gap: 1, fontSize: '1rem' }}>
-            <Box sx={{ width: 28, height: 28, backgroundColor: '#333', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '0.8rem' }}>📦</Box>
-            CATÁLOGO DE PRODUCTOS
-          </Typography>
-        </Box>
+      {/* --- NUEVO CONTENEDOR PRINCIPAL DEL ENCABEZADO --- */}
+      <Box sx={{ flexShrink: 0, p: 3, pb: 0 }}>
+        <Paper sx={{ p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.05)', bgcolor: 'white' }}>
+          
+          {/* RECUADRO INTERIOR ELEGANTE (Nombre, Sucursal, Fecha, Usuario) */}
+          <Box sx={{ border: '1px solid #2c3e50', p: 1.5, mb: 2, borderRadius: '6px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem', textTransform: 'uppercase' }}>
+                Catálogo de Productos
+              </Typography>
+              <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                Sucursal: {session?.dSucursal || 'Cargando...'}
+              </Typography>
+            </Box>
+            <Box sx={{ textAlign: 'right' }}>
+              <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#333', lineHeight: 1.1, fontSize: '0.9rem' }}>
+                {new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' }).replaceAll('/', '-')}
+              </Typography>
+              <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
+                Usuario Activo: {session?.nombre || 'Cargando...'}
+              </Typography>
+            </Box>
+          </Box>
 
-        <Paper sx={{ p: 1.5, backgroundColor: 'white', borderRadius: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-          <Grid container spacing={1.5} alignItems="center">
-            <Grid item xs={12} sm={4} md={4} sx={gridItemStyle}>
-              <TextField {...selectProps} select label="Área" name="area" value={formData.area} onChange={handleInputChange}>
-                {areas.map((item) => (<MenuItem key={item.id} value={item.id}>{item.descripcion}</MenuItem>))}
-              </TextField>
-            </Grid>
-            <Grid item xs={12} sm={4} md={4} sx={gridItemStyle}>
-              <TextField {...selectProps} select label={loadingDeptos ? "..." : "Depto"} name="depto" value={formData.depto} onChange={handleInputChange} disabled={loadingDeptos}>
-                {deptos.map((item) => (<MenuItem key={item.id} value={item.id}>{item.descripcion}</MenuItem>))}
-              </TextField>
-            </Grid>
-            <Grid item xs={12} sm={4} md={4} sx={gridItemStyle}>
-              <TextField {...selectProps} select label={loadingClases ? "..." : "Clase"} name="clase" value={formData.clase} onChange={handleInputChange} disabled={loadingClases}>
-                {clases.map((item) => (<MenuItem key={item.id} value={item.id}>{item.descripcion}</MenuItem>))}
-              </TextField>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3} sx={gridItemStyle}>
-              <TextField {...selectProps} select label="Marca" name="marca" value={formData.marca} onChange={handleInputChange}>
-                {marcas.map((item) => (<MenuItem key={item.id} value={item.id}>{item.descripcion}</MenuItem>))}
-              </TextField>
-            </Grid>
-            <Grid item xs={12} sm={12} md={4} sx={gridItemStyle}>
-               <TextField {...commonProps} label='Descripción' name="descripcion" value={formData.descripcion || ''} onChange={handleInputChange} onKeyDown={(e) => e.key === 'Enter' && handleApplyFilters()}/>
-            </Grid>
-            <Grid item xs={6} sm={6} md={2} sx={gridItemStyle}>
-               <Box sx={{ display: 'flex', alignItems: 'center', height: '40px', bgcolor: '#f8f9fa', borderRadius: '8px', px: 1, border: '1px solid #e0e0e0', width: '100%', overflow: 'hidden' }}>
-                  <Checkbox size="small" checked={formData.incluir_obsoletos} onChange={handleInputChange} name="incluir_obsoletos" />
-                  <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>Obsoletos</Typography>
-               </Box>
-            </Grid>
-            <Grid item xs={6} sm={6} md={3} sx={gridItemStyle}>
-              <Button variant="contained" onClick={handleApplyFilters} fullWidth sx={{ bgcolor: '#333', color: 'white', borderRadius: '8px', height: '40px', fontWeight: 'bold' }}>CONSULTAR</Button>
-            </Grid>
-          </Grid>
-        </Paper>
-      </Box>
+          {/* ÁREA DE FILTROS ORIGINALES (Sin fondo gris feo, integrados limpios) */}
+          <Grid container spacing={1.5} alignItems="center">
+            <Grid item xs={12} sm={4} md={4} sx={gridItemStyle}>
+              <TextField {...selectProps} select label="Área" name="area" value={formData.area} onChange={handleInputChange}>
+                {areas.map((item) => (<MenuItem key={item.id} value={item.id}>{item.descripcion}</MenuItem>))}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={4} md={4} sx={gridItemStyle}>
+              <TextField {...selectProps} select label={loadingDeptos ? "..." : "Depto"} name="depto" value={formData.depto} onChange={handleInputChange} disabled={loadingDeptos}>
+                {deptos.map((item) => (<MenuItem key={item.id} value={item.id}>{item.descripcion}</MenuItem>))}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={4} md={4} sx={gridItemStyle}>
+              <TextField {...selectProps} select label={loadingClases ? "..." : "Clase"} name="clase" value={formData.clase} onChange={handleInputChange} disabled={loadingClases}>
+                {clases.map((item) => (<MenuItem key={item.id} value={item.id}>{item.descripcion}</MenuItem>))}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3} sx={gridItemStyle}>
+              <TextField {...selectProps} select label="Marca" name="marca" value={formData.marca} onChange={handleInputChange}>
+                {marcas.map((item) => (<MenuItem key={item.id} value={item.id}>{item.descripcion}</MenuItem>))}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={12} md={4} sx={gridItemStyle}>
+               <TextField {...commonProps} label='Descripción' name="descripcion" value={formData.descripcion || ''} onChange={handleInputChange} onKeyDown={(e) => e.key === 'Enter' && handleApplyFilters()}/>
+            </Grid>
+            <Grid item xs={6} sm={6} md={2} sx={gridItemStyle}>
+               <Box sx={{ display: 'flex', alignItems: 'center', height: '40px', bgcolor: '#f8f9fa', borderRadius: '8px', px: 1, border: '1px solid #e0e0e0', width: '100%', overflow: 'hidden' }}>
+                  <Checkbox size="small" checked={formData.incluir_obsoletos} onChange={handleInputChange} name="incluir_obsoletos" />
+                  <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>Obsoletos</Typography>
+               </Box>
+            </Grid>
+            <Grid item xs={6} sm={6} md={3} sx={gridItemStyle}>
+              <Button variant="contained" onClick={handleApplyFilters} fullWidth sx={{ bgcolor: '#333', color: 'white', borderRadius: '8px', height: '40px', fontWeight: 'bold' }}>CONSULTAR</Button>
+            </Grid>
+          </Grid>
+        </Paper>
+      </Box>
 
-      <Box sx={{ flex: 1, minHeight: 0, p: 2, pt: 0, display: 'flex', flexDirection: 'column' }}>
-        <Paper sx={{ flex: 1, width: '100%', overflow: 'hidden', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', bgcolor: 'white', mb: 2 }}>
-          <DataGrid 
-  rows={rows} 
-  columns={columns} 
-  getRowId={(row) => row.id} 
-  loading={loading} 
-  paginationModel={paginationModel} 
-  onPaginationModelChange={setPaginationModel} 
-  pageSizeOptions={[10, 20, 30, 50, 100]} 
-  slots={{ toolbar: GridToolbar, pagination: CustomPagination }} 
-  slotProps={{ toolbar: { showQuickFilter: true } }} 
-  processRowUpdate={processRowUpdate}
-  onProcessRowUpdateError={handleProcessRowUpdateError}
-  
-  // 1. APAGAR LA VIRTUALIZACIÓN (Esto permite que el CSS Sticky funcione)
-  disableVirtualization
-
-  sx={{ 
-    border: 'none', 
-    height: '100%',
-    
-    // 2. MATAR EL TRANSFORM INTERNO DE MUI
-    '& .MuiDataGrid-virtualScrollerContent': { transform: 'none !important' },
-    '& .MuiDataGrid-virtualScrollerRenderZone': { transform: 'none !important' },
-
-    // 3. CONGELAR COLUMNA 1: ACCIONES (Empieza en 0)
-    '& .MuiDataGrid-cell[data-field="acciones"]': { position: 'sticky', left: 0, zIndex: 3, backgroundColor: '#fff' },
-    '& .MuiDataGrid-columnHeader[data-field="acciones"]': { position: 'sticky', left: 0, zIndex: 4, backgroundColor: '#fff' },
-    
-    // 4. CONGELAR COLUMNA 2: CLAVE (Empieza en 100)
-    '& .MuiDataGrid-cell[data-field="clave"]': { position: 'sticky', left: 100, zIndex: 3, backgroundColor: '#fff' },
-    '& .MuiDataGrid-columnHeader[data-field="clave"]': { position: 'sticky', left: 100, zIndex: 4, backgroundColor: '#fff' },
-
-    // 5. CONGELAR COLUMNA 3: DESCRIPCIÓN (Empieza en 220)
-    '& .MuiDataGrid-cell[data-field="descripcion"]': { 
-        position: 'sticky', 
-        left: 220, 
-        zIndex: 3, 
-        backgroundColor: '#fff',
-        boxShadow: '4px 0px 5px -2px rgba(0,0,0,0.1)' // Sombra elegante para notar el corte
-    },
-    '& .MuiDataGrid-columnHeader[data-field="descripcion"]': { 
-        position: 'sticky', 
-        left: 220, 
-        zIndex: 4, 
-        backgroundColor: '#fff',
-        boxShadow: '4px 0px 5px -2px rgba(0,0,0,0.1)' 
-    },
-
-    // MAGIA EXTRA: Iluminar la fila donde está el mouse para que el usuario no se pierda al hacer scroll
-    '& .MuiDataGrid-row:hover .MuiDataGrid-cell': {
-        backgroundColor: '#e3f2fd', 
-    }
-  }} 
-/>
-        </Paper>
-        <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
-           <Button variant="contained" onClick={handleOpenAdd} sx={{ backgroundColor: '#333333', color: 'white', borderRadius: '8px', fontWeight: 'bold', padding: '10px 24px' }}>+ ALTA DE CLAVES</Button>
+    {/* AQUÍ COMIENZA LA CAJA DE LA TABLA (Ajustamos el padding para que encaje) */}
+      <Box sx={{ flex: 1, minHeight: 0, p: 3, display: 'flex', flexDirection: 'column' }}>
+        <Paper sx={{ flex: 1, width: '100%', overflow: 'hidden', borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)', bgcolor: 'white', mb: 2 }}>
+          <DataGrid 
+            rows={rows} 
+            columns={columns} 
+            getRowId={(row) => row.id} 
+            loading={loading} 
+            paginationModel={paginationModel} 
+            onPaginationModelChange={setPaginationModel} 
+            pageSizeOptions={[10, 20, 30, 50, 100]} 
+            slots={{ toolbar: GridToolbar, pagination: CustomPagination }} 
+            slotProps={{ toolbar: { showQuickFilter: true } }} 
+            processRowUpdate={processRowUpdate}
+            onProcessRowUpdateError={handleProcessRowUpdateError}
             
+            // --- DISEÑO OFICIAL ---
+            density="compact"
+            
+            // 1. APAGAR LA VIRTUALIZACIÓN (Esto permite que el CSS Sticky funcione)
+            disableVirtualization
 
-<Button 
-             variant="contained" 
-             onClick={handleExportExcel}
-             sx={{ backgroundColor: '#2e7d32', color: 'white', borderRadius: '8px', fontWeight: 'bold', padding: '10px 24px', '&:hover': { backgroundColor: '#1b5e20' } }}
-           >
-             📊 SALIDA EXCEL
-           </Button>
-        </Box>
-      </Box>
+            sx={{ 
+                border: 'none', 
+                height: '100%',
+
+                // --- ESTILOS OFICIALES (BASE TURNOS DOBLES) ---
+                '& .MuiDataGrid-columnHeaders': { 
+                    borderBottom: '2px solid #000',
+                    fontSize: '1rem',
+                    fontWeight: 'bold'
+                },
+                '& .MuiDataGrid-cell': {
+                    borderBottom: '1px solid #e0e0e000' // Borde invisible para diseño limpio
+                },
+                '& .MuiDataGrid-cell--editable': { backgroundColor: '#f9fbfd', cursor: 'text' }, 
+                '& .MuiDataGrid-cell--editing': { backgroundColor: '#fff', boxShadow: '0 0 5px rgba(25,118,210,0.5)' },
+
+                // 2. MATAR EL TRANSFORM INTERNO DE MUI
+                '& .MuiDataGrid-virtualScrollerContent': { transform: 'none !important' },
+                '& .MuiDataGrid-virtualScrollerRenderZone': { transform: 'none !important' },
+
+                // 3. CONGELAR COLUMNA 1: ACCIONES (Empieza en 0)
+                '& .MuiDataGrid-cell[data-field="acciones"]': { position: 'sticky', left: 0, zIndex: 3, backgroundColor: '#fff' },
+                '& .MuiDataGrid-columnHeader[data-field="acciones"]': { position: 'sticky', left: 0, zIndex: 4, backgroundColor: '#fff' },
+                
+                // 4. CONGELAR COLUMNA 2: CLAVE (Empieza en 100)
+                '& .MuiDataGrid-cell[data-field="clave"]': { position: 'sticky', left: 100, zIndex: 3, backgroundColor: '#fff' },
+                '& .MuiDataGrid-columnHeader[data-field="clave"]': { position: 'sticky', left: 100, zIndex: 4, backgroundColor: '#fff' },
+
+                // 5. CONGELAR COLUMNA 3: DESCRIPCIÓN (Empieza en 220)
+                '& .MuiDataGrid-cell[data-field="descripcion"]': { 
+                    position: 'sticky', 
+                    left: 220, 
+                    zIndex: 3, 
+                    backgroundColor: '#fff',
+                    boxShadow: '4px 0px 5px -2px rgba(0,0,0,0.1)' // Sombra elegante para notar el corte
+                },
+                '& .MuiDataGrid-columnHeader[data-field="descripcion"]': { 
+                    position: 'sticky', 
+                    left: 220, 
+                    zIndex: 4, 
+                    backgroundColor: '#fff',
+                    boxShadow: '4px 0px 5px -2px rgba(0,0,0,0.1)' 
+                },
+
+                // MAGIA EXTRA: Iluminar la fila donde está el mouse para que el usuario no se pierda al hacer scroll
+                '& .MuiDataGrid-row:hover .MuiDataGrid-cell': {
+                    backgroundColor: '#e3f2fd', 
+                }
+            }} 
+          />
+        </Paper>
+        
+        {/* BOTONES INFERIORES INTACTOS */}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-start', gap: 2 }}>
+           <Button variant="contained" onClick={handleOpenAdd} sx={{ backgroundColor: '#333333', color: 'white', borderRadius: '8px', fontWeight: 'bold', padding: '10px 24px' }}>
+             + ALTA DE CLAVES
+           </Button>
+           
+           <Button 
+             variant="contained" 
+             onClick={handleExportExcel}
+             sx={{ backgroundColor: '#2e7d32', color: 'white', borderRadius: '8px', fontWeight: 'bold', padding: '10px 24px', '&:hover': { backgroundColor: '#1b5e20' } }}
+           >
+             📊 SALIDA EXCEL
+           </Button>
+        </Box>
+      </Box>
 
       <Dialog open={openModal} onClose={handleCloseModal} maxWidth="lg" fullWidth TransitionComponent={Transition}>
         <Box sx={{ bgcolor: '#f5f5f5', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
