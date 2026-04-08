@@ -364,17 +364,13 @@ return (
                 <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#000000ff', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
                     CATÁLOGO DE PROVEEDORES
                 </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
-                    Sucursal: {session?.dSucursal || 'Cargando...'}
-                </Typography>
+                
             </Box>
             <Box sx={{ textAlign: 'right' }}>
                 <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#333', lineHeight: 1.1, fontSize: '0.9rem' }}>
                     {new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' }).replace('.', '')}
                 </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
-                    Usuario: {session?.nombre || 'Cargando...'}
-                </Typography>
+               
             </Box>
         </Box>
 

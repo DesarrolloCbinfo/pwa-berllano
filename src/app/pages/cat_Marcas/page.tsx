@@ -330,16 +330,6 @@ export default function CatMarcas() {
               >
                 Catálogo de Marcas
               </Typography>
-              <Typography 
-                variant="body2" 
-                sx={{ 
-                  fontWeight: 'bold', 
-                  color: '#555', 
-                  fontSize: '0.75rem' 
-                }}
-              >
-                Administración de marcas del sistema
-              </Typography>
             </Box>
             <Typography 
               variant="body2" 
