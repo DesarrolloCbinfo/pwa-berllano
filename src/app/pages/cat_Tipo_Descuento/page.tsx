@@ -140,11 +140,23 @@ const payload = {
 
           const res = await consumoApi.put('/api/CatTipoDescuento/sp_bw_cat_tipos_descuento_upd', payload);
           if (res.status === 200) {
-              setMessage({ text: "Cambios guardados automáticamente.", type: 'info' });
+              Swal.fire({
+                title: '¡Éxito!',
+                text: 'Cambios guardados automáticamente',
+                icon: 'success',
+                confirmButtonColor: '#000000ff',
+                timer: 2000,
+                showConfirmButton: false
+              });
               return { ...newRow, descripcion: payload.descripcion }; 
           } else throw new Error("Error en actualización");
       } catch (error) {
-          setMessage({ text: "Error al guardar los cambios.", type: 'error' });
+          Swal.fire({
+            title: 'Error',
+            text: 'Error al guardar los cambios',
+            icon: 'error',
+            confirmButtonColor: '#000000ff'
+          });
           return oldRow;
       }
   };
@@ -178,6 +190,14 @@ const payload = {
   };
 
 const columns = useMemo<GridColDef[]>(() => [
+    { 
+        field: 'acciones', headerName: 'Eliminar', width: 100, sortable: false, filterable: false, align: 'center', headerAlign: 'center',
+        renderCell: (params: GridRenderCellParams) => (
+            <IconButton size="small" sx={{ color: '#d32f2f' }} onClick={() => handleEliminar(params.row.tipo_descuento, params.row.descripcion)}>
+                <DeleteIcon />
+            </IconButton>
+        )
+    },
     { field: 'tipo_descuento', headerName: 'ID', width: 90, fontWeight: 'bold', align: 'center', headerAlign: 'center' },
     { field: 'descripcion', headerName: 'Descripción (Doble clic para editar)', flex: 1, minWidth: 250, editable: true, align: 'left', headerAlign: 'center' },
     { 
@@ -188,15 +208,6 @@ const columns = useMemo<GridColDef[]>(() => [
     { 
         field: 'max_descto', headerName: 'Max Dto (%)', width: 120, editable: true, align: 'center', headerAlign: 'center',
         type: 'number'
-        // ¡QUITAMOS EL valueFormatter POR COMPLETO!
-    },
-    { 
-        field: 'acciones', headerName: 'Eliminar', width: 100, sortable: false, filterable: false, align: 'center', headerAlign: 'center',
-        renderCell: (params: GridRenderCellParams) => (
-            <IconButton size="small" sx={{ color: '#d32f2f' }} onClick={() => handleEliminar(params.row.tipo_descuento, params.row.descripcion)}>
-                <DeleteIcon />
-            </IconButton>
-        )
     }
   ], []);
   return (
@@ -204,9 +215,9 @@ const columns = useMemo<GridColDef[]>(() => [
       <Paper sx={{ p: 3 }}>
 
         {/* ENCABEZADO */}
-        <Box sx={{ border: '1px solid #2c3e50', p: 1.5, mb: 2, borderRadius: '6px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
+        <Box sx={{ border: '1px solid #000000ff', p: 1.5, mb: 2, borderRadius: '6px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
             <Box>
-                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#000000ff', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
                     Catálogo de Tipos de Descuentos
                 </Typography>
                 <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
@@ -287,21 +298,13 @@ const columns = useMemo<GridColDef[]>(() => [
                     }, 
                     '& .MuiDataGrid-cell--editing': { 
                         backgroundColor: '#fff', 
-                        boxShadow: '0 0 5px rgba(25,118,210,0.5)' 
+                        boxShadow: '0 4px 12px rgba(255, 255, 255, 0.4)' 
                     }
                 }} 
             />
           </Paper>
         </Box>
         {/* ============================================================ */}
-
-      {/* PIE DE PÁGINA */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 1 }}>
-        <Typography variant="caption" sx={{ fontWeight: 'bold', textTransform: 'uppercase' }}>
-          CAT_TIPOS_DESCUENTO, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/')}, USR:{session?.nombre || 'ADMIN'}
-        </Typography>
-      </Box>
-
     </Box>
   );
 }
