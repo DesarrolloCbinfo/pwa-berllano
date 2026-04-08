@@ -208,8 +208,9 @@ export default function CatTrabajadores() {
   const [nivelesEscolaridad, setNivelesEscolaridad] = useState<
     Array<{ clave_nivel: number; descripcion_escolaridad: string }>
   >([]);
-  const [escolaridadConcluidoOptions, setEscolaridadConcluidoOptions] =
-    useState<Array<{ descripcion: string }>>([]);
+  const [escolaridadConcluidoOptions, setEscolaridadConcluidoOptions] = useState<
+    Array<{ id: number; descripcion: string }>
+  >([]);
   const [motivosBajaOptions, setMotivosBajaOptions] = useState<
     Array<{ descripcion: string }>
   >([]);
@@ -1293,9 +1294,11 @@ export default function CatTrabajadores() {
                     {...commonProps}
                   >
                     <MenuItem value=''>-- Seleccionar --</MenuItem>
-                    <MenuItem value='1'>1</MenuItem>
-                    <MenuItem value='2'>2</MenuItem>
-                    <MenuItem value='3'>3</MenuItem>
+                    {escolaridadConcluidoOptions.map((option) => (
+                      <MenuItem key={option.id} value={option.id}>
+                        {option.descripcion}
+                      </MenuItem>
+                    ))}
                   </Select>
                 </FormControl>
               </Grid>
@@ -1369,7 +1372,7 @@ export default function CatTrabajadores() {
                     display: 'flex',
                     alignItems: 'flex-start', // Alinea el checkbox arriba si el texto es largo
                     borderRadius: 2,
-                    backgroundColor: '#fcfcfc', // Un tono muy claro para el fondo
+                    backgroundColor: '#fcfcfc', 
                   }}
                 >
                   <Checkbox
