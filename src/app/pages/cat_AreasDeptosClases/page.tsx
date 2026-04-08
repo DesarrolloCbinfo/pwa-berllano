@@ -680,43 +680,24 @@ return (
             <DataGrid
               rows={areas}
               columns={[
-                {
-                  field: 'area',
-                  headerName: 'ID',
-                  width: 60,
-                  headerClassName: 'super-app-theme--header',
-                },
-                {
-                  field: 'descripcion',
-                  headerName: 'Descripción',
-                  width: 150,
-                  headerClassName: 'super-app-theme--header',
-                },
+                { field: 'area', headerName: 'ID', width: 60 },
+                { field: 'descripcion', headerName: 'Descripción', flex: 1 },
                 {
                   field: 'acciones',
                   headerName: 'Acciones',
-                  width: 100,
-                  headerClassName: 'super-app-theme--header',
+                  width: 90,
                   renderCell: (params) => (
                     <Box sx={{ display: 'flex', gap: 1 }}>
                       <IconButton 
-                        size="small" 
-                        sx={{ color: '#707070ff' }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEditArea(params.row);
-                        }}
+                        size="small" sx={{ color: '#707070ff' }}
+                        onClick={(e) => { e.stopPropagation(); handleEditArea(params.row); }}
                         title="Editar Área"
                       >
                         <EditIcon fontSize="small" />
                       </IconButton>
                       <IconButton 
-                        size="small" 
-                        sx={{ color: '#555555ff' }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteArea(params.row);
-                        }}
+                        size="small" sx={{ color: '#555555ff' }}
+                        onClick={(e) => { e.stopPropagation(); handleDeleteArea(params.row); }}
                         title="Eliminar Área"
                       >
                         <DeleteIcon fontSize="small" />
@@ -731,14 +712,16 @@ return (
               onRowClick={(params) => handleAreaSelect(params.row.area)}
               sx={{
                 height: 400,
-                '& .MuiDataGrid-root': {
-                  border: 'none',
-                },
+                border: 'none',
                 '& .MuiDataGrid-columnHeaders': {
-                  backgroundColor: '#555555ff',
-                  color: 'black',
+                  backgroundColor: '#f5f5f5',
+                  borderBottom: '2px solid #000',
+                  color: '#000',
                   fontWeight: 'bold',
                 },
+                '& .MuiDataGrid-cell': { borderBottom: '1px solid #e0e0e000' },
+                '& .MuiDataGrid-row': { cursor: 'pointer', transition: 'all 0.2s ease' },
+                '& .MuiDataGrid-row:hover': { bgcolor: '#fafafa' }
               }}
             />
           </Paper>
@@ -788,61 +771,27 @@ return (
             <DataGrid
               rows={deptos}
               columns={[
-                {
-                  field: 'depto',
-                  headerName: 'ID',
-                  width: 60,
-                  headerClassName: 'super-app-theme--header',
-                },
-                {
-                  field: 'area',
-                  headerName: 'Área',
-                  width: 60,
-                  headerClassName: 'super-app-theme--header',
-                },
-                {
-                  field: 'descripcion',
-                  headerName: 'Descripción',
-                  width: 120,
-                  headerClassName: 'super-app-theme--header',
-                },
-                {
-                  field: 'claveSAT',
-                  headerName: 'Clave SAT',
-                  width: 100,
-                  headerClassName: 'super-app-theme--header',
-                },
-                {
-                  field: 'unidadMedidaSAT',
-                  headerName: 'Unidad SAT',
-                  width: 90,
-                  headerClassName: 'super-app-theme--header',
-                },
+                { field: 'depto', headerName: 'ID', width: 60 },
+                { field: 'area', headerName: 'Área', width: 60 },
+                { field: 'descripcion', headerName: 'Descripción', flex: 1 },
+                { field: 'claveSAT', headerName: 'C. SAT', width: 90 },
+                { field: 'unidadMedidaSAT', headerName: 'U. SAT', width: 90 },
                 {
                   field: 'acciones',
                   headerName: 'Acciones',
-                  width: 100,
-                  headerClassName: 'super-app-theme--header',
+                  width: 90,
                   renderCell: (params) => (
                     <Box sx={{ display: 'flex', gap: 1 }}>
                       <IconButton 
-                        size="small" 
-                        sx={{ color: '#707070ff' }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEditDepto(params.row);
-                        }}
+                        size="small" sx={{ color: '#707070ff' }}
+                        onClick={(e) => { e.stopPropagation(); handleEditDepto(params.row); }}
                         title="Editar Departamento"
                       >
                         <EditIcon fontSize="small" />
                       </IconButton>
                       <IconButton 
-                        size="small" 
-                        sx={{ color: '#555555ff' }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteDepto(params.row);
-                        }}
+                        size="small" sx={{ color: '#555555ff' }}
+                        onClick={(e) => { e.stopPropagation(); handleDeleteDepto(params.row); }}
                         title="Eliminar Departamento"
                       >
                         <DeleteIcon fontSize="small" />
@@ -857,14 +806,16 @@ return (
               onRowClick={(params) => handleDeptoSelect(params.row.depto, params.row.area)}
               sx={{
                 height: 400,
-                '& .MuiDataGrid-root': {
-                  border: 'none',
-                },
+                border: 'none',
                 '& .MuiDataGrid-columnHeaders': {
-                  backgroundColor: '#555555ff',
-                  color: 'black',
+                  backgroundColor: '#f5f5f5',
+                  borderBottom: '2px solid #000',
+                  color: '#000',
                   fontWeight: 'bold',
                 },
+                '& .MuiDataGrid-cell': { borderBottom: '1px solid #e0e0e000' },
+                '& .MuiDataGrid-row': { cursor: 'pointer', transition: 'all 0.2s ease' },
+                '& .MuiDataGrid-row:hover': { bgcolor: '#fafafa' }
               }}
             />
           </Paper>
@@ -914,78 +865,30 @@ return (
             <DataGrid
               rows={clases}
               columns={[
-                {
-                  field: 'area',
-                  headerName: 'Área',
-                  width: 60,
-                  headerClassName: 'super-app-theme--header',
-                },
-                {
-                  field: 'depto',
-                  headerName: 'Depto',
-                  width: 60,
-                  headerClassName: 'super-app-theme--header',
-                },
-                {
-                  field: 'clase',
-                  headerName: 'ID',
-                  width: 60,
-                  headerClassName: 'super-app-theme--header',
-                },
-                {
-                  field: 'descripcion',
-                  headerName: 'Descripción',
-                  width: 120,
-                  headerClassName: 'super-app-theme--header',
-                },
-                {
-                  field: 'dias_min',
-                  headerName: 'Días Min',
-                  width: 80,
-                  headerClassName: 'super-app-theme--header',
-                },
-                {
-                  field: 'dias_max',
-                  headerName: 'Días Max',
-                  width: 80,
-                  headerClassName: 'super-app-theme--header',
-                },
-                {
-                  field: 'dias_muestra',
-                  headerName: 'Días Muestra',
-                  width: 100,
-                  headerClassName: 'super-app-theme--header',
-                },
-                {
-                  field: 'margen_minimo_remates',
-                  headerName: 'Margen Remates',
-                  width: 100,
-                  headerClassName: 'super-app-theme--header',
-                },
-                {
-                  field: 'tasa_iva',
-                  headerName: 'Tasa IVA',
-                  width: 80,
-                  headerClassName: 'super-app-theme--header',
-                },
+                { field: 'area', headerName: 'Área', width: 60 },
+                { field: 'depto', headerName: 'Depto', width: 60 },
+                { field: 'clase', headerName: 'ID', width: 60 },
+                { field: 'descripcion', headerName: 'Descripción', flex: 1, minWidth: 120 },
+                { field: 'dias_min', headerName: 'D. Min', width: 70 },
+                { field: 'dias_max', headerName: 'D. Max', width: 70 },
+                { field: 'dias_muestra', headerName: 'Muestra', width: 80 },
+                { field: 'margen_minimo_remates', headerName: 'Remates', width: 80 },
+                { field: 'tasa_iva', headerName: 'IVA', width: 60 },
                 {
                   field: 'acciones',
                   headerName: 'Acciones',
-                  width: 100,
-                  headerClassName: 'super-app-theme--header',
+                  width: 90,
                   renderCell: (params) => (
                     <Box sx={{ display: 'flex', gap: 1 }}>
                       <IconButton 
-                        size="small" 
-                        sx={{ color: '#707070ff' }}
+                        size="small" sx={{ color: '#707070ff' }}
                         onClick={() => handleEditClase(params.row)}
                         title="Editar Clase"
                       >
                         <EditIcon fontSize="small" />
                       </IconButton>
                       <IconButton 
-                        size="small" 
-                        sx={{ color: '#555555ff' }}
+                        size="small" sx={{ color: '#555555ff' }}
                         onClick={() => handleDeleteClase(params.row)}
                         title="Eliminar Clase"
                       >
@@ -1000,14 +903,16 @@ return (
               hideFooter
               sx={{
                 height: 400,
-                '& .MuiDataGrid-root': {
-                  border: 'none',
-                },
+                border: 'none',
                 '& .MuiDataGrid-columnHeaders': {
-                  backgroundColor: '#555555ff',
-                  color: 'black',
+                  backgroundColor: '#f5f5f5',
+                  borderBottom: '2px solid #000',
+                  color: '#000',
                   fontWeight: 'bold',
                 },
+                '& .MuiDataGrid-cell': { borderBottom: '1px solid #e0e0e000' },
+                '& .MuiDataGrid-row': { transition: 'all 0.2s ease' },
+                '& .MuiDataGrid-row:hover': { bgcolor: '#fafafa' }
               }}
             />
           </Paper>

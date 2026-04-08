@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Box, CircularProgress, Alert, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, TextField } from '@mui/material'
+import { Box, CircularProgress, Alert, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, TextField, Paper, Grid } from '@mui/material'
 import { DataGrid, GridColDef } from '@mui/x-data-grid'
 import useConsumoApi from '../../../hooks/useConsumoApi'
 import { useSessionContext } from '../../../context/SessionProvider'
@@ -238,13 +238,13 @@ export default function CatPlasticosAutorizados() {
           }
         `}</style>
 
-        {/* CONTENEDOR BLANCO PRINCIPAL (ENCABEZADO) */}
-        <Box sx={{ backgroundColor: 'white', p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.05)', mb: 3 }}>
+       {/* CONTENEDOR BLANCO SUPERIOR (ENCABEZADO + FILTROS) */}
+        <Paper sx={{ p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.05)', mb: 3 }}>
           
           {/* RECUADRO INTERIOR ELEGANTE */}
-          <Box sx={{ border: '1px solid #2c3e50', p: 1.5, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
+          <Box sx={{ border: '1px solid #2c3e50', p: 1.5, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between', mb: 2 }}>
               <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem', textTransform: 'uppercase' }}>
                       ALTA DE PLÁSTICOS AUTORIZADOS
                   </Typography>
                   <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
@@ -259,58 +259,55 @@ export default function CatPlasticosAutorizados() {
                       Usuario Activo: {session?.nombre || 'Cargando...'}
                   </Typography>
               </Box>
-
           </Box>
 
-        {/* BARRA DE BOTÓN AGREGAR Y BÚSQUEDA */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, gap: 2 }}>
-          {/* Botón Agregar a la izquierda */}
-          <Button
-            variant="contained"
-            onClick={() => setOpenAgregar(true)}
-            sx={{ 
-              minWidth: 200, 
-              bgcolor: '#333333', 
-              fontWeight: 600, 
-              borderRadius: '8px',
-              textTransform: 'none',
-              boxShadow: '0 4px 12px rgba(51,51,51,0.3)',
-              '&:hover': { bgcolor: '#555555' },
-              mt: 2 //Separacion horizontal del box
-            }}
-          >
-            + AGREGAR
-          </Button>
-
-          {/* Campo de búsqueda a la derecha */}
-          <Box sx={{ flex: 1, maxWidth: '400px' }}>
-            <TextField
-              fullWidth
-              placeholder="Buscar plástico..."
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              variant="outlined"
-              size="small"
-              InputProps={{
-                startAdornment: (
-                  <Typography sx={{ mr: 1, color: '#666' }}></Typography>
-                ),
-              }}
-              sx={{
-                '& .MuiOutlinedInput-root': {
+          {/* BARRA DE BOTÓN AGREGAR Y BÚSQUEDA INTEGRADA LIMPIAMENTE */}
+          <Grid container spacing={2} alignItems="center" justifyContent="space-between">
+            <Grid item xs={12} sm={4} md={3}>
+              <Button
+                variant="contained"
+                onClick={() => setOpenAgregar(true)}
+                fullWidth
+                sx={{ 
+                  height: '40px', 
+                  bgcolor: '#333333', 
+                  fontWeight: 'bold', 
                   borderRadius: '8px',
-                  backgroundColor: 'white',
-                  '&:hover fieldset': {
-                    borderColor: '#555',
+                  textTransform: 'none',
+                  boxShadow: '0 4px 12px rgba(51,51,51,0.3)',
+                  transition: 'all 0.3s ease',
+                  '&:hover': { bgcolor: '#555555', transform: 'translateY(-1px)' }
+                }}
+              >
+                + AGREGAR PLÁSTICO
+              </Button>
+            </Grid>
+            
+            <Grid item xs={12} sm={6} md={4}>
+              <TextField
+                fullWidth
+                placeholder="Buscar plástico"
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                variant="outlined"
+                size="small"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    height: '40px',
+                    borderRadius: '8px',
+                    backgroundColor: 'white',
+                    '&:hover fieldset': {
+                      borderColor: '#555',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: '#333',
+                    },
                   },
-                  '&.Mui-focused fieldset': {
-                    borderColor: '#333',
-                  },
-                },
-              }}
-            />
-          </Box>
-        </Box>
+                }}
+              />
+            </Grid>
+          </Grid>
+        </Paper>
 
         {/* CONTENEDOR DE LA TABLA */}
         <Box sx={{ backgroundColor: 'white', p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
@@ -382,25 +379,10 @@ export default function CatPlasticosAutorizados() {
             >
               Reporte de Reasignación
             </Button>
-            <Button
-              variant="outlined"
-              onClick={handleSalir}
-              sx={{ 
-                minWidth: 120, 
-                color: '#333', 
-                borderColor: '#333', 
-                fontWeight: 600, 
-                borderRadius: '8px',
-                textTransform: 'none',
-                '&:hover': { borderColor: '#555', bgcolor: 'rgba(0,0,0,0.05)' }
-              }}
-            >
-              Salir
-            </Button>
+          
           </Box>
         </Box>
         </Box>
-      </Box>
 
       {/* Dialog de Reasignación */}
       <Dialog open={openReasignacion} onClose={() => setOpenReasignacion(false)} maxWidth="sm" fullWidth>
