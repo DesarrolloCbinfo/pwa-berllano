@@ -299,6 +299,33 @@ const SidebarHorizontal = () => {
         </Button>
 
 
+{/* --- cambios del recuadro aqui --- */}
+        <Box sx={{ flexGrow: 1 }} />
+
+
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'flex-end', 
+          justifyContent: 'center',
+          mr: 2, 
+          px: 2, 
+          py: 0.5,
+          bgcolor: 'rgba(255, 255, 255, 0.4)', 
+          borderRadius: '8px',
+          border: '1px solid rgba(0,0,0,0.1)',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+        }}>
+          <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#1a365d', lineHeight: 1.2, textTransform: 'uppercase' }}>
+            {session?.nombre ? session.nombre : 'Cargando...'}
+          </Typography>
+          <Typography variant="caption" sx={{ color: '#333', fontWeight: 600, lineHeight: 1 }}>
+            {session?.dSucursal ? `Sucursal: ${session.dSucursal}` : 'Cargando...'}
+          </Typography>
+        </Box>
+        {/* --- aqui termina --- */}
+
+
 
         <Menu
           anchorEl={anchorPerfil}
