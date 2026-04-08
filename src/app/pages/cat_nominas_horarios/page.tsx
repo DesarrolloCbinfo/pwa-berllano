@@ -189,6 +189,14 @@ const handleEliminar = async (clave: number) => {
   };
 
  const columns = useMemo<GridColDef[]>(() => [
+     { 
+        field: 'acciones', headerName: 'Eliminar', width: 100, sortable: false, filterable: false, align: 'center', headerAlign: 'center',
+        renderCell: (params: GridRenderCellParams) => (
+            <IconButton size="small" sx={{ color: '#d32f2f' }} onClick={() => handleEliminar(params.row.horario)}>
+                <DeleteIcon />
+            </IconButton>
+        )
+    },
     { field: 'horario', headerName: 'Clave', width: 90, fontWeight: 'bold', align: 'center', headerAlign: 'center' },
     { field: 'descripcion', headerName: 'Descripción (Doble clic para editar)', flex: 1, minWidth: 200, editable: true, align: 'center', headerAlign: 'center' },
     { 
@@ -202,15 +210,8 @@ const handleEliminar = async (clave: number) => {
     },
     { 
         field: 'h4', headerName: 'Salida 2', width: 110, editable: true, type: 'singleSelect', valueOptions: opcionesHora, align: 'center', headerAlign: 'center' 
-    },
-    { 
-        field: 'acciones', headerName: 'Eliminar', width: 100, sortable: false, filterable: false, align: 'center', headerAlign: 'center',
-        renderCell: (params: GridRenderCellParams) => (
-            <IconButton size="small" sx={{ color: '#d32f2f' }} onClick={() => handleEliminar(params.row.horario)}>
-                <DeleteIcon />
-            </IconButton>
-        )
     }
+   
   ], []);
 
   return (

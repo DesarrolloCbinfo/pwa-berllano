@@ -250,6 +250,14 @@ export default function ConfigComisiones2() {
   };
 
   const columns = useMemo<GridColDef[]>(() => [
+    { 
+        field: 'acciones', headerName: 'Eliminar', width: 80, sortable: false, filterable: false, align: 'center',
+        renderCell: (params: GridRenderCellParams) => (
+            <IconButton size="small" sx={{ color: '#d32f2f' }} onClick={() => handleEliminar(params.row.id)}>
+                <DeleteIcon />
+            </IconButton>
+        )
+    },
     { field: 'nombre_sucursal', headerName: 'Sucursal', width: 140 },
     { field: 'nombre_area', headerName: 'Área', width: 120 },
     { field: 'nombre_depto', headerName: 'Depto', width: 120 },
@@ -269,14 +277,6 @@ export default function ConfigComisiones2() {
         valueFormatter: (v: any) => v == null ? '0%' : `${Number(v).toFixed(0)}%` 
     },  { field: 'iva', headerName: 'Base IVA', width: 100, valueGetter: (params, row) => row.basePrecioConIva ? 'CON IVA' : 'SIN IVA' },
     { field: 'dias', headerName: 'Días Aplica', width: 150, renderCell: renderDias },
-    { 
-        field: 'acciones', headerName: 'Eliminar', width: 80, sortable: false, filterable: false, align: 'center',
-        renderCell: (params: GridRenderCellParams) => (
-            <IconButton size="small" sx={{ color: '#d32f2f' }} onClick={() => handleEliminar(params.row.id)}>
-                <DeleteIcon />
-            </IconButton>
-        )
-    }
   ], []);
 
 return (
@@ -447,36 +447,87 @@ return (
       </Box>
 
       {/* CONTENEDOR DE LA TABLA ESTILO ELEGANTE */}
-      <Box sx={{ backgroundColor: 'white', p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
+      {/* TABLA PRINCIPAL ESTILO ELEGANTE CON COLUMNAS FIJAS */}
+      <Box sx={{ backgroundColor: 'white', p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.05)', mb: 3 }}>
         <Box sx={{ height: 600, width: '100%' }}>
           <DataGrid 
-              rows={Array.isArray(rows) ? rows : []} 
-              columns={columns} 
-              getRowId={(row) => row.id} 
-              loading={loading || saving} 
-              paginationModel={paginationModel} 
-              onPaginationModelChange={setPaginationModel} 
-              pageSizeOptions={[50, 100, 500]} 
-              slots={{ toolbar: GridToolbar, pagination: CustomPagination }} 
-              slotProps={{ toolbar: { showQuickFilter: true } }} 
-              disableRowSelectionOnClick
-              sx={{ 
-                  border: 'none', 
-                  height: '100%',
-                  fontSize: '0.95rem',
-                  '& .MuiDataGrid-columnHeaders': { 
-                      borderBottom: '2px solid #000',
-                      textAlign: 'center',
-                      fontSize: '1rem',
-                      fontWeight: 'bold',
-                      backgroundColor: '#f5f5f5'
-                  },
-                  '& .MuiDataGrid-cell': {
-                      borderBottom: '1px solid #e0e0e000'
-                  },
-                  '& .MuiDataGrid-row': { cursor: 'pointer', transition: 'all 0.2s ease' },
-                  '& .MuiDataGrid-row:hover': { bgcolor: '#fafafa' }
-              }} 
+            rows={Array.isArray(rows) ? rows : []} 
+            columns={columns} 
+            getRowId={(row) => row.id} 
+            loading={loading || saving} 
+            paginationModel={paginationModel} 
+            onPaginationModelChange={setPaginationModel} 
+            pageSizeOptions={[50, 100, 500]} 
+            slots={{ toolbar: GridToolbar, pagination: CustomPagination }} 
+            slotProps={{ toolbar: { showQuickFilter: true } }} 
+            disableRowSelectionOnClick
+            
+            // 1. APAGAR LA VIRTUALIZACIÓN (Obligatorio para que funcione CSS Sticky)
+            disableVirtualization
+
+            sx={{ 
+              border: 'none', 
+              height: '100%',
+              fontSize: '0.95rem',
+              
+              // 2. MATAR EL TRANSFORM INTERNO DE MUI
+              '& .MuiDataGrid-virtualScrollerContent': { transform: 'none !important' },
+              '& .MuiDataGrid-virtualScrollerRenderZone': { transform: 'none !important' },
+
+              '& .MuiDataGrid-columnHeaders': { 
+                borderBottom: '2px solid #000',
+                fontSize: '1rem',
+                fontWeight: 'bold',
+                backgroundColor: '#f5f5f5'
+              },
+              '& .MuiDataGrid-cell': {
+                borderBottom: '1px solid #e0e0e000'
+              },
+              '& .MuiDataGrid-row': { 
+                cursor: 'pointer', 
+                transition: 'all 0.2s ease' 
+              },
+              '& .MuiDataGrid-row:hover': { 
+                bgcolor: '#fafafa' 
+              },
+              '& .MuiDataGrid-row:hover .MuiDataGrid-cell': { 
+                bgcolor: '#e3f2fd' 
+              },
+
+              // ==========================================
+              // 3. CONGELAR COLUMNAS (Acciones y Sucursal)
+              // ==========================================
+              
+              // Columna 1: ACCIONES (Ancho 80px. Inicia en 0)
+              '& .MuiDataGrid-cell[data-field="acciones"]': { 
+                  position: 'sticky', 
+                  left: 0, 
+                  zIndex: 3, 
+                  backgroundColor: '#fff'
+              },
+              '& .MuiDataGrid-columnHeader[data-field="acciones"]': { 
+                  position: 'sticky', 
+                  left: 0, 
+                  zIndex: 4, 
+                  backgroundColor: '#f5f5f5'
+              },
+
+              // Columna 2: SUCURSAL (Ancho 140px. Inicia en 80)
+              '& .MuiDataGrid-cell[data-field="nombre_sucursal"]': { 
+                  position: 'sticky', 
+                  left: 80, // <-- Inicia justo donde termina la de acciones
+                  zIndex: 3, 
+                  backgroundColor: '#fff',
+                  boxShadow: '4px 0px 5px -2px rgba(0,0,0,0.1)' // Sombra divisoria
+              },
+              '& .MuiDataGrid-columnHeader[data-field="nombre_sucursal"]': { 
+                  position: 'sticky', 
+                  left: 80, 
+                  zIndex: 4, 
+                  backgroundColor: '#f5f5f5',
+                  boxShadow: '4px 0px 5px -2px rgba(0,0,0,0.1)' // Sombra divisoria
+              }
+            }} 
           />
         </Box>
       </Box>

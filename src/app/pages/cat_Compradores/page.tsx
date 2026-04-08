@@ -75,9 +75,7 @@ export default function CatCompradores() {
 
   // --- 3. Definición de Columnas ---
   const columns: GridColDef[] = [
-    { field: 'clave_comprador', headerName: 'Clave', width: 150 },
-    { field: 'nombre', headerName: 'Nombre del Comprador', width: 400 },
-    {
+        {
       field: 'acciones',
       headerName: 'Acciones',
       width: 120,
@@ -104,7 +102,10 @@ export default function CatCompradores() {
           </IconButton>
         </Box>
       )
-    }
+    },
+    { field: 'clave_comprador', headerName: 'Clave', width: 150 },
+    { field: 'nombre', headerName: 'Nombre del Comprador', width: 400 },
+
   ]
 
   // --- 4. Funciones de API ---

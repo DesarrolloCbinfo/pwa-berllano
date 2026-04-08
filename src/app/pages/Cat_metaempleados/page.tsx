@@ -249,6 +249,14 @@ const fetchTablaMetas = async () => {
 
   // Definición de columnas del DataGrid
   const columns = useMemo<GridColDef[]>(() => [
+        { 
+        field: 'acciones', headerName: 'Eliminar', width: 80, sortable: false, filterable: false, align: 'center', headerAlign: 'center',
+        renderCell: (params: GridRenderCellParams) => (
+            <IconButton size="small" sx={{ color: '#d32f2f' }} onClick={() => handleEliminar(params.row.id)}>
+                <DeleteIcon />
+            </IconButton>
+        )
+    },
     { field: 'año', headerName: 'Año', width: 70, align: 'center', headerAlign: 'center' },
     { field: 'mes', headerName: 'Mes', width: 70, align: 'center', headerAlign: 'center' },
     { field: 'nombre_sucursal', headerName: 'Sucursal', width: 140 },
@@ -261,14 +269,7 @@ const fetchTablaMetas = async () => {
         valueFormatter: (v: any) => isNaN(Number(v)) ? '$0.00' : `$${Number(v).toFixed(2)}` 
     },
     { field: 'unidades', headerName: 'Unidades', width: 90, align: 'center', headerAlign: 'center' },
-    { 
-        field: 'acciones', headerName: 'Eliminar', width: 80, sortable: false, filterable: false, align: 'center', headerAlign: 'center',
-        renderCell: (params: GridRenderCellParams) => (
-            <IconButton size="small" sx={{ color: '#d32f2f' }} onClick={() => handleEliminar(params.row.id)}>
-                <DeleteIcon />
-            </IconButton>
-        )
-    }
+
   ], []);
 
   return (

@@ -153,18 +153,19 @@ const handleEliminar = async (id: number) => {
   };
 
   const columns = useMemo<GridColDef[]>(() => [
-    { field: 'claveEmpleado', headerName: 'Clave', flex: 1, minWidth: 100, fontWeight: 'bold', align: 'center', headerAlign: 'center' },
-    { field: 'nombreEmpleado', headerName: 'Nombre del Empleado', flex: 2, minWidth: 200, align: 'center', headerAlign: 'center' },
-    { field: 'fecha1', headerName: 'Fecha Inicial', flex: 1, minWidth: 120, valueFormatter: (v: any) => new Date(v).toLocaleDateString(), align: 'center', headerAlign: 'center' },
-    { field: 'fecha2', headerName: 'Fecha Final', flex: 1, minWidth: 120, valueFormatter: (v: any) => new Date(v).toLocaleDateString(), align: 'center', headerAlign: 'center' },
-    { 
+        { 
         field: 'acciones', headerName: 'Eliminar', flex: 0.5, minWidth: 80, sortable: false, filterable: false, align: 'center', headerAlign: 'center',
         renderCell: (params: GridRenderCellParams) => (
             <IconButton size="small" sx={{ color: '#d32f2f' }} onClick={() => handleEliminar(params.row.id)}>
                 <DeleteIcon />
             </IconButton>
         )
-    }
+    },
+    { field: 'claveEmpleado', headerName: 'Clave', flex: 1, minWidth: 100, fontWeight: 'bold', align: 'center', headerAlign: 'center' },
+    { field: 'nombreEmpleado', headerName: 'Nombre del Empleado', flex: 2, minWidth: 200, align: 'center', headerAlign: 'center' },
+    { field: 'fecha1', headerName: 'Fecha Inicial', flex: 1, minWidth: 120, valueFormatter: (v: any) => new Date(v).toLocaleDateString(), align: 'center', headerAlign: 'center' },
+    { field: 'fecha2', headerName: 'Fecha Final', flex: 1, minWidth: 120, valueFormatter: (v: any) => new Date(v).toLocaleDateString(), align: 'center', headerAlign: 'center' },
+
   ], []);
 
   return (

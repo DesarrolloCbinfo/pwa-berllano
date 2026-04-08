@@ -158,16 +158,17 @@ const handleEliminar = async (clave: number) => {
   };
 
   const columns = useMemo<GridColDef[]>(() => [
-    { field: 'clave_nivel', headerName: 'Clave', width: 120, fontWeight: 'bold', align: 'center', headerAlign: 'center' },
-    { field: 'descripcion_escolaridad', headerName: 'Descripción del Nivel (Doble clic para editar)', flex: 1, minWidth: 250, editable: true, align: 'left', headerAlign: 'center' },
-    { 
+        { 
         field: 'acciones', headerName: 'Eliminar', width: 120, sortable: false, filterable: false, align: 'center', headerAlign: 'center',
         renderCell: (params: GridRenderCellParams) => (
             <IconButton size="small" sx={{ color: '#d32f2f' }} onClick={() => handleEliminar(params.row.clave_nivel)}>
                 <DeleteIcon />
             </IconButton>
         )
-    }
+    },
+    { field: 'clave_nivel', headerName: 'Clave', width: 120, fontWeight: 'bold', align: 'center', headerAlign: 'center' },
+    { field: 'descripcion_escolaridad', headerName: 'Descripción del Nivel (Doble clic para editar)', flex: 1, minWidth: 250, editable: true, align: 'left', headerAlign: 'center' },
+
   ], []);
 
   return (

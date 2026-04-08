@@ -188,10 +188,6 @@ const [loading, setLoading] = useState(false);
   };
 
   const columns = useMemo<GridColDef[]>(() => [
-    { field: 'tipo_movimiento', headerName: 'Clave', width: 100, fontWeight: 'bold', align: 'center', headerAlign: 'center' },
-    { field: 'descripcion', headerName: 'Descripción del Movimiento (Doble clic para editar)', flex: 1, minWidth: 200, editable: true, align: 'center', headerAlign: 'center' },
-    { field: 'porcentaje', headerName: 'Porcentaje', width: 120, type: 'number', editable: true, align: 'center', headerAlign: 'center' },
-    { field: 'importe_minimo', headerName: 'Descto. Mínimo', width: 150, type: 'number', editable: true, align: 'center', headerAlign: 'center' },
     { 
         field: 'acciones', headerName: 'Eliminar', width: 120, sortable: false, filterable: false, align: 'center', headerAlign: 'center',
         renderCell: (params: GridRenderCellParams) => (
@@ -199,7 +195,12 @@ const [loading, setLoading] = useState(false);
                 <DeleteIcon />
             </IconButton>
         )
-    }
+    },
+    { field: 'tipo_movimiento', headerName: 'Clave', width: 100, fontWeight: 'bold', align: 'center', headerAlign: 'center' },
+    { field: 'descripcion', headerName: 'Descripción del Movimiento (Doble clic para editar)', flex: 1, minWidth: 200, editable: true, align: 'center', headerAlign: 'center' },
+    { field: 'porcentaje', headerName: 'Porcentaje', width: 120, type: 'number', editable: true, align: 'center', headerAlign: 'center' },
+    { field: 'importe_minimo', headerName: 'Descto. Mínimo', width: 150, type: 'number', editable: true, align: 'center', headerAlign: 'center' }
+    
   ], []);
 
   return (

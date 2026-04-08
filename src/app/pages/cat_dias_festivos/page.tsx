@@ -112,6 +112,14 @@ const handleEliminar = async (fechaString: string) => {
 
   const columns = useMemo<GridColDef[]>(() => [
     { 
+        field: 'acciones', headerName: 'Eliminar', width: 120, sortable: false, filterable: false, align: 'center', headerAlign: 'center',
+        renderCell: (params: GridRenderCellParams) => (
+            <IconButton size="small" sx={{ color: '#d32f2f' }} onClick={() => handleEliminar(params.row.fecha_festivo)}>
+                <DeleteIcon />
+            </IconButton>
+        )
+    },
+    { 
         field: 'fecha_festivo', 
         headerName: 'Día Festivo', 
         flex: 1, 
@@ -123,15 +131,8 @@ const handleEliminar = async (fechaString: string) => {
             const date = new Date(params.value);
             return date.toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         }
-    },
-    { 
-        field: 'acciones', headerName: 'Eliminar', width: 120, sortable: false, filterable: false, align: 'center', headerAlign: 'center',
-        renderCell: (params: GridRenderCellParams) => (
-            <IconButton size="small" sx={{ color: '#d32f2f' }} onClick={() => handleEliminar(params.row.fecha_festivo)}>
-                <DeleteIcon />
-            </IconButton>
-        )
     }
+    
   ], []);
 
   return (
