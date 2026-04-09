@@ -20,12 +20,14 @@ import {
   Dialog,            // <--- NUEVO
   DialogTitle,       // <--- NUEVO
   DialogContent,     // <--- NUEVO
-  DialogActions      // <--- NUEVO
+  DialogActions,     // <--- NUEVO
+  IconButton
 } from '@mui/material';
 import useConsumoApi from '../../../hooks/useConsumoApi';
 import Swal from 'sweetalert2';
 import { useSessionContext } from '../../../context/SessionProvider'; 
 import AddIcon from '@mui/icons-material/Add';
+import CloseIcon from '@mui/icons-material/Close';
 
 // --- ESTILOS BERLLANO ELEGANTE (TONALIDADES NEUTRAS) ---
 // 1. Estilo General (Altura fija de 50px con detalles elegantes)
@@ -368,45 +370,75 @@ return (
         </Box>
 
       
-{/* MODAL PARA AGREGAR NUEVO REGISTRO */}
+{/* MODAL PARA AGREGAR NUEVO REGISTRO (ESTILO ELEGANTE) */}
       <Dialog 
         open={openAdd} 
         onClose={() => setOpenAdd(false)}
+        maxWidth="sm"
         fullWidth
-        maxWidth="xs"
         PaperProps={{
-          sx: { borderRadius: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.15)', border: '1px solid #e0e0e0' }
+          sx: {
+            borderRadius: '16px',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+            border: '1px solid #e0e0e0',
+            overflow: 'hidden',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
+          }
         }}
       >
-        <DialogTitle sx={{ background: '#333333', color: 'white', fontFamily: 'Georgia, "Times New Roman", serif' }}>
-          Agregar Nueva Familia
-        </DialogTitle>
-        <DialogContent sx={{ p: 3, bgcolor: '#fff', display: 'flex', flexDirection: 'column', gap: 3, mt: 2 }}>
-          
-          <Select
-            {...selectProps}
-            displayEmpty
-            value={newFormData.id_marca}
-            onChange={(e) => setNewFormData({ ...newFormData, id_marca: e.target.value as string })}
+        {/* ENCABEZADO ELEGANTE */}
+        <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
+          <Box sx={{ position: 'relative', zIndex: 2 }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
+              Agregar Nueva Familia
+            </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+              Seleccione la marca y asigne el nombre de la nueva familia
+            </Typography>
+          </Box>
+          <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+          <IconButton 
+            onClick={() => setOpenAdd(false)}
+            sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
           >
-            <MenuItem value="" disabled>-- Seleccione una Marca --</MenuItem>
-            {marcas.map((m) => (
-              <MenuItem key={m.id} value={m.id}>{m.marca}</MenuItem>
-            ))}
-          </Select>
+            <CloseIcon />
+          </IconButton>
+        </Box>
 
-          <TextField 
-            {...commonProps}
-            label="Nombre de la Familia"
-            value={newFormData.familia}
-            onChange={(e) => setNewFormData({ ...newFormData, familia: e.target.value })}
-          />
-
+        {/* CONTENIDO MODAL */}
+        <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+          <Grid container spacing={2} sx={{ mt: 0.5 }}>
+           <Grid item xs={12} sm={6}>
+              <TextField
+                {...selectProps}
+                select
+                label="Marca *"
+                value={newFormData.id_marca}
+                onChange={(e) => setNewFormData({ ...newFormData, id_marca: e.target.value })}
+              >
+                <MenuItem value="" disabled>-- Seleccione una Marca --</MenuItem>
+                {marcas.map((m) => (
+                  <MenuItem key={m.id} value={m.id}>{m.marca}</MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField 
+                {...commonProps}
+                label="Nombre de la Familia *"
+                value={newFormData.familia}
+                onChange={(e) => setNewFormData({ ...newFormData, familia: e.target.value })}
+              />
+            </Grid>
+          </Grid>
         </DialogContent>
-        <DialogActions sx={{ px: 3, py: 2, bgcolor: '#f5f5f5', borderTop: '1px solid #e0e0e0' }}>
+
+        {/* FOOTER Y BOTONES */}
+        <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
           <Button 
             onClick={() => setOpenAdd(false)}
-            sx={{ color: '#000', fontWeight: 600, textTransform: 'none' }}
+            color="inherit"
+            sx={{ borderRadius: '8px', fontWeight: 500, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
           >
             Cancelar
           </Button>
@@ -414,7 +446,11 @@ return (
             onClick={handleAdd} 
             variant="contained" 
             disabled={saving}
-            sx={{ backgroundColor: '#333333', fontWeight: 600, textTransform: 'none', borderRadius: '8px', '&:hover': { backgroundColor: '#555555' } }}
+            sx={{ 
+              bgcolor: '#000000ff', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)', transition: 'all 0.3s ease',
+              '&:hover': { bgcolor: '#333333', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }
+            }}
           >
             {saving ? 'Guardando...' : 'Guardar'}
           </Button>

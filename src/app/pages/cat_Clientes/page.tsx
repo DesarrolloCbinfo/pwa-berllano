@@ -155,20 +155,12 @@ export default function CatClientes() {
   const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // --- FUNCIONES AUXILIARES ---
+ 
   const formatDateForInput = (dateString: string | null | undefined): string => {
     if (!dateString) return '';
-    try {
-      // Si viene en formato ISO "2019-11-06T11:53:00", extraer solo la fecha
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return '';
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    } catch {
-      return '';
-    }
+    
+
+    return dateString.split('T')[0];
   };
 
   // --- CARGAS DE DATOS ---

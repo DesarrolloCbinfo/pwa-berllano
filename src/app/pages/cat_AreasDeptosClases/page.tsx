@@ -74,6 +74,40 @@ interface ClaseForm {
   tasa_iva: number
 }
 
+// --- ESTILOS BERLLANO ELEGANTE ---
+const commonProps = {
+  fullWidth: true,
+  size: "small" as const,
+  variant: "outlined" as const,
+  sx: {
+      '& .MuiInputBase-root': {
+          height: '50px', // <--- Mantiene el alto (grosor) idéntico para todos
+          alignItems: 'center',
+          borderRadius: '8px', // <--- Esquinas redondeadas
+          transition: 'all 0.3s ease',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+          '&:hover': {
+            boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+            borderColor: '#999'
+          }
+      },
+      '& .MuiInputLabel-root': {
+          transform: 'translate(14px, 14px) scale(1)',
+          color: '#666',
+          fontWeight: 500
+      },
+      '& .MuiInputLabel-shrink': {
+          transform: 'translate(14px, -9px) scale(0.75)',
+          color: '#333',
+          fontWeight: 600
+      },
+      '& .MuiOutlinedInput-notchedOutline': {
+          borderColor: '#e0e0e0',
+          borderWidth: '1.5px'
+      }
+  }
+};
+
 export default function CatAreasDeptosClases() {
   const consumoApi = useConsumoApi()
   const { session } = useSessionContext() // <--- Extraemos la sesión
@@ -767,8 +801,9 @@ return (
             <DataGrid
               rows={deptos}
               columns={[
-                { field: 'depto', headerName: 'ID', width: 60 },
                 { field: 'area', headerName: 'Área', width: 60 },
+                { field: 'depto', headerName: 'ID', width: 60 },
+                
                 { field: 'descripcion', headerName: 'Descripción', flex: 1 },
                 { field: 'claveSAT', headerName: 'C. SAT', width: 90 },
                 { field: 'unidadMedidaSAT', headerName: 'U. SAT', width: 90 },
@@ -915,313 +950,373 @@ return (
         </Grid>
       </Grid>
 
-      {/* --- MODAL DE ÁREAS --- */}
+    {/* --- MODAL DE ÁREAS --- */}
       <Dialog 
         open={openAreaModal} 
         onClose={() => setOpenAreaModal(false)} 
         maxWidth="sm" 
         fullWidth
         PaperProps={{
-          sx: { borderRadius: '12px' }
+          sx: {
+            borderRadius: '16px',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+            border: '1px solid #e0e0e0',
+            overflow: 'hidden',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
+          }
         }}
       >
-        <Box sx={{ p: 4, bgcolor: '#fdfdfd' }}>
-          <Box sx={{ bgcolor: '#000000ff', p: 3, borderRadius: '8px 8px 0 0', ml: -4, mr: -4, mt: -4 }}>
-            <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'white', mb: 1 }}>
+        {/* ENCABEZADO ELEGANTE */}
+        <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
+          <Box sx={{ position: 'relative', zIndex: 2 }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
               {editingArea ? 'Editar Área' : 'Nueva Área'}
             </Typography>
-            <Typography variant="body2" sx={{ color: 'white', opacity: 0.9 }}>
-              Complete la información del proveedor en los campos correspondientes
+            <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+              Complete la información del área en los campos correspondientes
             </Typography>
-            <IconButton 
-              onClick={() => setOpenAreaModal(false)}
-              sx={{ 
-                position: 'absolute', 
-                top: 16, 
-                right: 16, 
-                color: 'white',
-                bgcolor: 'rgba(255,255,255,0.1)',
-                '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' }
-              }}
-            >
-              <CloseIcon />
-            </IconButton>
           </Box>
-          
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 3 }}>
-            <TextField
-              label="Área *"
-              value={areaForm.area}
-              onChange={(e) => setAreaForm({ ...areaForm, area: e.target.value })}
-              disabled={!!editingArea}
-              fullWidth
-            />
-            <TextField
-              label="Descripción *"
-              value={areaForm.descripcion}
-              onChange={(e) => setAreaForm({ ...areaForm, descripcion: e.target.value })}
-              fullWidth
-              multiline
-              rows={3}
-            />
-          </Box>
-          
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 4 }}>
-            <Button onClick={() => setOpenAreaModal(false)} variant="outlined">
-              Cancelar
-            </Button>
-            <Button 
-              onClick={handleSaveArea}
-              variant="contained"
-              disabled={loading}
-              sx={{ bgcolor: '#000000ff' }}
-            >
-              {loading ? 'Guardando...' : 'Guardar'}
-            </Button>
-          </Box>
+          <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+          <IconButton 
+            onClick={() => setOpenAreaModal(false)}
+            sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+          >
+            <CloseIcon />
+          </IconButton>
         </Box>
+        
+        {/* CONTENIDO MODAL ÁREAS */}
+        <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+          <Grid container spacing={2} sx={{ mt: 0.5 }}>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                {...commonProps}
+                label="Área *"
+                value={areaForm.area}
+                onChange={(e) => setAreaForm({ ...areaForm, area: e.target.value })}
+                disabled={!!editingArea}
+              />
+            </Grid>
+            <Grid item xs={12} sm={8}>
+              <TextField
+                {...commonProps}
+                label="Descripción *"
+                value={areaForm.descripcion}
+                onChange={(e) => setAreaForm({ ...areaForm, descripcion: e.target.value })}
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        
+        {/* FOOTER Y BOTONES */}
+        <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
+          <Button 
+            onClick={() => setOpenAreaModal(false)} 
+            color="inherit"
+            sx={{ borderRadius: '8px', fontWeight: 500, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleSaveArea}
+            variant="contained"
+            disabled={loading}
+            sx={{ 
+              bgcolor: '#000000ff', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)', transition: 'all 0.3s ease',
+              '&:hover': { bgcolor: '#333333', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }
+            }}
+          >
+            {loading ? 'Guardando...' : 'Guardar'}
+          </Button>
+        </DialogActions>
       </Dialog>
 
       {/* --- MODAL DE DEPARTAMENTOS --- */}
       <Dialog 
         open={openDeptoModal} 
         onClose={() => setOpenDeptoModal(false)} 
-        maxWidth="sm" 
+        maxWidth="md" 
         fullWidth
         PaperProps={{
-          sx: { borderRadius: '12px' }
+          sx: {
+            borderRadius: '16px',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+            border: '1px solid #e0e0e0',
+            overflow: 'hidden',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
+          }
         }}
       >
-        <Box sx={{ p: 4, bgcolor: '#fdfdfd' }}>
-          <Box sx={{ bgcolor: '#000000ff', p: 3, borderRadius: '8px 8px 0 0', ml: -4, mr: -4, mt: -4 }}>
-            <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'white', mb: 1 }}>
+        {/* ENCABEZADO ELEGANTE */}
+        <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
+          <Box sx={{ position: 'relative', zIndex: 2 }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
               {editingDepto ? 'Editar Departamento' : 'Nuevo Departamento'}
             </Typography>
-            <Typography variant="body2" sx={{ color: 'white', opacity: 0.9 }}>
+            <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
               Complete la información del departamento en los campos correspondientes
             </Typography>
-            <IconButton 
-              onClick={() => setOpenDeptoModal(false)}
-              sx={{ 
-                position: 'absolute', 
-                top: 16, 
-                right: 16, 
-                color: 'white',
-                bgcolor: 'rgba(255,255,255,0.1)',
-                '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' }
-              }}
-            >
-              <CloseIcon />
-            </IconButton>
           </Box>
-          
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 3 }}>
-            <TextField
-              label="Área"
-              value={deptoForm.area}
-              onChange={(e) => setDeptoForm({ ...deptoForm, area: e.target.value })}
-              disabled={!editingDepto}
-              fullWidth
-            />
-            <TextField
-              label="Departamento *"
-              value={deptoForm.depto}
-              onChange={(e) => setDeptoForm({ ...deptoForm, depto: e.target.value })}
-              disabled={!!editingDepto}
-              fullWidth
-            />
-            <TextField
-              label="Descripción *"
-              value={deptoForm.descripcion}
-              onChange={(e) => setDeptoForm({ ...deptoForm, descripcion: e.target.value })}
-              fullWidth
-              multiline
-              rows={3}
-            />
-            <TextField
-              label="Clave SAT"
-              value={deptoForm.claveSAT || ''}
-              onChange={(e) => {
-                if (e.target.value.length <= 10) {
-                  setDeptoForm({ ...deptoForm, claveSAT: e.target.value })
-                }
-              }}
-              inputProps={{ maxLength: 10 }}
-              fullWidth
-            />
-            <TextField
-              label="Unidad SAT"
-              value={deptoForm.unidadMedidaSAT || ''}
-              onChange={(e) => {
-                if (e.target.value.length <= 3) {
-                  setDeptoForm({ ...deptoForm, unidadMedidaSAT: e.target.value })
-                }
-              }}
-              inputProps={{ maxLength: 3 }}
-              fullWidth
-            />
-          </Box>
-          
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 4 }}>
-            <Button onClick={() => setOpenDeptoModal(false)} variant="outlined">
-              Cancelar
-            </Button>
-            <Button 
-              onClick={handleSaveDepto}
-              variant="contained"
-              disabled={loading}
-              sx={{ bgcolor: '#000000ff' }}
-            >
-              {loading ? 'Guardando...' : 'Guardar'}
-            </Button>
-          </Box>
+          <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+          <IconButton 
+            onClick={() => setOpenDeptoModal(false)}
+            sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+          >
+            <CloseIcon />
+          </IconButton>
         </Box>
+        
+     {/* CONTENIDO MODAL DEPARTAMENTOS */}
+        <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+          <Grid container spacing={2} sx={{ mt: 0.5 }}>
+            {/* --- FILA 1: 3 Campos exactos (4 + 4 + 4 = 12) --- */}
+            <Grid item xs={12} md={4}>
+              <TextField
+                {...commonProps}
+                label="Área"
+                value={deptoForm.area}
+                onChange={(e) => setDeptoForm({ ...deptoForm, area: e.target.value })}
+                disabled={!editingDepto}
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField
+                {...commonProps}
+                label="Departamento *"
+                value={deptoForm.depto}
+                onChange={(e) => setDeptoForm({ ...deptoForm, depto: e.target.value })}
+                disabled={!!editingDepto}
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField
+                {...commonProps}
+                label="Clave SAT"
+                value={deptoForm.claveSAT || ''}
+                onChange={(e) => {
+                  if (e.target.value.length <= 10) setDeptoForm({ ...deptoForm, claveSAT: e.target.value });
+                }}
+                inputProps={{ maxLength: 10 }}
+              />
+            </Grid>
+
+            {/* --- FILA 2: 2 Campos que llenan el total (4 + 8 = 12) --- */}
+            <Grid item xs={12} md={4}>
+              <TextField
+                {...commonProps}
+                label="Unidad SAT"
+                value={deptoForm.unidadMedidaSAT || ''}
+                onChange={(e) => {
+                  if (e.target.value.length <= 3) setDeptoForm({ ...deptoForm, unidadMedidaSAT: e.target.value });
+                }}
+                inputProps={{ maxLength: 3 }}
+              />
+            </Grid>
+            <Grid item xs={12} md={8}>
+              <TextField
+                {...commonProps}
+                label="Descripción *"
+                value={deptoForm.descripcion}
+                onChange={(e) => setDeptoForm({ ...deptoForm, descripcion: e.target.value })}
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        
+        {/* FOOTER Y BOTONES */}
+        <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
+          <Button 
+            onClick={() => setOpenDeptoModal(false)} 
+            color="inherit"
+            sx={{ borderRadius: '8px', fontWeight: 500, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleSaveDepto}
+            variant="contained"
+            disabled={loading}
+            sx={{ 
+              bgcolor: '#000000ff', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)', transition: 'all 0.3s ease',
+              '&:hover': { bgcolor: '#333333', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }
+            }}
+          >
+            {loading ? 'Guardando...' : 'Guardar'}
+          </Button>
+        </DialogActions>
       </Dialog>
 
       {/* --- MODAL DE CLASES --- */}
       <Dialog 
         open={openClaseModal} 
         onClose={() => setOpenClaseModal(false)} 
-        maxWidth="sm" 
+        maxWidth="md" 
         fullWidth
         PaperProps={{
-          sx: { borderRadius: '12px' }
+          sx: {
+            borderRadius: '16px',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+            border: '1px solid #e0e0e0',
+            overflow: 'hidden',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
+          }
         }}
       >
-        <Box sx={{ p: 4, bgcolor: '#fdfdfd' }}>
-          <Box sx={{ bgcolor: '#000000ff', p: 3, borderRadius: '8px 8px 0 0', ml: -4, mr: -4, mt: -4 }}>
-            <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'white', mb: 1 }}>
+        {/* ENCABEZADO ELEGANTE */}
+        <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
+          <Box sx={{ position: 'relative', zIndex: 2 }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
               {editingClase ? 'Editar Clase' : 'Nueva Clase'}
             </Typography>
-            <Typography variant="body2" sx={{ color: 'white', opacity: 0.9 }}>
+            <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
               Complete la información de la clase en los campos correspondientes
             </Typography>
-            <IconButton 
-              onClick={() => setOpenClaseModal(false)}
-              sx={{ 
-                position: 'absolute', 
-                top: 16, 
-                right: 16, 
-                color: 'white',
-                bgcolor: 'rgba(255,255,255,0.1)',
-                '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' }
-              }}
-            >
-              <CloseIcon />
-            </IconButton>
           </Box>
-          
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 3 }}>
-            <TextField
-              label="Área *"
-              value={claseForm.area}
-              onChange={(e) => setClaseForm({ ...claseForm, area: e.target.value })}
-              disabled={selectedArea !== '0'}
-              fullWidth
-            />
-            <TextField
-              label="Departamento *"
-              value={claseForm.depto}
-              onChange={(e) => setClaseForm({ ...claseForm, depto: e.target.value })}
-              disabled={selectedDepto !== '0'}
-              fullWidth
-            />
-            <TextField
-              label="Clase *"
-              value={claseForm.clase}
-              onChange={(e) => setClaseForm({ ...claseForm, clase: e.target.value })}
-              disabled={!!editingClase}
-              fullWidth
-            />
-            <TextField
-              label="Descripción *"
-              value={claseForm.descripcion}
-              onChange={(e) => setClaseForm({ ...claseForm, descripcion: e.target.value })}
-              fullWidth
-              multiline
-              rows={3}
-            />
-            <TextField
-              label="Días Mínimos"
-              type="number"
-              value={claseForm.dias_min}
-              onChange={(e) => {
-                const value = parseInt(e.target.value) || 0;
-                if (value >= 0) {
-                  setClaseForm({ ...claseForm, dias_min: value });
-                }
-              }}
-              inputProps={{ min: 0, step: 1 }}
-              fullWidth
-            />
-            <TextField
-              label="Días Máximos"
-              type="number"
-              value={claseForm.dias_max}
-              onChange={(e) => {
-                const value = parseInt(e.target.value) || 0;
-                if (value >= 0) {
-                  setClaseForm({ ...claseForm, dias_max: value });
-                }
-              }}
-              inputProps={{ min: 0, step: 1 }}
-              fullWidth
-            />
-            <TextField
-              label="Días Muestra"
-              type="number"
-              value={claseForm.dias_muestra}
-              onChange={(e) => {
-                const value = parseInt(e.target.value) || 0;
-                if (value >= 0) {
-                  setClaseForm({ ...claseForm, dias_muestra: value });
-                }
-              }}
-              inputProps={{ min: 0, step: 1 }}
-              fullWidth
-            />
-            <TextField
-              label="Margen Mínimo Remates *"
-              type="number"
-              value={claseForm.margen_minimo_remates}
-              onChange={(e) => {
-                const value = parseInt(e.target.value) || 0;
-                if (value >= 0) {
-                  setClaseForm({ ...claseForm, margen_minimo_remates: value });
-                }
-              }}
-              inputProps={{ min: 0, step: 1 }}
-              fullWidth
-            />
-            <TextField
-              label="Tasa IVA *"
-              type="number"
-              value={claseForm.tasa_iva}
-              onChange={(e) => {
-                const value = parseInt(e.target.value) || 0;
-                if (value >= 0) {
-                  setClaseForm({ ...claseForm, tasa_iva: value });
-                }
-              }}
-              inputProps={{ min: 0, step: 1 }}
-              fullWidth
-            />
-          </Box>
-          
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 4 }}>
-            <Button onClick={() => setOpenClaseModal(false)} variant="outlined">
-              Cancelar
-            </Button>
-            <Button 
-              onClick={handleSaveClase}
-              variant="contained"
-              disabled={loading}
-              sx={{ bgcolor: '#000000ff' }}
-            >
-              {loading ? 'Guardando...' : 'Guardar'}
-            </Button>
-          </Box>
+          <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+          <IconButton 
+            onClick={() => setOpenClaseModal(false)}
+            sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+          >
+            <CloseIcon />
+          </IconButton>
         </Box>
+        
+      
+       {/* CONTENIDO MODAL CLASES */}
+        <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+          <Grid container spacing={2} sx={{ mt: 0.5 }}>
+            {/* --- FILA 1 (4 + 4 + 4 = 12) --- */}
+            <Grid item xs={12} md={4}>
+              <TextField
+                {...commonProps}
+                label="Área *"
+                value={claseForm.area}
+                onChange={(e) => setClaseForm({ ...claseForm, area: e.target.value })}
+                disabled={selectedArea !== '0'}
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField
+                {...commonProps}
+                label="Departamento *"
+                value={claseForm.depto}
+                onChange={(e) => setClaseForm({ ...claseForm, depto: e.target.value })}
+                disabled={selectedDepto !== '0'}
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField
+                {...commonProps}
+                label="Clase *"
+                value={claseForm.clase}
+                onChange={(e) => setClaseForm({ ...claseForm, clase: e.target.value })}
+                disabled={!!editingClase}
+              />
+            </Grid>
+
+            {/* --- FILA 2 (4 + 4 + 4 = 12) --- */}
+            <Grid item xs={12} md={4}>
+              <TextField
+                {...commonProps}
+                label="Días Mínimos"
+                type="number"
+                value={claseForm.dias_min}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value) || 0;
+                  if (val >= 0) setClaseForm({ ...claseForm, dias_min: val });
+                }}
+                inputProps={{ min: 0, step: 1 }}
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField
+                {...commonProps}
+                label="Días Máximos"
+                type="number"
+                value={claseForm.dias_max}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value) || 0;
+                  if (val >= 0) setClaseForm({ ...claseForm, dias_max: val });
+                }}
+                inputProps={{ min: 0, step: 1 }}
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField
+                {...commonProps}
+                label="Días Muestra"
+                type="number"
+                value={claseForm.dias_muestra}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value) || 0;
+                  if (val >= 0) setClaseForm({ ...claseForm, dias_muestra: val });
+                }}
+                inputProps={{ min: 0, step: 1 }}
+              />
+            </Grid>
+
+            {/* --- FILA 3 (4 + 4 + 4 = 12) --- */}
+            <Grid item xs={12} md={4}>
+              <TextField
+                {...commonProps}
+                label="Margen Mínimo Remates *"
+                type="number"
+                value={claseForm.margen_minimo_remates}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value) || 0;
+                  if (val >= 0) setClaseForm({ ...claseForm, margen_minimo_remates: val });
+                }}
+                inputProps={{ min: 0, step: 1 }}
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField
+                {...commonProps}
+                label="Tasa IVA *"
+                type="number"
+                value={claseForm.tasa_iva}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value) || 0;
+                  if (val >= 0) setClaseForm({ ...claseForm, tasa_iva: val });
+                }}
+                inputProps={{ min: 0, step: 1 }}
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField
+                {...commonProps}
+                label="Descripción *"
+                value={claseForm.descripcion}
+                onChange={(e) => setClaseForm({ ...claseForm, descripcion: e.target.value })}
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        
+        {/* FOOTER Y BOTONES */}
+        <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
+          <Button 
+            onClick={() => setOpenClaseModal(false)} 
+            color="inherit"
+            sx={{ borderRadius: '8px', fontWeight: 500, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleSaveClase}
+            variant="contained"
+            disabled={loading}
+            sx={{ 
+              bgcolor: '#000000ff', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)', transition: 'all 0.3s ease',
+              '&:hover': { bgcolor: '#333333', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }
+            }}
+          >
+            {loading ? 'Guardando...' : 'Guardar'}
+          </Button>
+        </DialogActions>
       </Dialog>
 
 {/* --- SNACKBAR PARA MENSAJES --- */}
