@@ -47,8 +47,22 @@ interface ClienteRow {
   colonia?: string;
   id_sucursal?: number;
   genero?: string;
-  suspendido?: boolean;
+  suspenso?: boolean;
   domicilio?: string;
+  No_cliente?: string;
+}
+
+interface CatalogoItem {
+  id: number | string;
+  descripcion: string;
+}
+
+interface CatClienteProps {
+  embedded?: boolean;
+  onClienteGuardado?: (cliente: ClienteRow) => void;
+  onClose?: () => void;
+  openModal?: boolean;
+  onOpenModal?: (open: boolean) => void;
 }
 
 interface CatalogoItem {
@@ -128,7 +142,7 @@ const selectProps = {
   }
 };
 
-export default function CatClientes() {
+export default function CatClientes({ embedded = false, onClienteGuardado, onClose, openModal: externalOpenModal, onOpenModal }: CatClienteProps) {
   const { consumoApi } = useConsumoApi();
   const { session } = useSessionContext();
 
@@ -145,9 +159,19 @@ export default function CatClientes() {
     pageSize: 10 
   });
 
-  const [openModal, setOpenModal] = useState(false);
+  const [internalOpenModal, setInternalOpenModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState(initialFormState);
+  
+  // Usar estado externo si está en modo embebido, sino usar estado interno
+  const openModal = embedded && externalOpenModal !== undefined ? externalOpenModal : internalOpenModal;
+  const setOpenModal = (open: boolean) => {
+    if (embedded && onOpenModal) {
+      onOpenModal(open);
+    } else {
+      setInternalOpenModal(open);
+    }
+  };
   
   // Estado para Pestañas
   const [tabValue, setTabValue] = useState(0);
@@ -325,10 +349,57 @@ const handleSave = async () => {
         // Enviar como body JSON, no como query params
         await consumoApi.put('/api/CatClientesSuc/sp_bw_cat_clientes_upd', updateParams);
         Swal.fire({ title: '¡Éxito!', text: 'Cliente actualizado correctamente', icon: 'success', confirmButtonColor: '#333333' });
+        
+        if (embedded && onClienteGuardado) {
+          const clienteActualizado: ClienteRow = {
+            id: formData.id_cliente || formData.clave_cliente,
+            nombre_completo: `${formData.nombre} ${formData.apellido_paterno || ''} ${formData.apellido_materno || ''}`.trim(),
+            nombre: formData.nombre,
+            ap_paterno: formData.apellido_paterno,
+            ap_materno: formData.apellido_materno,
+            email: formData.email,
+            telefono: formData.telefono,
+            domicilio: formData.domicilio,
+            ciudad: formData.ciudad,
+            estado: formData.estado,
+            cp: formData.cp,
+            colonia: formData.colonia,
+            id_sucursal: Number(formData.sucursal_id),
+            genero: formData.genero,
+            No_cliente: formData.id_cliente || formData.clave_cliente,
+            fecha_alta: formData.fecha_alta || '',
+            sucursal_nombre: '',
+          };
+          onClienteGuardado(clienteActualizado);
+        }
       } else {
         // Para inserción: enviar en body JSON
         await consumoApi.post('/api/CatClientesSuc/sp_bw_cat_clientes_ins', baseParams);
         Swal.fire({ title: '¡Éxito!', text: 'Cliente creado correctamente', icon: 'success', confirmButtonColor: '#333333' });
+        
+        if (embedded && onClienteGuardado) {
+          const nombreCompleto = `${formData.nombre} ${formData.apellido_paterno || ''} ${formData.apellido_materno || ''}`.trim();
+          const clienteCreado: ClienteRow = {
+            id: nombreCompleto,
+            nombre_completo: nombreCompleto,
+            nombre: formData.nombre,
+            ap_paterno: formData.apellido_paterno,
+            ap_materno: formData.apellido_materno,
+            email: formData.email,
+            telefono: formData.telefono,
+            domicilio: formData.domicilio,
+            ciudad: formData.ciudad,
+            estado: formData.estado,
+            cp: formData.cp,
+            colonia: formData.colonia,
+            id_sucursal: Number(formData.sucursal_id),
+            genero: formData.genero,
+            No_cliente: nombreCompleto,
+            fecha_alta: new Date().toISOString().split('T')[0],
+            sucursal_nombre: '',
+          };
+          onClienteGuardado(clienteCreado);
+        }
       }
       setOpenModal(false);
       fetchClientes(); 

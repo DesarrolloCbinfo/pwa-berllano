@@ -149,7 +149,7 @@ const useSeguridad = () => {
           }).then((result) => {
             if (result.isConfirmed) {
               // Redirigir al usuario a la página de inicio de sesión
-              window.location.href = 'http://localhost:5173/'; // Puedes ajustar la ruta según tu configuración
+              window.location.href = 'https://cbinfo.no-ip.info:5173/'; // Puedes ajustar la ruta según tu configuración
             } else {
               // Puedes manejar otras acciones si el usuario cancela la alerta
             }

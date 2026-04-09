@@ -6,10 +6,12 @@ import useSession from "../../hooks/useSession";
 import ClientesTable from "../../components/POS/ClientesTable";
 import PaginationControls from "../../components/POS/PaginationControl";
 import Swal from "sweetalert2";
-import { Box, Button, Dialog, DialogContent, DialogTitle, Divider, FormControl, InputLabel, MenuItem, Select, useTheme, useMediaQuery, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, CircularProgress } from "@mui/material";
+import { Box, Button, Dialog, DialogContent, DialogTitle, Divider, FormControl, InputLabel, MenuItem, Select, useTheme, useMediaQuery, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, CircularProgress, IconButton } from "@mui/material";
 import ProductosTable from "../../components/POS/ProductosTable";
 import DetalleVentasTable from "../../components/POS/DetalleVentasTable";
 import useCantidadesProducto from "../../hooks/useCantidadesProducto";
+import CatClientes from "./cat_Clientes/page";
+import { History } from "@mui/icons-material";
 
 type Cliente = {
   No_cliente: string;
@@ -43,6 +45,36 @@ type Producto = {
 type Auxiliar = {
   clave_empleado: string;
   nombre: string;
+};
+
+type HistorialItem = {
+  no_venta: number;
+  nombre: string;
+  cve_sucursal: number;
+  fecha: string;
+  clave_prod: string;
+  prod_serv: string;
+  es_servicio: boolean;
+  es_producto: boolean;
+  cant_producto: number;
+  Precio: number;
+  estilista: string;
+  descuento: number;
+  no_cliente: string;
+  cliente: string;
+  forma_pago: string;
+};
+
+type InsumoItem = {
+  cia: number;
+  cliente: string;
+  producto_venta: string;
+  fecha: string;
+  sucursal: string;
+  estilista: string;
+  producto_insumo: string;
+  cantidad: number;
+  obs: string;
 };
 
 type InsumoDetalle = {
@@ -81,6 +113,7 @@ type VentaEnProceso = {
 type DetalleVenta = {
   id: string;
   estilista: string;
+  id_estilista?: string;
   d_estilista: string;
   hora: string;
   clave_prod: string;
@@ -113,6 +146,25 @@ export default function POS() {
   
   const [searchText, setSearchText] = React.useState("");
   const [modalClienteOpen, setModalClienteOpen] = React.useState(false);
+  const [modalNuevoClienteOpen, setModalNuevoClienteOpen] = React.useState(false);
+  const [modalHistorialOpen, setModalHistorialOpen] = React.useState(false);
+  const [historialData, setHistorialData] = React.useState<HistorialItem[]>([]);
+  const [historialPage, setHistorialPage] = React.useState(1);
+  const [historialLoading, setHistorialLoading] = React.useState(false);
+  const [hasMoreHistorial, setHasMoreHistorial] = React.useState(true);
+  const [modalHistorialInsumosOpen, setModalHistorialInsumosOpen] = React.useState(false);
+  const [historialInsumosData, setHistorialInsumosData] = React.useState<InsumoItem[]>([]);
+  const [historialInsumosLoading, setHistorialInsumosLoading] = React.useState(false);
+  const [historialInsumosPage, setHistorialInsumosPage] = React.useState(1);
+  const [hasMoreHistorialInsumos, setHasMoreHistorialInsumos] = React.useState(true);
+  const [selectedVenta, setSelectedVenta] = React.useState<{cliente: string, suc: number, venta: number, serv: string} | null>(null);
+
+  const [modalAgregarInsumosOpen, setModalAgregarInsumosOpen] = React.useState(false);
+  const [detalleSeleccionadoInsumos, setDetalleSeleccionadoInsumos] = React.useState<DetalleVenta | null>(null);
+  const [busquedaInsumo, setBusquedaInsumo] = React.useState("");
+  const [resultadosInsumos, setResultadosInsumos] = React.useState<Producto[]>([]);
+  const [insumosAgregar, setInsumosAgregar] = React.useState<Array<{clave_prod: string, cantidad: number, d_producto: string}>>([]);
+  const [loadingBusquedaInsumo, setLoadingBusquedaInsumo] = React.useState(false);
 
   const [productoSeleccionado, setProductoSeleccionado] = React.useState<Producto | null>(null);
   const [modalProductoOpen, setModalProductoOpen] = React.useState(false);
@@ -212,6 +264,204 @@ const puedeFinalizar = totalPagado >= totalVenta && totalPagado > 0;
     } catch (error) {
       console.error('Error cargando datos:', error);
       alert('Error al cargar los datos');
+    }
+  };
+
+  const fetchHistorial = async (cliente: string, pagina: number) => {
+    setHistorialLoading(true);
+    try {
+      const response = await consumoApi.get('/api/PuntoDeVenta/sp_historial_cte_compras', {
+        params: { cliente, pagina },
+        timeout: 60000
+      });
+      return response.data || response || [];
+    } catch (error: any) {
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        console.error('Timeout en historial de compras');
+      } else {
+        console.error('Error fetching historial:', error);
+      }
+      return [];
+    } finally {
+      setHistorialLoading(false);
+    }
+  };
+
+  const handleOpenHistorial = async () => {
+    if (!clienteSeleccionado) return;
+    setHistorialPage(1);
+    setHasMoreHistorial(true);
+    const data = await fetchHistorial(clienteSeleccionado.No_cliente, 1);
+    setHistorialData(data);
+    setModalHistorialOpen(true);
+  };
+
+  const handlePrevPage = async () => {
+    if (!clienteSeleccionado || historialPage <= 1) return;
+    const newPage = historialPage - 1;
+    const data = await fetchHistorial(clienteSeleccionado.No_cliente, newPage);
+    if (data.length > 0) {
+      setHistorialData(data);
+      setHistorialPage(newPage);
+    }
+  };
+
+  const handleNextPage = async () => {
+    if (!clienteSeleccionado || !hasMoreHistorial) return;
+    const newPage = historialPage + 1;
+    const data = await fetchHistorial(clienteSeleccionado.No_cliente, newPage);
+    if (data.length > 0) {
+      setHistorialData(data);
+      setHistorialPage(newPage);
+    } else {
+      setHasMoreHistorial(false);
+    }
+  };
+
+  const fetchInsumosVenta = async (cliente: string, suc: number, venta: number, serv: string, pagina: number) => {
+    setHistorialInsumosLoading(true);
+    try {
+      const response = await consumoApi.get('/api/PuntoDeVenta/sp_historial_cte_insumos', {
+        params: { cliente, suc, venta, serv, pagina },
+        timeout: 60000
+      });
+      return response.data || response || [];
+    } catch (error) {
+      console.error('Error fetching insumos:', error);
+      return [];
+    } finally {
+      setHistorialInsumosLoading(false);
+    }
+  };
+
+  const handleOpenInsumos = async (item: HistorialItem) => {
+    if (!clienteSeleccionado) return;
+    setSelectedVenta({
+      cliente: clienteSeleccionado.No_cliente,
+      suc: item.cve_sucursal,
+      venta: item.no_venta,
+      serv: item.clave_prod
+    });
+    setHistorialInsumosPage(1);
+    setHasMoreHistorialInsumos(true);
+    const data = await fetchInsumosVenta(
+      clienteSeleccionado.No_cliente,
+      item.cve_sucursal,
+      item.no_venta,
+      item.clave_prod,
+      1
+    );
+    setHistorialInsumosData(data);
+    setModalHistorialInsumosOpen(true);
+  };
+
+  const handlePrevInsumos = async () => {
+    if (!selectedVenta || historialInsumosPage <= 1) return;
+    const newPage = historialInsumosPage - 1;
+    const data = await fetchInsumosVenta(selectedVenta.cliente, selectedVenta.suc, selectedVenta.venta, selectedVenta.serv, newPage);
+    if (data.length > 0) {
+      setHistorialInsumosData(data);
+      setHistorialInsumosPage(newPage);
+    }
+  };
+
+  const handleNextInsumos = async () => {
+    if (!selectedVenta || !hasMoreHistorialInsumos) return;
+    const newPage = historialInsumosPage + 1;
+    const data = await fetchInsumosVenta(selectedVenta.cliente, selectedVenta.suc, selectedVenta.venta, selectedVenta.serv, newPage);
+    if (data.length > 0) {
+      setHistorialInsumosData(data);
+      setHistorialInsumosPage(newPage);
+    } else {
+      setHasMoreHistorialInsumos(false);
+    }
+  };
+
+  const handleAbrirAgregarInsumos = (detalle: DetalleVenta) => {
+    // Convertir el detalle a un producto para el modal de insumos
+    const productoParaInsumos: Producto = {
+      clave_prod: detalle.clave_prod,
+      descripcion: detalle.d_producto,
+      es_servicio: true,
+      controlado: true,
+    };
+    setProductoPrincipal(productoParaInsumos);
+    setInsumosSeleccionados([]);
+    setModalInsumosOpen(true);
+  };
+
+  const buscarInsumos = async (busqueda: string) => {
+    if (busqueda.length < 2) {
+      setResultadosInsumos([]);
+      return;
+    }
+    setLoadingBusquedaInsumo(true);
+    try {
+      const response = await consumoApi.get('/api/PuntoDeVenta/sp_busca_productos_paginado', {
+        params: { search: busqueda, pagina: 1, pageSize: 20 }
+      });
+      const data = response.data || response.data?.data || [];
+      setResultadosInsumos(data);
+    } catch (error) {
+      console.error('Error buscando insumos:', error);
+      setResultadosInsumos([]);
+    } finally {
+      setLoadingBusquedaInsumo(false);
+    }
+  };
+
+  const agregarInsumoALista = (producto: Producto) => {
+    const yaExiste = insumosAgregar.some(i => i.clave_prod === producto.clave_prod);
+    if (yaExiste) {
+      Swal.fire('Info', 'El insumo ya está en la lista', 'info');
+      return;
+    }
+    setInsumosAgregar([...insumosAgregar, { 
+      clave_prod: producto.clave_prod, 
+      cantidad: 1, 
+      d_producto: producto.descripcion 
+    }]);
+  };
+
+  const quitarInsumoDeLista = (clave_prod: string) => {
+    setInsumosAgregar(insumosAgregar.filter(i => i.clave_prod !== clave_prod));
+  };
+
+  const actualizarCantidadInsumo = (clave_prod: string, cantidad: number) => {
+    if (cantidad <= 0) return;
+    setInsumosAgregar(insumosAgregar.map(i => 
+      i.clave_prod === clave_prod ? { ...i, cantidad } : i
+    ));
+  };
+
+  const guardarInsumosVenta = async () => {
+    if (!detalleSeleccionadoInsumos || insumosAgregar.length === 0) {
+      Swal.fire('Atención', 'Agrega al menos un insumo', 'warning');
+      return;
+    }
+
+    if (!clienteSeleccionado) {
+      Swal.fire('Atención', 'Selecciona un cliente', 'warning');
+      return;
+    }
+
+    const payload = insumosAgregar.map(i => ({
+      clave_prod: i.clave_prod,
+      cantidad: i.cantidad
+    }));
+
+    try {
+      await consumoApi.post(
+        `/api/PuntoDeVenta/sp_fw_pos_agregar_insumos_venta?cia=1&sucursal=${sucursal}&no_venta=0&cve_cliente=${clienteSeleccionado.No_cliente}&clave_producto_venta=${detalleSeleccionadoInsumos.clave_prod}&estilista=${detalleSeleccionadoInsumos.id_estilista}`,
+        payload
+      );
+      Swal.fire('Éxito', 'Insumos agregados correctamente', 'success');
+      setModalAgregarInsumosOpen(false);
+      setInsumosAgregar([]);
+      setDetalleSeleccionadoInsumos(null);
+    } catch (error: any) {
+      const msg = error.response?.data?.mensaje || 'Error al agregar insumos';
+      Swal.fire('Error', msg, 'error');
     }
   };
 
@@ -607,6 +857,20 @@ const puedeFinalizar = totalPagado >= totalVenta && totalPagado > 0;
         setDetallesVenta(prev => prev.filter(d => d.id !== productoActualizado.id));
         return;
       }
+
+      // Enviar insumos a la API
+      try {
+        const payloadInsumos = insumosSeleccionados.map(item => ({
+          clave_prod: item.producto.clave_prod,
+          cantidad: item.cantidad
+        }));
+        await consumoApi.post(
+          `/api/PuntoDeVenta/sp_fw_pos_agregar_insumos_venta?cia=1&sucursal=${sucursal}&no_venta=0&cve_cliente=${clienteSeleccionado?.No_cliente || ''}&clave_producto_venta=${productoPrincipal.clave_prod}&estilista=${estilistaSeleccionado}`,
+          payloadInsumos
+        );
+      } catch (error) {
+        console.error('Error guardando insumos en API:', error);
+      }
     } else {
       // Encontrar el producto principal existente y agregarle los insumos
       setDetallesVenta(prev => prev.map(detalle => {
@@ -628,14 +892,28 @@ const puedeFinalizar = totalPagado >= totalVenta && totalPagado > 0;
               estilistaAuxiliar?.find((e: Auxiliar) => e.clave_empleado === auxiliarSeleccionado)?.nombre || '' : '',
           }));
           
-          return {
-            ...detalle,
-            insumos: [...(detalle.insumos || []), ...nuevosInsumos]
-          };
-        }
-        return detalle;
+        return {
+          ...detalle,
+          insumos: [...(detalle.insumos || []), ...nuevosInsumos]
+        };
+      }
+      return detalle;
+    }));
+
+    // Enviar insumos a la API para productos existentes
+    try {
+      const payloadInsumos = insumosSeleccionados.map(item => ({
+        clave_prod: item.producto.clave_prod,
+        cantidad: item.cantidad
       }));
+      await consumoApi.post(
+        `/api/PuntoDeVenta/sp_fw_pos_agregar_insumos_venta?cia=1&sucursal=${sucursal}&no_venta=0&cve_cliente=${clienteSeleccionado?.No_cliente || ''}&clave_producto_venta=${productoPrincipal.clave_prod}&estilista=${estilistaSeleccionado}`,
+        payloadInsumos
+      );
+    } catch (error) {
+      console.error('Error guardando insumos en API:', error);
     }
+  }
     
     // Limpiar selección de producto
     setProductoSeleccionado(null);
@@ -877,6 +1155,7 @@ const {
       <Button 
         size={isMobile ? "medium" : "small"} 
         variant="outlined" 
+        onClick={() => setModalNuevoClienteOpen(true)}
         sx={{ 
           minWidth: { xs: 56, sm: 'auto' },
           height: { xs: 56, sm: 'auto' }
@@ -884,6 +1163,21 @@ const {
       >
         +
       </Button>
+      <IconButton 
+        color="primary"
+        onClick={handleOpenHistorial}
+        disabled={!clienteSeleccionado}
+        sx={{ 
+          height: { xs: 56, sm: 40 },
+          width: { xs: 56, sm: 40 },
+          border: '1px solid',
+          borderColor: clienteSeleccionado ? 'primary.main' : 'grey.300',
+          borderRadius: 1,
+          opacity: clienteSeleccionado ? 1 : 0.5
+        }}
+      >
+        <History />
+      </IconButton>
     </Box>
   </Box>
 
@@ -1011,6 +1305,7 @@ const {
     <DetalleVentasTable 
       data={detallesVenta} 
       onSelect={handleCancelarRenglon}
+      onAgregarInsumos={handleAbrirAgregarInsumos}
     />
 
 <Box sx={{ 
@@ -1165,7 +1460,319 @@ const {
   </DialogContent>
 </Dialog>
 
-<Dialog 
+{/* Dialog para crear nuevo cliente */}
+<Dialog
+  maxWidth="lg"
+  fullWidth
+  open={modalNuevoClienteOpen}
+  onClose={() => setModalNuevoClienteOpen(false)}
+  PaperProps={{
+    sx: {
+      m: { xs: 1, sm: 2 },
+      maxHeight: { xs: '90vh', sm: '85vh' }
+    }
+  }}
+>
+  <DialogTitle>Nuevo Cliente</DialogTitle>
+  <DialogContent sx={{ p: 0 }}>
+    <CatClientes
+      embedded={true}
+      openModal={modalNuevoClienteOpen}
+      onOpenModal={(open) => setModalNuevoClienteOpen(open)}
+      onClienteGuardado={(cliente) => {
+        setClienteSeleccionado({
+          No_cliente: cliente.No_cliente || cliente.nombre_completo,
+          nombre: cliente.nombre || '',
+          ap_paterno: cliente.ap_paterno || null,
+          ap_materno: cliente.ap_materno || null
+        });
+        setModalNuevoClienteOpen(false);
+      }}
+    />
+  </DialogContent>
+</Dialog>
+
+{/* Dialog Historial del Cliente */}
+<Dialog
+  maxWidth="lg"
+  fullWidth
+  open={modalHistorialOpen}
+  onClose={() => setModalHistorialOpen(false)}
+  PaperProps={{
+    sx: {
+      m: { xs: 1, sm: 2 },
+      maxHeight: { xs: '90vh', sm: '85vh' }
+    }
+  }}
+>
+  <DialogTitle>
+    Historial de Compras - {clienteSeleccionado ? `${clienteSeleccionado.nombre} ${clienteSeleccionado.ap_paterno || ''} ${clienteSeleccionado.ap_materno || ''}`.trim() : ''}
+  </DialogTitle>
+  <DialogContent>
+    {historialLoading ? (
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 4, gap: 2 }}>
+        <CircularProgress size={24} />
+        <Typography variant="body2">Cargando...</Typography>
+      </Box>
+    ) : historialData.length === 0 ? (
+      <Typography variant="body1" sx={{ p: 2, textAlign: 'center' }}>
+        No se encontraron registros de historial
+      </Typography>
+    ) : (
+      <>
+        <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
+          <Table stickyHeader size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Fecha</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>No. Venta</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Producto</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Cant.</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Precio</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Estilista</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Forma Pago</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Insumos</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {historialData.map((item, index) => (
+                <TableRow key={`${item.no_venta}-${item.clave_prod}-${index}`}>
+                  <TableCell>{new Date(item.fecha).toLocaleDateString()}</TableCell>
+                  <TableCell>{item.no_venta}</TableCell>
+                  <TableCell>{item.prod_serv}</TableCell>
+                  <TableCell>{item.cant_producto}</TableCell>
+                  <TableCell>${item.Precio?.toFixed(2) || '0.00'}</TableCell>
+                  <TableCell>{item.estilista}</TableCell>
+                  <TableCell>{item.forma_pago}</TableCell>
+                  <TableCell>
+                    <Button 
+                      size="small" 
+                      variant="outlined"
+                      onClick={() => handleOpenInsumos(item)}
+                    >
+                      Ver Insumos
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 2, gap: 2 }}>
+          <Button
+            variant="outlined"
+            onClick={handlePrevPage}
+            disabled={historialPage === 1 || historialLoading}
+          >
+            Anterior
+          </Button>
+          <Typography variant="body2">
+            Página {historialPage}
+          </Typography>
+          <Button
+            variant="outlined"
+            onClick={handleNextPage}
+            disabled={!hasMoreHistorial || historialData.length === 0 || historialLoading}
+          >
+            Siguiente
+          </Button>
+        </Box>
+      </>
+    )}
+  </DialogContent>
+</Dialog>
+
+{/* Dialog Insumos del Historial */}
+<Dialog
+  maxWidth="md"
+  fullWidth
+  open={modalHistorialInsumosOpen}
+  onClose={() => setModalHistorialInsumosOpen(false)}
+  PaperProps={{
+    sx: {
+      m: { xs: 1, sm: 2 },
+      maxHeight: { xs: '90vh', sm: '85vh' }
+    }
+  }}
+>
+  <DialogTitle>
+    Insumos de Venta #{selectedVenta?.venta}
+  </DialogTitle>
+  <DialogContent>
+    {historialInsumosLoading ? (
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 4, gap: 2 }}>
+        <CircularProgress size={24} />
+        <Typography variant="body2">Cargando...</Typography>
+      </Box>
+    ) : historialInsumosData.length === 0 ? (
+      <Typography variant="body1" sx={{ p: 2, textAlign: 'center' }}>
+        No se encontraron insumos para esta venta
+      </Typography>
+    ) : (
+      <>
+        <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
+          <Table stickyHeader size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Producto</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Cantidad</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Observación</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {historialInsumosData.map((insumo, index) => (
+                <TableRow key={index}>
+                  <TableCell>{insumo.producto_insumo}</TableCell>
+                  <TableCell>{insumo.cantidad}</TableCell>
+                  <TableCell>{insumo.obs}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 2, gap: 2 }}>
+          <Button
+            variant="outlined"
+            onClick={handlePrevInsumos}
+            disabled={historialInsumosPage === 1 || historialInsumosLoading}
+          >
+            Anterior
+          </Button>
+          <Typography variant="body2">
+            Página {historialInsumosPage}
+          </Typography>
+          <Button
+            variant="outlined"
+            onClick={handleNextInsumos}
+            disabled={!hasMoreHistorialInsumos || historialInsumosData.length === 0 || historialInsumosLoading}
+          >
+            Siguiente
+          </Button>
+        </Box>
+      </>
+    )}
+  </DialogContent>
+</Dialog>
+
+{/* Dialog Agregar Insumos a Venta */}
+<Dialog
+  maxWidth="md"
+  fullWidth
+  open={modalAgregarInsumosOpen}
+  onClose={() => setModalAgregarInsumosOpen(false)}
+  PaperProps={{
+    sx: {
+      m: { xs: 1, sm: 2 },
+      maxHeight: { xs: '90vh', sm: '85vh' }
+    }
+  }}
+>
+  <DialogTitle>
+    Agregar Insumos - {detalleSeleccionadoInsumos?.d_producto}
+  </DialogTitle>
+  <DialogContent>
+    <Box sx={{ mb: 2 }}>
+      <TextField
+        size="small"
+        label="Buscar insumo"
+        fullWidth
+        value={busquedaInsumo}
+        onChange={(e) => {
+          setBusquedaInsumo(e.target.value);
+          buscarInsumos(e.target.value);
+        }}
+        sx={{ mb: 2 }}
+      />
+      {loadingBusquedaInsumo && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+          <CircularProgress size={24} />
+        </Box>
+      )}
+      {resultadosInsumos.length > 0 && (
+        <Paper variant="outlined" sx={{ maxHeight: 200, overflow: 'auto', mb: 2 }}>
+          {resultadosInsumos.map((producto) => (
+            <Box
+              key={producto.clave_prod}
+              sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                p: 1,
+                borderBottom: '1px solid #eee',
+                cursor: 'pointer',
+                '&:hover': { backgroundColor: '#f5f5f5' }
+              }}
+              onClick={() => agregarInsumoALista(producto)}
+            >
+              <Typography variant="body2">
+                {producto.clave_prod} - {producto.descripcion}
+              </Typography>
+              <Button size="small" variant="outlined">Agregar</Button>
+            </Box>
+          ))}
+        </Paper>
+      )}
+    </Box>
+
+    <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
+      Insumos a agregar:
+    </Typography>
+    {insumosAgregar.length === 0 ? (
+      <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
+        No hay insumos en la lista
+      </Typography>
+    ) : (
+      <Paper variant="outlined" sx={{ mb: 2 }}>
+        {insumosAgregar.map((insumo, index) => (
+          <Box
+            key={insumo.clave_prod}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              p: 1,
+              borderBottom: index < insumosAgregar.length - 1 ? '1px solid #eee' : 'none'
+            }}
+          >
+            <Typography variant="body2" sx={{ flex: 1 }}>
+              {insumo.clave_prod} - {insumo.d_producto}
+            </Typography>
+            <TextField
+              type="number"
+              size="small"
+              value={insumo.cantidad}
+              onChange={(e) => actualizarCantidadInsumo(insumo.clave_prod, parseInt(e.target.value) || 1)}
+              sx={{ width: 80 }}
+              inputProps={{ min: 1 }}
+            />
+            <Button
+              color="error"
+              size="small"
+              onClick={() => quitarInsumoDeLista(insumo.clave_prod)}
+            >
+              X
+            </Button>
+          </Box>
+        ))}
+      </Paper>
+    )}
+
+    <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 2 }}>
+      <Button variant="outlined" onClick={() => setModalAgregarInsumosOpen(false)}>
+        Cancelar
+      </Button>
+      <Button
+        variant="contained"
+        onClick={guardarInsumosVenta}
+        disabled={insumosAgregar.length === 0}
+      >
+        Guardar
+      </Button>
+    </Box>
+  </DialogContent>
+</Dialog>
+
+<Dialog
   maxWidth={isMobile ? "sm" : "lg"} 
   fullWidth
   open={modalProductoOpen} 
@@ -1330,6 +1937,20 @@ const {
     )}
     
     <Box sx={{ mt: 2, display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+      <Button 
+        variant="outlined" 
+        color="secondary"
+        onClick={() => {
+          if (productoPrincipal) {
+            registrarProducto(productoPrincipal);
+          }
+          setModalInsumosOpen(false);
+          setProductoPrincipal(null);
+          setInsumosSeleccionados([]);
+        }}
+      >
+        Guardar sin Insumos
+      </Button>
       <Button 
         variant="outlined" 
         onClick={() => {
