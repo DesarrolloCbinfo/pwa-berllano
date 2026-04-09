@@ -4,13 +4,48 @@ import { DataGrid, GridColDef } from '@mui/x-data-grid'
 import useConsumoApi from '../../../hooks/useConsumoApi'
 import { useSessionContext } from '../../../context/SessionProvider'
 import PWABadge from '../../../PWABadge'
-import { Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material'
+import { Edit as EditIcon, Delete as DeleteIcon, Close as CloseIcon } from '@mui/icons-material'
 import Swal from 'sweetalert2'
 
 interface Plastico {
   id: number
   plastico: string
 }
+// --- ESTILOS BERLLANO ELEGANTE ---
+const commonProps = {
+  fullWidth: true,
+  size: "small" as const,
+  variant: "outlined" as const,
+  sx: {
+      '& .MuiInputBase-root': { 
+          height: '50px', 
+          alignItems: 'center',
+          borderRadius: '8px',
+          transition: 'all 0.3s ease',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+          '&:hover': {
+            boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+            borderColor: '#999'
+          }
+      },
+      '& .MuiInputLabel-root': { 
+          transform: 'translate(14px, 14px) scale(1)',
+          color: '#666',
+          fontWeight: 500
+      },
+      '& .MuiInputLabel-shrink': { 
+          transform: 'translate(14px, -9px) scale(0.75)',
+          color: '#333',
+          fontWeight: 600
+      },
+      '& .MuiOutlinedInput-notchedOutline': {
+          borderColor: '#e0e0e0',
+          borderWidth: '1.5px'
+      }
+  }
+};
+
+
 
 export default function CatPlasticosAutorizados() {
   const { consumoApi } = useConsumoApi()
@@ -409,99 +444,142 @@ export default function CatPlasticosAutorizados() {
         maxWidth="sm" 
         fullWidth
         PaperProps={{
-          sx: { borderRadius: '12px' }
+          sx: {
+            borderRadius: '16px',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+            border: '1px solid #e0e0e0',
+            overflow: 'hidden',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
+          }
         }}
       >
-        <Box sx={{ p: 4, bgcolor: '#fdfdfd' }}>
-          <Box sx={{ bgcolor: '#000000ff', p: 3, borderRadius: '8px 8px 0 0', ml: -4, mr: -4, mt: -4 }}>
-            <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'white', mb: 1 }}>
+        {/* ENCABEZADO ELEGANTE */}
+        <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
+          <Box sx={{ position: 'relative', zIndex: 2 }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
               Agregar Plástico Autorizado
             </Typography>
-            <Typography variant="body2" sx={{ color: 'white', opacity: 0.9 }}>
-              Ingrese el número de plástico a agregar:
+            <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+              Ingrese el número de plástico a agregar en el sistema
             </Typography>
-            <IconButton 
-              onClick={() => setOpenAgregar(false)}
-              sx={{ 
-                position: 'absolute', 
-                top: 16, 
-                right: 16, 
-                color: 'white',
-                bgcolor: 'rgba(255,255,255,0.1)',
-                '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' }
-              }}
-            >
-              <EditIcon />
-            </IconButton>
           </Box>
-          
-          <DialogContent sx={{ p: 0, mt: 3 }}>
-            <TextField
-              fullWidth
-              label="Número de Plástico"
-              value={nuevoPlasticoAgregar}
-              onChange={(e) => setNuevoPlasticoAgregar(e.target.value)}
-              variant="outlined"
-              placeholder="Ej: 1234567890123"
-            />
-          </DialogContent>
-          
-          <DialogActions sx={{ p: 0, mt: 3 }}>
-            <Button onClick={() => setOpenAgregar(false)}>Cancelar</Button>
-            <Button variant="contained" onClick={handleAgregarPlastico}>Agregar</Button>
-          </DialogActions>
+          <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+          <IconButton 
+            onClick={() => setOpenAgregar(false)}
+            sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+          >
+            <CloseIcon />
+          </IconButton>
         </Box>
+        
+        {/* CONTENIDO MODAL */}
+        <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+          <Grid container spacing={2} sx={{ mt: 0.5 }}>
+            <Grid item xs={12}>
+              <TextField
+                {...commonProps}
+                label="Número de Plástico *"
+                value={nuevoPlasticoAgregar}
+                onChange={(e) => setNuevoPlasticoAgregar(e.target.value)}
+                placeholder="Ej: 1234567890123"
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        
+        {/* FOOTER Y BOTONES */}
+        <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
+          <Button 
+            onClick={() => setOpenAgregar(false)} 
+            color="inherit"
+            sx={{ borderRadius: '8px', fontWeight: 500, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleAgregarPlastico}
+            variant="contained"
+            sx={{ 
+              bgcolor: '#000000ff', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)', transition: 'all 0.3s ease',
+              '&:hover': { bgcolor: '#333333', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }
+            }}
+          >
+            Agregar Plástico
+          </Button>
+        </DialogActions>
       </Dialog>
 
-      {/* Dialog de Editar Plástico */}
+   {/* Dialog de Editar Plástico */}
       <Dialog 
         open={openEditar} 
         onClose={() => setOpenEditar(false)} 
         maxWidth="sm" 
         fullWidth
         PaperProps={{
-          sx: { borderRadius: '12px' }
+          sx: {
+            borderRadius: '16px',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+            border: '1px solid #e0e0e0',
+            overflow: 'hidden',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
+          }
         }}
       >
-        <Box sx={{ p: 4, bgcolor: '#fdfdfd' }}>
-          <Box sx={{ bgcolor: '#000000ff', p: 3, borderRadius: '8px 8px 0 0', ml: -4, mr: -4, mt: -4 }}>
-            <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'white', mb: 1 }}>
+        {/* ENCABEZADO ELEGANTE */}
+        <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
+          <Box sx={{ position: 'relative', zIndex: 2 }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
               Editar Plástico Autorizado
             </Typography>
-            <Typography variant="body2" sx={{ color: 'white', opacity: 0.9 }}>
-              Modifique el número de plástico:
+            <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+              Modifique el número de plástico correspondiente al ID: {plasticoEditando?.id}
             </Typography>
-            <IconButton 
-              onClick={() => setOpenEditar(false)}
-              sx={{ 
-                position: 'absolute', 
-                top: 16, 
-                right: 16, 
-                color: 'white',
-                bgcolor: 'rgba(255,255,255,0.1)',
-                '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' }
-              }}
-            >
-              <EditIcon />
-            </IconButton>
           </Box>
-          
-          <DialogContent sx={{ p: 0, mt: 3 }}>
-            <TextField
-              fullWidth
-              label="Número de Plástico"
-              value={nuevoPlastico}
-              onChange={(e) => setNuevoPlastico(e.target.value)}
-              variant="outlined"
-              sx={{ mb: 2 }}
-            />
-          </DialogContent>
-          
-          <DialogActions sx={{ p: 0, mt: 3 }}>
-            <Button onClick={() => setOpenEditar(false)}>Cancelar</Button>
-            <Button variant="contained" onClick={handleActualizarPlastico}>Actualizar</Button>
-          </DialogActions>
+          <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+          <IconButton 
+            onClick={() => setOpenEditar(false)}
+            sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+          >
+            <CloseIcon />
+          </IconButton>
         </Box>
+        
+        {/* CONTENIDO MODAL */}
+        <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+          <Grid container spacing={2} sx={{ mt: 0.5 }}>
+            <Grid item xs={12}>
+              <TextField
+                {...commonProps}
+                label="Número de Plástico *"
+                value={nuevoPlastico}
+                onChange={(e) => setNuevoPlastico(e.target.value)}
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        
+        {/* FOOTER Y BOTONES */}
+        <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
+          <Button 
+            onClick={() => setOpenEditar(false)} 
+            color="inherit"
+            sx={{ borderRadius: '8px', fontWeight: 500, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleActualizarPlastico}
+            variant="contained"
+            sx={{ 
+              bgcolor: '#000000ff', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)', transition: 'all 0.3s ease',
+              '&:hover': { bgcolor: '#333333', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }
+            }}
+          >
+            Actualizar Plástico
+          </Button>
+        </DialogActions>
       </Dialog>
 
       <PWABadge />

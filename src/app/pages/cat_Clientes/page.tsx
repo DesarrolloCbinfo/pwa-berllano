@@ -6,6 +6,7 @@ import {
   Snackbar, Alert, CircularProgress, Paper,
   Tabs, Tab 
 } from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
 
 import { 
   DataGrid, 
@@ -599,10 +600,10 @@ return (
 
       </Paper>
 
-      <Dialog 
+     <Dialog 
         open={openModal} 
         onClose={() => setOpenModal(false)} 
-        maxWidth="lg" 
+        maxWidth="md" // <--- Cambiado a "md" para el estándar de 3 campos por fila
         fullWidth
         PaperProps={{
           sx: {
@@ -614,7 +615,7 @@ return (
           }
         }}
       >
-        {/* Header con gradiente elegante */}
+        {/* ENCABEZADO ELEGANTE */}
         <Box sx={{ 
           background: 'linear-gradient(135deg, #333333 0%, #555555 100%)',
           color: 'white',
@@ -640,6 +641,12 @@ return (
             background: 'rgba(255,255,255,0.05)',
             zIndex: 1
           }} />
+          <IconButton 
+            onClick={() => setOpenModal(false)}
+            sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+          >
+            <CloseIcon />
+          </IconButton>
         </Box>
         
         {/* --- PESTAÑAS (TABS) --- */}
@@ -677,14 +684,8 @@ return (
               }
             }}
           >
-            <Tab 
-              label="Información General" 
-              sx={{ fontWeight: 600 }} 
-            />
-            <Tab 
-              label="Contacto y Dirección" 
-              sx={{ fontWeight: 600 }} 
-            />
+            <Tab label="Información General" sx={{ fontWeight: 600 }} />
+            <Tab label="Contacto y Dirección" sx={{ fontWeight: 600 }} />
           </Tabs>
         </Box>
 
@@ -702,34 +703,23 @@ return (
             <Box sx={{ animation: 'fadeIn 0.3s ease-in-out' }}>
               {/* Sección: Información Personal */}
               <Box sx={{ mb: 4 }}>
-                <Typography variant="subtitle1" sx={{ 
-                  fontWeight: 600, 
-                  color: '#333', 
-                  mb: 2,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1
-                }}>
-                  <Box sx={{ 
-                    width: 4, 
-                    height: 20, 
-                    backgroundColor: '#333333', 
-                    borderRadius: 2 
-                  }} />
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#333', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ width: 4, height: 20, backgroundColor: '#333333', borderRadius: 2 }} />
                   Información Personal
                 </Typography>
-                <Grid container spacing={3}>
-                  <Grid item xs={12} sm={8}>
+                <Grid container spacing={2}>
+                  {/* Fila 1: 3 campos */}
+                  <Grid item xs={12} md={4}>
                     <TextField 
                       {...commonProps} 
-                      label='Nombre' 
+                      label='Nombre *' 
                       name="nombre" 
                       value={formData.nombre} 
                       onChange={handleInputChange} 
                       required
                     />
                   </Grid>
-                  <Grid item xs={12} sm={4}>
+                  <Grid item xs={12} md={4}>
                     <TextField 
                       {...commonProps} 
                       label='Apellido Paterno' 
@@ -738,7 +728,7 @@ return (
                       onChange={handleInputChange} 
                     />
                   </Grid>
-                  <Grid item xs={12} sm={4}>
+                  <Grid item xs={12} md={4}>
                     <TextField 
                       {...commonProps} 
                       label='Apellido Materno' 
@@ -747,7 +737,9 @@ return (
                       onChange={handleInputChange} 
                     />
                   </Grid>
-                  <Grid item xs={12} sm={4}>
+                  
+                  {/* Fila 2: 1 campo */}
+                  <Grid item xs={12} md={4}>
                     <TextField 
                       {...selectProps} 
                       select 
@@ -766,24 +758,13 @@ return (
 
               {/* Sección: Configuración */}
               <Box>
-                <Typography variant="subtitle1" sx={{ 
-                  fontWeight: 600, 
-                  color: '#333', 
-                  mb: 2,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1
-                }}>
-                  <Box sx={{ 
-                    width: 4, 
-                    height: 20, 
-                    backgroundColor: '#333333', 
-                    borderRadius: 2 
-                  }} />
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#333', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ width: 4, height: 20, backgroundColor: '#333333', borderRadius: 2 }} />
                   Configuración y Estatus
                 </Typography>
-                <Grid container spacing={3}>
-                  <Grid item xs={12} sm={3}>
+                <Grid container spacing={2}>
+                  {/* Fila 1: 3 campos */}
+                  <Grid item xs={12} md={4}>
                     <TextField 
                       {...commonProps} 
                       type="date"
@@ -794,7 +775,7 @@ return (
                       InputLabelProps={{ shrink: true }}
                     />
                   </Grid>
-                  <Grid item xs={12} sm={3}>
+                  <Grid item xs={12} md={4}>
                     <TextField 
                       {...commonProps} 
                       type="date"
@@ -804,20 +785,16 @@ return (
                       onChange={handleInputChange}
                       InputLabelProps={{ shrink: true }}
                       sx={{
-                        '& .MuiInputBase-input': { py: 1.5 },
-                        '& .MuiOutlinedInput-root': {
-                          borderRadius: '8px',
-                          '&:hover fieldset': { borderColor: '#333' },
-                          '&.Mui-focused fieldset': { borderColor: '#000000ff' }
-                        }
+                        ...commonProps.sx,
+                        '& .MuiInputBase-input': { py: 1.5 }
                       }}
                     />
                   </Grid>
-                  <Grid item xs={12} sm={3}>
+                  <Grid item xs={12} md={4}>
                     <TextField 
                       {...selectProps} 
                       select 
-                      label="Sucursal Asignada" 
+                      label="Sucursal Asignada *" 
                       name="sucursal_id" 
                       value={formData.sucursal_id} 
                       onChange={handleInputChange}
@@ -829,7 +806,9 @@ return (
                       ))}
                     </TextField>
                   </Grid>
-                  <Grid item xs={12} sm={3}>
+                  
+                  {/* Fila 2: 1 campo */}
+                  <Grid item xs={12} md={4}>
                     <Box sx={{
                       p: 2,
                       border: '1.5px solid #e0e0e0',
@@ -838,6 +817,8 @@ return (
                       display: 'flex',
                       alignItems: 'center',
                       gap: 2,
+                      height: '50px',
+                      boxSizing: 'border-box',
                       transition: 'all 0.3s ease',
                       '&:hover': {
                         borderColor: '#999',
@@ -850,13 +831,12 @@ return (
                         name="suspendido"
                         sx={{
                           color: '#333',
-                          '&.Mui-checked': {
-                            color: '#333'
-                          }
+                          p: 0,
+                          '&.Mui-checked': { color: '#333' }
                         }}
                       />
                       <Box>
-                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#333' }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#333', lineHeight: 1.2 }}>
                           Cliente Suspendido
                         </Typography>
                         <Typography variant="caption" sx={{ color: '#666' }}>
@@ -875,24 +855,13 @@ return (
             <Box sx={{ animation: 'fadeIn 0.3s ease-in-out' }}>
               {/* Sección: Contacto */}
               <Box sx={{ mb: 4 }}>
-                <Typography variant="subtitle1" sx={{ 
-                  fontWeight: 600, 
-                  color: '#333', 
-                  mb: 2,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1
-                }}>
-                  <Box sx={{ 
-                    width: 4, 
-                    height: 20, 
-                    backgroundColor: '#333333', 
-                    borderRadius: 2 
-                  }} />
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#333', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ width: 4, height: 20, backgroundColor: '#333333', borderRadius: 2 }} />
                   Información de Contacto
                 </Typography>
-                <Grid container spacing={3}>
-                  <Grid item xs={12} sm={6}>
+                <Grid container spacing={2}>
+                  {/* 2 campos que llenan todo (6 + 6) */}
+                  <Grid item xs={12} md={6}>
                     <TextField 
                       {...commonProps} 
                       label='Email' 
@@ -902,7 +871,7 @@ return (
                       type="email"
                     />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12} md={6}>
                     <TextField 
                       {...commonProps} 
                       label='Teléfono' 
@@ -916,24 +885,13 @@ return (
 
               {/* Sección: Dirección */}
               <Box>
-                <Typography variant="subtitle1" sx={{ 
-                  fontWeight: 600, 
-                  color: '#333', 
-                  mb: 2,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1
-                }}>
-                  <Box sx={{ 
-                    width: 4, 
-                    height: 20, 
-                    backgroundColor: '#333333', 
-                    borderRadius: 2 
-                  }} />
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#333', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ width: 4, height: 20, backgroundColor: '#333333', borderRadius: 2 }} />
                   Dirección del Cliente
                 </Typography>
-                <Grid container spacing={3}>
-                  <Grid item xs={12}>
+                <Grid container spacing={2}>
+                  {/* Fila 1: Domicilio completo */}
+                  <Grid item xs={12} md={12}>
                     <TextField 
                       {...commonProps} 
                       label='Domicilio (Calle y Número)' 
@@ -942,7 +900,9 @@ return (
                       onChange={handleInputChange} 
                     />
                   </Grid>
-                  <Grid item xs={12} sm={3}>
+                  
+                  {/* Fila 2: 3 campos */}
+                  <Grid item xs={12} md={4}>
                     <TextField 
                       {...commonProps} 
                       label='C.P.' 
@@ -952,7 +912,7 @@ return (
                       helperText={isEditing ? '' : 'Buscar colonias'}
                     />
                   </Grid>
-                  <Grid item xs={12} sm={5}>
+                  <Grid item xs={12} md={4}>
                     <TextField 
                       {...selectProps} 
                       select 
@@ -969,7 +929,7 @@ return (
                       ))}
                     </TextField>
                   </Grid>
-                  <Grid item xs={12} sm={4}>
+                  <Grid item xs={12} md={4}>
                     <TextField 
                       {...commonProps} 
                       label='Ciudad' 
@@ -978,7 +938,9 @@ return (
                       onChange={handleInputChange} 
                     />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  
+                  {/* Fila 3: 1 campo */}
+                  <Grid item xs={12} md={4}>
                     <TextField 
                       {...commonProps} 
                       label='Estado' 
@@ -995,9 +957,9 @@ return (
         </DialogContent>
         
         {/* Footer con acciones */}
-        <Box sx={{ 
+        <DialogActions sx={{ 
           backgroundColor: '#f8f9fa',
-          borderTop: '2px solid #e0e0e0',
+          borderTop: '1px solid #e0e0e0',
           p: 3,
           display: 'flex',
           justifyContent: 'space-between',
@@ -1073,7 +1035,7 @@ return (
               {isEditing ? 'Actualizar Cliente' : 'Crear Cliente'}
             </Button>
           </Box>
-        </Box>
+        </DialogActions>
       </Dialog>
     </Box>
   );

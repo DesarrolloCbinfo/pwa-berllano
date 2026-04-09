@@ -18,9 +18,30 @@ import {
 import EditIcon from '@mui/icons-material/Edit';
 import { IconButton } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import CloseIcon from '@mui/icons-material/Close';
 import Swal from 'sweetalert2';
 
 import PWABadge from '../../../PWABadge';
+
+
+const commonProps = {
+  fullWidth: true,
+  size: "small" as const,
+  variant: "outlined" as const,
+  sx: {
+      '& .MuiInputBase-root': { 
+          height: '50px', 
+          alignItems: 'center',
+          borderRadius: '8px',
+          transition: 'all 0.3s ease',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+          '&:hover': { boxShadow: '0 4px 8px rgba(0,0,0,0.1)', borderColor: '#999' }
+      },
+      '& .MuiInputLabel-root': { transform: 'translate(14px, 14px) scale(1)', color: '#666', fontWeight: 500 },
+      '& .MuiInputLabel-shrink': { transform: 'translate(14px, -9px) scale(0.75)', color: '#333', fontWeight: 600 },
+      '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0', borderWidth: '1.5px' }
+  }
+};
 
 interface CatSucursal {
   cia: number;
@@ -912,6 +933,7 @@ export default function CatSucursales() {
         </Box>
       </Box>
 
+      {/* --- MODAL AGREGAR --- */}
       <Dialog
           open={openAdd}
           onClose={() => setOpenAdd(false)}
@@ -919,328 +941,140 @@ export default function CatSucursales() {
           fullWidth
           PaperProps={{
             sx: {
-              borderRadius: 2,
+              borderRadius: '16px',
+              boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+              border: '1px solid #e0e0e0',
+              overflow: 'hidden',
+              background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
             }
           }}
         >
-          <DialogTitle sx={{ 
-            bgcolor: '#424242', 
-            color: 'white',
-            py: 2.5,
-            px: 3
-          }}>
-            <Typography variant='h6' sx={{ fontWeight: 600 }}>
-              Agregar Nueva Sucursal
-            </Typography>
-            <Typography variant='body2' sx={{ color: '#e0e0e0', mt: 0.5 }}>
-              Complete la información de la sucursal en los campos correspondientes
-            </Typography>
-          </DialogTitle>
+          <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
+            <Box sx={{ position: 'relative', zIndex: 2 }}>
+              <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
+                Agregar Nueva Sucursal
+              </Typography>
+              <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+                Complete la información de la sucursal en los campos correspondientes
+              </Typography>
+            </Box>
+            <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+            <IconButton 
+              onClick={() => setOpenAdd(false)}
+              sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Box>
 
-          <DialogContent sx={{ p: 3, bgcolor: '#fafafa' }}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               
               {/* Identificación de la Sucursal */}
               <Box>
-                <Box sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 1, 
-                  mb: 2,
-                  borderLeft: '3px solid #424242',
-                  pl: 1.5
-                }}>
-                  <Typography variant='subtitle1' sx={{ fontWeight: 600 }}>
-                    Identificación de la Sucursal
-                  </Typography>
-                </Box>
+                <Typography variant='subtitle1' sx={{ fontWeight: 600, color: '#333', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ width: 4, height: 20, backgroundColor: '#333333', borderRadius: 2 }} />
+                  Identificación de la Sucursal
+                </Typography>
                 <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      label='Nombre '
-                      value={nombre}
-                      onChange={(e) => setNombre(e.target.value)}
-                      required
-                      fullWidth
-                      size='small'
-                      sx={{ bgcolor: 'white' }}
-                    />
+                  <Grid item xs={12} sm={8}>
+                    <TextField {...commonProps} label='Nombre *' value={nombre} onChange={(e) => setNombre(e.target.value)} required />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField {...commonProps} label='Versión' value={version} onChange={(e) => setVersion(e.target.value)} />
                   </Grid>
                   <Grid item xs={12}>
-                    <TextField
-                      label='Dirección'
-                      value={direccion}
-                      onChange={(e) => setDireccion(e.target.value)}
-                      fullWidth
-                      size='small'
-                      sx={{ bgcolor: 'white' }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      label='Versión'
-                      value={version}
-                      onChange={(e) => setVersion(e.target.value)}
-                      fullWidth
-                      size='small'
-                      sx={{ bgcolor: 'white' }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      label='Días Devolución'
-                      value={dias_devolucion}
-                      onChange={(e) => handleNumericChange(e.target.value, setDiasDevolucion, true)}
-                      type='number'
-                      fullWidth
-                      size='small'
-                      sx={{ bgcolor: 'white' }}
-                      inputProps={{ min: 0 }}
-                    />
+                    <TextField {...commonProps} label='Dirección' value={direccion} onChange={(e) => setDireccion(e.target.value)} />
                   </Grid>
                 </Grid>
               </Box>
 
               {/* Configuración y Operación */}
               <Box>
-                <Box sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 1, 
-                  mb: 2,
-                  borderLeft: '3px solid #424242',
-                  pl: 1.5
-                }}>
-                  <Typography variant='subtitle1' sx={{ fontWeight: 600 }}>
-                    Configuración y Operación
-                  </Typography>
-                </Box>
+                <Typography variant='subtitle1' sx={{ fontWeight: 600, color: '#333', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ width: 4, height: 20, backgroundColor: '#333333', borderRadius: 2 }} />
+                  Configuración y Operación
+                </Typography>
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={4}>
-                    <TextField
-                      label='Lista de precios *'
-                      value={clave_timbrador}
-                      onChange={(e) => handleNumericChange(e.target.value, setClave_timbrador, false)}
-                      type='number'
-                      fullWidth
-                      size='small'
-                      sx={{ bgcolor: 'white' }}
-                      inputProps={{ min: 1 }}
-                    />
+                    <TextField {...commonProps} label='Lista de precios *' value={clave_timbrador} onChange={(e) => handleNumericChange(e.target.value, setClave_timbrador, false)} type='number' inputProps={{ min: 1 }} />
                   </Grid>
                   <Grid item xs={12} sm={4}>
-                    <TextField
-                      label='Fondo de Caja'
-                      value={fondo}
-                      onChange={(e) => handleNumericChange(e.target.value, setFondo, true, true)}
-                      type='number'
-                      fullWidth
-                      size='small'
-                      sx={{ bgcolor: 'white' }}
-                      inputProps={{ min: 0, step: 0.01 }}
-                    />
+                    <TextField {...commonProps} label='Fondo de Caja' value={fondo} onChange={(e) => handleNumericChange(e.target.value, setFondo, true, true)} type='number' inputProps={{ min: 0, step: 0.01 }} />
                   </Grid>
                   <Grid item xs={12} sm={4}>
-                    <TextField
-                      label='Monto Aviso'
-                      value={importe_retiros}
-                      onChange={(e) => handleNumericChange(e.target.value, setImporte_retiros, true, true)}
-                      type='number'
-                      fullWidth
-                      size='small'
-                      sx={{ bgcolor: 'white' }}
-                      inputProps={{ min: 0, step: 0.01 }}
-                    />
+                    <TextField {...commonProps} label='Monto Aviso' value={importe_retiros} onChange={(e) => handleNumericChange(e.target.value, setImporte_retiros, true, true)} type='number' inputProps={{ min: 0, step: 0.01 }} />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      label='Número Avisos'
-                      value={numeroAvisos}
-                      onChange={(e) => handleNumericChange(e.target.value, setNumeroAvisos, true)}
-                      type='number'
-                      fullWidth
-                      size='small'
-                      sx={{ bgcolor: 'white' }}
-                      inputProps={{ min: 0 }}
-                    />
+                  <Grid item xs={12} sm={4}>
+                    <TextField {...commonProps} label='Días Devolución' value={dias_devolucion} onChange={(e) => handleNumericChange(e.target.value, setDiasDevolucion, true)} type='number' inputProps={{ min: 0 }} />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      label='Importe Caja Después Retiros'
-                      value={importeCajaDespuesRetiros}
-                      onChange={(e) => handleNumericChange(e.target.value, setImporteCajaDespuesRetiros, true, true)}
-                      type='number'
-                      fullWidth
-                      size='small'
-                      sx={{ bgcolor: 'white' }}
-                      inputProps={{ min: 0, step: 0.01 }}
-                    />
+                  <Grid item xs={12} sm={4}>
+                    <TextField {...commonProps} label='Número Avisos' value={numeroAvisos} onChange={(e) => handleNumericChange(e.target.value, setNumeroAvisos, true)} type='number' inputProps={{ min: 0 }} />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField {...commonProps} label='Importe Caja Después Retiros' value={importeCajaDespuesRetiros} onChange={(e) => handleNumericChange(e.target.value, setImporteCajaDespuesRetiros, true, true)} type='number' inputProps={{ min: 0, step: 0.01 }} />
                   </Grid>
                 </Grid>
               </Box>
 
-              {/* Opciones de Configuración */}
+              {/* Opciones de Configuración (Checkboxes) */}
               <Box>
-                <Box sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 1, 
-                  mb: 2,
-                  borderLeft: '3px solid #424242',
-                  pl: 1.5
-                }}>
-                  <Typography variant='subtitle1' sx={{ fontWeight: 600 }}>
-                    Opciones de Configuración
-                  </Typography>
-                </Box>
-                <Box sx={{ 
-                  bgcolor: 'white', 
-                  p: 2.5, 
-                  borderRadius: 1,
-                  border: '1px solid #e0e0e0'
-                }}>
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6}>
-                      <Box sx={{ 
-                        display: 'flex', 
-                        alignItems: 'flex-start', 
-                        gap: 1.5,
-                        p: 1.5,
-                        borderRadius: 1,
-                        border: '1px solid #f0f0f0',
-                        bgcolor: '#fafafa'
-                      }}>
-                        <input
-                          type='checkbox'
-                          checked={en_linea}
-                          onChange={(e) => setEnLinea(e.target.checked)}
-                          style={{ marginTop: '2px' }}
-                        />
-                        <Box>
-                          <Typography variant='body2' sx={{ fontWeight: 600 }}>
-                            En Línea *
-                          </Typography>
-                          <Typography variant='caption' sx={{ color: '#666' }}>
-                            Habilitar operación en línea *
-                          </Typography>
-                        </Box>
+                <Typography variant='subtitle1' sx={{ fontWeight: 600, color: '#333', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ width: 4, height: 20, backgroundColor: '#333333', borderRadius: 2 }} />
+                  Opciones de Configuración
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5, borderRadius: '8px', border: '1.5px solid #e0e0e0', bgcolor: '#f8f9fa', transition: 'all 0.3s ease', '&:hover': { borderColor: '#999', bgcolor: '#f5f5f5' } }}>
+                      <Checkbox checked={en_linea} onChange={(e) => setEnLinea(e.target.checked)} sx={{ color: '#333', p: 0, '&.Mui-checked': { color: '#333' } }} />
+                      <Box>
+                        <Typography variant='body2' sx={{ fontWeight: 600, color: '#333' }}>En Línea *</Typography>
                       </Box>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <Box sx={{ 
-                        display: 'flex', 
-                        alignItems: 'flex-start', 
-                        gap: 1.5,
-                        p: 1.5,
-                        borderRadius: 1,
-                        border: '1px solid #f0f0f0',
-                        bgcolor: '#fafafa'
-                      }}>
-                        <input
-                          type='checkbox'
-                          checked={validar_tx}
-                          onChange={(e) => setValidar_tx(e.target.checked)}
-                          style={{ marginTop: '2px' }}
-                        />
-                        <Box>
-                          <Typography variant='body2' sx={{ fontWeight: 600 }}>
-                            Validar TX
-                          </Typography>
-                          <Typography variant='caption' sx={{ color: '#666' }}>
-                            Validar transacciones
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <Box sx={{ 
-                        display: 'flex', 
-                        alignItems: 'flex-start', 
-                        gap: 1.5,
-                        p: 1.5,
-                        borderRadius: 1,
-                        border: '1px solid #f0f0f0',
-                        bgcolor: '#fafafa'
-                      }}>
-                        <input
-                          type='checkbox'
-                          checked={recibe_prov_all}
-                          onChange={(e) => setRecibe_prov_all(e.target.checked)}
-                          style={{ marginTop: '2px' }}
-                        />
-                        <Box>
-                          <Typography variant='body2' sx={{ fontWeight: 600 }}>
-                            Recibe Proveedor All
-                          </Typography>
-                          <Typography variant='caption' sx={{ color: '#666' }}>
-                            Recibir de todos los proveedores
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <Box sx={{ 
-                        display: 'flex', 
-                        alignItems: 'flex-start', 
-                        gap: 1.5,
-                        p: 1.5,
-                        borderRadius: 1,
-                        border: '1px solid #f0f0f0',
-                        bgcolor: '#fafafa'
-                      }}>
-                        <input
-                          type='checkbox'
-                          checked={edita_costos_rm}
-                          onChange={(e) => setEdita_costos_rm(e.target.checked)}
-                          style={{ marginTop: '2px' }}
-                        />
-                        <Box>
-                          <Typography variant='body2' sx={{ fontWeight: 600 }}>
-                            Edita Costos RM
-                          </Typography>
-                          <Typography variant='caption' sx={{ color: '#666' }}>
-                            Permitir edición de costos
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <Box sx={{ 
-                        display: 'flex', 
-                        alignItems: 'flex-start', 
-                        gap: 1.5,
-                        p: 1.5,
-                        borderRadius: 1,
-                        border: '1px solid #f0f0f0',
-                        bgcolor: '#fafafa'
-                      }}>
-                        <input
-                          type='checkbox'
-                          checked={credito}
-                          onChange={(e) => setCredito(e.target.checked)}
-                          style={{ marginTop: '2px' }}
-                        />
-                        <Box>
-                          <Typography variant='body2' sx={{ fontWeight: 600 }}>
-                            Crédito
-                          </Typography>
-                          <Typography variant='caption' sx={{ color: '#666' }}>
-                            Habilitar ventas a crédito
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </Grid>
+                    </Box>
                   </Grid>
-                </Box>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5, borderRadius: '8px', border: '1.5px solid #e0e0e0', bgcolor: '#f8f9fa', transition: 'all 0.3s ease', '&:hover': { borderColor: '#999', bgcolor: '#f5f5f5' } }}>
+                      <Checkbox checked={validar_tx} onChange={(e) => setValidar_tx(e.target.checked)} sx={{ color: '#333', p: 0, '&.Mui-checked': { color: '#333' } }} />
+                      <Box>
+                        <Typography variant='body2' sx={{ fontWeight: 600, color: '#333' }}>Validar TX</Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5, borderRadius: '8px', border: '1.5px solid #e0e0e0', bgcolor: '#f8f9fa', transition: 'all 0.3s ease', '&:hover': { borderColor: '#999', bgcolor: '#f5f5f5' } }}>
+                      <Checkbox checked={recibe_prov_all} onChange={(e) => setRecibe_prov_all(e.target.checked)} sx={{ color: '#333', p: 0, '&.Mui-checked': { color: '#333' } }} />
+                      <Box>
+                        <Typography variant='body2' sx={{ fontWeight: 600, color: '#333' }}>Recibe Prov. All</Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5, borderRadius: '8px', border: '1.5px solid #e0e0e0', bgcolor: '#f8f9fa', transition: 'all 0.3s ease', '&:hover': { borderColor: '#999', bgcolor: '#f5f5f5' } }}>
+                      <Checkbox checked={edita_costos_rm} onChange={(e) => setEdita_costos_rm(e.target.checked)} sx={{ color: '#333', p: 0, '&.Mui-checked': { color: '#333' } }} />
+                      <Box>
+                        <Typography variant='body2' sx={{ fontWeight: 600, color: '#333' }}>Edita Costos RM</Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5, borderRadius: '8px', border: '1.5px solid #e0e0e0', bgcolor: '#f8f9fa', transition: 'all 0.3s ease', '&:hover': { borderColor: '#999', bgcolor: '#f5f5f5' } }}>
+                      <Checkbox checked={credito} onChange={(e) => setCredito(e.target.checked)} sx={{ color: '#333', p: 0, '&.Mui-checked': { color: '#333' } }} />
+                      <Box>
+                        <Typography variant='body2' sx={{ fontWeight: 600, color: '#333' }}>Crédito</Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+                </Grid>
               </Box>
 
             </Box>
           </DialogContent>
           
-          <DialogActions sx={{ px: 3, py: 2, bgcolor: '#fafafa', borderTop: '1px solid #e0e0e0' }}>
+          <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
             <Button 
               onClick={() => setOpenAdd(false)}
-              sx={{ textTransform: 'uppercase', fontWeight: 600 }}
+              color="inherit"
+              sx={{ borderRadius: '8px', fontWeight: 500, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
             >
               Cancelar
             </Button>
@@ -1249,19 +1083,260 @@ export default function CatSucursales() {
               onClick={handleAdd}
               disabled={saving}
               sx={{ 
-                bgcolor: '#212121',
-                textTransform: 'uppercase',
-                fontWeight: 600,
-                px: 4,
-                '&:hover': {
-                  bgcolor: '#424242'
-                }
+                bgcolor: '#000000ff', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)', transition: 'all 0.3s ease',
+                '&:hover': { bgcolor: '#333333', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }
               }}
             >
               Guardar
             </Button>
           </DialogActions>
         </Dialog>
+
+        {/* --- MODAL DE DETALLES (VIEW) --- */}
+        <Dialog
+          open={openView}
+          onClose={() => setOpenView(false)}
+          maxWidth='md'
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: '16px',
+              boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+              border: '1px solid #e0e0e0',
+              overflow: 'hidden'
+            }
+          }}
+        >
+          <Box sx={{ background: 'linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%)', color: '#333', p: 3, position: 'relative' }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold' }}>
+              Detalles de Sucursal
+            </Typography>
+            <IconButton onClick={() => setOpenView(false)} sx={{ position: 'absolute', top: 16, right: 16 }}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
+          <DialogContent sx={{ p: 4 }}>
+            {viewData && (
+              <Grid container spacing={3}>
+                <Grid item xs={12} sm={4}><Typography variant='caption' sx={{ color: '#666', display: 'block' }}>Clave Sucursal</Typography><Typography variant='body1' sx={{ fontWeight: 500 }}>{viewData.cve_sucursal}</Typography></Grid>
+                <Grid item xs={12} sm={8}><Typography variant='caption' sx={{ color: '#666', display: 'block' }}>Nombre</Typography><Typography variant='body1' sx={{ fontWeight: 500 }}>{viewData.nombre}</Typography></Grid>
+                <Grid item xs={12}><Typography variant='caption' sx={{ color: '#666', display: 'block' }}>Dirección</Typography><Typography variant='body1' sx={{ fontWeight: 500 }}>{viewData.direccion || '-'}</Typography></Grid>
+                <Grid item xs={12} sm={4}><Typography variant='caption' sx={{ color: '#666', display: 'block' }}>Versión</Typography><Typography variant='body1' sx={{ fontWeight: 500 }}>{viewData.version || '-'}</Typography></Grid>
+                <Grid item xs={12} sm={4}><Typography variant='caption' sx={{ color: '#666', display: 'block' }}>Días Devolución</Typography><Typography variant='body1' sx={{ fontWeight: 500 }}>{viewData.dias_devolucion || '-'}</Typography></Grid>
+                <Grid item xs={12} sm={4}><Typography variant='caption' sx={{ color: '#666', display: 'block' }}>Clave Timbrador</Typography><Typography variant='body1' sx={{ fontWeight: 500 }}>{viewData.clave_timbrador || '-'}</Typography></Grid>
+                
+                <Grid item xs={12}><Box sx={{ width: '100%', height: '1px', bgcolor: '#eee', my: 1 }} /></Grid>
+
+                <Grid item xs={12} sm={3}><Typography variant='caption' sx={{ color: '#666', display: 'block' }}>En Línea</Typography><Typography variant='body1' sx={{ fontWeight: 500 }}>{viewData.en_linea ? 'Sí' : 'No'}</Typography></Grid>
+                <Grid item xs={12} sm={3}><Typography variant='caption' sx={{ color: '#666', display: 'block' }}>Validar TX</Typography><Typography variant='body1' sx={{ fontWeight: 500 }}>{viewData.validar_tx ? 'Sí' : 'No'}</Typography></Grid>
+                <Grid item xs={12} sm={3}><Typography variant='caption' sx={{ color: '#666', display: 'block' }}>Recibe Prov All</Typography><Typography variant='body1' sx={{ fontWeight: 500 }}>{viewData.recibe_prov_all ? 'Sí' : 'No'}</Typography></Grid>
+                <Grid item xs={12} sm={3}><Typography variant='caption' sx={{ color: '#666', display: 'block' }}>Edita Costos RM</Typography><Typography variant='body1' sx={{ fontWeight: 500 }}>{viewData.edita_costos_rm ? 'Sí' : 'No'}</Typography></Grid>
+                <Grid item xs={12} sm={3}><Typography variant='caption' sx={{ color: '#666', display: 'block' }}>Crédito</Typography><Typography variant='body1' sx={{ fontWeight: 500 }}>{viewData.credito ? 'Sí' : 'No'}</Typography></Grid>
+              </Grid>
+            )}
+          </DialogContent>
+          <DialogActions sx={{ p: 2, bgcolor: '#f8f9fa', borderTop: '1px solid #e0e0e0' }}>
+            <Button onClick={() => setOpenView(false)} color="inherit" sx={{ fontWeight: 600 }}>Cerrar</Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* --- MODAL EDITAR --- */}
+        <Dialog
+          open={openEdit}
+          onClose={() => setOpenEdit(false)}
+          maxWidth='md'
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: '16px',
+              boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+              border: '1px solid #e0e0e0',
+              overflow: 'hidden',
+              background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
+            }
+          }}
+        >
+          <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
+            <Box sx={{ position: 'relative', zIndex: 2 }}>
+              <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
+                Editar Sucursal: {editCveSucursal}
+              </Typography>
+              <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+                Complete la información de la sucursal en los campos correspondientes
+              </Typography>
+            </Box>
+            <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+            <IconButton 
+              onClick={() => setOpenEdit(false)}
+              sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Box>
+
+          <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              
+              {/* Identificación de la Sucursal */}
+              <Box>
+                <Typography variant='subtitle1' sx={{ fontWeight: 600, color: '#333', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ width: 4, height: 20, backgroundColor: '#333333', borderRadius: 2 }} />
+                  Identificación de la Sucursal
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={3}>
+                    <TextField {...commonProps} label='Clave Sucursal' value={editCveSucursal} disabled sx={{ '& .MuiOutlinedInput-root.Mui-disabled': { backgroundColor: '#f5f5f5' } }} />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField {...commonProps} label='Nombre *' value={editNombre} onChange={(e) => setEditNombre(e.target.value)} required />
+                  </Grid>
+                  <Grid item xs={12} sm={3}>
+                    <TextField {...commonProps} label='Versión' value={editVersion} onChange={(e) => setEditVersion(e.target.value)} />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField {...commonProps} label='Dirección' value={editDireccion} onChange={(e) => setEditDireccion(e.target.value)} />
+                  </Grid>
+                </Grid>
+              </Box>
+
+              {/* Configuración y Operación */}
+              <Box>
+                <Typography variant='subtitle1' sx={{ fontWeight: 600, color: '#333', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ width: 4, height: 20, backgroundColor: '#333333', borderRadius: 2 }} />
+                  Configuración y Operación
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={4}>
+                    <TextField {...commonProps} label='Clave Timbrador' value={editClaveTimbrador} onChange={(e) => setEditClaveTimbrador(e.target.value)} type='number' inputProps={{ min: 1 }} />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField {...commonProps} label='Fondo' value={editFondo} onChange={(e) => handleNumericChange(e.target.value, setEditFondo, true)} type='number' inputProps={{ min: 0 }} />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField {...commonProps} label='Monto Aviso' value={editImporte_retiros} onChange={(e) => handleNumericChange(e.target.value, setEditImporte_retiros, true)} type='number' inputProps={{ min: 0 }} />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField {...commonProps} label='Días Devolución' value={editDiasDevolucion} onChange={(e) => handleNumericChange(e.target.value, setEditDiasDevolucion, true)} type='number' inputProps={{ min: 0 }} />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField {...commonProps} label='Número Avisos' value={editNumeroAvisos} onChange={(e) => handleNumericChange(e.target.value, setEditNumeroAvisos, true)} type='number' inputProps={{ min: 0 }} />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField {...commonProps} label='Importe Caja Después Retiros' value={editImporteCajaDespuesRetiros} onChange={(e) => handleNumericChange(e.target.value, setEditImporteCajaDespuesRetiros, true)} type='number' inputProps={{ min: 0 }} />
+                  </Grid>
+                </Grid>
+              </Box>
+
+              {/* Opciones de Configuración (Checkboxes) */}
+              <Box>
+                <Typography variant='subtitle1' sx={{ fontWeight: 600, color: '#333', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ width: 4, height: 20, backgroundColor: '#333333', borderRadius: 2 }} />
+                  Opciones de Configuración
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5, borderRadius: '8px', border: '1.5px solid #e0e0e0', bgcolor: '#f8f9fa', transition: 'all 0.3s ease', '&:hover': { borderColor: '#999', bgcolor: '#f5f5f5' } }}>
+                      <Checkbox checked={editEnLinea} onChange={(e) => setEditEnLinea(e.target.checked)} sx={{ color: '#333', p: 0, '&.Mui-checked': { color: '#333' } }} />
+                      <Box><Typography variant='body2' sx={{ fontWeight: 600, color: '#333' }}>En Línea</Typography></Box>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5, borderRadius: '8px', border: '1.5px solid #e0e0e0', bgcolor: '#f8f9fa', transition: 'all 0.3s ease', '&:hover': { borderColor: '#999', bgcolor: '#f5f5f5' } }}>
+                      <Checkbox checked={editValidarTx} onChange={(e) => setEditValidarTx(e.target.checked)} sx={{ color: '#333', p: 0, '&.Mui-checked': { color: '#333' } }} />
+                      <Box><Typography variant='body2' sx={{ fontWeight: 600, color: '#333' }}>Validar TX</Typography></Box>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5, borderRadius: '8px', border: '1.5px solid #e0e0e0', bgcolor: '#f8f9fa', transition: 'all 0.3s ease', '&:hover': { borderColor: '#999', bgcolor: '#f5f5f5' } }}>
+                      <Checkbox checked={editRecipeProvAll} onChange={(e) => setEditRecipeProvAll(e.target.checked)} sx={{ color: '#333', p: 0, '&.Mui-checked': { color: '#333' } }} />
+                      <Box><Typography variant='body2' sx={{ fontWeight: 600, color: '#333' }}>Recibe Prov All</Typography></Box>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5, borderRadius: '8px', border: '1.5px solid #e0e0e0', bgcolor: '#f8f9fa', transition: 'all 0.3s ease', '&:hover': { borderColor: '#999', bgcolor: '#f5f5f5' } }}>
+                      <Checkbox checked={editEditaCostosRm} onChange={(e) => setEditEditaCostosRm(e.target.checked)} sx={{ color: '#333', p: 0, '&.Mui-checked': { color: '#333' } }} />
+                      <Box><Typography variant='body2' sx={{ fontWeight: 600, color: '#333' }}>Edita Costos RM</Typography></Box>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5, borderRadius: '8px', border: '1.5px solid #e0e0e0', bgcolor: '#f8f9fa', transition: 'all 0.3s ease', '&:hover': { borderColor: '#999', bgcolor: '#f5f5f5' } }}>
+                      <Checkbox checked={editCredito} onChange={(e) => setEditCredito(e.target.checked)} sx={{ color: '#333', p: 0, '&.Mui-checked': { color: '#333' } }} />
+                      <Box><Typography variant='body2' sx={{ fontWeight: 600, color: '#333' }}>Crédito</Typography></Box>
+                    </Box>
+                  </Grid>
+                </Grid>
+              </Box>
+
+            </Box>
+          </DialogContent>
+          
+          <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
+            <Button 
+              onClick={() => setOpenEdit(false)}
+              color="inherit"
+              sx={{ borderRadius: '8px', fontWeight: 500, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant='contained'
+              onClick={handleUpdate}
+              disabled={savingEdit}
+              sx={{ 
+                bgcolor: '#000000ff', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)', transition: 'all 0.3s ease',
+                '&:hover': { bgcolor: '#333333', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }
+              }}
+            >
+              Guardar
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* --- MODAL ELIMINAR --- */}
+        <Dialog 
+          open={openDelete} 
+          onClose={() => setOpenDelete(false)}
+          PaperProps={{
+            sx: {
+              borderRadius: '12px',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+              border: '1px solid #e0e0e0'
+            }
+          }}
+        >
+          <DialogTitle sx={{ background: 'linear-gradient(135deg, #000000ff 0%)', color: 'white', fontFamily: 'Georgia, "Times New Roman", serif' }}>
+            Eliminar Sucursal
+          </DialogTitle>
+          <DialogContent sx={{ p: 3, bgcolor: '#fff', mt: 2 }}>
+            <Typography sx={{ fontSize: '1.1rem', mb: 2 }}>
+              ¿Seguro que deseas eliminar la sucursal <strong>{deleteNombre}</strong>?
+            </Typography>
+            <Typography variant="body2" sx={{ color: '#666' }}>
+              Esta acción no se puede deshacer.
+            </Typography>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, py: 2, bgcolor: '#f5f5f5', borderTop: '1px solid #e0e0e0' }}>
+            <Button 
+              onClick={() => setOpenDelete(false)}
+              sx={{ color: '#000', fontWeight: 600, textTransform: 'none', borderRadius: '8px', transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#d0d0d0' } }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleDeleteConfirm}
+              variant="contained"
+              color="error"
+              disabled={saving}
+              sx={{ fontWeight: 600, textTransform: 'none', borderRadius: '8px', boxShadow: '0 4px 12px rgba(255, 255, 255, 0.4)' }}
+            >
+              {saving ? 'Eliminando...' : 'Eliminar'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+      
 
         <Dialog
           open={openView}

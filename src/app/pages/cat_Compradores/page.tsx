@@ -7,6 +7,7 @@ import {
 } from '@mui/material'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
+import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add'
 import Swal from 'sweetalert2'
 import useConsumoApi from '../../../hooks/useConsumoApi'
@@ -290,56 +291,73 @@ return (
 
         
 
-        {/* MODAL AGREGAR */}
+       {/* --- MODAL AGREGAR --- */}
         <Dialog 
           open={openAdd} 
           onClose={() => setOpenAdd(false)} 
-          fullWidth 
-          maxWidth="xs"
+          maxWidth="sm" 
+          fullWidth
           PaperProps={{
             sx: {
-              borderRadius: '12px',
-              boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-              border: '1px solid #e0e0e0'
+              borderRadius: '16px',
+              boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+              border: '1px solid #e0e0e0',
+              overflow: 'hidden',
+              background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
             }
           }}
         >
-          <DialogTitle sx={{ 
-            background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', 
-            color: 'white',
-            fontFamily: 'Georgia, "Times New Roman", serif'
-          }}>
-            Agregar Comprador
-          </DialogTitle>
-          <DialogContent sx={{ p: 3, bgcolor: '#fff', display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <TextField 
-              {...commonProps}
-              label="Clave Comprador"
-              value={formData.clave_comprador}
-              onChange={(e) => setFormData({...formData, clave_comprador: e.target.value})} 
-            />
-            <TextField 
-              {...commonProps}
-              label="Nombre Completo"
-              value={formData.nombre}
-              onChange={(e) => setFormData({...formData, nombre: e.target.value})} 
-            />
+          <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
+            <Box sx={{ position: 'relative', zIndex: 2 }}>
+              <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
+                Agregar Nuevo Comprador
+              </Typography>
+              <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+                Ingrese la información del comprador en los campos correspondientes
+              </Typography>
+            </Box>
+            <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+            <IconButton 
+              onClick={() => setOpenAdd(false)}
+              sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Box>
+
+          <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+            <Grid container spacing={2} sx={{ mt: 0.5 }}>
+              <Grid item xs={12} sm={4}>
+                <TextField 
+                  {...commonProps}
+                  label="Clave" 
+                  disabled 
+                  value={editFormData.clave_comprador} 
+                  // ACTUALIZACIÓN AQUÍ: Agregamos borderRadius explícito al estado deshabilitado
+                  sx={{ 
+                    '& .MuiOutlinedInput-root.Mui-disabled': { 
+                      backgroundColor: '#f5f5f5',
+                      borderRadius: '8px', // <--- Esto asegura las esquinas redondeadas
+                    } 
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={8}>
+                <TextField 
+                  {...commonProps}
+                  label="Nombre Completo *"
+                  value={formData.nombre}
+                  onChange={(e) => setFormData({...formData, nombre: e.target.value})} 
+                />
+              </Grid>
+            </Grid>
           </DialogContent>
-          <DialogActions sx={{ px: 3, py: 2, bgcolor: '#f5f5f5', borderTop: '1px solid #e0e0e0' }}>
+
+          <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
             <Button 
               onClick={() => setOpenAdd(false)}
-              sx={{ 
-                backgroundColor: '#e0e0e0', 
-                color: '#000', 
-                fontWeight: 600,
-                textTransform: 'none',
-                borderRadius: '8px',
-                padding: '8px 16px',
-                transition: 'all 0.3s ease',
-                '&:hover': { 
-                  backgroundColor: '#d0d0d0' 
-                }
-              }}
+              color="inherit"
+              sx={{ borderRadius: '8px', fontWeight: 500, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
             >
               Cancelar
             </Button>
@@ -348,18 +366,9 @@ return (
               variant="contained" 
               disabled={actionLoading}
               sx={{ 
-                backgroundColor: '#333333',
-                fontWeight: 600,
-                textTransform: 'none',
-                borderRadius: '8px',
-                padding: '8px 16px',
-                boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)',
-                transition: 'all 0.3s ease',
-                '&:hover': { 
-                  backgroundColor: '#555555',
-                  boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)',
-                  transform: 'translateY(-1px)'
-                }
+                bgcolor: '#000000ff', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)', transition: 'all 0.3s ease',
+                '&:hover': { bgcolor: '#333333', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }
               }}
             >
               {actionLoading ? 'Guardando...' : 'Guardar'}
@@ -367,57 +376,78 @@ return (
           </DialogActions>
         </Dialog>
 
-        {/* MODAL EDITAR */}
+        {/* --- MODAL EDITAR --- */}
         <Dialog 
           open={openEdit} 
           onClose={() => setOpenEdit(false)} 
-          fullWidth 
-          maxWidth="xs"
+          maxWidth="sm" 
+          fullWidth
           PaperProps={{
             sx: {
-              borderRadius: '12px',
-              boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-              border: '1px solid #e0e0e0'
+              borderRadius: '16px',
+              boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+              border: '1px solid #e0e0e0',
+              overflow: 'hidden',
+              background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
             }
           }}
         >
-          <DialogTitle sx={{ 
-            background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', 
-            color: 'white',
-            fontFamily: 'Georgia, "Times New Roman", serif'
-          }}>
-            Editar Comprador
-          </DialogTitle>
-          <DialogContent sx={{ p: 3, bgcolor: '#fff', display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <TextField 
-              {...commonProps}
-              label="Clave" 
-              disabled 
-              fullWidth 
-              value={editFormData.clave_comprador} 
-            />
-            <TextField 
-              {...commonProps}
-              label="Nombre"
-              value={editFormData.nombre}
-              onChange={(e) => setEditFormData({...editFormData, nombre: e.target.value})} 
-            />
+          <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
+            <Box sx={{ position: 'relative', zIndex: 2 }}>
+              <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
+                Editar Comprador
+              </Typography>
+              <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+                Modifique la información del comprador seleccionado
+              </Typography>
+            </Box>
+            <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+            <IconButton 
+              onClick={() => setOpenEdit(false)}
+              sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Box>
+
+          <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+            <Grid container spacing={2} sx={{ mt: 0.5 }}>
+              <Grid item xs={12} sm={4}>
+                <TextField 
+                  {...commonProps}
+                  label="Clave" 
+                  disabled 
+                  value={editFormData.clave_comprador} 
+                  // ACTUALIZACIÓN AQUÍ: Agregamos borderRadius explícito
+                  sx={{ 
+                    // Apuntamos al contenedor principal del input
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: '8px', // <--- NUEVO: Esquinas redondeadas
+                    },
+                    // Mantenemos el estilo deshabilitado existente y nos aseguramos de que el radio se mantenga
+                    '& .MuiOutlinedInput-root.Mui-disabled': { 
+                      backgroundColor: '#f5f5f5',
+                      borderRadius: '8px', // <--- NUEVO: Esquinas redondeadas también en estado deshabilitado
+                    } 
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={8}>
+                <TextField 
+                  {...commonProps}
+                  label="Nombre *"
+                  value={editFormData.nombre}
+                  onChange={(e) => setEditFormData({...editFormData, nombre: e.target.value})} 
+                />
+              </Grid>
+            </Grid>
           </DialogContent>
-          <DialogActions sx={{ px: 3, py: 2, bgcolor: '#f5f5f5', borderTop: '1px solid #e0e0e0' }}>
+
+          <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
             <Button 
               onClick={() => setOpenEdit(false)}
-              sx={{ 
-                backgroundColor: '#e0e0e0', 
-                color: '#000', 
-                fontWeight: 600,
-                textTransform: 'none',
-                borderRadius: '8px',
-                padding: '8px 16px',
-                transition: 'all 0.3s ease',
-                '&:hover': { 
-                  backgroundColor: '#d0d0d0' 
-                }
-              }}
+              color="inherit"
+              sx={{ borderRadius: '8px', fontWeight: 500, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
             >
               Cancelar
             </Button>
@@ -426,18 +456,9 @@ return (
               variant="contained" 
               disabled={actionLoading}
               sx={{ 
-                backgroundColor: '#333333',
-                fontWeight: 600,
-                textTransform: 'none',
-                borderRadius: '8px',
-                padding: '8px 16px',
-                boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)',
-                transition: 'all 0.3s ease',
-                '&:hover': { 
-                  backgroundColor: '#555555',
-                  boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)',
-                  transform: 'translateY(-1px)'
-                }
+                bgcolor: '#000000ff', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)', transition: 'all 0.3s ease',
+                '&:hover': { bgcolor: '#333333', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }
               }}
             >
               {actionLoading ? 'Actualizando...' : 'Actualizar'}
@@ -445,7 +466,7 @@ return (
           </DialogActions>
         </Dialog>
 
-        {/* MODAL ELIMINAR */}
+        {/* --- MODAL ELIMINAR --- */}
         <Dialog 
           open={openDelete} 
           onClose={() => setOpenDelete(false)}
@@ -457,16 +478,12 @@ return (
             }
           }}
         >
-          <DialogTitle sx={{ 
-            background: 'linear-gradient(135deg, #d32f2f 0%, #f44336 100%)', 
-            color: 'white',
-            fontFamily: 'Georgia, "Times New Roman", serif'
-          }}>
-            Eliminar Registro
+          <DialogTitle sx={{ background: 'linear-gradient(135deg, #000000ff 0%)', color: 'white', fontFamily: 'Georgia, "Times New Roman", serif' }}>
+            Eliminar Comprador
           </DialogTitle>
-          <DialogContent sx={{ p: 3, bgcolor: '#fff' }}>
+          <DialogContent sx={{ p: 3, bgcolor: '#fff', mt: 2 }}>
             <Typography sx={{ fontSize: '1.1rem', mb: 2 }}>
-              ¿Seguro que deseas eliminar este registro?
+              ¿Seguro que deseas eliminar este comprador?
             </Typography>
             <Typography variant="body2" sx={{ color: '#666' }}>
               Comprador: <strong>{deleteRow?.nombre}</strong>
@@ -478,40 +495,16 @@ return (
           <DialogActions sx={{ px: 3, py: 2, bgcolor: '#f5f5f5', borderTop: '1px solid #e0e0e0' }}>
             <Button 
               onClick={() => setOpenDelete(false)}
-              sx={{ 
-                backgroundColor: '#e0e0e0', 
-                color: '#000', 
-                fontWeight: 600,
-                textTransform: 'none',
-                borderRadius: '8px',
-                padding: '8px 16px',
-                transition: 'all 0.3s ease',
-                '&:hover': { 
-                  backgroundColor: '#d0d0d0' 
-                }
-              }}
+              sx={{ color: '#000', fontWeight: 600, textTransform: 'none', borderRadius: '8px', transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#d0d0d0' } }}
             >
               Cancelar
             </Button>
             <Button
-              color='error'
-              variant='contained'
               onClick={handleDelete}
+              variant="contained"
+              color="error"
               disabled={actionLoading}
-              sx={{ 
-                backgroundColor: '#d32f2f',
-                fontWeight: 600,
-                textTransform: 'none',
-                borderRadius: '8px',
-                padding: '8px 16px',
-                boxShadow: '0 4px 12px rgba(211, 47, 47, 0.3)',
-                transition: 'all 0.3s ease',
-                '&:hover': { 
-                  backgroundColor: '#b71c1c',
-                  boxShadow: '0 6px 16px rgba(211, 47, 47, 0.4)',
-                  transform: 'translateY(-1px)'
-                }
-              }}
+              sx={{ fontWeight: 600, textTransform: 'none', borderRadius: '8px', boxShadow: '0 4px 12px rgba(255, 255, 255, 0.4)' }}
             >
               {actionLoading ? 'Eliminando...' : 'Eliminar'}
             </Button>
