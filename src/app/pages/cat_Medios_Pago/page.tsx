@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Box, CircularProgress, Alert, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, Checkbox } from '@mui/material'
 import { DataGrid, GridColDef } from '@mui/x-data-grid'
 import EditIcon from '@mui/icons-material/Edit'
+import Swal from 'sweetalert2'
 import useConsumoApi from '../../../hooks/useConsumoApi'
 import { useSessionContext } from '../../../context/SessionProvider'
 import PWABadge from '../../../PWABadge'
@@ -75,8 +76,9 @@ export default function CatMediosPago() {
       headerName: 'TC ?',
       width: 70,
       type: 'boolean',
+      editable: true,
       renderCell: (params) => (
-        <Checkbox checked={!!params.value} disabled />
+        <Checkbox checked={!!params.value} />
       ),
     },
     { field: 'grupo_operacion', headerName: 'Grupo_operaciojn', width: 100, type: 'number' },
@@ -219,12 +221,73 @@ export default function CatMediosPago() {
       if (response.data?.[0]?.codigo === 0) {
         await fetchMediosPago()
         handleAddClose()
+        
+        Swal.fire({
+          title: '¡Éxito!',
+          text: 'El medio de pago ha sido agregado correctamente.',
+          icon: 'success',
+          timer: 2000,
+          showConfirmButton: false
+        })
       } else {
-        setError(response.data?.[0]?.mensaje1 || 'Error al agregar')
+        Swal.fire('Error', response.data?.[0]?.mensaje1 || 'Error al agregar', 'error')
       }
     } catch (err) {
       console.error('Error al agregar medio de pago:', err)
-      setError('Error al agregar el medio de pago')
+      Swal.fire('Error', 'Error al agregar el medio de pago', 'error')
+    }
+  }
+
+  const handleProcessRowUpdate = async (newRow: MedioPago, oldRow: MedioPago) => {
+    try {
+      // Solo actualizar si cambió el valor de tarjeta
+      if (newRow.tarjeta !== oldRow.tarjeta) {
+        const response = await consumoApi.put(
+          '/api/CatFormasPagos/sp_bw_cat_tipos_formas_pagos_upd',
+          {},
+          {
+            params: {
+              id: newRow.id,
+              sucursal: newRow.sucursal,
+              tipo: newRow.tipo,
+              descripcion: newRow.descripcion,
+              tarjeta: newRow.tarjeta,
+              grupo_operacion: newRow.grupo_operacion,
+              cuenta_bancaria_destino: newRow.cuenta_bancaria_destino,
+              adicion: newRow.adicion,
+              adicion1: newRow.adicion1,
+              adicion2: newRow.adicion2,
+              adicion3: newRow.adicion3,
+              adicion4: newRow.adicion4,
+              adicion5: newRow.adicion5,
+              adicion6: newRow.adicion6,
+              adicion7: newRow.adicion7,
+              adicion8: newRow.adicion8,
+              cuenta_contable: newRow.cuenta_contable,
+            }
+          }
+        )
+
+        if (response.data?.[0]?.codigo === 0) {
+          Swal.fire({
+            title: '¡Actualizado!',
+            text: 'El campo TC? ha sido actualizado correctamente.',
+            icon: 'success',
+            timer: 1500,
+            showConfirmButton: false
+          })
+          await fetchMediosPago()
+          return newRow
+        } else {
+          Swal.fire('Error', response.data?.[0]?.mensaje1 || 'Error al actualizar', 'error')
+          return oldRow
+        }
+      }
+      return newRow
+    } catch (err) {
+      console.error('Error al actualizar:', err)
+      Swal.fire('Error', 'Error al actualizar el medio de pago', 'error')
+      return oldRow
     }
   }
 
@@ -280,9 +343,9 @@ return (
         <Box sx={{ backgroundColor: 'white', p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.05)', mb: 3 }}>
           
           {/* RECUADRO INTERIOR ELEGANTE */}
-          <Box sx={{ border: '1px solid #2c3e50', p: 1.5, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+          <Box sx={{ border: '1px solid #000000ff', p: 1.5, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between', mb: 2 }}>
               <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#000000ff', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
                       CATÁLOGO DE MEDIOS DE PAGO
                   </Typography>
                 
@@ -340,14 +403,16 @@ return (
                   paginationModel: { pageSize: 100 },
                 },
               }}
+              processRowUpdate={handleProcessRowUpdate}
+              onProcessRowUpdateError={(error) => console.error('Error al actualizar fila:', error)}
               disableRowSelectionOnClick
               sx={{
                 border: 'none',
                 height: '100%',
-                fontSize: '0.95rem', /* <--- Tamaño de letra general más legible */
+                fontSize: '0.95rem', 
                 '& .MuiDataGrid-columnHeaders': { 
                   borderBottom: '2px solid #000', 
-                  fontSize: '1rem', /* <--- Encabezados un poco más grandes */
+                  fontSize: '1rem', 
                   fontWeight: 'bold', 
                   backgroundColor: '#f5f5f5' 
                 },

@@ -3,6 +3,7 @@ import { Box, CircularProgress, Alert, Typography, Button, Dialog, DialogTitle, 
 import { DataGrid, GridColDef } from '@mui/x-data-grid'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
+import Swal from 'sweetalert2'
 import useConsumoApi from '../../../hooks/useConsumoApi'
 import { useSessionContext } from '../../../context/SessionProvider'
 import PWABadge from '../../../PWABadge'
@@ -13,6 +14,7 @@ interface Proveedor {
   nombre: string
   rfc: string | null
   telefono: string | null
+  fecha_alta: string | null
 }
 
 export default function CatProveedoresAcreedores() {
@@ -25,9 +27,7 @@ export default function CatProveedoresAcreedores() {
 
   const [openAdd, setOpenAdd] = useState(false)
   const [openEdit, setOpenEdit] = useState(false)
-  const [openDelete, setOpenDelete] = useState(false)
   const [openView, setOpenView] = useState(false)
-  const [selectedRow, setSelectedRow] = useState<Proveedor | null>(null)
   const [viewData, setViewData] = useState<any>(null)
 
   const [formData, setFormData] = useState({
@@ -45,7 +45,6 @@ export default function CatProveedoresAcreedores() {
     email: '',
     observaciones: '',
     nombre_fiscal: '',
-    persona_fisica: false,
     cuenta_contable: '',
   })
 
@@ -91,12 +90,28 @@ export default function CatProveedoresAcreedores() {
       width: 200,
       type: 'string' 
     },
+    { 
+      field: 'fecha_alta', 
+      headerName: 'Fecha Alta', 
+      width: 180,
+      renderCell: (params) => {
+        if (!params.value) return '';
+        const date = new Date(params.value);
+        return date.toLocaleString('es-MX', { 
+          year: 'numeric', 
+          month: '2-digit', 
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      }
+    },
   ]
 
   const fetchProveedores = async () => {
     try {
       setLoading(true)
-      // Usar parámetro 0 para obtener todos los proveedores
+      
       const res = await consumoApi.get('/api/CatProveedores_Acreedores/sp_bw_cat_proveedores_admon_sel/0')
       
       console.log('Respuesta del API:', res.data)
@@ -114,6 +129,7 @@ export default function CatProveedoresAcreedores() {
         nombre: item.nombre || '',
         rfc: item.rfc || '',
         telefono: item.telefono || '',
+        fecha_alta: item.fecha_alta || null,
       }))
 
       console.log('Datos procesados:', data)
@@ -149,7 +165,6 @@ export default function CatProveedoresAcreedores() {
       email: '',
       observaciones: '',
       nombre_fiscal: '',
-      persona_fisica: false,
       cuenta_contable: '',
     })
     setOpenAdd(true)
@@ -188,7 +203,6 @@ export default function CatProveedoresAcreedores() {
 
   const handleEditOpen = async (row: Proveedor) => {
     try {
-      setSelectedRow(row)
       setLoading(true)
       
       const response = await consumoApi.get(
@@ -212,7 +226,6 @@ export default function CatProveedoresAcreedores() {
           email: proveedorData.email || '',
           observaciones: proveedorData.observaciones || '',
           nombre_fiscal: proveedorData.nombre_fiscal || '',
-          persona_fisica: proveedorData.persona_fisica || false,
           cuenta_contable: proveedorData.cuenta_contable || '',
         })
         setOpenEdit(true)
@@ -229,38 +242,88 @@ export default function CatProveedoresAcreedores() {
 
   const handleEditClose = () => {
     setOpenEdit(false)
-    setSelectedRow(null)
   }
 
-  const handleDeleteOpen = (row: Proveedor) => {
-    setSelectedRow(row)
-    setOpenDelete(true)
-  }
+  const handleDeleteOpen = async (row: Proveedor) => {
+    const result = await Swal.fire({
+      title: '¿Eliminar Proveedor?',
+      html: `
+        <p style="font-size: 16px; margin-bottom: 10px;">¿Está seguro que desea eliminar este proveedor?</p>
+        <div style="background: #f5f5f5; padding: 12px; border-radius: 8px; margin-top: 15px;">
+          <p style="margin: 0; color: #666; font-size: 14px;"><strong>Clave:</strong> ${row.cve_prov}</p>
+          <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;"><strong>Nombre:</strong> ${row.nombre}</p>
+        </div>
+        <p style="color: #5f5f5fff; font-size: 14px; margin-top: 15px;"><strong> Esta acción no se puede deshacer</strong></p>
+      `,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#000000ff',
+      cancelButtonColor: '#757575',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar'
+    })
 
-  const handleDeleteClose = () => {
-    setOpenDelete(false)
-    setSelectedRow(null)
+    if (!result.isConfirmed) {
+      return
+    }
+
+    try {
+      const response = await consumoApi.delete(
+        '/api/CatProveedores_Acreedores/sp_bw_cat_proveedores_admon_del',
+        {
+          params: {
+            cve_prov: row.cve_prov,
+          }
+        }
+      )
+
+      if (response.data?.[0]?.codigo === 0) {
+        await fetchProveedores()
+        
+        Swal.fire({
+          title: '¡Eliminado!',
+          text: 'El proveedor ha sido eliminado correctamente.',
+          icon: 'success',
+          confirmButtonColor: '#333333',
+          timer: 2000,
+          showConfirmButton: false
+        })
+      } else {
+        Swal.fire({
+          title: 'Error',
+          text: response.data?.[0]?.mensaje1 || 'Error al eliminar el proveedor',
+          icon: 'error',
+          confirmButtonColor: '#333333'
+        })
+      }
+    } catch (err: any) {
+      console.error('Error al eliminar proveedor:', err)
+      Swal.fire({
+        title: 'Error',
+        text: err.response?.data?.mensaje1 || 'Error al eliminar el proveedor',
+        icon: 'error',
+        confirmButtonColor: '#333333'
+      })
+    }
   }
 
   const handleAdd = async () => {
     try {
       const params = {
-        cve_prov: formData.cve_prov,
         nombre: formData.nombre,
-        rfc: formData.rfc,
-        calle: formData.calle,
-        colonia: formData.colonia,
-        telefono: formData.telefono,
-        ciudad: formData.ciudad,
-        estado: formData.estado,
-        cp: formData.cp,
-        contacto: formData.contacto,
-        fax: formData.fax,
-        email: formData.email,
-        observaciones: formData.observaciones,
-        nombre_fiscal: formData.nombre_fiscal,
-        persona_fisica: formData.persona_fisica,
-        cuenta_contable: formData.cuenta_contable,
+        rfc: formData.rfc || '',
+        calle: formData.calle || '',
+        colonia: formData.colonia || '',
+        telefono: formData.telefono || '',
+        ciudad: formData.ciudad || '',
+        estado: formData.estado || '',
+        cp: formData.cp || '',
+        contacto: formData.contacto || '',
+        fax: formData.fax || '',
+        email: formData.email || '',
+        observaciones: formData.observaciones || '',
+        nombre_fiscal: formData.nombre_fiscal || '',
+        cuenta_contable: formData.cuenta_contable || '',
       }
 
       const response = await consumoApi.post(
@@ -274,78 +337,94 @@ export default function CatProveedoresAcreedores() {
       if (response.data?.codigo === 0) {
         await fetchProveedores()
         handleAddClose()
+        
+        Swal.fire({
+          title: '¡Éxito!',
+          html: `
+            <p style="font-size: 16px; margin-bottom: 15px;">El proveedor ha sido registrado exitosamente.</p>
+            <div style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); padding: 15px; border-radius: 8px; margin-top: 10px;">
+              <p style="color: white; font-size: 14px; margin: 0; opacity: 0.9;">Nueva Clave Asignada</p>
+              <p style="color: white; font-size: 24px; font-weight: bold; margin: 5px 0 0 0;">${response.data.nuevaClave}</p>
+            </div>
+          `,
+          icon: 'success',
+          confirmButtonColor: '#333333',
+          confirmButtonText: 'Aceptar'
+        })
       } else {
-        setError(response.data?.mensaje1 || 'Error al agregar')
+        Swal.fire({
+          title: 'Error',
+          text: response.data?.mensaje1 || 'Error al agregar el proveedor',
+          icon: 'error',
+          confirmButtonColor: '#333333'
+        })
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error al agregar proveedor:', err)
-      setError('Error al agregar el proveedor')
+      Swal.fire('Error', err.response?.data?.mensaje1 || 'Error al agregar el proveedor', 'error')
     }
   }
 
   const handleEdit = async () => {
     try {
-      const params = {
-        cve_prov: formData.cve_prov,
-        nombre: formData.nombre,
-        rfc: formData.rfc,
-        calle: formData.calle,
-        colonia: formData.colonia,
-        telefono: formData.telefono,
-        ciudad: formData.ciudad,
-        estado: formData.estado,
-        cp: formData.cp,
-        contacto: formData.contacto,
-        fax: formData.fax,
-        email: formData.email,
-        observaciones: formData.observaciones,
-        nombre_fiscal: formData.nombre_fiscal,
-        persona_fisica: formData.persona_fisica,
-        cuenta_contable: formData.cuenta_contable,
+      if (!formData.cve_prov) {
+        Swal.fire('Error', 'No se pudo identificar el proveedor a actualizar', 'error')
+        return
       }
+
+      const body = {
+        cve_prov: formData.cve_prov || '',
+        nombre: formData.nombre || '',
+        rfc: formData.rfc || '',
+        calle: formData.calle || '',
+        colonia: formData.colonia || '',
+        telefono: formData.telefono || '',
+        ciudad: formData.ciudad || '',
+        estado: formData.estado || '',
+        cp: formData.cp || '',
+        contacto: formData.contacto || '',
+        fax: formData.fax || '',
+        email: formData.email || '',
+        observaciones: formData.observaciones || '',
+        nombre_fiscal: formData.nombre_fiscal || '',
+        cuenta_contable: formData.cuenta_contable || '',
+      }
+
+      console.log('Datos de actualización:', body)
 
       const response = await consumoApi.put(
         '/api/CatProveedores_Acreedores/sp_bw_cat_proveedores_admon_upd',
-        {},
-        {
-          params
-        }
+        body
       )
 
       if (response.data?.codigo === 0) {
         await fetchProveedores()
         handleEditClose()
+        
+        Swal.fire({
+          title: '¡Actualizado!',
+          text: 'El proveedor ha sido actualizado correctamente.',
+          icon: 'success',
+          confirmButtonColor: '#333333',
+          timer: 2000,
+          showConfirmButton: false
+        })
       } else {
-        setError(response.data?.mensaje1 || 'Error al actualizar')
+        Swal.fire({
+          title: 'Error',
+          text: response.data?.mensaje1 || 'Error al actualizar el proveedor',
+          icon: 'error',
+          confirmButtonColor: '#333333'
+        })
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error al actualizar proveedor:', err)
-      setError('Error al actualizar el proveedor')
-    }
-  }
-
-  const handleDelete = async () => {
-    if (!selectedRow) return
-
-    try {
-      const response = await consumoApi.delete(
-        '/api/CatProveedores_Acreedores/sp_bw_cat_proveedores_admon_del',
-        {
-          params: {
-            cve_prov: selectedRow.cve_prov,
-          }
-        }
-      )
-
-      if (response.data?.[0]?.codigo === 0) {
-        await fetchProveedores()
-        handleDeleteClose()
-      } else {
-        setError(response.data?.[0]?.mensaje1 || 'Error al eliminar')
-      }
-    } catch (err) {
-      console.error('Error al eliminar proveedor:', err)
-      setError('Error al eliminar el proveedor')
+      Swal.fire({
+        title: 'Error',
+        text: err.response?.data?.mensaje1 || 'Error al actualizar el proveedor',
+        icon: 'error',
+        confirmButtonColor: '#333333'
+      })
     }
   }
 
@@ -370,9 +449,9 @@ return (
         {/* ENCABEZADO ESTILO ELEGANTE */}
         <Box sx={{ p: 3, borderRadius: '8px', mb: 3, boxShadow: '0 4px 8px rgba(0,0,0,0.05)', bgcolor: 'white' }}>
           
-          <Box sx={{ border: '1px solid #2c3e50', p: 1.5, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+          <Box sx={{ border: '1px solid #000000ff', p: 1.5, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between', mb: 2 }}>
               <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#000000ff', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
                       CATÁLOGO DE PROVEEDORES (ACREEDORES)
                   </Typography>
                   
@@ -486,12 +565,14 @@ return (
           px: 3,
           borderBottom: '1px solid #e0e0e0'
         }}>
-          <Typography variant='h6' sx={{ fontWeight: 600 }}>
-            Agregar Nuevo Proveedor (Acreedor)
-          </Typography>
-          <Typography variant='body2' sx={{ color: '#e0e0e0', mt: 0.5 }}>
-            Complete la información del proveedor en los campos correspondientes
-          </Typography>
+          <Box>
+            <Typography variant='h6' component="div" sx={{ fontWeight: 600 }}>
+              Agregar Nuevo Proveedor (Acreedor)
+            </Typography>
+            <Typography variant='body2' component="div" sx={{ color: '#e0e0e0', mt: 0.5 }}>
+              Complete la información del proveedor en los campos correspondientes
+            </Typography>
+          </Box>
         </DialogTitle>
 
         <DialogContent sx={{ p: 3, bgcolor: '#fafafa' }}>
@@ -511,61 +592,35 @@ return (
                   Información General
                 </Typography>
               </Box>
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                <TextField
-                  label="Clave *"
-                  value={formData.cve_prov}
-                  onChange={(e) => setFormData({ ...formData, cve_prov: e.target.value })}
-                  fullWidth
-                  size='small'
-                  sx={{ 
-                    bgcolor: 'white',
-                    '& .MuiInputBase-root': {
-                      height: '50px',
-                      alignItems: 'center',
-                      borderRadius: '8px',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-                      '&:hover': {
-                        boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
-                        borderColor: '#999'
-                      }
-                    },
-                    '& .MuiInputLabel-root': {
-                      transform: 'translate(14px, 14px) scale(1)',
-                      color: '#666',
-                      fontWeight: 500
-                    },
-                    '& .MuiInputLabel-shrink': {
-                      transform: 'translate(14px, -9px) scale(0.75)',
-                      color: '#333',
-                      fontWeight: 600
-                    }
-                  }}
-                />
-                <TextField
-                  label="Nombre *"
-                  value={formData.nombre}
-                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                  fullWidth
-                  size='small'
-                  sx={{ bgcolor: 'white' }}
-                />
-                <TextField
-                  label="RFC"
-                  value={formData.rfc}
-                  onChange={(e) => setFormData({ ...formData, rfc: e.target.value })}
-                  fullWidth
-                  size='small'
-                  sx={{ bgcolor: 'white' }}
-                />
-                <TextField
-                  label="Nombre Fiscal"
-                  value={formData.nombre_fiscal}
-                  onChange={(e) => setFormData({ ...formData, nombre_fiscal: e.target.value })}
-                  fullWidth
-                  size='small'
-                  sx={{ bgcolor: 'white' }}
-                />
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+                  <TextField
+                    label="Nombre *"
+                    value={formData.nombre}
+                    onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                    fullWidth
+                    size='small'
+                    sx={{ bgcolor: 'white' }}
+                  />
+                </Box>
+                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+                  <TextField
+                    label="RFC"
+                    value={formData.rfc}
+                    onChange={(e) => setFormData({ ...formData, rfc: e.target.value })}
+                    fullWidth
+                    size='small'
+                    sx={{ bgcolor: 'white' }}
+                  />
+                  <TextField
+                    label="Nombre Fiscal"
+                    value={formData.nombre_fiscal}
+                    onChange={(e) => setFormData({ ...formData, nombre_fiscal: e.target.value })}
+                    fullWidth
+                    size='small'
+                    sx={{ bgcolor: 'white' }}
+                  />
+                </Box>
               </Box>
             </Box>
 
@@ -776,12 +831,14 @@ return (
           px: 3,
           borderBottom: '1px solid #e0e0e0'
         }}>
-          <Typography variant='h6' sx={{ fontWeight: 600 }}>
-            Editar Proveedor: {formData.cve_prov}
-          </Typography>
-          <Typography variant='body2' sx={{ color: '#e0e0e0', mt: 0.5 }}>
-            Modifique la información del proveedor según sea necesario
-          </Typography>
+          <Box>
+            <Typography variant='h6' component="div" sx={{ fontWeight: 600 }}>
+              Editar Proveedor: {formData.cve_prov}
+            </Typography>
+            <Typography variant='body2' component="div" sx={{ color: '#e0e0e0', mt: 0.5 }}>
+              Modifique la información del proveedor según sea necesario
+            </Typography>
+          </Box>
         </DialogTitle>
 
         <DialogContent sx={{ p: 3, bgcolor: '#fafafa' }}>
@@ -1182,22 +1239,6 @@ return (
             sx={{ textTransform: 'uppercase', fontWeight: 600 }}
           >
             Cerrar
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Dialog Eliminar */}
-      <Dialog open={openDelete} onClose={handleDeleteClose}>
-        <DialogTitle>Eliminar Proveedor</DialogTitle>
-        <DialogContent>
-          <Typography>
-            ¿Está seguro que desea eliminar el proveedor "{selectedRow?.nombre}"?
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleDeleteClose}>Cancelar</Button>
-          <Button onClick={handleDelete} variant="contained" color="error">
-            Eliminar
           </Button>
         </DialogActions>
       </Dialog>
