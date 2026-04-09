@@ -242,7 +242,7 @@ useEffect(() => {
     }
   }, [selectedMarca])
 
-  const handleAdd = async () => {
+const handleAdd = async () => {
     if (!nombrePromo || !selectedSucursal || !fechaDel || !fechaAl || !selectedArea || !selectedDepto || !selectedMarca || !selectedFamilia || !selectedProducto || !cantidad || !descPorcentaje || !selectedTipoDescuento) return
 
     try {
@@ -254,20 +254,21 @@ useEffect(() => {
         throw new Error('Tipo de descuento no válido')
       }
 
+      // 👇 MAGIA: Convertimos los '0' (TODOS/TODAS) en '%' justo antes de enviarlos a la API
       const response = await consumoApi.post(
         `/api/CatConfigPromoDescPorcen/sp_bw_t_promocionesDescuentos_add`,
         '',
         {
           params: {
             nombrePromo: nombrePromo,
-            sucursal: selectedSucursal,
+            sucursal: selectedSucursal === '0' ? '%' : selectedSucursal,
             f1: fechaDel,
             f2: fechaAl,
-            area: selectedArea,
-            depto: selectedDepto,
-            marca: selectedMarca,
-            familia: selectedFamilia,
-            clave_prod: selectedProducto,
+            area: selectedArea === '0' ? '%' : selectedArea,
+            depto: selectedDepto === '0' ? '%' : selectedDepto,
+            marca: selectedMarca === '0' ? '%' : selectedMarca,
+            familia: selectedFamilia === '0' ? '%' : selectedFamilia,
+            clave_prod: selectedProducto === '0' ? '%' : selectedProducto,
             cantidad: parseInt(cantidad),
             descuento: parseFloat(descPorcentaje) / 100,
             idDescuento: tipoDescuento.tipo_descuento,
