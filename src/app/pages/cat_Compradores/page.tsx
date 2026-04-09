@@ -288,12 +288,7 @@ return (
           </Paper>
         </Box>
 
-        {/* PIE DE PÁGINA */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 1 }}>
-          <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
-            CAT_COMPRADORES, ARAUCARIAS, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/')}, USR:{session?.nombre || 'ADMIN'}
-          </Typography>
-        </Box>
+        
 
         {/* MODAL AGREGAR */}
         <Dialog 

@@ -366,12 +366,6 @@ return (
           </Box>
         </Box>
 
-        {/* PIE DE PÁGINA ESTILO ELEGANTE */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 3 }}>
-          <Typography variant="caption" sx={{ fontWeight: 'bold', textTransform: 'uppercase' }}>
-            CAT_MEDIOS_PAGO, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replaceAll('/', '-')}, USR: {session?.nombre || 'ADMIN'}
-          </Typography>
-        </Box>
         
       </Box>
 

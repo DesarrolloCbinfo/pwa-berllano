@@ -788,19 +788,7 @@ export default function CatCategorias() {
             <DataGrid
               rows={rows}
               columns={[
-                {
-                  field: 'id_gasto',
-                  headerName: 'ID',
-                  width: 80,
-                  headerClassName: 'super-app-theme--header',
-                },
-                {
-                  field: 'descripcion',
-                  headerName: 'Descripción',
-                  width: 200,
-                  headerClassName: 'super-app-theme--header',
-                },
-                {
+                 {
                   field: 'acciones',
                   headerName: 'Acciones',
                   width: 80,
@@ -824,6 +812,19 @@ export default function CatCategorias() {
                     </Box>
                   ),
                 },
+                {
+                  field: 'id_gasto',
+                  headerName: 'ID',
+                  width: 80,
+                  headerClassName: 'super-app-theme--header',
+                },
+                {
+                  field: 'descripcion',
+                  headerName: 'Descripción',
+                  width: 200,
+                  headerClassName: 'super-app-theme--header',
+                },
+               
               ]}
               loading={loading}
               getRowId={(row) => row.id_gasto}
@@ -914,18 +915,6 @@ export default function CatCategorias() {
               rows={subcategorias}
               columns={[
                 {
-                  field: 'id_subgasto',
-                  headerName: 'ID',
-                  width: 80,
-                  headerClassName: 'super-app-theme--header',
-                },
-                {
-                  field: 'descripcion',
-                  headerName: 'Descripción',
-                  width: 200,
-                  headerClassName: 'super-app-theme--header',
-                },
-                {
                   field: 'acciones',
                   headerName: 'Acciones',
                   width: 120,
@@ -951,6 +940,19 @@ export default function CatCategorias() {
                     </Box>
                   ),
                 },
+                {
+                  field: 'id_subgasto',
+                  headerName: 'ID',
+                  width: 80,
+                  headerClassName: 'super-app-theme--header',
+                },
+                {
+                  field: 'descripcion',
+                  headerName: 'Descripción',
+                  width: 200,
+                  headerClassName: 'super-app-theme--header',
+                },
+                
               ]}
               loading={loading}
               getRowId={(row) => row.id_subgasto}
@@ -1043,6 +1045,32 @@ export default function CatCategorias() {
             <DataGrid
               rows={subsubcategorias}
               columns={[
+                 {
+                  field: 'acciones',
+                  headerName: 'Acciones',
+                  width: 120,
+                  headerClassName: 'super-app-theme--header',
+                  renderCell: (params) => (
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <IconButton 
+                        size="small" 
+                        sx={{ color: '#555555ff' }}
+                        onClick={() => handleEditSubsubcategoria(params.row)}
+                        title="Editar Sub-subcategoría"
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton 
+                        size="small" 
+                        sx={{ color: '#555555ff' }}
+                        onClick={() => handleDeleteSubsubcategoria(params.row)}
+                        title="Eliminar Sub-subcategoría"
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  ),
+                },
                 {
                   field: 'id_subsubgasto',
                   headerName: 'ID',
@@ -1094,32 +1122,7 @@ export default function CatCategorias() {
                     </Box>
                   ),
                 },
-                {
-                  field: 'acciones',
-                  headerName: 'Acciones',
-                  width: 120,
-                  headerClassName: 'super-app-theme--header',
-                  renderCell: (params) => (
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                      <IconButton 
-                        size="small" 
-                        sx={{ color: '#555555ff' }}
-                        onClick={() => handleEditSubsubcategoria(params.row)}
-                        title="Editar Sub-subcategoría"
-                      >
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton 
-                        size="small" 
-                        sx={{ color: '#555555ff' }}
-                        onClick={() => handleDeleteSubsubcategoria(params.row)}
-                        title="Eliminar Sub-subcategoría"
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </Box>
-                  ),
-                },
+               
               ]}
               loading={loading}
               getRowId={(row) => row.id_subsubgasto}

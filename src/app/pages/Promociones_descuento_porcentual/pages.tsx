@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Box, CircularProgress, Alert, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions, MenuItem, Select, FormControl, InputLabel, IconButton, TextField } from '@mui/material'
 import { DataGrid, GridColDef } from '@mui/x-data-grid'
 import DeleteIcon from '@mui/icons-material/Delete'
+import Swal from 'sweetalert2'
 import useConsumoApi from '../../../hooks/useConsumoApi'
 import { useSessionContext } from '../../../context/SessionProvider'
 import PWABadge from '../../../PWABadge'
@@ -28,12 +29,12 @@ interface Sucursal {
 }
 
 interface Area {
-  area: string
+  id: string
   descripcion: string
 }
 
 interface Departamento {
-  depto: string
+  id: string
   descripcion: string
 }
 
@@ -86,9 +87,6 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
   const [selectedTipoDescuento, setSelectedTipoDescuento] = useState('')
 
   const [saving, setSaving] = useState(false)
-
-  const [openDelete, setOpenDelete] = useState(false)
-  const [rowToDelete, setRowToDelete] = useState<Promocion | null>(null)
   const [deleting, setDeleting] = useState(false)
 
   const columns: GridColDef[] = [
@@ -244,7 +242,7 @@ useEffect(() => {
     }
   }, [selectedMarca])
 
-  const handleAdd = async () => {
+const handleAdd = async () => {
     if (!nombrePromo || !selectedSucursal || !fechaDel || !fechaAl || !selectedArea || !selectedDepto || !selectedMarca || !selectedFamilia || !selectedProducto || !cantidad || !descPorcentaje || !selectedTipoDescuento) return
 
     try {
@@ -256,20 +254,21 @@ useEffect(() => {
         throw new Error('Tipo de descuento no válido')
       }
 
+      // 👇 MAGIA: Convertimos los '0' (TODOS/TODAS) en '%' justo antes de enviarlos a la API
       const response = await consumoApi.post(
         `/api/CatConfigPromoDescPorcen/sp_bw_t_promocionesDescuentos_add`,
         '',
         {
           params: {
             nombrePromo: nombrePromo,
-            sucursal: selectedSucursal,
+            sucursal: selectedSucursal === '0' ? '%' : selectedSucursal,
             f1: fechaDel,
             f2: fechaAl,
-            area: selectedArea,
-            depto: selectedDepto,
-            marca: selectedMarca,
-            familia: selectedFamilia,
-            clave_prod: selectedProducto,
+            area: selectedArea === '0' ? '%' : selectedArea,
+            depto: selectedDepto === '0' ? '%' : selectedDepto,
+            marca: selectedMarca === '0' ? '%' : selectedMarca,
+            familia: selectedFamilia === '0' ? '%' : selectedFamilia,
+            clave_prod: selectedProducto === '0' ? '%' : selectedProducto,
             cantidad: parseInt(cantidad),
             descuento: parseFloat(descPorcentaje) / 100,
             idDescuento: tipoDescuento.tipo_descuento,
@@ -299,26 +298,39 @@ useEffect(() => {
       setSelectedTipoDescuento('')
       setDepartamentos([])
       setFamilias([])
+
+      Swal.fire({
+        title: '¡Éxito!',
+        text: 'La promoción ha sido agregada correctamente.',
+        icon: 'success',
+        timer: 2000,
+        showConfirmButton: false
+      })
     } catch (err: any) {
-      setError(err.message || 'Error al guardar')
+      Swal.fire('Error', err.message || 'Error al guardar', 'error')
     } finally {
       setSaving(false)
     }
   }
 
-  const handleDeleteOpen = (row: Promocion) => {
-    setRowToDelete(row)
-    setOpenDelete(true)
+  const handleDeleteOpen = async (row: Promocion) => {
+    const result = await Swal.fire({
+      title: '¿Eliminar Promoción?',
+      text: `¿Está seguro de que desea eliminar la promoción "${row.nombrePromo}"?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar'
+    })
+
+    if (result.isConfirmed) {
+      await handleDeleteConfirm(row)
+    }
   }
 
-  const handleDeleteClose = () => {
-    setOpenDelete(false)
-    setRowToDelete(null)
-  }
-
-  const handleDeleteConfirm = async () => {
-    if (!rowToDelete) return
-
+  const handleDeleteConfirm = async (row: Promocion) => {
     try {
       setDeleting(true)
 
@@ -326,7 +338,7 @@ useEffect(() => {
         `/api/CatConfigPromoDescPorcen/sp_bw_t_promocionesDescuentos_del`,
         {
           params: {
-            id: rowToDelete.id,
+            id: row.id,
           },
         }
       )
@@ -338,9 +350,16 @@ useEffect(() => {
       }
 
       await fetchPromociones()
-      handleDeleteClose()
+      
+      Swal.fire({
+        title: '¡Eliminado!',
+        text: 'La promoción ha sido eliminada correctamente.',
+        icon: 'success',
+        timer: 2000,
+        showConfirmButton: false
+      })
     } catch (err: any) {
-      setError(err.message || 'Error al eliminar')
+      Swal.fire('Error', err.message || 'Error al eliminar', 'error')
     } finally {
       setDeleting(false)
     }
@@ -372,22 +391,18 @@ return (
         <Box sx={{ backgroundColor: 'white', p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.05)', mb: 3 }}>
           
           {/* RECUADRO INTERIOR ELEGANTE */}
-          <Box sx={{ border: '1px solid #2c3e50', p: 1.5, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+          <Box sx={{ border: '1px solid #000000ff', p: 1.5, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between', mb: 3 }}>
               <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem', textTransform: 'uppercase' }}>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#000000ff', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem', textTransform: 'uppercase' }}>
                       CONFIGURACIÓN DE PROMOCIONES CON DESCUENTO PORCENTUAL
                   </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
-                      Sucursal: {session?.dSucursal || 'Cargando...'}
-                  </Typography>
+                  
               </Box>
               <Box sx={{ textAlign: 'right' }}>
                   <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#333', lineHeight: 1.1, fontSize: '0.9rem' }}>
                       {new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' }).replaceAll('/', '-')}
                   </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#555', mt: 0.2, fontSize: '0.75rem' }}>
-                      Usuario Activo: {session?.nombre || 'Cargando...'}
-                  </Typography>
+                
               </Box>
           </Box>
 
@@ -445,7 +460,7 @@ return (
                 sx={{ bgcolor: 'white' }}
               >
                 {areas.map((area) => (
-                  <MenuItem key={area.area} value={area.area}>
+                  <MenuItem key={area.id} value={area.id}>
                     {area.descripcion}
                   </MenuItem>
                 ))}
@@ -462,7 +477,7 @@ return (
                 sx={{ bgcolor: 'white' }}
               >
                 {departamentos.map((depto) => (
-                  <MenuItem key={depto.depto} value={depto.depto}>
+                  <MenuItem key={depto.id} value={depto.id}>
                     {depto.descripcion}
                   </MenuItem>
                 ))}
@@ -620,21 +635,6 @@ return (
           </Box>
         </Box>
       </Box>
-
-      <Dialog open={openDelete} onClose={handleDeleteClose}>
-        <DialogTitle>Confirmar eliminación</DialogTitle>
-        <DialogContent>
-          ¿Está seguro de que desea eliminar esta promoción?
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleDeleteClose} disabled={deleting}>
-            Cancelar
-          </Button>
-          <Button onClick={handleDeleteConfirm} color="error" disabled={deleting}>
-            {deleting ? 'Eliminando...' : 'Eliminar'}
-          </Button>
-        </DialogActions>
-      </Dialog>
 
       <PWABadge />
     </>

@@ -254,15 +254,7 @@ return (
         </Paper>
       </Box>
 
-      {/* PIE DE PÁGINA BERLLANO ELEGANTE 2 */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 3 }}>
-        <Button variant="contained" sx={{ backgroundColor: '#e0e0e0', color: '#000', fontWeight: 'bold', px: 4, mb: 2, '&:hover': { backgroundColor: '#d0d0d0' } }}>
-          Salir
-        </Button>
-        <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
-          CAT_NOMINA_FORMAS_PAGOS, ARAUCARIAS, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/')}, USR:{session?.nombre || 'ADMIN'}
-        </Typography>
-      </Box>
+  
 
       {/* Dialog para agregar */}
       <Dialog 

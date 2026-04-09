@@ -276,12 +276,6 @@ const handleEliminar = async (id: number) => {
           </Paper>
         </Box>
 
-      {/* PIE DE PÁGINA ESTILO ACCESS */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 3 }}>
-        <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
-          ACCESOS_ALTERNOS, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace('.', '')}, USR:ADMIN
-        </Typography>
-      </Box>
 
     </Box>
   );
