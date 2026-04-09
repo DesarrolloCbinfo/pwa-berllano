@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, IconButton, TextField, Grid,
-  Snackbar, Alert, Paper, Dialog, Divider
+  Snackbar, Alert, Paper, Dialog, Divider, DialogContent, DialogActions
 } from '@mui/material';
 import {
   Edit as EditIcon, Delete as DeleteIcon, Close as CloseIcon,
@@ -755,8 +755,8 @@ export default function CatCategorias() {
             borderRadius: '12px',
             boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
             '& .super-app-theme--header': {
-              backgroundColor: '#797979ff',
-              color: 'white',
+              backgroundColor: '#f5f5f5', // Fondo gris claro elegante
+              color: '#333333',           // <--- Letras oscuras para que resalten
               fontWeight: 'bold',
             }
           }}>
@@ -865,9 +865,9 @@ export default function CatCategorias() {
             height: 600, 
             borderRadius: '12px',
             boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-            '& .super-app-theme--header': {
-              backgroundColor: '#797979ff',
-              color: 'white',
+           '& .super-app-theme--header': {
+              backgroundColor: '#f5f5f5', // Fondo gris claro elegante
+              color: '#333333',           // <--- Letras oscuras para que resalten
               fontWeight: 'bold',
             }
           }}>
@@ -993,9 +993,9 @@ export default function CatCategorias() {
             height: 600, 
             borderRadius: '12px',
             boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-            '& .super-app-theme--header': {
-              backgroundColor: '#797979ff',
-              color: 'white',
+           '& .super-app-theme--header': {
+              backgroundColor: '#f5f5f5', // Fondo gris claro elegante
+              color: '#333333',           // <--- Letras oscuras para que resalten
               fontWeight: 'bold',
             }
           }}>
@@ -1161,306 +1161,293 @@ export default function CatCategorias() {
       <Dialog 
         open={openModal} 
         onClose={handleCloseModal} 
-        maxWidth="md" 
+        maxWidth="sm" 
         fullWidth
         PaperProps={{
-          sx: { borderRadius: '12px' }
+          sx: {
+            borderRadius: '16px',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+            border: '1px solid #e0e0e0',
+            overflow: 'hidden',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
+          }
         }}
       >
-        <Box sx={{ p: 4, bgcolor: '#fdfdfd' }}>
-          {/* Header del Modal */}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#333' }}>
-              {claveSeleccionada ? '✏️ Editar Categoría de Gasto' : '🆕 Nueva Categoría de Gasto'}
+       <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}><Box sx={{ position: 'relative', zIndex: 2 }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
+              {claveSeleccionada ? 'Editar Categoría de Gasto' : 'Nueva Categoría de Gasto'}
             </Typography>
-            <IconButton onClick={handleCloseModal}>
-              <CloseIcon />
-            </IconButton>
+            <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+              Complete la información de la categoría en los campos correspondientes
+            </Typography>
           </Box>
-
-          <Divider sx={{ mb: 3, borderBottomWidth: 2, borderColor: '#1976d2' }} />
-
-          {/* Formulario */}
-          <Box sx={modalSectionStyle}>
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  {...commonProps}
-                  label="ID Gasto"
-                  name="id_gasto"
-                  value={categoriaForm.id_gasto || ''}
-                  onChange={handleCategoriaChange}
-                  placeholder="Ej. 1000, 2000, etc."
-                  type="number"
-                  required
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  {...commonProps}
-                  label="Descripción de la Categoría"
-                  name="descripcion"
-                  value={categoriaForm.descripcion}
-                  onChange={handleCategoriaChange}
-                  placeholder="Ej. Gastos operativos, Mantenimientos, etc."
-                  multiline
-                  rows={2}
-                  required
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-                  <Button 
-                    onClick={handleCloseModal} 
-                    variant="outlined"
-                    sx={{ 
-                      borderColor: '#ccc',
-                      color: '#666',
-                      fontWeight: 'bold',
-                      px: 3
-                    }}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button 
-                    onClick={handleSave}
-                    variant="contained"
-                    disabled={loading}
-                    sx={{ 
-                      bgcolor: '#1976d2',
-                      color: 'white',
-                      fontWeight: 'bold',
-                      px: 4
-                    }}
-                  >
-                    {loading ? 'Guardando...' : (claveSeleccionada ? 'Actualizar' : 'Guardar')}
-                  </Button>
-                </Box>
-              </Grid>
-            </Grid>
-          </Box>
+          <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+          <IconButton 
+            onClick={handleCloseModal}
+            sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+          >
+            <CloseIcon />
+          </IconButton>
         </Box>
+
+        <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+          <Grid container spacing={3} sx={{ mt: 0.5 }}>
+            <Grid item xs={12} md={4}>
+              <TextField
+                {...commonProps}
+                label="ID Gasto *"
+                name="id_gasto"
+                value={categoriaForm.id_gasto || ''}
+                onChange={handleCategoriaChange}
+                placeholder="Ej. 1000"
+                type="number"
+                disabled={!!claveSeleccionada}
+                sx={{
+                  ...commonProps.sx,
+                  '& .MuiOutlinedInput-root.Mui-disabled': { 
+                    backgroundColor: '#f5f5f5', borderRadius: '8px' 
+                  }
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} md={8}>
+              <TextField
+                {...commonProps}
+                label="Descripción *"
+                name="descripcion"
+                value={categoriaForm.descripcion}
+                onChange={handleCategoriaChange}
+                placeholder="Ej. Gastos operativos"
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+
+        <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
+          <Button 
+            onClick={handleCloseModal}
+            color="inherit"
+            sx={{ borderRadius: '8px', fontWeight: 500, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleSave}
+            variant="contained"
+            disabled={loading || !categoriaForm.descripcion.trim()}
+            sx={{ 
+              bgcolor: '#000000ff', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none', px: 4,
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)', transition: 'all 0.3s ease',
+              '&:hover': { bgcolor: '#333333', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }
+            }}
+          >
+            {loading ? 'Guardando...' : (claveSeleccionada ? 'Actualizar' : 'Guardar')}
+          </Button>
+        </DialogActions>
       </Dialog>
 
       {/* --- MODAL DE FORMULARIO DE SUBCATEGORÍAS --- */}
       <Dialog 
         open={openSubcategoriaFormModal} 
         onClose={() => setOpenSubcategoriaFormModal(false)} 
-        maxWidth="md" 
+        maxWidth="sm" 
         fullWidth
         PaperProps={{
-          sx: { borderRadius: '12px' }
+          sx: {
+            borderRadius: '16px',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+            border: '1px solid #e0e0e0',
+            overflow: 'hidden',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
+          }
         }}
       >
-        <Box sx={{ p: 4, bgcolor: '#fdfdfd' }}>
-          {/* Header del Modal */}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#333' }}>
-              {subcategoriaForm.id_subgasto ? '✏️ Editar Subcategoría' : '🆕 Nueva Subcategoría'}
+      <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}> <Box sx={{ position: 'relative', zIndex: 2 }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
+              {subcategoriaForm.id_subgasto ? 'Editar Subcategoría' : 'Nueva Subcategoría'}
             </Typography>
-            <IconButton onClick={() => setOpenSubcategoriaFormModal(false)}>
-              <CloseIcon />
-            </IconButton>
+            <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+              {categoriaSeleccionada ? `Categoría Padre: ${categoriaSeleccionada.descripcion}` : 'Complete la información'}
+            </Typography>
           </Box>
-
-          <Divider sx={{ mb: 3, borderBottomWidth: 2, borderColor: '#2e7d32' }} />
-
-          {/* Info de la categoría padre */}
-          {categoriaSeleccionada && (
-            <Box sx={{ mb: 3, p: 2, bgcolor: '#e8f5e9', borderRadius: '8px', border: '1px solid #4caf50' }}>
-              <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                Categoría Padre: {categoriaSeleccionada.descripcion} (ID: {categoriaSeleccionada.id_gasto})
-              </Typography>
-            </Box>
-          )}
-
-          {/* Formulario */}
-          <Box sx={modalSectionStyle}>
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  {...commonProps}
-                  label="ID Subcategoría"
-                  name="id_subgasto"
-                  value={subcategoriaForm.id_subgasto || ''}
-                  onChange={handleSubcategoriaChange}
-                  placeholder="Ej. 1100, 1200, etc."
-                  type="number"
-                  required
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  {...commonProps}
-                  label="Descripción de la Subcategoría"
-                  name="descripcion"
-                  value={subcategoriaForm.descripcion}
-                  onChange={handleSubcategoriaChange}
-                  placeholder="Ej. Amenidades Clientes, Lavandería, etc."
-                  multiline
-                  rows={2}
-                  required
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-                  <Button 
-                    onClick={() => setOpenSubcategoriaFormModal(false)} 
-                    variant="outlined"
-                    sx={{ 
-                      borderColor: '#ccc',
-                      color: '#666',
-                      fontWeight: 'bold',
-                      px: 3
-                    }}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button 
-                    onClick={subcategoriaForm.id_subgasto ? handleUpdateSubcategoria : handleSaveSubcategoria}
-                    variant="contained"
-                    disabled={loading || !subcategoriaForm.descripcion.trim()}
-                    sx={{ 
-                      bgcolor: '#2e7d32',
-                      color: 'white',
-                      fontWeight: 'bold',
-                      px: 4
-                    }}
-                  >
-                    {loading ? 'Guardando...' : (subcategoriaForm.id_subgasto ? 'Actualizar' : 'Guardar')}
-                  </Button>
-                </Box>
-              </Grid>
-            </Grid>
-          </Box>
+          <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+          <IconButton 
+            onClick={() => setOpenSubcategoriaFormModal(false)}
+            sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+          >
+            <CloseIcon />
+          </IconButton>
         </Box>
+
+        <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+          <Grid container spacing={3} sx={{ mt: 0.5 }}>
+            <Grid item xs={12} md={4}>
+              <TextField
+                {...commonProps}
+                label="ID Subcategoría *"
+                name="id_subgasto"
+                value={subcategoriaForm.id_subgasto || ''}
+                onChange={handleSubcategoriaChange}
+                placeholder="Ej. 1100"
+                type="number"
+                disabled={!!subcategoriaForm.id_subgasto}
+                sx={{
+                  ...commonProps.sx,
+                  '& .MuiOutlinedInput-root.Mui-disabled': { 
+                    backgroundColor: '#f5f5f5', borderRadius: '8px' 
+                  }
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} md={8}>
+              <TextField
+                {...commonProps}
+                label="Descripción *"
+                name="descripcion"
+                value={subcategoriaForm.descripcion}
+                onChange={handleSubcategoriaChange}
+                placeholder="Ej. Amenidades"
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+
+        <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
+          <Button 
+            onClick={() => setOpenSubcategoriaFormModal(false)}
+            color="inherit"
+            sx={{ borderRadius: '8px', fontWeight: 500, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            onClick={subcategoriaForm.id_subgasto ? handleUpdateSubcategoria : handleSaveSubcategoria}
+            variant="contained"
+            disabled={loading || !subcategoriaForm.descripcion.trim() || !subcategoriaForm.id_subgasto}
+            sx={{ 
+              bgcolor: '#000000ff', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none', px: 4,
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)', transition: 'all 0.3s ease',
+              '&:hover': { bgcolor: '#333333', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }
+            }}
+          >
+            {loading ? 'Guardando...' : (subcategoriaForm.id_subgasto ? 'Actualizar' : 'Guardar')}
+          </Button>
+        </DialogActions>
       </Dialog>
 
       {/* --- MODAL DE FORMULARIO DE SUB-SUBCATEGORÍAS --- */}
       <Dialog 
         open={openSubsubcategoriaFormModal} 
         onClose={() => setOpenSubsubcategoriaFormModal(false)} 
-        maxWidth="lg" 
+        maxWidth="sm" 
         fullWidth
         PaperProps={{
-          sx: { borderRadius: '12px' }
+          sx: {
+            borderRadius: '16px',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+            border: '1px solid #e0e0e0',
+            overflow: 'hidden',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
+          }
         }}
       >
-        <Box sx={{ p: 4, bgcolor: '#fdfdfd' }}>
-          {/* Header del Modal */}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#333' }}>
-              {subsubcategoriaForm.id_subsubgasto ? '✏️ Editar Sub-subcategoría' : '🆕 Nueva Sub-subcategoría'}
+       <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}> <Box sx={{ position: 'relative', zIndex: 2 }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
+              {subsubcategoriaForm.id_subsubgasto ? 'Editar Sub-subcategoría' : 'Nueva Sub-subcategoría'}
             </Typography>
-            <IconButton onClick={() => setOpenSubsubcategoriaFormModal(false)}>
-              <CloseIcon />
-            </IconButton>
+            <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+              {subcategoriaSeleccionada ? `Padre: ${subcategoriaSeleccionada.descripcion}` : 'Complete la información'}
+            </Typography>
           </Box>
-
-          <Divider sx={{ mb: 3, borderBottomWidth: 2, borderColor: '#9c27b0' }} />
-
-          {/* Info de la jerarquía */}
-          {categoriaSeleccionada && subcategoriaSeleccionada && (
-            <Box sx={{ mb: 3, p: 2, bgcolor: '#f3e5f5', borderRadius: '8px', border: '1px solid #9c27b0' }}>
-              <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1 }}>
-                Jerarquía completa:
-              </Typography>
-              <Typography variant="body2" color="#666">
-                📁 {categoriaSeleccionada.descripcion} (ID: {categoriaSeleccionada.id_gasto})
-              </Typography>
-              <Typography variant="body2" color="#666">
-                📂 {subcategoriaSeleccionada.descripcion} (ID: {subcategoriaSeleccionada.id_subgasto})
-              </Typography>
-            </Box>
-          )}
-
-          {/* Formulario */}
-          <Box sx={modalSectionStyle}>
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={4}>
-                <TextField
-                  {...commonProps}
-                  label="ID Sub-subcategoría"
-                  name="id_subsubgasto"
-                  value={subsubcategoriaForm.id_subsubgasto || ''}
-                  onChange={handleSubsubcategoriaChange}
-                  placeholder="Ej. 1110, 1120, etc."
-                  type="number"
-                  required
-                />
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <TextField
-                  {...commonProps}
-                  label="Descripción de la Sub-subcategoría"
-                  name="descripcion"
-                  value={subsubcategoriaForm.descripcion}
-                  onChange={handleSubsubcategoriaChange}
-                  placeholder="Ej. Mantenimiento de Aire Acondicionado, Limpieza Diaria, etc."
-                  multiline
-                  rows={2}
-                  required
-                />
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <TextField
-                  {...commonProps}
-                  label="Cuenta Contable"
-                  name="cuenta_contable"
-                  value={subsubcategoriaForm.cuenta_contable}
-                  onChange={handleSubsubcategoriaChange}
-                  placeholder="Ej. 5-51-51-05"
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                    Segmentable:
-                  </Typography>
-                  <input
-                    type="checkbox"
-                    name="segmentable"
-                    checked={subsubcategoriaForm.segmentable}
-                    onChange={handleSubsubcategoriaChange}
-                    style={{ width: '20px', height: '20px' }}
-                  />
-                  <Typography variant="body2" color="#666">
-                    {subsubcategoriaForm.segmentable ? 'Sí' : 'No'}
-                  </Typography>
-                </Box>
-              </Grid>
-              <Grid item xs={12}>
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-                  <Button 
-                    onClick={() => setOpenSubsubcategoriaFormModal(false)} 
-                    variant="outlined"
-                    sx={{ 
-                      borderColor: '#ccc',
-                      color: '#666',
-                      fontWeight: 'bold',
-                      px: 3
-                    }}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button 
-                    onClick={subsubcategoriaForm.id_subsubgasto ? handleUpdateSubsubcategoria : handleSaveSubsubcategoria}
-                    variant="contained"
-                    disabled={loading || !subsubcategoriaForm.descripcion.trim()}
-                    sx={{ 
-                      bgcolor: '#9c27b0',
-                      color: 'white',
-                      fontWeight: 'bold',
-                      px: 4
-                    }}
-                  >
-                    {loading ? 'Guardando...' : (subsubcategoriaForm.id_subsubgasto ? 'Actualizar' : 'Guardar')}
-                  </Button>
-                </Box>
-              </Grid>
-            </Grid>
-          </Box>
+          <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+          <IconButton 
+            onClick={() => setOpenSubsubcategoriaFormModal(false)}
+            sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+          >
+            <CloseIcon />
+          </IconButton>
         </Box>
+
+        <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+          <Grid container spacing={3} sx={{ mt: 0.5 }}>
+            <Grid item xs={12} md={4}>
+              <TextField
+                {...commonProps}
+                label="ID Sub-sub *"
+                name="id_subsubgasto"
+                value={subsubcategoriaForm.id_subsubgasto || ''}
+                onChange={handleSubsubcategoriaChange}
+                placeholder="Ej. 1110"
+                type="number"
+                disabled={!!subsubcategoriaForm.id_subsubgasto}
+                sx={{
+                  ...commonProps.sx,
+                  '& .MuiOutlinedInput-root.Mui-disabled': { 
+                    backgroundColor: '#f5f5f5', borderRadius: '8px' 
+                  }
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} md={8}>
+              <TextField
+                {...commonProps}
+                label="Descripción *"
+                name="descripcion"
+                value={subsubcategoriaForm.descripcion}
+                onChange={handleSubsubcategoriaChange}
+                placeholder="Ej. Limpieza Diaria"
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                {...commonProps}
+                label="Cuenta Contable"
+                name="cuenta_contable"
+                value={subsubcategoriaForm.cuenta_contable || ''}
+                onChange={handleSubsubcategoriaChange}
+                placeholder="Ej. 5-51-51-05"
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Box sx={{ display: 'flex', alignItems: 'center', height: '100%', gap: 1.5, p: 1.5, borderRadius: '8px', border: '1.5px solid #e0e0e0', bgcolor: '#f8f9fa', transition: 'all 0.3s ease', '&:hover': { borderColor: '#999', bgcolor: '#f5f5f5' } }}>
+                <input
+                  type="checkbox"
+                  name="segmentable"
+                  checked={!!subsubcategoriaForm.segmentable}
+                  onChange={handleSubsubcategoriaChange}
+                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                />
+                <Box>
+                  <Typography variant='body2' sx={{ fontWeight: 600, color: '#333' }}>
+                    Segmentable
+                  </Typography>
+                </Box>
+              </Box>
+            </Grid>
+          </Grid>
+        </DialogContent>
+
+        <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
+          <Button 
+            onClick={() => setOpenSubsubcategoriaFormModal(false)}
+            color="inherit"
+            sx={{ borderRadius: '8px', fontWeight: 500, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            onClick={subsubcategoriaForm.id_subsubgasto ? handleUpdateSubsubcategoria : handleSaveSubsubcategoria}
+            variant="contained"
+            disabled={loading || !subsubcategoriaForm.descripcion.trim() || !subsubcategoriaForm.id_subsubgasto}
+            sx={{ 
+              bgcolor: '#000000ff', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none', px: 4,
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)', transition: 'all 0.3s ease',
+              '&:hover': { bgcolor: '#333333', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }
+            }}
+          >
+            {loading ? 'Guardando...' : (subsubcategoriaForm.id_subsubgasto ? 'Actualizar' : 'Guardar')}
+          </Button>
+        </DialogActions>
       </Dialog>
 
       {/* --- SNACKBAR --- */}

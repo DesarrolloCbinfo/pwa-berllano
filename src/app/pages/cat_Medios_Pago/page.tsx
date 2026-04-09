@@ -1,11 +1,32 @@
 import { useEffect, useState } from 'react'
-import { Box, CircularProgress, Alert, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, Checkbox } from '@mui/material'
+import { Box, CircularProgress, Alert, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, Checkbox, Grid } from '@mui/material'
 import { DataGrid, GridColDef } from '@mui/x-data-grid'
 import EditIcon from '@mui/icons-material/Edit'
+import CloseIcon from '@mui/icons-material/Close';
 import Swal from 'sweetalert2'
 import useConsumoApi from '../../../hooks/useConsumoApi'
 import { useSessionContext } from '../../../context/SessionProvider'
 import PWABadge from '../../../PWABadge'
+
+// --- ESTILOS BERLLANO ELEGANTE ---
+const commonProps = {
+  fullWidth: true,
+  size: "small" as const,
+  variant: "outlined" as const,
+  sx: {
+      '& .MuiInputBase-root': { 
+          height: '50px', 
+          alignItems: 'center',
+          borderRadius: '8px',
+          transition: 'all 0.3s ease',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+          '&:hover': { boxShadow: '0 4px 8px rgba(0,0,0,0.1)', borderColor: '#999' }
+      },
+      '& .MuiInputLabel-root': { transform: 'translate(14px, 14px) scale(1)', color: '#666', fontWeight: 500 },
+      '& .MuiInputLabel-shrink': { transform: 'translate(14px, -9px) scale(0.75)', color: '#333', fontWeight: 600 },
+      '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0', borderWidth: '1.5px' }
+  }
+};
 
 interface MedioPago {
   id: number
@@ -434,347 +455,349 @@ return (
         
       </Box>
 
-      <Dialog open={openAdd} onClose={handleAddClose} maxWidth="md" fullWidth>
-        <DialogTitle>Agregar Medio de Pago</DialogTitle>
-        <DialogContent>
-          <Box sx={{ mt: 2 }}>
-            <TextField
-              fullWidth
-              label="Sucursal **"
-              type="number"
-              value={formData.sucursal}
-              onChange={(e) => {
-                const value = e.target.value;
-                const numValue = parseInt(value) || 0;
-                setFormData({ ...formData, sucursal: numValue < 0 ? 0 : numValue });
-              }}
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              fullWidth
-              label="Tipo **"
-              type="number"
-              value={formData.tipo}
-              onChange={(e) => {
-                const value = e.target.value;
-                const numValue = parseInt(value) || 0;
-                setFormData({ ...formData, tipo: numValue < 0 ? 0 : numValue });
-              }}
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              fullWidth
-              label="Descripción **"
-              value={formData.descripcion}
-              onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-              sx={{ mb: 2 }}
-            />
-            <Box sx={{ mb: 2 }}>
-              <Checkbox
-                checked={formData.tarjeta}
-                onChange={(e) => setFormData({ ...formData, tarjeta: e.target.checked })}
-              />
-              <label>¿Tarjeta de crédito?</label>
+      {/* --- MODAL AGREGAR --- */}
+      <Dialog 
+        open={openAdd} 
+        onClose={handleAddClose} 
+        maxWidth="md" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+            border: '1px solid #e0e0e0',
+            overflow: 'hidden',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
+          }
+        }}
+      >
+        <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
+          <Box sx={{ position: 'relative', zIndex: 2 }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
+              Agregar Medio de Pago
+            </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+              Complete la información del nuevo medio de pago
+            </Typography>
+          </Box>
+          <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+          <IconButton 
+            onClick={handleAddClose}
+            sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </Box>
+
+        <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4, mt: 1 }}>
+            
+            {/* Información General */}
+            <Box>
+              <Typography variant='subtitle1' sx={{ fontWeight: 600, color: '#333', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ width: 4, height: 20, backgroundColor: '#333333', borderRadius: 2 }} />
+                Información General
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={3}>
+                  <TextField 
+                    {...commonProps} label="Sucursal *" type="number" value={formData.sucursal}
+                    onChange={(e) => {
+                      const numValue = parseInt(e.target.value) || 0;
+                      setFormData({ ...formData, sucursal: numValue < 0 ? 0 : numValue });
+                    }} 
+                  />
+                </Grid>
+                <Grid item xs={12} sm={3}>
+                  <TextField 
+                    {...commonProps} label="Tipo *" type="number" value={formData.tipo}
+                    onChange={(e) => {
+                      const numValue = parseInt(e.target.value) || 0;
+                      setFormData({ ...formData, tipo: numValue < 0 ? 0 : numValue });
+                    }} 
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField 
+                    {...commonProps} label="Descripción *" value={formData.descripcion}
+                    onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })} 
+                  />
+                </Grid>
+              </Grid>
             </Box>
-            <TextField
-              fullWidth
-              label="Grupo Operación **"
-              type="number"
-              value={formData.grupo_operacion}
-              onChange={(e) => {
-                const value = e.target.value;
-                const numValue = parseInt(value) || 0;
-                setFormData({ ...formData, grupo_operacion: numValue < 0 ? 0 : numValue });
-              }}
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              fullWidth
-              label="Cuenta Bancaria Destino"
-              value={formData.cuenta_bancaria_destino}
-              onChange={(e) => setFormData({ ...formData, cuenta_bancaria_destino: e.target.value })}
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              fullWidth
-              label="Adición"
-              type="number"
-              value={formData.adicion}
-              onChange={(e) => {
-                const value = e.target.value;
-                const numValue = parseInt(value) || 0;
-                setFormData({ ...formData, adicion: Math.min(numValue, 1) });
-              }}
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              fullWidth
-              label="Adición1"
-              type="number"
-              value={formData.adicion1}
-              onChange={(e) => {
-                const value = e.target.value;
-                const numValue = parseInt(value) || 0;
-                setFormData({ ...formData, adicion1: Math.min(numValue, 1) });
-              }}
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              fullWidth
-              label="Adición2"
-              type="number"
-              value={formData.adicion2}
-              onChange={(e) => {
-                const value = e.target.value;
-                const numValue = parseInt(value) || 0;
-                setFormData({ ...formData, adicion2: Math.min(numValue, 1) });
-              }}
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              fullWidth
-              label="Adición3"
-              type="number"
-              value={formData.adicion3}
-              onChange={(e) => {
-                const value = e.target.value;
-                const numValue = parseInt(value) || 0;
-                setFormData({ ...formData, adicion3: Math.min(numValue, 1) });
-              }}
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              fullWidth
-              label="Adición4"
-              type="number"
-              value={formData.adicion4}
-              onChange={(e) => {
-                const value = e.target.value;
-                const numValue = parseInt(value) || 0;
-                setFormData({ ...formData, adicion4: Math.min(numValue, 1) });
-              }}
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              fullWidth
-              label="Adición5"
-              type="number"
-              value={formData.adicion5}
-              onChange={(e) => {
-                const value = e.target.value;
-                const numValue = parseInt(value) || 0;
-                setFormData({ ...formData, adicion5: Math.min(numValue, 1) });
-              }}
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              fullWidth
-              label="Adición6"
-              type="number"
-              value={formData.adicion6}
-              onChange={(e) => {
-                const value = e.target.value;
-                const numValue = parseInt(value) || 0;
-                setFormData({ ...formData, adicion6: Math.min(numValue, 1) });
-              }}
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              fullWidth
-              label="Adición7"
-              type="number"
-              value={formData.adicion7}
-              onChange={(e) => {
-                const value = e.target.value;
-                const numValue = parseInt(value) || 0;
-                setFormData({ ...formData, adicion7: Math.min(numValue, 1) });
-              }}
-              sx={{ mb: 2 }}
-            />
-             <TextField
-              fullWidth
-              label="Cuenta Contable"
-              value={formData.cuenta_contable}
-              onChange={(e) => setFormData({ ...formData, cuenta_contable: e.target.value })}
-              sx={{ mb: 2 }}
-            />
+
+            {/* Cuentas y Operación */}
+            <Box>
+              <Typography variant='subtitle1' sx={{ fontWeight: 600, color: '#333', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ width: 4, height: 20, backgroundColor: '#333333', borderRadius: 2 }} />
+                Cuentas y Operación
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={3}>
+                  <TextField 
+                    {...commonProps} label="Grupo Operación *" type="number" value={formData.grupo_operacion}
+                    onChange={(e) => {
+                      const numValue = parseInt(e.target.value) || 0;
+                      setFormData({ ...formData, grupo_operacion: numValue < 0 ? 0 : numValue });
+                    }} 
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField 
+                    {...commonProps} label="Cta. Bancaria Destino *" value={formData.cuenta_bancaria_destino}
+                    onChange={(e) => setFormData({ ...formData, cuenta_bancaria_destino: e.target.value })} 
+                  />
+                </Grid>
+                <Grid item xs={12} sm={5}>
+                  <TextField 
+                    {...commonProps} label="Cuenta Contable *" value={formData.cuenta_contable}
+                    onChange={(e) => setFormData({ ...formData, cuenta_contable: e.target.value })} 
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5, borderRadius: '8px', border: '1.5px solid #e0e0e0', bgcolor: '#f8f9fa', transition: 'all 0.3s ease', '&:hover': { borderColor: '#999', bgcolor: '#f5f5f5' } }}>
+                    <Checkbox 
+                      checked={formData.tarjeta} 
+                      onChange={(e) => setFormData({ ...formData, tarjeta: e.target.checked })} 
+                      sx={{ color: '#333', p: 0, '&.Mui-checked': { color: '#333' } }} 
+                    />
+                    <Box>
+                      <Typography variant='body2' sx={{ fontWeight: 600, color: '#333' }}>¿Tarjeta de crédito?</Typography>
+                    </Box>
+                  </Box>
+                </Grid>
+              </Grid>
+            </Box>
+
+            {/* Adiciones */}
+            <Box>
+              <Typography variant='subtitle1' sx={{ fontWeight: 600, color: '#333', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ width: 4, height: 20, backgroundColor: '#333333', borderRadius: 2 }} />
+                Adiciones
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={3}>
+                  <TextField {...commonProps} label="Adición" type="number" value={formData.adicion} onChange={(e) => { const val = parseInt(e.target.value) || 0; setFormData({ ...formData, adicion: Math.min(val, 1) }); }} />
+                </Grid>
+                <Grid item xs={12} sm={3}>
+                  <TextField {...commonProps} label="Adición 1" type="number" value={formData.adicion1} onChange={(e) => { const val = parseInt(e.target.value) || 0; setFormData({ ...formData, adicion1: Math.min(val, 1) }); }} />
+                </Grid>
+                <Grid item xs={12} sm={3}>
+                  <TextField {...commonProps} label="Adición 2" type="number" value={formData.adicion2} onChange={(e) => { const val = parseInt(e.target.value) || 0; setFormData({ ...formData, adicion2: Math.min(val, 1) }); }} />
+                </Grid>
+                <Grid item xs={12} sm={3}>
+                  <TextField {...commonProps} label="Adición 3" type="number" value={formData.adicion3} onChange={(e) => { const val = parseInt(e.target.value) || 0; setFormData({ ...formData, adicion3: Math.min(val, 1) }); }} />
+                </Grid>
+                <Grid item xs={12} sm={3}>
+                  <TextField {...commonProps} label="Adición 4" type="number" value={formData.adicion4} onChange={(e) => { const val = parseInt(e.target.value) || 0; setFormData({ ...formData, adicion4: Math.min(val, 1) }); }} />
+                </Grid>
+                <Grid item xs={12} sm={3}>
+                  <TextField {...commonProps} label="Adición 5" type="number" value={formData.adicion5} onChange={(e) => { const val = parseInt(e.target.value) || 0; setFormData({ ...formData, adicion5: Math.min(val, 1) }); }} />
+                </Grid>
+                <Grid item xs={12} sm={3}>
+                  <TextField {...commonProps} label="Adición 6" type="number" value={formData.adicion6} onChange={(e) => { const val = parseInt(e.target.value) || 0; setFormData({ ...formData, adicion6: Math.min(val, 1) }); }} />
+                </Grid>
+                <Grid item xs={12} sm={3}>
+                  <TextField {...commonProps} label="Adición 7" type="number" value={formData.adicion7} onChange={(e) => { const val = parseInt(e.target.value) || 0; setFormData({ ...formData, adicion7: Math.min(val, 1) }); }} />
+                </Grid>
+              </Grid>
+            </Box>
+
           </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleAddClose}>Cancelar</Button>
-          <Button onClick={handleAdd} variant="contained">Guardar</Button>
+
+        <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
+          <Button 
+            onClick={handleAddClose}
+            color="inherit"
+            sx={{ borderRadius: '8px', fontWeight: 500, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleAdd} 
+            variant="contained"
+            sx={{ 
+              bgcolor: '#000000ff', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none', px: 4,
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)', transition: 'all 0.3s ease',
+              '&:hover': { bgcolor: '#333333', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }
+            }}
+          >
+            Guardar
+          </Button>
         </DialogActions>
       </Dialog>
 
-      <Dialog open={openEdit} onClose={handleEditClose} maxWidth="md" fullWidth>
-        <DialogTitle>Editar Medio de Pago</DialogTitle>
-        <DialogContent>
-          <Box sx={{ mt: 2 }}>
-            <TextField
-              fullWidth
-              label="Sucursal **"
-              type="number"
-              value={formData.sucursal}
-              onChange={(e) => {
-                const value = e.target.value;
-                const numValue = parseInt(value) || 0;
-                setFormData({ ...formData, sucursal: numValue < 0 ? 0 : numValue });
-              }}
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              fullWidth
-              label="Tipo **"
-              type="number"
-              value={formData.tipo}
-              onChange={(e) => {
-                const value = e.target.value;
-                const numValue = parseInt(value) || 0;
-                setFormData({ ...formData, tipo: numValue < 0 ? 0 : numValue });
-              }}
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              fullWidth
-              label="Descripción **"
-              value={formData.descripcion}
-              onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-              sx={{ mb: 2 }}
-            />
-            <Box sx={{ mb: 2 }}>
-              <Checkbox
-                checked={formData.tarjeta}
-                onChange={(e) => setFormData({ ...formData, tarjeta: e.target.checked })}
-              />
-              <label>¿Tarjeta de crédito **?</label>
+      {/* --- MODAL EDITAR --- */}
+      <Dialog 
+        open={openEdit} 
+        onClose={handleEditClose} 
+        maxWidth="md" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+            border: '1px solid #e0e0e0',
+            overflow: 'hidden',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
+          }
+        }}
+      >
+        <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
+          <Box sx={{ position: 'relative', zIndex: 2 }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
+              Editar Medio de Pago
+            </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+              Modifique la información del medio de pago seleccionado
+            </Typography>
+          </Box>
+          <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+          <IconButton 
+            onClick={handleEditClose}
+            sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </Box>
+
+        <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4, mt: 1 }}>
+            
+            {/* Información General */}
+            <Box>
+              <Typography variant='subtitle1' sx={{ fontWeight: 600, color: '#333', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ width: 4, height: 20, backgroundColor: '#333333', borderRadius: 2 }} />
+                Información General
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={3}>
+                  <TextField 
+                    {...commonProps} label="Sucursal *" type="number" value={formData.sucursal}
+                    onChange={(e) => {
+                      const numValue = parseInt(e.target.value) || 0;
+                      setFormData({ ...formData, sucursal: numValue < 0 ? 0 : numValue });
+                    }} 
+                  />
+                </Grid>
+                <Grid item xs={12} sm={3}>
+                  <TextField 
+                    {...commonProps} label="Tipo *" type="number" value={formData.tipo}
+                    onChange={(e) => {
+                      const numValue = parseInt(e.target.value) || 0;
+                      setFormData({ ...formData, tipo: numValue < 0 ? 0 : numValue });
+                    }} 
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField 
+                    {...commonProps} label="Descripción *" value={formData.descripcion}
+                    onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })} 
+                  />
+                </Grid>
+              </Grid>
             </Box>
-            <TextField
-              fullWidth
-              label="Grupo Operación"
-              type="number"
-              value={formData.grupo_operacion}
-              onChange={(e) => {
-                const value = e.target.value;
-                const numValue = parseInt(value) || 0;
-                setFormData({ ...formData, grupo_operacion: numValue < 0 ? 0 : numValue });
-              }}
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              fullWidth
-              label="Cuenta Bancaria Destino"
-              value={formData.cuenta_bancaria_destino}
-              onChange={(e) => setFormData({ ...formData, cuenta_bancaria_destino: e.target.value })}
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              fullWidth
-              label="Cuenta Contable"
-              value={formData.cuenta_contable}
-              onChange={(e) => setFormData({ ...formData, cuenta_contable: e.target.value })}
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              fullWidth
-              label="Adición"
-              type="number"
-              value={formData.adicion}
-              onChange={(e) => {
-                const value = e.target.value;
-                const numValue = parseInt(value) || 0;
-                setFormData({ ...formData, adicion: Math.min(numValue, 1) });
-              }}
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              fullWidth
-              label="Adición1"
-              type="number"
-              value={formData.adicion1}
-              onChange={(e) => {
-                const value = e.target.value;
-                const numValue = parseInt(value) || 0;
-                setFormData({ ...formData, adicion1: Math.min(numValue, 1) });
-              }}
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              fullWidth
-              label="Adición2"
-              type="number"
-              value={formData.adicion2}
-              onChange={(e) => {
-                const value = e.target.value;
-                const numValue = parseInt(value) || 0;
-                setFormData({ ...formData, adicion2: Math.min(numValue, 1) });
-              }}
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              fullWidth
-              label="Adición3"
-              type="number"
-              value={formData.adicion3}
-              onChange={(e) => {
-                const value = e.target.value;
-                const numValue = parseInt(value) || 0;
-                setFormData({ ...formData, adicion3: Math.min(numValue, 1) });
-              }}
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              fullWidth
-              label="Adición4"
-              type="number"
-              value={formData.adicion4}
-              onChange={(e) => {
-                const value = e.target.value;
-                const numValue = parseInt(value) || 0;
-                setFormData({ ...formData, adicion4: Math.min(numValue, 1) });
-              }}
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              fullWidth
-              label="Adición5"
-              type="number"
-              value={formData.adicion5}
-              onChange={(e) => {
-                const value = e.target.value;
-                const numValue = parseInt(value) || 0;
-                setFormData({ ...formData, adicion5: Math.min(numValue, 1) });
-              }}
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              fullWidth
-              label="Adición6"
-              type="number"
-              value={formData.adicion6}
-              onChange={(e) => {
-                const value = e.target.value;
-                const numValue = parseInt(value) || 0;
-                setFormData({ ...formData, adicion6: Math.min(numValue, 1) });
-              }}
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              fullWidth
-              label="Adición7"
-              type="number"
-              value={formData.adicion7}
-              onChange={(e) => {
-                const value = e.target.value;
-                const numValue = parseInt(value) || 0;
-                setFormData({ ...formData, adicion7: Math.min(numValue, 1) });
-              }}
-              sx={{ mb: 2 }}
-            />
+
+            {/* Cuentas y Operación */}
+            <Box>
+              <Typography variant='subtitle1' sx={{ fontWeight: 600, color: '#333', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ width: 4, height: 20, backgroundColor: '#333333', borderRadius: 2 }} />
+                Cuentas y Operación
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={3}>
+                  <TextField 
+                    {...commonProps} label="Grupo Operación *" type="number" value={formData.grupo_operacion}
+                    onChange={(e) => {
+                      const numValue = parseInt(e.target.value) || 0;
+                      setFormData({ ...formData, grupo_operacion: numValue < 0 ? 0 : numValue });
+                    }} 
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField 
+                    {...commonProps} label="Cta. Bancaria Destino *" value={formData.cuenta_bancaria_destino}
+                    onChange={(e) => setFormData({ ...formData, cuenta_bancaria_destino: e.target.value })} 
+                  />
+                </Grid>
+                <Grid item xs={12} sm={5}>
+                  <TextField 
+                    {...commonProps} label="Cuenta Contable *" value={formData.cuenta_contable}
+                    onChange={(e) => setFormData({ ...formData, cuenta_contable: e.target.value })} 
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5, borderRadius: '8px', border: '1.5px solid #e0e0e0', bgcolor: '#f8f9fa', transition: 'all 0.3s ease', '&:hover': { borderColor: '#999', bgcolor: '#f5f5f5' } }}>
+                    <Checkbox 
+                      checked={formData.tarjeta} 
+                      onChange={(e) => setFormData({ ...formData, tarjeta: e.target.checked })} 
+                      sx={{ color: '#333', p: 0, '&.Mui-checked': { color: '#333' } }} 
+                    />
+                    <Box>
+                      <Typography variant='body2' sx={{ fontWeight: 600, color: '#333' }}>¿Tarjeta de crédito?</Typography>
+                    </Box>
+                  </Box>
+                </Grid>
+              </Grid>
+            </Box>
+
+            {/* Adiciones */}
+            <Box>
+              <Typography variant='subtitle1' sx={{ fontWeight: 600, color: '#333', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ width: 4, height: 20, backgroundColor: '#333333', borderRadius: 2 }} />
+                Adiciones
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={3}>
+                  <TextField {...commonProps} label="Adición" type="number" value={formData.adicion} onChange={(e) => { const val = parseInt(e.target.value) || 0; setFormData({ ...formData, adicion: Math.min(val, 1) }); }} />
+                </Grid>
+                <Grid item xs={12} sm={3}>
+                  <TextField {...commonProps} label="Adición 1" type="number" value={formData.adicion1} onChange={(e) => { const val = parseInt(e.target.value) || 0; setFormData({ ...formData, adicion1: Math.min(val, 1) }); }} />
+                </Grid>
+                <Grid item xs={12} sm={3}>
+                  <TextField {...commonProps} label="Adición 2" type="number" value={formData.adicion2} onChange={(e) => { const val = parseInt(e.target.value) || 0; setFormData({ ...formData, adicion2: Math.min(val, 1) }); }} />
+                </Grid>
+                <Grid item xs={12} sm={3}>
+                  <TextField {...commonProps} label="Adición 3" type="number" value={formData.adicion3} onChange={(e) => { const val = parseInt(e.target.value) || 0; setFormData({ ...formData, adicion3: Math.min(val, 1) }); }} />
+                </Grid>
+                <Grid item xs={12} sm={3}>
+                  <TextField {...commonProps} label="Adición 4" type="number" value={formData.adicion4} onChange={(e) => { const val = parseInt(e.target.value) || 0; setFormData({ ...formData, adicion4: Math.min(val, 1) }); }} />
+                </Grid>
+                <Grid item xs={12} sm={3}>
+                  <TextField {...commonProps} label="Adición 5" type="number" value={formData.adicion5} onChange={(e) => { const val = parseInt(e.target.value) || 0; setFormData({ ...formData, adicion5: Math.min(val, 1) }); }} />
+                </Grid>
+                <Grid item xs={12} sm={3}>
+                  <TextField {...commonProps} label="Adición 6" type="number" value={formData.adicion6} onChange={(e) => { const val = parseInt(e.target.value) || 0; setFormData({ ...formData, adicion6: Math.min(val, 1) }); }} />
+                </Grid>
+                <Grid item xs={12} sm={3}>
+                  <TextField {...commonProps} label="Adición 7" type="number" value={formData.adicion7} onChange={(e) => { const val = parseInt(e.target.value) || 0; setFormData({ ...formData, adicion7: Math.min(val, 1) }); }} />
+                </Grid>
+              </Grid>
+            </Box>
+
           </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleEditClose}>Cancelar</Button>
-          <Button onClick={handleEdit} variant="contained">Guardar</Button>
+
+        <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
+          <Button 
+            onClick={handleEditClose}
+            color="inherit"
+            sx={{ borderRadius: '8px', fontWeight: 500, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleEdit} 
+            variant="contained"
+            sx={{ 
+              bgcolor: '#000000ff', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none', px: 4,
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)', transition: 'all 0.3s ease',
+              '&:hover': { bgcolor: '#333333', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }
+            }}
+          >
+            Actualizar
+          </Button>
         </DialogActions>
       </Dialog>
 
