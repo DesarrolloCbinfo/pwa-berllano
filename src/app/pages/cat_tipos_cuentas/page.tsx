@@ -261,12 +261,7 @@ const handleEliminar = async (clave: number) => {
           </Paper>
         </Box>
 
-      {/* PIE DE PÁGINA */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 1 }}>
-        <Typography variant="caption" sx={{ fontWeight: 'bold', textTransform: 'uppercase' }}>
-          CAT_TIPOS_CUENTAS, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/')}, USR:{session?.nombre || 'ADMIN'}
-        </Typography>
-      </Box>
+
 
     </Box>
   );

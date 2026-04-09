@@ -287,45 +287,49 @@ const handleEliminar = async (clave: string) => {
         </Grid>
       </Paper>
 
-        {/* TABLA PRINCIPAL */}
+      {/* TABLA PRINCIPAL */}
         <Box sx={{ mt: 3 }}>
-          <Paper sx={{ p: 3, width: '100%', maxHeight: 600, mb: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
-            <DataGrid 
-                rows={Array.isArray(rows) ? rows : []} 
-                columns={columns} 
-                getRowId={(row) => row.usuario} 
-                loading={loading || saving} 
-                paginationModel={paginationModel} 
-                onPaginationModelChange={setPaginationModel} 
-                pageSizeOptions={[50, 100, 500]} 
-                slots={{ toolbar: GridToolbar, pagination: CustomPagination }} 
-                slotProps={{ toolbar: { showQuickFilter: true } }} 
-                density="compact"
-                disableRowSelectionOnClick
-                processRowUpdate={processRowUpdate} 
-                onProcessRowUpdateError={(error) => console.error(error)}
-                sx={{ 
-                    border: 'none', 
-                    '& .MuiDataGrid-columnHeaders': { 
-    borderBottom: '2px solid #000',
-    textAlign: 'center',
-    fontSize: '1rem',
-    fontWeight: 'bold'
-},
-                    '& .MuiDataGrid-cell': { borderBottom: '1px solid #e0e0e000' },
-                    '& .MuiDataGrid-cell--editable': { backgroundColor: '#f9fbfd', cursor: 'text' }, 
-                    '& .MuiDataGrid-cell--editing': { backgroundColor: '#fff', boxShadow: '0 0 5px rgba(25,118,210,0.5)' }
-                }} 
-            />
+          <Paper sx={{ p: 3, width: '100%', mb: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)', backgroundColor: '#fff' }}>
+            
+            {/* EL SECRETO ESTÁ AQUÍ: Le damos un height estricto a esta caja */}
+            <Box sx={{ height: 600, width: '100%' }}>
+              <DataGrid 
+                  rows={Array.isArray(rows) ? rows : []} 
+                  columns={columns} 
+                  getRowId={(row) => row.usuario} 
+                  loading={loading || saving} 
+                  paginationModel={paginationModel} 
+                  onPaginationModelChange={setPaginationModel} 
+                  pageSizeOptions={[50, 100, 500]} 
+                  slots={{ toolbar: GridToolbar, pagination: CustomPagination }} 
+                  slotProps={{ toolbar: { showQuickFilter: true } }} 
+                  density="compact"
+                  disableRowSelectionOnClick
+                  processRowUpdate={processRowUpdate} 
+                  onProcessRowUpdateError={(error) => console.error(error)}
+                  sx={{ 
+                      border: 'none', 
+                      height: '100%', // <-- Le decimos al DataGrid que llene ese 100%
+                      '& .MuiDataGrid-columnHeaders': { 
+                          borderBottom: '2px solid #000',
+                          textAlign: 'center',
+                          fontSize: '1rem',
+                          fontWeight: 'bold',
+                          backgroundColor: '#f5f5f5' // Agregué el fondo gris claro elegante
+                      },
+                      '& .MuiDataGrid-cell': { borderBottom: '1px solid #e0e0e000' },
+                      '& .MuiDataGrid-cell--editable': { backgroundColor: '#f9fbfd', cursor: 'text' }, 
+                      '& .MuiDataGrid-cell--editing': { backgroundColor: '#fff', boxShadow: '0 0 5px rgba(25,118,210,0.5)' },
+                      // Efecto hover sutil en las filas
+                      '& .MuiDataGrid-row': { transition: 'all 0.2s ease' },
+                      '& .MuiDataGrid-row:hover': { bgcolor: '#fafafa' }
+                  }} 
+              />
+            </Box>
           </Paper>
         </Box>
 
-      {/* PIE DE PÁGINA */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 1 }}>
-        <Typography variant="caption" sx={{ fontWeight: 'bold', textTransform: 'uppercase' }}>
-          CAT_USUARIOS, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/')}, USR:{session?.nombre || 'ADMIN'}
-        </Typography>
-      </Box>
+
 
     </Box>
   );
