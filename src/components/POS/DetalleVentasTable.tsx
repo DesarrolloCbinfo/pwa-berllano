@@ -37,9 +37,10 @@ insumos?: DetalleVenta[]; // Insumos asociados
 type Props = {
   data: DetalleVenta[];
   onSelect: (detalle: DetalleVenta) => void;
+  onAgregarInsumos?: (detalle: DetalleVenta) => void;
 };
 
-export default function DetalleVentasTable({ data, onSelect }: Props) {
+export default function DetalleVentasTable({ data, onSelect, onAgregarInsumos }: Props) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
@@ -218,20 +219,38 @@ export default function DetalleVentasTable({ data, onSelect }: Props) {
         );
       }}
       renderRowActions={({ row }) => (
-        <Button
-          color="error"
-          variant="contained"
-          size="small"
-          onClick={() => onSelect(row.original)}
-          sx={{
-            minWidth: 'auto',
-            px: isMobile ? 1 : 2,
-            fontSize: isMobile ? '0.75rem' : '0.875rem',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          {isMobile ? "✕" : "Cancelar"}
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          {onAgregarInsumos && (
+            <Button
+              color="primary"
+              variant="outlined"
+              size="small"
+              onClick={() => onAgregarInsumos(row.original)}
+              sx={{
+                minWidth: 'auto',
+                px: isMobile ? 1 : 2,
+                fontSize: isMobile ? '0.75rem' : '0.875rem',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              {isMobile ? "INS" : "Insumos"}
+            </Button>
+          )}
+          <Button
+            color="error"
+            variant="contained"
+            size="small"
+            onClick={() => onSelect(row.original)}
+            sx={{
+              minWidth: 'auto',
+              px: isMobile ? 1 : 2,
+              fontSize: isMobile ? '0.75rem' : '0.875rem',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {isMobile ? "✕" : "Cancelar"}
+          </Button>
+        </Box>
       )}
       localization={{
         noRecordsToDisplay: "Sin resultados",
