@@ -958,19 +958,7 @@ return (
         <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
             
-            <Grid item xs={12} sm={4}>
-              <TextField
-                {...commonProps}
-                label="Área"
-                name="area"
-                value={accesoForm.area}
-                disabled
-                sx={{ 
-                  ...commonProps.sx,
-                  '& .MuiOutlinedInput-root.Mui-disabled': { backgroundColor: '#f5f5f5', borderRadius: '8px' } 
-                }}
-              />
-            </Grid>
+           
             <Grid item xs={12} sm={8}>
               <TextField
                 {...commonProps}
@@ -990,19 +978,7 @@ return (
               </TextField>
             </Grid>
             
-            <Grid item xs={12} sm={4}>
-              <TextField
-                {...commonProps}
-                label="Departamento"
-                name="depto"
-                value={accesoForm.depto}
-                disabled
-                sx={{ 
-                  ...commonProps.sx,
-                  '& .MuiOutlinedInput-root.Mui-disabled': { backgroundColor: '#f5f5f5', borderRadius: '8px' } 
-                }}
-              />
-            </Grid>
+           
             <Grid item xs={12} sm={8}>
               <TextField
                 {...commonProps}
