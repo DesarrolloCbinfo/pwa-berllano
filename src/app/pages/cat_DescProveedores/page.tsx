@@ -575,9 +575,6 @@ return (
           </Button>
         </DialogActions>
       </Dialog>
-
-
-
       {/* Dialog Eliminar */}
       <Dialog open={openDelete} onClose={handleDeleteClose}>
         <DialogTitle>Confirmar Eliminación</DialogTitle>

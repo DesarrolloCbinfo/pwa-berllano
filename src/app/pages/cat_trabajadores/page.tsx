@@ -14,6 +14,7 @@ import {
   Refresh as RefreshIcon,
   Add as AddIcon,
   RestoreFromTrash as RestoreIcon,
+  Close as CloseIcon,
 } from '@mui/icons-material';
 import {
   Box,
@@ -1194,7 +1195,7 @@ export default function CatTrabajadores() {
        
 
         
-      {/* DIÁLOGO DE EDICIÓN/AGREGAR */}
+{/* --- DIÁLOGO DE EDICIÓN/AGREGAR --- */}
       <Dialog
         open={openEdit}
         onClose={() => setOpenEdit(false)}
@@ -1203,33 +1204,58 @@ export default function CatTrabajadores() {
         PaperProps={{
           sx: {
             borderRadius: '16px',
-            overflow: 'hidden'
+            boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+            border: '1px solid #e0e0e0',
+            overflow: 'hidden',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
           }
         }}
       >
-        <DialogTitle sx={{ 
-          bgcolor: '#000000', 
-          borderBottom: '1px solid #333',
-          py: 2
-        }}>
-          <Typography sx={{ color: '#ffffff', fontWeight: 600, fontSize: '1.25rem' }}>
-            {isEditing 
-              ? `Editar - ${formData.nombre || ''} ${formData.apellido_paterno || ''} ${formData.apellido_materno || ''} - ${formData.claveEmpleado || ''}`
-              : 'Agregar Nuevo Trabajador'
-            }
-          </Typography>
-        </DialogTitle>
+        <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
+          <Box sx={{ position: 'relative', zIndex: 2 }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
+              {isEditing 
+                ? `Editar - ${formData.nombre || ''} ${formData.apellido_paterno || ''} ${formData.apellido_materno || ''} - ${formData.claveEmpleado || ''}`
+                : 'Agregar Nuevo Trabajador'
+              }
+            </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+              {isEditing ? 'Modifique la información del trabajador en las diferentes pestañas' : 'Complete la información del nuevo trabajador'}
+            </Typography>
+          </Box>
+          <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+          <IconButton 
+            onClick={() => setOpenEdit(false)}
+            sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </Box>
         
-        <DialogContent sx={{ p: 3 }}>
+        <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
           <Tabs
             value={activeEditTab}
             onChange={(e, newValue) => setActiveEditTab(newValue)}
+            variant="scrollable"
+            scrollButtons="auto"
             sx={{
+              mb: 3,
+              borderBottom: '1px solid #e0e0e0',
               '& .MuiTab-root': {
                 textTransform: 'none',
-                fontWeight: 500,
+                fontWeight: 600,
                 fontSize: '14px',
-                minHeight: '40px'
+                minHeight: '48px',
+                color: '#666',
+                '&.Mui-selected': {
+                  color: '#1a365d'
+                }
+              },
+              '& .MuiTabs-indicator': {
+                backgroundColor: '#1a365d',
+                height: '3px',
+                borderTopLeftRadius: '3px',
+                borderTopRightRadius: '3px'
               }
             }}
           >
@@ -1241,429 +1267,146 @@ export default function CatTrabajadores() {
             <Tab label="Vacaciones y Permisos" />
             <Tab label="Bitácora" />
           </Tabs>
-          {/* Tab Generales - Edición */}
+
+         {/* Tab Generales - Edición */}
           {activeEditTab === 0 && (
-            <Grid container spacing={2}>
+            <Grid container spacing={3}>
               <Grid size={{ xs: 12, md: 4 }}>
-                <TextField
-                  fullWidth
-                  label="Clave Empleado"
-                  name="claveEmpleado"
-                  value={formData.claveEmpleado || ''}
-                  onChange={handleInputChange}
-                  size='small'
-                  {...commonProps}
-                />
+                <TextField fullWidth label="Clave Empleado" name="claveEmpleado" value={formData.claveEmpleado || ''} onChange={handleInputChange} {...commonProps} />
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
-                <TextField
-                  fullWidth
-                  label='Nombre'
-                  name='nombre'
-                  value={formData.nombre || ''}
-                  onChange={handleInputChange}
-                  size='small'
-                  {...commonProps}
-                />
+                <TextField fullWidth label='Nombre' name='nombre' value={formData.nombre || ''} onChange={handleInputChange} {...commonProps} />
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
-                <TextField
-                  fullWidth
-                  label='Apellido Paterno'
-                  name='apellido_paterno'
-                  value={formData.apellido_paterno || ''}
-                  onChange={handleInputChange}
-                  size='small'
-                  {...commonProps}
-                />
+                <TextField fullWidth label='Apellido Paterno' name='apellido_paterno' value={formData.apellido_paterno || ''} onChange={handleInputChange} {...commonProps} />
+              </Grid>
+              
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField fullWidth label='Apellido Materno' name='apellido_materno' value={formData.apellido_materno || ''} onChange={handleInputChange} {...commonProps} />
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
-                <TextField
-                  fullWidth
-                  label='Apellido Materno'
-                  name='apellido_materno'
-                  value={formData.apellido_materno || ''}
-                  onChange={handleInputChange}
-                  size='small'
-                  {...commonProps}
-                />
-              </Grid>
-
-              {/* Segunda fila */}
-              <Grid size={{ xs: 12, md: 4 }}>
-                <TextField
-                  fullWidth
-                  label='RFC'
-                  name='rfc'
-                  value={formData.rfc || ''}
-                  onChange={handleInputChange}
-                  size='small'
-                  {...commonProps}
-                />
+                <TextField fullWidth label='RFC' name='rfc' value={formData.rfc || ''} onChange={handleInputChange} {...commonProps} />
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
-                <TextField
-                  fullWidth
-                  label='IMSS'
-                  name='imss'
-                  value={formData.imss || ''}
-                  onChange={handleInputChange}
-                  size='small'
-                  {...commonProps}
-                />
+                <TextField fullWidth label='IMSS' name='imss' value={formData.imss || ''} onChange={handleInputChange} {...commonProps} />
               </Grid>
-
-              {/* Tercera fila */}
+              
               <Grid size={{ xs: 12, md: 4 }}>
-                <TextField
-                  fullWidth
-                  label='Fecha de Nacimiento'
-                  name='fechaNacimiento'
-                  type='date'
-                  InputLabelProps={{ shrink: true }}
-                  value={formatDateForInput(formData.fechaNacimiento) || ''}
-                  onChange={handleInputChange}
-                  size='small'
-                  {...commonProps}
-                />
+                <TextField fullWidth label='Fecha de Nacimiento' name='fechaNacimiento' type='date' InputLabelProps={{ shrink: true }} value={formatDateForInput(formData.fechaNacimiento) || ''} onChange={handleInputChange} {...commonProps} />
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
-                <FormControl fullWidth size='small'>
-                  <InputLabel id='escolaridad-label'>Escolaridad</InputLabel>
-                  <Select
-                    labelId='escolaridad-label'
-                    name='nivelEscolaridad'
-                    value={formData.nivelEscolaridad || ''}
-                    onChange={handleInputChange}
-                    {...commonProps}
-                  >
-                    {nivelesEscolaridad.map((option) => (
-                      <MenuItem
-                        key={option.clave_nivel}
-                        value={option.clave_nivel}
-                      >
-                        {option.descripcion_escolaridad}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-
-              <Grid size={{ xs: 12, md: 4 }}>
-                <FormControl fullWidth size='small'>
-                  <InputLabel id='escolaridad-concluida-label'>
-                    Escolaridad Concluida
-                  </InputLabel>
-                  <Select
-                    labelId='escolaridad-concluida-label'
-                    label='Escolaridad Concluida'
-                    name='escolaridad_concluido'
-                    value={formData.escolaridad_concluido || ''}
-                    onChange={handleInputChange}
-                    {...commonProps}
-                  >
-                    <MenuItem value=''>-- Seleccionar --</MenuItem>
-                    {escolaridadConcluidoOptions.map((option) => (
-                      <MenuItem key={option.id} value={option.id}>
-                        {option.descripcion}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-
-              {/* Cuarta fila */}
-              <Grid size={{ xs: 12, md: 4 }}>
-                <TextField
-                  fullWidth
-                  label='Lugar de Nacimiento'
-                  name='lugarNacimiento'
-                  value={formData.lugarNacimiento || ''}
-                  onChange={handleInputChange}
-                  size='small'
-                  {...commonProps}
-                />
+                <TextField select fullWidth label="Escolaridad" name="nivelEscolaridad" value={formData.nivelEscolaridad || ''} onChange={handleInputChange} {...commonProps}>
+                  {nivelesEscolaridad.map((option) => (
+                    <MenuItem key={option.clave_nivel} value={option.clave_nivel}>{option.descripcion_escolaridad}</MenuItem>
+                  ))}
+                </TextField>
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
-                <TextField
-                  fullWidth
-                  label='CURP'
-                  name='curp'
-                  value={formData.curp || ''}
-                  onChange={handleInputChange}
-                  size='small'
-                  {...commonProps}
-                />
+                <TextField select fullWidth label="Escolaridad Concluida" name="escolaridad_concluido" value={formData.escolaridad_concluido || ''} onChange={handleInputChange} {...commonProps}>
+                  <MenuItem value=''>-- Seleccionar --</MenuItem>
+                  {escolaridadConcluidoOptions.map((option) => (
+                    <MenuItem key={option.id} value={option.id}>{option.descripcion}</MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
+              
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField fullWidth label='Lugar de Nacimiento' name='lugarNacimiento' value={formData.lugarNacimiento || ''} onChange={handleInputChange} {...commonProps} />
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
-                <FormControl fullWidth size='small'>
-                  <InputLabel id='estado-civil-label'>Estado Civil</InputLabel>
-                  <Select
-                    labelId='estado-civil-label'
-                    label='Estado Civil'
-                    name='estadoCivil'
-                    value={formData.estadoCivil || ''}
-                    onChange={handleInputChange}
-                    {...commonProps}
-                  >
-                    <MenuItem value=''>-- Seleccionar --</MenuItem>
-                    {estadosCivilesOptions.map((option) => (
-                      <MenuItem key={option.id} value={option.id}>
-                        {option.descripcion}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-
-              <Grid size={{ xs: 12, md: 4 }}>
-                <FormControl fullWidth size='small'>
-                  <InputLabel id='sexo-label'>Sexo</InputLabel>
-                  <Select
-                    labelId='sexo-label'
-                    name='sexo'
-                    // Tu JSON usa "M" y "F"
-                    value={formData.sexo || ''}
-                    label='Sexo'
-                    onChange={handleInputChange}
-                    {...commonProps}
-                  >
-                    <MenuItem value='M'>Masculino</MenuItem>
-                    <MenuItem value='F'>Femenino</MenuItem>
-                  </Select>
-                </FormControl>
+                <TextField fullWidth label='CURP' name='curp' value={formData.curp || ''} onChange={handleInputChange} {...commonProps} />
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
-                <Paper
-                  variant='outlined'
-                  sx={{
-                    p: 2,
-                    display: 'flex',
-                    alignItems: 'flex-start', // Alinea el checkbox arriba si el texto es largo
-                    borderRadius: 2,
-                    backgroundColor: '#fcfcfc', 
-                  }}
-                >
-                  <Checkbox
-                    name='confianza'
-                    checked={!!formData.confianza}
-                    onChange={(e) => {
-                      handleInputChange({
-                        target: { name: 'confianza', value: e.target.checked },
-                      });
-                    }}
-                    sx={{ p: 0, mr: 2, mt: 0.5 }} // Quita el padding del checkbox para pegarlo al borde
-                  />
-                  <Box>
-                    <Typography
-                      variant='subtitle1'
-                      sx={{
-                        fontWeight: 'bold',
-                        color: '#000000ff',
-                        lineHeight: 1.2,
-                      }}
-                    >
-                      Confianza
-                    </Typography>
-                  </Box>
-                </Paper>
+                <TextField select fullWidth label="Estado Civil" name="estadoCivil" value={formData.estadoCivil || ''} onChange={handleInputChange} {...commonProps}>
+                  <MenuItem value=''>-- Seleccionar --</MenuItem>
+                  {estadosCivilesOptions.map((option) => (
+                    <MenuItem key={option.id} value={option.id}>{option.descripcion}</MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
+              
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField select fullWidth label="Sexo" name="sexo" value={formData.sexo || ''} onChange={handleInputChange} {...commonProps}>
+                  <MenuItem value='M'>Masculino</MenuItem>
+                  <MenuItem value='F'>Femenino</MenuItem>
+                </TextField>
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', height: '50px', px: 2, borderRadius: '12px', border: '1.5px solid #e0e0e0', bgcolor: '#fafafa', transition: 'all 0.3s ease', '&:hover': { borderColor: '#999', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' } }}>
+                  <Checkbox name='confianza' checked={!!formData.confianza} onChange={(e) => handleInputChange({ target: { name: 'confianza', value: e.target.checked } } as any)} sx={{ color: '#333', '&.Mui-checked': { color: '#1a365d' } }} />
+                  <Typography variant='body2' sx={{ fontWeight: 600, color: '#333' }}>Confianza</Typography>
+                </Box>
               </Grid>
             </Grid>
           )}
 
-          {/* Tab Laborales - Edición */}
+{/* Tab Laborales - Edición */}
           {activeEditTab === 1 && (
-            <Grid container spacing={2}>
+            <Grid container spacing={3}>
               <Grid size={{ xs: 12, md: 4 }}>
-                <TextField
-                  fullWidth
-                  label='Fecha de Baja'
-                  name='fecha_baja'
-                  type='date'
-                  InputLabelProps={{ shrink: true }}
-                  value={formatDateForInput(formData.fecha_baja) || ''}
-                  onChange={handleInputChange}
-                  size='small'
-                  {...commonProps}
-                />
+                <TextField fullWidth label='Fecha de Baja' name='fecha_baja' type='date' InputLabelProps={{ shrink: true }} value={formatDateForInput(formData.fecha_baja) || ''} onChange={handleInputChange} {...commonProps} />
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
-                <FormControl fullWidth size='small'>
-                  <InputLabel id='puesto-label'>Puesto</InputLabel>
-                  <Select
-                    labelId='puesto-label'
-                    name='idPuesto'
-                    value={formData.idPuesto || ''}
-                    onChange={handleInputChange}
-                    {...commonProps}
-                  >
-                    {puestosOptions.map((option) => (
-                      <MenuItem
-                        key={option.clave_puesto}
-                        value={option.clave_puesto}
-                      >
-                        {option.descripcion_puesto}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                <TextField select fullWidth label="Puesto" name="idPuesto" value={formData.idPuesto || ''} onChange={handleInputChange} {...commonProps}>
+                  {puestosOptions.map((option) => (
+                    <MenuItem key={option.clave_puesto} value={option.clave_puesto}>{option.descripcion_puesto}</MenuItem>
+                  ))}
+                </TextField>
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
-                <FormControl fullWidth size='small'>
-                  <InputLabel id='departamento-label'>Departamento</InputLabel>
-                  <Select
-                    labelId='departamento-label'
-                    name='idDepartamento'
-                    value={formData.idDepartamento || ''}
-                    onChange={handleInputChange}
-                    {...commonProps}
-                  >
-                    {departamentosOptions.map((option) => (
-                      <MenuItem
-                        key={option.clave_departamento}
-                        value={option.clave_departamento}
-                      >
-                        {option.descripcion_departamento}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                <TextField select fullWidth label="Departamento" name="idDepartamento" value={formData.idDepartamento || ''} onChange={handleInputChange} {...commonProps}>
+                  {departamentosOptions.map((option) => (
+                    <MenuItem key={option.clave_departamento} value={option.clave_departamento}>{option.descripcion_departamento}</MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
+              
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField select fullWidth label="Estado" name="status" value={formData.status || ''} onChange={handleInputChange} {...commonProps}>
+                  {statusOptions.map((option) => (
+                    <MenuItem key={option.clave_status} value={option.clave_status}>{option.descripcion}</MenuItem>
+                  ))}
+                </TextField>
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
-                <FormControl fullWidth size='small'>
-                  <InputLabel id='status-label'>Estado</InputLabel>
-                  <Select
-                    labelId='status-label'
-                    name='status'
-                    value={formData.status || ''}
-                    onChange={handleInputChange}
-                    {...commonProps}
-                  >
-                    {statusOptions.map((option) => (
-                      <MenuItem
-                        key={option.clave_status}
-                        value={option.clave_status}
-                      >
-                        {option.descripcion}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                <TextField select fullWidth label="Recontratable" name="recontratable" value={formData.recontratable || 1} onChange={handleInputChange} {...commonProps}>
+                  <MenuItem value={1}>SÍ</MenuItem>
+                  <MenuItem value={2}>NO</MenuItem>
+                </TextField>
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
-                <FormControl fullWidth size='small'>
-                  <InputLabel id='recontratable-label'>
-                    Recontratable
-                  </InputLabel>
-                  <Select
-                    labelId='recontratable-label'
-                    name='recontratable'
-                    value={formData.recontratable || 1}
-                    label='Recontratable'
-                    onChange={handleInputChange}
-                    {...commonProps}
-                  >
-                    <MenuItem value={1}>SÍ</MenuItem>
-                    <MenuItem value={2}>NO</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid size={{ xs: 12, md: 4 }}>
-                <FormControl fullWidth size='small'>
-                  <InputLabel id='motivo-baja-label'>Motivo de Baja</InputLabel>
-                  <Select
-                    labelId='motivo-baja-label'
-                    name='motivoBajaEspecificacion'
-                    value={formData.motivoBajaEspecificacion === 'string' ? '' : (formData.motivoBajaEspecificacion || '')}
-                    onChange={handleInputChange}
-                    {...commonProps}
-                  >
-                    <MenuItem value=''>-- Seleccionar --</MenuItem>
-                    {motivosBajaOptions.map((option) => (
-                      <MenuItem
-                        key={option.descripcion}
-                        value={option.descripcion}
-                      >
-                        {option.descripcion}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                <TextField select fullWidth label="Motivo de Baja" name="motivoBajaEspecificacion" value={formData.motivoBajaEspecificacion === 'string' ? '' : (formData.motivoBajaEspecificacion || '')} onChange={handleInputChange} {...commonProps}>
+                  <MenuItem value=''>-- Seleccionar --</MenuItem>
+                  {motivosBajaOptions.map((option) => (
+                    <MenuItem key={option.descripcion} value={option.descripcion}>{option.descripcion}</MenuItem>
+                  ))}
+                </TextField>
               </Grid>
             </Grid>
           )}
 
-          {/* Tab Salario - Edición */}
+        {/* Tab Salario - Edición */}
           {activeEditTab === 2 && (
-            <Grid container spacing={2}>
+            <Grid container spacing={3}>
               <Grid size={{ xs: 12, md: 4 }}>
-                <TextField
-                  fullWidth
-                  label='Salario Actual'
-                  name='salarioActual'
-                  value={formData.salarioActual?.toString() || ''}
-                  onChange={handleInputChange}
-                  size='small'
-                  InputProps={{
-                    startAdornment: '$',
-                    ...commonProps.InputProps,
-                  }}
-                  {...commonProps}
-                />
+                <TextField fullWidth label='Salario Actual' name='salarioActual' value={formData.salarioActual?.toString() || ''} onChange={handleInputChange} InputProps={{ startAdornment: '$', ...commonProps.InputProps }} {...commonProps} />
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
-                <FormControl fullWidth size='small'>
-                  <InputLabel id='forma-pago-label'>Forma de Pago</InputLabel>
-                  <Select
-                    labelId='forma-pago-label'
-                    name='clavePerfil'
-                    value={formData.clavePerfil || ''}
-                    onChange={handleInputChange}
-                    {...commonProps}
-                  >
-                    {formasPagoOptions.map((option) => (
-                      <MenuItem
-                        key={option.clave_forma_pago}
-                        value={option.clave_forma_pago}
-                      >
-                        {option.descripcion_forma_pago}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                <TextField select fullWidth label="Forma de Pago" name="clavePerfil" value={formData.clavePerfil || ''} onChange={handleInputChange} {...commonProps}>
+                  {formasPagoOptions.map((option) => (
+                    <MenuItem key={option.clave_forma_pago} value={option.clave_forma_pago}>{option.descripcion_forma_pago}</MenuItem>
+                  ))}
+                </TextField>
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
-                <TextField
-                  fullWidth
-                  label='Número Cta Tarjeta'
-                  name='num_tc'
-                  value={formData.num_tc || ''}
-                  onChange={handleInputChange}
-                  size='small'
-                  {...commonProps}
-                />
+                <TextField fullWidth label='Número Cta Tarjeta' name='num_tc' value={formData.num_tc || ''} onChange={handleInputChange} {...commonProps} />
+              </Grid>
+              
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField fullWidth label='Número CLABE' name='num_clabe' value={formData.num_clabe || ''} onChange={handleInputChange} {...commonProps} />
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
-                <TextField
-                  fullWidth
-                  label='Número CLABE'
-                  name='num_clabe'
-                  value={formData.num_clabe || ''}
-                  onChange={handleInputChange}
-                  size='small'
-                  {...commonProps}
-                />
-              </Grid>
-              <Grid size={{ xs: 12, md: 4 }}>
-                <TextField
-                  fullWidth
-                  label='Número Cuenta'
-                  name='num_cuenta'
-                  value={formData.num_cuenta || ''}
-                  onChange={handleInputChange}
-                  size='small'
-                  {...commonProps}
-                />
+                <TextField fullWidth label='Número Cuenta' name='num_cuenta' value={formData.num_cuenta || ''} onChange={handleInputChange} {...commonProps} />
               </Grid>
             </Grid>
           )}
@@ -1671,163 +1414,51 @@ export default function CatTrabajadores() {
           {/* Tab Personales - Edición */}
           {activeEditTab === 3 && (
             <Grid container spacing={2}>
-              <Grid size={{ xs: 12, md: 4 }}>
-                <TextField
-                  fullWidth
-                  label='Domicilio'
-                  name='domicilio'
-                  value={formData.domicilio || ''}
-                  onChange={handleInputChange}
-                  size='small'
-                  {...commonProps}
-                />
+              <Grid item xs={12} md={4}>
+                <TextField fullWidth label='Domicilio' name='domicilio' value={formData.domicilio || ''} onChange={handleInputChange} {...commonProps} />
               </Grid>
-              <Grid size={{ xs: 12, md: 4 }}>
-                <TextField
-                  fullWidth
-                  label='Colonia'
-                  name='colonia'
-                  value={formData.colonia || ''}
-                  onChange={handleInputChange}
-                  size='small'
-                  {...commonProps}
-                />
+              <Grid item xs={12} md={4}>
+                <TextField fullWidth label='Colonia' name='colonia' value={formData.colonia || ''} onChange={handleInputChange} {...commonProps} />
               </Grid>
-              <Grid size={{ xs: 12, md: 4 }}>
-                <TextField
-                  fullWidth
-                  label='Población'
-                  name='poblacion'
-                  value={formData.poblacion || ''}
-                  onChange={handleInputChange}
-                  size='small'
-                  {...commonProps}
-                />
+              <Grid item xs={12} md={4}>
+                <TextField fullWidth label='Población' name='poblacion' value={formData.poblacion || ''} onChange={handleInputChange} {...commonProps} />
               </Grid>
-              <Grid size={{ xs: 12, md: 4 }}>
-                <TextField
-                  fullWidth
-                  label='Estado'
-                  name='estado'
-                  value={formData.estado || ''}
-                  onChange={handleInputChange}
-                  size='small'
-                  {...commonProps}
-                />
+              <Grid item xs={12} md={4}>
+                <TextField fullWidth label='Estado' name='estado' value={formData.estado || ''} onChange={handleInputChange} {...commonProps} />
               </Grid>
-              <Grid size={{ xs: 12, md: 4 }}>
-                <TextField
-                  fullWidth
-                  label='Código Postal'
-                  name='codigoPostal'
-                  value={formData.codigoPostal || ''}
-                  onChange={handleInputChange}
-                  size='small'
-                  {...commonProps}
-                />
+              <Grid item xs={12} md={4}>
+                <TextField fullWidth label='Código Postal' name='codigoPostal' value={formData.codigoPostal || ''} onChange={handleInputChange} {...commonProps} />
               </Grid>
-              <Grid size={{ xs: 12, md: 4 }}>
-                <TextField
-                  fullWidth
-                  label='Teléfono 1'
-                  name='telefono1'
-                  value={formData.telefono1 || ''}
-                  onChange={handleInputChange}
-                  size='small'
-                  {...commonProps}
-                />
+              <Grid item xs={12} md={4}>
+                <TextField fullWidth label='Teléfono 1' name='telefono1' value={formData.telefono1 || ''} onChange={handleInputChange} {...commonProps} />
               </Grid>
-              <Grid size={{ xs: 12, md: 4 }}>
-                <TextField
-                  fullWidth
-                  label='Teléfono 2'
-                  name='telefono2'
-                  value={formData.telefono2 || ''}
-                  onChange={handleInputChange}
-                  size='small'
-                  {...commonProps}
-                />
+              <Grid item xs={12} md={4}>
+                <TextField fullWidth label='Teléfono 2' name='telefono2' value={formData.telefono2 || ''} onChange={handleInputChange} {...commonProps} />
               </Grid>
-              <Grid size={{ xs: 12, md: 4 }}>
-                <TextField
-                  fullWidth
-                  label='Email'
-                  name='email'
-                  type='email'
-                  value={formData.email || ''}
-                  onChange={handleInputChange}
-                  size='small'
-                  {...commonProps}
-                />
+              <Grid item xs={12} md={4}>
+                <TextField fullWidth label='Email' name='email' type='email' value={formData.email || ''} onChange={handleInputChange} {...commonProps} />
               </Grid>
             </Grid>
           )}
 
           {/* Tab Identificadores - Edición */}
           {activeEditTab === 4 && (
-            <Grid container spacing={2}>
-              <Grid
-                item xs={12} md={4}
-                sx={{ display: 'flex', justifyContent: 'center' }}
-              >
-                <TextField
-                  label='Contraseña'
-                  name='password'
-                  type='password'
-                  value={formData.password || ''}
-                  onChange={handleInputChange}
-                  size='small'
-                  inputProps={{ maxLength: 12 }} //Permite escribir solo 12 caracteres
-                  {...commonProps}
-                />
-              </Grid>
-              <Grid
-                item xs={12} md={4}
-                sx={{ display: 'flex', justifyContent: 'center' }}
-              >
-                <Typography
-                  variant='h7'
-                  sx={{ mb: 2, fontWeight: 'bold', color: '#333' }}
-                >
-                  Máximo 12 caracteres
-                </Typography>
-              </Grid>
-              <Grid
-                item xs={12} md={4}
-                sx={{ display: 'flex', justifyContent: 'center' }}
-              >
+            <Grid container spacing={3} alignItems="flex-start">
+              <Grid item xs={12} md={4}>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                  <Button
-                    variant='outlined'
-                    size='small'
-                    sx={{
-                      minWidth: 100,
-                      textTransform: 'none',
-                      backgroundColor: '#797878a9',
-                    }}
-                  >
+                  <TextField fullWidth label='Contraseña' name='password' type='password' value={formData.password || ''} onChange={handleInputChange} inputProps={{ maxLength: 12 }} {...commonProps} />
+                  <Typography variant='caption' sx={{ color: '#666', pl: 1 }}>Máximo 12 caracteres</Typography>
+                </Box>
+              </Grid>
+              <Grid item xs={12} md={8}>
+                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                  <Button variant='outlined' size='small' sx={{ textTransform: 'none', color: '#1a365d', borderColor: '#1a365d', borderRadius: '8px', px: 3, py: 1, '&:hover': { bgcolor: 'rgba(26, 54, 93, 0.05)' } }}>
                     Registro de Huella Digital
                   </Button>
-                  <Button
-                    variant='outlined'
-                    size='small'
-                    sx={{
-                      minWidth: 100,
-                      textTransform: 'none',
-                      backgroundColor: '#797878a9',
-                    }}
-                  >
+                  <Button variant='outlined' size='small' sx={{ textTransform: 'none', color: '#1a365d', borderColor: '#1a365d', borderRadius: '8px', px: 3, py: 1, '&:hover': { bgcolor: 'rgba(26, 54, 93, 0.05)' } }}>
                     Consulta y Registro de Fotografías
                   </Button>
-                  <Button
-                    variant='outlined'
-                    size='small'
-                    sx={{
-                      minWidth: 100,
-                      textTransform: 'none',
-                      backgroundColor: '#797878a9',
-                    }}
-                  >
+                  <Button variant='outlined' size='small' sx={{ textTransform: 'none', color: '#1a365d', borderColor: '#1a365d', borderRadius: '8px', px: 3, py: 1, '&:hover': { bgcolor: 'rgba(26, 54, 93, 0.05)' } }}>
                     Consulta y Registro de Firma
                   </Button>
                 </Box>
@@ -1837,85 +1468,46 @@ export default function CatTrabajadores() {
 
           {/* Tab Vacaciones y Permisos - Edición */}
           {activeEditTab === 5 && (
-            <Grid container spacing={2}>
-              <Grid size={{ xs: 12, md: 4 }}>
-                <Typography
-                  variant='h6'
-                  sx={{ mb: 2, fontWeight: 'bold', color: '#333' }}
-                >
-                  Vacaciones y Permisos
-                </Typography>
-              </Grid>
-              <Grid size={{ xs: 12, md: 4 }}>
-                <Box
-                  sx={{
-                    border: '1px solid #ddd',
-                    borderRadius: 1,
-                    p: 3,
-                    textAlign: 'center',
-                    backgroundColor: '#f9f9f9',
-                  }}
-                >
-                  <Typography variant='body2' sx={{ color: '#666' }}>
-                    No hay información de vacaciones y permisos disponible
-                  </Typography>
-                </Box>
-              </Grid>
-            </Grid>
+            <Box sx={{ border: '1px dashed #ccc', borderRadius: '12px', p: 5, textAlign: 'center', backgroundColor: '#fafafa' }}>
+              <Typography variant='h6' sx={{ color: '#999', fontWeight: 500 }}>
+                No hay información de vacaciones y permisos disponible en este momento
+              </Typography>
+            </Box>
           )}
 
           {/* Tab Bitácora - Edición */}
           {activeEditTab === 6 && (
-            <Grid container spacing={2}>
-              <Grid size={{ xs: 12, md: 4 }}>
-                <Typography
-                  variant='h6'
-                  sx={{ mb: 2, fontWeight: 'bold', color: '#333' }}
-                >
-                  Bitácora de Cambios
-                </Typography>
-              </Grid>
-              <Grid size={{ xs: 12, md: 4 }}>
-                <Box
-                  sx={{
-                    border: '1px solid #ddd',
-                    borderRadius: 1,
-                    p: 3,
-                    minHeight: 200,
-                    backgroundColor: '#f9f9f9',
-                  }}
-                >
-                  <Typography
-                    variant='body2'
-                    sx={{ color: '#666', textAlign: 'center' }}
-                  >
-                    No hay información en la bitácora
-                  </Typography>
-                </Box>
-              </Grid>
-            </Grid>
+             <Box sx={{ border: '1px dashed #ccc', borderRadius: '12px', p: 5, textAlign: 'center', backgroundColor: '#fafafa' }}>
+             <Typography variant='h6' sx={{ color: '#999', fontWeight: 500 }}>
+               No hay información registrada en la bitácora
+             </Typography>
+           </Box>
           )}
         </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setOpenEdit(false)} variant='outlined'>
+        
+        <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
+          <Button 
+            onClick={() => setOpenEdit(false)} 
+            color="inherit"
+            sx={{ borderRadius: '8px', fontWeight: 500, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
+          >
             Cancelar
           </Button>
           <Button
             onClick={saveTrabajador}
             variant='contained'
             disabled={saving}
-            sx={{
-              backgroundColor: '#333333',
-              '&:disabled': {
-                backgroundColor: '#999999',
-                color: '#cccccc'
-              }
+            sx={{ 
+              bgcolor: '#000000ff', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none', px: 4,
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)', transition: 'all 0.3s ease',
+              '&:hover': { bgcolor: '#333333', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' },
+              '&:disabled': { backgroundColor: '#999999', color: '#ffffff' }
             }}
           >
-            {saving ? 'Guardando...' : (isEditing ? 'Actualizar' : 'Guardar')}
+            {saving ? 'Guardando...' : (isEditing ? 'Actualizar Trabajador' : 'Guardar Trabajador')}
           </Button>
         </DialogActions>
-   </Dialog>
+      </Dialog>
     </Box>
   </>
   );
