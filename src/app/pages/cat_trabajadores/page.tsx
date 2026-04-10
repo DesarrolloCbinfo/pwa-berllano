@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import Swal from 'sweetalert2';
 import {
   GridPaginationModel,
   GridRowParams,
@@ -289,7 +290,7 @@ export default function CatTrabajadores() {
       setStatusOptions(response.data || []);
     } catch (error) {
       console.error('Error al obtener status:', error);
-      // Valores por defecto si falla el API
+      
     }
   };
 
@@ -328,14 +329,27 @@ export default function CatTrabajadores() {
     if (!dateString) return '';
     try {
       const date = new Date(dateString);
-      // Validate that the date is valid
       if (isNaN(date.getTime())) return '';
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
+      // Usar UTC para evitar desfase de zona horaria
+      const year = date.getUTCFullYear();
+      const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(date.getUTCDate()).padStart(2, '0');
       return `${year}-${month}-${day}`;
     } catch {
       return '';
+    }
+  };
+
+  // Función para convertir fecha YYYY-MM-DD a ISO sin desfase de zona horaria
+  const dateToISOWithoutTimezone = (dateString: string | null | undefined): string | null => {
+    if (!dateString) return null;
+    try {
+      // Parsear la fecha como YYYY-MM-DD y crear en UTC para evitar desfase
+      const [year, month, day] = dateString.split('-').map(Number);
+      const date = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+      return date.toISOString();
+    } catch {
+      return null;
     }
   };
 
@@ -374,7 +388,7 @@ export default function CatTrabajadores() {
       nivelEscolaridad: empleado.nivel_escolaridad || 0,
       escolaridadConcluido: empleado.escolaridad_concluido || '',
       estadoCivil: empleado.estado_civil || 0,
-      motivoBajaEspecificacion: empleado.motivo_baja || '',
+      motivoBajaEspecificacion: empleado.motivo_baja === 'string' ? '' : (empleado.motivo_baja || ''),
       clavePerfil: empleado.clave_forma_pago || 0,
       password: empleado.contraseña || '',
       observaciones: empleado.descripcion_puesto || '',
@@ -442,7 +456,7 @@ export default function CatTrabajadores() {
         }
       );
       
-      console.log('Datos del API:', response.data); // ← AGREGAR ESTE LOG
+      console.log('Datos del API:', response.data); 
       
       const data = response.data.map((empleado: any, index: number) => 
         transformEmpleadoToRow(empleado, index)
@@ -500,7 +514,7 @@ export default function CatTrabajadores() {
     try {
       const response = await consumoApi.post(
         '/api/CatTrabajadores/sp_bw_activar_empleado',
-        {}, // Cuerpo vacío según tu curl -d ''
+        {}, 
         {
           params: {
             clave_empleado: clave
@@ -520,7 +534,7 @@ export default function CatTrabajadores() {
     try {
       const response = await consumoApi.post(
         '/api/CatTrabajadores/sp_bw_desactiva_empleado',
-        {}, // Cuerpo vacío según tu curl -d ''
+        {}, 
         {
           params: {
             clave_empleado: clave
@@ -712,81 +726,129 @@ export default function CatTrabajadores() {
     setSaving(true);
 
     // Validar campos requeridos antes de enviar
+    const camposRequeridos = [];
+    
+    if (!formData.claveEmpleado || formData.claveEmpleado.trim() === '') {
+      camposRequeridos.push('Clave de Empleado');
+    }
     if (!formData.nombre || formData.nombre.trim() === '') {
-      setMessage({ text: 'El nombre es requerido', type: 'error' });
-      setSaving(false);
-      return;
+      camposRequeridos.push('Nombre');
     }
     if (!formData.apellido_paterno || formData.apellido_paterno.trim() === '') {
-      setMessage({ text: 'El apellido paterno es requerido', type: 'error' });
-      setSaving(false);
-      return;
+      camposRequeridos.push('Apellido Paterno');
     }
-    if (!formData.claveEmpleado || formData.claveEmpleado.trim() === '') {
-      setMessage({ text: 'La clave de empleado es requerida', type: 'error' });
+    if (!formData.idPuesto || formData.idPuesto === 0) {
+      camposRequeridos.push('Puesto');
+    }
+    if (!formData.rfc || formData.rfc.trim() === '') {
+      camposRequeridos.push('RFC');
+    }
+    if (!formData.idDepartamento || formData.idDepartamento === 0) {
+      camposRequeridos.push('Departamento');
+    }
+    if (!formData.fechaNacimiento) {
+      camposRequeridos.push('Fecha de Nacimiento');
+    }
+    if (!formData.nivelEscolaridad || formData.nivelEscolaridad === 0) {
+      camposRequeridos.push('Nivel de Escolaridad');
+    }
+    if (!formData.sexo || formData.sexo.trim() === '') {
+      camposRequeridos.push('Sexo');
+    }
+    if (!formData.estadoCivil || formData.estadoCivil === 0) {
+      camposRequeridos.push('Estado Civil');
+    }
+    if (!formData.salarioActual || parseFloat(formData.salarioActual.toString()) === 0) {
+      camposRequeridos.push('Salario Actual');
+    }
+    if (!formData.password || formData.password.trim() === '') {
+      camposRequeridos.push('Contraseña');
+    }
+    if (!formData.curp || formData.curp.trim() === '') {
+      camposRequeridos.push('CURP');
+    }
+    if (!formData.clavePerfil || formData.clavePerfil === 0) {
+      camposRequeridos.push('Forma de Pago');
+    }
+
+    if (camposRequeridos.length > 0) {
+      await Swal.fire({
+        title: 'Campos Requeridos',
+        html: `
+          <p style="font-size: 16px; margin-bottom: 15px;">Por favor complete los siguientes campos obligatorios:</p>
+          <ul style="text-align: left; margin: 0 auto; display: inline-block; font-size: 14px;">
+            ${camposRequeridos.map(campo => `<li style="margin: 5px 0;">${campo}</li>`).join('')}
+          </ul>
+        `,
+        icon: 'warning',
+        confirmButtonColor: '#333333',
+        confirmButtonText: 'Entendido'
+      });
       setSaving(false);
       return;
     }
 
     const datosParaEnviar = {
-      // Eliminamos el campo model ya que el ejemplo de agregar no lo usa
-      clave_empleado: formData.claveEmpleado,
-      status: formData.status,
-      nombre: formData.nombre,
-      apellido_paterno: formData.apellido_paterno,
-      apellido_materno: formData.apellido_materno,
-      clave_puesto: formData.idPuesto,
-      rfc: formData.rfc, // minúscula como en el ejemplo
-      imss: formData.imss, // minúscula como en el ejemplo
-      clave_departamento: formData.idDepartamento,
-      fecha_alta: formData.fecha_alta ? new Date(formData.fecha_alta).toISOString() : new Date().toISOString(), // Convertir a DATETIME
-      fecha_baja: formData.fecha_baja ? new Date(formData.fecha_baja).toISOString() : null,
-      fecha_nacimiento: formData.fechaNacimiento ? new Date(formData.fechaNacimiento).toISOString() : new Date().toISOString(), // Fecha actual si está vacío
-      lugar_nacimiento: formData.lugarNacimiento,
-      nivel_escolaridad: formData.nivelEscolaridad,
-      escolaridad_concluido: formData.escolaridad_concluido,
+      clave_empleado: formData.claveEmpleado || '',
+      status: formData.status || 1,
+      nombre: formData.nombre || '',
+      apellido_paterno: formData.apellido_paterno || '',
+      apellido_materno: formData.apellido_materno || null,
+      clave_puesto: formData.idPuesto || 0,
+      RFC: formData.rfc || '',
+      imss: formData.imss || "",
+      clave_departamento: formData.idDepartamento || 0,
+      // fecha_alta solo se envía en modo edición, al agregar se asigna automáticamente en el SP
+      ...(isEditing && { fecha_alta: dateToISOWithoutTimezone(formData.fecha_alta) }),
+      fecha_nacimiento: dateToISOWithoutTimezone(formData.fechaNacimiento),
+      lugar_nacimiento: formData.lugarNacimiento || null,
+      nivel_escolaridad: formData.nivelEscolaridad || 0,
+      escolaridad_concluido: formData.escolaridad_concluido ? String(formData.escolaridad_concluido) : '1',
       sexo: formData.sexo || 'M',
-      estado_civil: formData.estadoCivil,
-      salario_actual: formData.salarioActual,
-      domicilio: formData.domicilio,
-      colonia: formData.colonia,
-      poblacion: formData.poblacion,
-      estado: formData.estado,
-      codigo_postal: formData.codigoPostal,
-      telefono1: formData.telefono1,
-      telefono2: formData.telefono2,
-      email: formData.email,
-      curp: formData.curp, // minúscula como en el ejemplo
-      contraseña: formData.password || (isEditing ? undefined : ''), // En edición, si está vacío no modificar
-      confianza: Boolean(formData.confianza), // Convertir number (0/1) a boolean para API Update
-      motivo_baja: formData.motivoBajaEspecificacion || null,
-      clave_forma_pago: formData.clavePerfil,
-      num_cuenta: (formData.num_cuenta || '').trim(),
-      num_clabe: formData.num_clabe,
-      recontratable: formData.recontratable || 0
+      estado_civil: formData.estadoCivil || null,
+      salario_actual: parseFloat(formData.salarioActual?.toString() || '0'),
+      domicilio: formData.domicilio || null,
+      colonia: formData.colonia || null,
+      poblacion: formData.poblacion || null,
+      estado: formData.estado || null,
+      codigo_postal: formData.codigoPostal || null,
+      telefono1: formData.telefono1 || null,
+      telefono2: formData.telefono2 || null,
+      email: formData.email || null,
+      contraseña: formData.password || null,
+      CURP: formData.curp || null,
+      confianza: Boolean(formData.confianza),
+      fecha_baja: formData.fecha_baja ? dateToISOWithoutTimezone(formData.fecha_baja) : null,
+      clave_forma_pago: formData.clavePerfil || null,
+      num_tc: formData.num_tc || null,
+      num_clabe: formData.num_clabe || null,
+      num_cuenta: formData.num_cuenta?.trim() || null,
+      recontratable: formData.recontratable || null,
+      motivo_baja: formData.motivoBajaEspecificacion || null
     };
+
+    console.log('=== DATOS QUE SE ENVIARÁN A LA API ===');
+    console.log('isEditing:', isEditing);
+    console.log('datosParaEnviar:', JSON.stringify(datosParaEnviar, null, 2));
 
     try {
       const response = isEditing 
         ? await consumoApi.put(
             '/api/CatTrabajadores/sp_bw_cat_nomina_trabajadores_upd',
-            datosParaEnviar 
+            datosParaEnviar
           )
         : await consumoApi.post(
             '/api/CatTrabajadores/sp_bw_cat_nomina_trabajadores_add',
-            datosParaEnviar 
+            datosParaEnviar
           );
 
       console.log('Respuesta completa del backend:', response.data);
       console.log('Headers:', response.headers);
       console.log('Longitud de la respuesta:', response.data?.length);
       
-      
-
-      // 2. Validación de respuesta según el formato de tu SP
-      if (response.data?.[0]?.codigo === 0) {
+      if (response.data?.codigo === 0) {
         
-        const trabajadorActualizado = response.data[0];
+        const trabajadorActualizado = response.data;
         console.log('Usando datos actualizados del stored procedure:', trabajadorActualizado);
         
        
@@ -797,9 +859,22 @@ export default function CatTrabajadores() {
         
         await fetchTrabajadores(); 
         setOpenEdit(false);     
-        setMessage({ text: isEditing ? 'Trabajador actualizado exitosamente' : 'Trabajador agregado exitosamente', type: 'success' });
+        await Swal.fire({
+          title: '¡Éxito!',
+          text: response.data.mensaje || response.data.mensaje1 || (isEditing ? 'Trabajador actualizado exitosamente' : 'Trabajador agregado exitosamente'),
+          icon: 'success',
+          confirmButtonColor: '#333333',
+          timer: 2000,
+          showConfirmButton: false
+        });
       } else {
-        setMessage({ text: response.data?.[0]?.mensaje1 || 'Error al actualizar trabajador', type: 'error' });
+        // Error de la API (codigo !== 0), por ejemplo: clave duplicada
+        await Swal.fire({
+          title: 'Error',
+          text: response.data?.mensaje || response.data?.mensaje1 || 'Error al guardar el trabajador',
+          icon: 'error',
+          confirmButtonColor: '#333333'
+        });
       }
     } catch (err) {
       console.error('Error al actualizar trabajador:', err);
@@ -1018,13 +1093,13 @@ export default function CatTrabajadores() {
           }
         `}</style>
 
-        {/* CONTENEDOR BLANCO SUPERIOR (ENCABEZADO + FILTROS) */}
+        {/* ENCABEZADO + FILTROS */}
         <Box sx={{ backgroundColor: 'white', p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.05)', mb: 3 }}>
           
-          {/* RECUADRO INTERIOR ELEGANTE (SOLO TÍTULO Y DATOS) */}
-          <Box sx={{ border: '1px solid #2c3e50', p: 1.5, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+          
+          <Box sx={{ border: '1px solid #000000ff', p: 1.5, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between', mb: 3 }}>
               <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem', textTransform: 'uppercase' }}>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#000000ff', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem', textTransform: 'uppercase' }}>
                       CATÁLOGO DE TRABAJADORES
                   </Typography>
                  
@@ -1039,23 +1114,11 @@ export default function CatTrabajadores() {
 
           {/* FILTROS Y BOTÓN DE AGREGAR */}
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center', justifyContent: 'space-between' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
-              <Typography sx={{ fontWeight: 'bold', color: '#333' }}>
-                FILTRAR POR:
-              </Typography>
-              <TextField
-                {...commonProps}
-                placeholder='Nombre o Clave'
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                sx={{ ...commonProps.sx, maxWidth: '300px', '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
-              />
-            </Box>
-            
             <Button
               variant='contained'
               startIcon={<AddIcon />}
               onClick={handleOpenCreate}
+              disabled={saving}
               sx={{
                 height: '45px',
                 backgroundColor: '#333333',
@@ -1069,14 +1132,29 @@ export default function CatTrabajadores() {
                   backgroundColor: '#555555',
                   transform: 'translateY(-1px)'
                 },
+                '&:disabled': {
+                  backgroundColor: '#999999',
+                  color: '#cccccc'
+                }
               }}
             >
               + AGREGAR TRABAJADOR
             </Button>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Typography sx={{ fontWeight: 'bold', color: '#333' }}>
+                FILTRAR POR:
+              </Typography>
+              <TextField
+                {...commonProps}
+                placeholder='Nombre o Clave'
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                sx={{ ...commonProps.sx, width: '300px', '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+              />
+            </Box>
           </Box>
         </Box>
 
-        {/* CONTENEDOR DE LA TABLA ESTILO ELEGANTE */}
         <Box sx={{ backgroundColor: 'white', p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
           <Box sx={{ height: 600, width: '100%', display: 'flex', flexDirection: 'column' }}>
             {loading ? (
@@ -1396,19 +1474,6 @@ export default function CatTrabajadores() {
           {/* Tab Laborales - Edición */}
           {activeEditTab === 1 && (
             <Grid container spacing={2}>
-              <Grid size={{ xs: 12, md: 4 }}>
-                <TextField
-                  fullWidth
-                  label='Fecha de Alta'
-                  name='fecha_alta'
-                  type='date'
-                  InputLabelProps={{ shrink: true }}
-                  value={formatDateForInput(formData.fecha_alta) || ''}
-                  onChange={handleInputChange}
-                  size='small'
-                  {...commonProps}
-                />
-              </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
                 <TextField
                   fullWidth
@@ -1838,9 +1903,16 @@ export default function CatTrabajadores() {
           <Button
             onClick={saveTrabajador}
             variant='contained'
-            sx={{ backgroundColor: '#333333' }}
+            disabled={saving}
+            sx={{
+              backgroundColor: '#333333',
+              '&:disabled': {
+                backgroundColor: '#999999',
+                color: '#cccccc'
+              }
+            }}
           >
-            {isEditing ? 'Actualizar' : 'Guardar'}
+            {saving ? 'Guardando...' : (isEditing ? 'Actualizar' : 'Guardar')}
           </Button>
         </DialogActions>
    </Dialog>
