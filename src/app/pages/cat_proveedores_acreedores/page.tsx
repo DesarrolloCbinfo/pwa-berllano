@@ -1,12 +1,33 @@
 import { useEffect, useState } from 'react'
-import { Box, CircularProgress, Alert, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton } from '@mui/material'
+import { Box, CircularProgress, Alert, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, Grid } from '@mui/material'
 import { DataGrid, GridColDef } from '@mui/x-data-grid'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
+import CloseIcon from '@mui/icons-material/Close'
 import Swal from 'sweetalert2'
 import useConsumoApi from '../../../hooks/useConsumoApi'
 import { useSessionContext } from '../../../context/SessionProvider'
 import PWABadge from '../../../PWABadge'
+
+// --- ESTILOS BERLLANO ELEGANTE ---
+const commonProps = {
+  fullWidth: true,
+  size: "small" as const,
+  variant: "outlined" as const,
+  sx: {
+      '& .MuiInputBase-root': { 
+          height: '50px', 
+          alignItems: 'center',
+          borderRadius: '8px',
+          transition: 'all 0.3s ease',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+          '&:hover': { boxShadow: '0 4px 8px rgba(0,0,0,0.1)', borderColor: '#999' }
+      },
+      '& .MuiInputLabel-root': { transform: 'translate(14px, 14px) scale(1)', color: '#666', fontWeight: 500 },
+      '& .MuiInputLabel-shrink': { transform: 'translate(14px, -9px) scale(0.75)', color: '#333', fontWeight: 600 },
+      '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e0e0e0', borderWidth: '1.5px' }
+  }
+};
 
 interface Proveedor {
   id: number
@@ -544,245 +565,148 @@ return (
         </Box>
       </Box>
 
-      {/* Dialog Agregar */}
+     {/* --- MODAL AGREGAR --- */}
       <Dialog 
         open={openAdd} 
         onClose={handleAddClose} 
-        maxWidth="lg" 
+        maxWidth="md" 
         fullWidth
         PaperProps={{
           sx: {
-            borderRadius: '12px',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-            border: '1px solid #e0e0e0'
+            borderRadius: '16px',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+            border: '1px solid #e0e0e0',
+            overflow: 'hidden',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
           }
         }}
       >
-        <DialogTitle sx={{ 
-          bgcolor: '#333333', 
-          color: 'white',
-          py: 2.5,
-          px: 3,
-          borderBottom: '1px solid #e0e0e0'
-        }}>
-          <Box>
-            <Typography variant='h6' component="div" sx={{ fontWeight: 600 }}>
+        <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
+          <Box sx={{ position: 'relative', zIndex: 2 }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
               Agregar Nuevo Proveedor (Acreedor)
             </Typography>
-            <Typography variant='body2' component="div" sx={{ color: '#e0e0e0', mt: 0.5 }}>
+            <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
               Complete la información del proveedor en los campos correspondientes
             </Typography>
           </Box>
-        </DialogTitle>
+          <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+          <IconButton 
+            onClick={handleAddClose}
+            sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </Box>
 
-        <DialogContent sx={{ p: 3, bgcolor: '#fafafa' }}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4, mt: 1 }}>
             
             {/* Información General */}
             <Box>
-              <Box sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: 1, 
-                mb: 2,
-                borderLeft: '3px solid #424242',
-                pl: 1.5
-              }}>
-                <Typography variant='subtitle1' sx={{ fontWeight: 600 }}>
-                  Información General
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                  <TextField
-                    label="Nombre *"
-                    value={formData.nombre}
-                    onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                    fullWidth
-                    size='small'
-                    sx={{ bgcolor: 'white' }}
-                  />
-                </Box>
-                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                  <TextField
-                    label="RFC"
-                    value={formData.rfc}
-                    onChange={(e) => setFormData({ ...formData, rfc: e.target.value })}
-                    fullWidth
-                    size='small'
-                    sx={{ bgcolor: 'white' }}
-                  />
-                  <TextField
-                    label="Nombre Fiscal"
-                    value={formData.nombre_fiscal}
-                    onChange={(e) => setFormData({ ...formData, nombre_fiscal: e.target.value })}
-                    fullWidth
-                    size='small'
-                    sx={{ bgcolor: 'white' }}
-                  />
-                </Box>
-              </Box>
+              <Typography variant='subtitle1' sx={{ fontWeight: 600, color: '#333', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ width: 4, height: 20, backgroundColor: '#333333', borderRadius: 2 }} />
+                Información General
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <TextField {...commonProps} label="Nombre *" value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField {...commonProps} label="RFC" value={formData.rfc} onChange={(e) => setFormData({ ...formData, rfc: e.target.value })} />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField {...commonProps} label="Nombre Fiscal" value={formData.nombre_fiscal} onChange={(e) => setFormData({ ...formData, nombre_fiscal: e.target.value })} />
+                </Grid>
+              </Grid>
             </Box>
 
             {/* Dirección */}
             <Box>
-              <Box sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: 1, 
-                mb: 2,
-                borderLeft: '3px solid #424242',
-                pl: 1.5
-              }}>
-                <Typography variant='subtitle1' sx={{ fontWeight: 600 }}>
-                  Dirección
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                <TextField
-                  label="Calle"
-                  value={formData.calle}
-                  onChange={(e) => setFormData({ ...formData, calle: e.target.value })}
-                  fullWidth
-                  size='small'
-                  sx={{ bgcolor: 'white' }}
-                />
-                <TextField
-                  label="Colonia"
-                  value={formData.colonia}
-                  onChange={(e) => setFormData({ ...formData, colonia: e.target.value })}
-                  fullWidth
-                  size='small'
-                  sx={{ bgcolor: 'white' }}
-                />
-                <TextField
-                  label="Ciudad"
-                  value={formData.ciudad}
-                  onChange={(e) => setFormData({ ...formData, ciudad: e.target.value })}
-                  fullWidth
-                  size='small'
-                  sx={{ bgcolor: 'white' }}
-                />
-                <TextField
-                  label="Estado"
-                  value={formData.estado}
-                  onChange={(e) => setFormData({ ...formData, estado: e.target.value })}
-                  fullWidth
-                  size='small'
-                  sx={{ bgcolor: 'white' }}
-                />
-                <TextField
-                  label="Código Postal"
-                  value={formData.cp}
-                  onChange={(e) => setFormData({ ...formData, cp: e.target.value })}
-                  fullWidth
-                  size='small'
-                  sx={{ bgcolor: 'white' }}
-                />
-              </Box>
+              <Typography variant='subtitle1' sx={{ fontWeight: 600, color: '#333', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ width: 4, height: 20, backgroundColor: '#333333', borderRadius: 2 }} />
+                Dirección
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <TextField {...commonProps} label="Calle" value={formData.calle} onChange={(e) => setFormData({ ...formData, calle: e.target.value })} />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField {...commonProps} label="Colonia" value={formData.colonia} onChange={(e) => setFormData({ ...formData, colonia: e.target.value })} />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField {...commonProps} label="Ciudad" value={formData.ciudad} onChange={(e) => setFormData({ ...formData, ciudad: e.target.value })} />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField {...commonProps} label="Estado" value={formData.estado} onChange={(e) => setFormData({ ...formData, estado: e.target.value })} />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField {...commonProps} label="Código Postal" value={formData.cp} onChange={(e) => setFormData({ ...formData, cp: e.target.value })} />
+                </Grid>
+              </Grid>
             </Box>
 
             {/* Contacto */}
             <Box>
-              <Box sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: 1, 
-                mb: 2,
-                borderLeft: '3px solid #424242',
-                pl: 1.5
-              }}>
-                <Typography variant='subtitle1' sx={{ fontWeight: 600 }}>
-                  Contacto
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                <TextField
-                  label="Teléfono"
-                  value={formData.telefono}
-                  onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-                  fullWidth
-                  size='small'
-                  sx={{ bgcolor: 'white' }}
-                />
-                <TextField
-                  label="Fax"
-                  value={formData.fax}
-                  onChange={(e) => setFormData({ ...formData, fax: e.target.value })}
-                  fullWidth
-                  size='small'
-                  sx={{ bgcolor: 'white' }}
-                />
-                <TextField
-                  label="Email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  fullWidth
-                  size='small'
-                  sx={{ bgcolor: 'white' }}
-                />
-                <TextField
-                  label="Contacto"
-                  value={formData.contacto}
-                  onChange={(e) => setFormData({ ...formData, contacto: e.target.value })}
-                  fullWidth
-                  size='small'
-                  sx={{ bgcolor: 'white' }}
-                />
-              </Box>
+              <Typography variant='subtitle1' sx={{ fontWeight: 600, color: '#333', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ width: 4, height: 20, backgroundColor: '#333333', borderRadius: 2 }} />
+                Contacto
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <TextField {...commonProps} label="Teléfono" value={formData.telefono} onChange={(e) => setFormData({ ...formData, telefono: e.target.value })} />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField {...commonProps} label="Fax" value={formData.fax} onChange={(e) => setFormData({ ...formData, fax: e.target.value })} />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField {...commonProps} label="Email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField {...commonProps} label="Contacto" value={formData.contacto} onChange={(e) => setFormData({ ...formData, contacto: e.target.value })} />
+                </Grid>
+              </Grid>
             </Box>
 
-            {/* Información Contable */}
+          {/* Información Contable */}
             <Box>
-              <Box sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: 1, 
-                mb: 2,
-                borderLeft: '3px solid #424242',
-                pl: 1.5
-              }}>
-                <Typography variant='subtitle1' sx={{ fontWeight: 600 }}>
-                  Información Contable
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                <TextField
-                  label="Cuenta Contable"
-                  value={formData.cuenta_contable}
-                  onChange={(e) => setFormData({ ...formData, cuenta_contable: e.target.value })}
-                  fullWidth
-                  size='small'
-                  sx={{ bgcolor: 'white' }}
-                />
-                <TextField
-                  label="Observaciones"
-                  value={formData.observaciones}
-                  onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
-                  fullWidth
-                  size='small'
-                  sx={{ gridColumn: '1 / -1', bgcolor: 'white' }}
-                  multiline
-                  rows={2}
-                />
-              </Box>
+              <Typography variant='subtitle1' sx={{ fontWeight: 600, color: '#333', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ width: 4, height: 20, backgroundColor: '#333333', borderRadius: 2 }} />
+                Información Contable
+              </Typography>
+              <Grid container spacing={2}>
+                
+                {/* Cuenta Contable ocupa la mitad izquierda */}
+                <Grid item xs={12} sm={6}>
+                  <TextField 
+                    {...commonProps} 
+                    label="Cuenta Contable" 
+                    value={formData.cuenta_contable} 
+                    onChange={(e) => setFormData({ ...formData, cuenta_contable: e.target.value })} 
+                  />
+                </Grid>
+
+                {/* Observaciones salta a su propia línea y ocupa TODO el ancho */}
+                <Grid item xs={12}>
+                  <TextField 
+                    {...commonProps} 
+                    label="Observaciones" 
+                    value={formData.observaciones} 
+                    onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })} 
+                  />
+                </Grid>
+                
+              </Grid>
             </Box>
 
           </Box>
         </DialogContent>
 
-        <DialogActions sx={{ px: 3, py: 2, bgcolor: '#fafafa', borderTop: '1px solid #e0e0e0' }}>
+        <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
           <Button 
             onClick={handleAddClose}
-            sx={{ 
-              textTransform: 'none',
-              fontWeight: 600,
-              color: '#666',
-              '&:hover': {
-                color: '#333',
-                backgroundColor: 'rgba(0,0,0,0.04)'
-              }
-            }}
+            color="inherit"
+            sx={{ borderRadius: '8px', fontWeight: 500, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
           >
             Cancelar
           </Button>
@@ -790,19 +714,9 @@ return (
             onClick={handleAdd} 
             variant="contained"
             sx={{ 
-              backgroundColor: '#333333',
-              color: 'white',
-              fontWeight: 600,
-              textTransform: 'none',
-              borderRadius: '8px',
-              boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)',
-              transition: 'all 0.3s ease',
-              px: 4,
-              '&:hover': { 
-                backgroundColor: '#555555',
-                boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)',
-                transform: 'translateY(-1px)'
-              }
+              bgcolor: '#000000ff', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none', px: 4,
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)', transition: 'all 0.3s ease',
+              '&:hover': { bgcolor: '#333333', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }
             }}
           >
             Guardar
@@ -810,242 +724,155 @@ return (
         </DialogActions>
       </Dialog>
 
-      {/* Dialog Editar */}
+      {/* --- MODAL EDITAR --- */}
       <Dialog 
         open={openEdit} 
         onClose={handleEditClose} 
-        maxWidth="lg" 
+        maxWidth="md" 
         fullWidth
         PaperProps={{
           sx: {
-            borderRadius: '12px',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-            border: '1px solid #e0e0e0'
+            borderRadius: '16px',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+            border: '1px solid #e0e0e0',
+            overflow: 'hidden',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
           }
         }}
       >
-        <DialogTitle sx={{ 
-          bgcolor: '#333333', 
-          color: 'white',
-          py: 2.5,
-          px: 3,
-          borderBottom: '1px solid #e0e0e0'
-        }}>
-          <Box>
-            <Typography variant='h6' component="div" sx={{ fontWeight: 600 }}>
+        <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
+          <Box sx={{ position: 'relative', zIndex: 2 }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
               Editar Proveedor: {formData.cve_prov}
             </Typography>
-            <Typography variant='body2' component="div" sx={{ color: '#e0e0e0', mt: 0.5 }}>
+            <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
               Modifique la información del proveedor según sea necesario
             </Typography>
           </Box>
-        </DialogTitle>
+          <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+          <IconButton 
+            onClick={handleEditClose}
+            sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </Box>
 
-        <DialogContent sx={{ p: 3, bgcolor: '#fafafa' }}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4, mt: 1 }}>
             
             {/* Información General */}
             <Box>
-              <Box sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: 1, 
-                mb: 2,
-                borderLeft: '3px solid #424242',
-                pl: 1.5
-              }}>
-                <Typography variant='subtitle1' sx={{ fontWeight: 600 }}>
-                  Información General
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                <TextField
-                  label="Clave"
-                  value={formData.cve_prov}
-                  onChange={(e) => setFormData({ ...formData, cve_prov: e.target.value })}
-                  fullWidth
-                  disabled
-                  size='small'
-                  sx={{ bgcolor: 'white' }}
-                />
-                <TextField
-                  label="Nombre *"
-                  value={formData.nombre}
-                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                  fullWidth
-                  size='small'
-                  sx={{ bgcolor: 'white' }}
-                />
-                <TextField
-                  label="RFC"
-                  value={formData.rfc}
-                  onChange={(e) => setFormData({ ...formData, rfc: e.target.value })}
-                  fullWidth
-                  size='small'
-                  sx={{ bgcolor: 'white' }}
-                />
-                <TextField
-                  label="Nombre Fiscal"
-                  value={formData.nombre_fiscal}
-                  onChange={(e) => setFormData({ ...formData, nombre_fiscal: e.target.value })}
-                  fullWidth
-                  size='small'
-                  sx={{ bgcolor: 'white' }}
-                />
-              </Box>
+              <Typography variant='subtitle1' sx={{ fontWeight: 600, color: '#333', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ width: 4, height: 20, backgroundColor: '#333333', borderRadius: 2 }} />
+                Información General
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={3}>
+                  <TextField 
+                    {...commonProps} 
+                    label="Clave" 
+                    value={formData.cve_prov} 
+                    disabled 
+                    sx={{ 
+                      '& .MuiOutlinedInput-root': { borderRadius: '8px' },
+                      '& .MuiOutlinedInput-root.Mui-disabled': { backgroundColor: '#f5f5f5', borderRadius: '8px' } 
+                    }} 
+                  />
+                </Grid>
+                <Grid item xs={12} sm={9}>
+                  <TextField {...commonProps} label="Nombre *" value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField {...commonProps} label="RFC" value={formData.rfc} onChange={(e) => setFormData({ ...formData, rfc: e.target.value })} />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField {...commonProps} label="Nombre Fiscal" value={formData.nombre_fiscal} onChange={(e) => setFormData({ ...formData, nombre_fiscal: e.target.value })} />
+                </Grid>
+              </Grid>
             </Box>
 
             {/* Dirección */}
             <Box>
-              <Box sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: 1, 
-                mb: 2,
-                borderLeft: '3px solid #424242',
-                pl: 1.5
-              }}>
-                <Typography variant='subtitle1' sx={{ fontWeight: 600 }}>
-                  Dirección
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                <TextField
-                  label="Calle"
-                  value={formData.calle}
-                  onChange={(e) => setFormData({ ...formData, calle: e.target.value })}
-                  fullWidth
-                  size='small'
-                  sx={{ bgcolor: 'white' }}
-                />
-                <TextField
-                  label="Colonia"
-                  value={formData.colonia}
-                  onChange={(e) => setFormData({ ...formData, colonia: e.target.value })}
-                  fullWidth
-                  size='small'
-                  sx={{ bgcolor: 'white' }}
-                />
-                <TextField
-                  label="Ciudad"
-                  value={formData.ciudad}
-                  onChange={(e) => setFormData({ ...formData, ciudad: e.target.value })}
-                  fullWidth
-                  size='small'
-                  sx={{ bgcolor: 'white' }}
-                />
-                <TextField
-                  label="Estado"
-                  value={formData.estado}
-                  onChange={(e) => setFormData({ ...formData, estado: e.target.value })}
-                  fullWidth
-                  size='small'
-                  sx={{ bgcolor: 'white' }}
-                />
-                <TextField
-                  label="Código Postal"
-                  value={formData.cp}
-                  onChange={(e) => setFormData({ ...formData, cp: e.target.value })}
-                  fullWidth
-                  size='small'
-                  sx={{ bgcolor: 'white' }}
-                />
-              </Box>
+              <Typography variant='subtitle1' sx={{ fontWeight: 600, color: '#333', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ width: 4, height: 20, backgroundColor: '#333333', borderRadius: 2 }} />
+                Dirección
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <TextField {...commonProps} label="Calle" value={formData.calle} onChange={(e) => setFormData({ ...formData, calle: e.target.value })} />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField {...commonProps} label="Colonia" value={formData.colonia} onChange={(e) => setFormData({ ...formData, colonia: e.target.value })} />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField {...commonProps} label="Ciudad" value={formData.ciudad} onChange={(e) => setFormData({ ...formData, ciudad: e.target.value })} />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField {...commonProps} label="Estado" value={formData.estado} onChange={(e) => setFormData({ ...formData, estado: e.target.value })} />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField {...commonProps} label="Código Postal" value={formData.cp} onChange={(e) => setFormData({ ...formData, cp: e.target.value })} />
+                </Grid>
+              </Grid>
             </Box>
 
             {/* Contacto */}
             <Box>
-              <Box sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: 1, 
-                mb: 2,
-                borderLeft: '3px solid #424242',
-                pl: 1.5
-              }}>
-                <Typography variant='subtitle1' sx={{ fontWeight: 600 }}>
-                  Contacto
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                <TextField
-                  label="Teléfono"
-                  value={formData.telefono}
-                  onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-                  fullWidth
-                  size='small'
-                  sx={{ bgcolor: 'white' }}
-                />
-                <TextField
-                  label="Fax"
-                  value={formData.fax}
-                  onChange={(e) => setFormData({ ...formData, fax: e.target.value })}
-                  fullWidth
-                  size='small'
-                  sx={{ bgcolor: 'white' }}
-                />
-                <TextField
-                  label="Email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  fullWidth
-                  size='small'
-                  sx={{ bgcolor: 'white' }}
-                />
-                <TextField
-                  label="Contacto"
-                  value={formData.contacto}
-                  onChange={(e) => setFormData({ ...formData, contacto: e.target.value })}
-                  fullWidth
-                  size='small'
-                  sx={{ bgcolor: 'white' }}
-                />
-              </Box>
+              <Typography variant='subtitle1' sx={{ fontWeight: 600, color: '#333', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ width: 4, height: 20, backgroundColor: '#333333', borderRadius: 2 }} />
+                Contacto
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <TextField {...commonProps} label="Teléfono" value={formData.telefono} onChange={(e) => setFormData({ ...formData, telefono: e.target.value })} />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField {...commonProps} label="Fax" value={formData.fax} onChange={(e) => setFormData({ ...formData, fax: e.target.value })} />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField {...commonProps} label="Email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField {...commonProps} label="Contacto" value={formData.contacto} onChange={(e) => setFormData({ ...formData, contacto: e.target.value })} />
+                </Grid>
+              </Grid>
             </Box>
 
-            {/* Información Contable */}
+           {/* Información Contable */}
             <Box>
-              <Box sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: 1, 
-                mb: 2,
-                borderLeft: '3px solid #424242',
-                pl: 1.5
-              }}>
-                <Typography variant='subtitle1' sx={{ fontWeight: 600 }}>
-                  Información Contable
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                <TextField
-                  label="Cuenta Contable"
-                  value={formData.cuenta_contable}
-                  onChange={(e) => setFormData({ ...formData, cuenta_contable: e.target.value })}
-                  fullWidth
-                  size='small'
-                  sx={{ bgcolor: 'white' }}
-                />
-                <TextField
-                  label="Observaciones"
-                  value={formData.observaciones}
-                  onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
-                  fullWidth
-                  size='small'
-                  sx={{ gridColumn: '1 / -1', bgcolor: 'white' }}
-                  multiline
-                  rows={2}
-                />
-              </Box>
+              <Typography variant='subtitle1' sx={{ fontWeight: 600, color: '#333', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ width: 4, height: 20, backgroundColor: '#333333', borderRadius: 2 }} />
+                Información Contable
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <TextField 
+                    {...commonProps} 
+                    label="Cuenta Contable" 
+                    value={formData.cuenta_contable} 
+                    onChange={(e) => setFormData({ ...formData, cuenta_contable: e.target.value })} 
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField 
+                    {...commonProps} 
+                    label="Observaciones" 
+                    value={formData.observaciones} 
+                    onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })} 
+                  />
+                </Grid>
+              </Grid>
             </Box>
 
           </Box>
         </DialogContent>
 
-        <DialogActions sx={{ px: 3, py: 2, bgcolor: '#fafafa', borderTop: '1px solid #e0e0e0' }}>
+        <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
           <Button 
             onClick={handleEditClose}
-            sx={{ textTransform: 'uppercase', fontWeight: 600 }}
+            color="inherit"
+            sx={{ borderRadius: '8px', fontWeight: 500, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
           >
             Cancelar
           </Button>
@@ -1053,21 +880,17 @@ return (
             onClick={handleEdit} 
             variant="contained"
             sx={{ 
-              bgcolor: '#212121',
-              textTransform: 'uppercase',
-              fontWeight: 600,
-              px: 4,
-              '&:hover': {
-                bgcolor: '#424242'
-              }
+              bgcolor: '#000000ff', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none', px: 4,
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)', transition: 'all 0.3s ease',
+              '&:hover': { bgcolor: '#333333', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }
             }}
           >
-            Guardar
+            Actualizar
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Dialog Ver Detalles */}
+      {/* --- MODAL VER DETALLES --- */}
       <Dialog 
         open={openView} 
         onClose={handleViewClose} 
@@ -1075,171 +898,105 @@ return (
         fullWidth
         PaperProps={{
           sx: {
-            borderRadius: 2,
+            borderRadius: '16px',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+            border: '1px solid #e0e0e0',
+            overflow: 'hidden',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
           }
         }}
       >
-        <DialogTitle sx={{ 
-          bgcolor: '#424242', 
-          color: 'white',
-          py: 2.5,
-          px: 3
-        }}>
-          <Typography variant='h6' sx={{ fontWeight: 600 }}>
+        <Box sx={{ background: 'linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%)', color: '#333', p: 3, position: 'relative' }}>
+          <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold' }}>
             Detalles del Proveedor: {viewData?.cve_prov}
           </Typography>
-          <Typography variant='body2' sx={{ color: '#e0e0e0', mt: 0.5 }}>
+          <Typography variant="body2" sx={{ opacity: 0.8 }}>
             Información completa del proveedor
           </Typography>
-        </DialogTitle>
+          <IconButton onClick={handleViewClose} sx={{ position: 'absolute', top: 16, right: 16, color: '#333' }}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
 
-        <DialogContent sx={{ p: 3, bgcolor: '#fafafa' }}>
+        <DialogContent sx={{ p: 4, backgroundColor: '#ffffff' }}>
           {viewData && (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               
               {/* Información General */}
               <Box>
-                <Box sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 1, 
-                  mb: 2,
-                  borderLeft: '3px solid #424242',
-                  pl: 1.5
-                }}>
-                  <Typography variant='subtitle1' sx={{ fontWeight: 600 }}>
-                    Información General
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                  <Box>
-                    <Typography variant='caption' sx={{ color: '#666' }}>Clave</Typography>
-                    <Typography variant='body2' sx={{ fontWeight: 500 }}>{viewData.cve_prov || '-'}</Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant='caption' sx={{ color: '#666' }}>Nombre</Typography>
-                    <Typography variant='body2' sx={{ fontWeight: 500 }}>{viewData.nombre || '-'}</Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant='caption' sx={{ color: '#666' }}>RFC</Typography>
-                    <Typography variant='body2' sx={{ fontWeight: 500 }}>{viewData.rfc || '-'}</Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant='caption' sx={{ color: '#666' }}>Nombre Fiscal</Typography>
-                    <Typography variant='body2' sx={{ fontWeight: 500 }}>{viewData.nombre_fiscal || '-'}</Typography>
-                  </Box>
-                </Box>
+                <Typography variant='subtitle1' sx={{ fontWeight: 600, color: '#333', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ width: 4, height: 20, backgroundColor: '#333333', borderRadius: 2 }} />
+                  Información General
+                </Typography>
+                <Grid container spacing={3}>
+                  <Grid item xs={12} sm={3}><Typography variant='caption' sx={{ color: '#666', display: 'block' }}>Clave</Typography><Typography variant='body1' sx={{ fontWeight: 500 }}>{viewData.cve_prov || '-'}</Typography></Grid>
+                  <Grid item xs={12} sm={9}><Typography variant='caption' sx={{ color: '#666', display: 'block' }}>Nombre</Typography><Typography variant='body1' sx={{ fontWeight: 500 }}>{viewData.nombre || '-'}</Typography></Grid>
+                  <Grid item xs={12} sm={6}><Typography variant='caption' sx={{ color: '#666', display: 'block' }}>RFC</Typography><Typography variant='body1' sx={{ fontWeight: 500 }}>{viewData.rfc || '-'}</Typography></Grid>
+                  <Grid item xs={12} sm={6}><Typography variant='caption' sx={{ color: '#666', display: 'block' }}>Nombre Fiscal</Typography><Typography variant='body1' sx={{ fontWeight: 500 }}>{viewData.nombre_fiscal || '-'}</Typography></Grid>
+                </Grid>
               </Box>
 
               {/* Dirección */}
               <Box>
-                <Box sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 1, 
-                  mb: 2,
-                  borderLeft: '3px solid #424242',
-                  pl: 1.5
-                }}>
-                  <Typography variant='subtitle1' sx={{ fontWeight: 600 }}>
-                    Dirección
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                  <Box>
-                    <Typography variant='caption' sx={{ color: '#666' }}>Calle</Typography>
-                    <Typography variant='body2' sx={{ fontWeight: 500 }}>{viewData.calle || '-'}</Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant='caption' sx={{ color: '#666' }}>Colonia</Typography>
-                    <Typography variant='body2' sx={{ fontWeight: 500 }}>{viewData.colonia || '-'}</Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant='caption' sx={{ color: '#666' }}>Ciudad</Typography>
-                    <Typography variant='body2' sx={{ fontWeight: 500 }}>{viewData.ciudad || '-'}</Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant='caption' sx={{ color: '#666' }}>Estado</Typography>
-                    <Typography variant='body2' sx={{ fontWeight: 500 }}>{viewData.estado || '-'}</Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant='caption' sx={{ color: '#666' }}>Código Postal</Typography>
-                    <Typography variant='body2' sx={{ fontWeight: 500 }}>{viewData.cp || '-'}</Typography>
-                  </Box>
-                </Box>
+                <Typography variant='subtitle1' sx={{ fontWeight: 600, color: '#333', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ width: 4, height: 20, backgroundColor: '#333333', borderRadius: 2 }} />
+                  Dirección
+                </Typography>
+                <Grid container spacing={3}>
+                  <Grid item xs={12} sm={6}><Typography variant='caption' sx={{ color: '#666', display: 'block' }}>Calle</Typography><Typography variant='body1' sx={{ fontWeight: 500 }}>{viewData.calle || '-'}</Typography></Grid>
+                  <Grid item xs={12} sm={6}><Typography variant='caption' sx={{ color: '#666', display: 'block' }}>Colonia</Typography><Typography variant='body1' sx={{ fontWeight: 500 }}>{viewData.colonia || '-'}</Typography></Grid>
+                  <Grid item xs={12} sm={4}><Typography variant='caption' sx={{ color: '#666', display: 'block' }}>Ciudad</Typography><Typography variant='body1' sx={{ fontWeight: 500 }}>{viewData.ciudad || '-'}</Typography></Grid>
+                  <Grid item xs={12} sm={4}><Typography variant='caption' sx={{ color: '#666', display: 'block' }}>Estado</Typography><Typography variant='body1' sx={{ fontWeight: 500 }}>{viewData.estado || '-'}</Typography></Grid>
+                  <Grid item xs={12} sm={4}><Typography variant='caption' sx={{ color: '#666', display: 'block' }}>Código Postal</Typography><Typography variant='body1' sx={{ fontWeight: 500 }}>{viewData.cp || '-'}</Typography></Grid>
+                </Grid>
               </Box>
 
               {/* Contacto */}
               <Box>
-                <Box sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 1, 
-                  mb: 2,
-                  borderLeft: '3px solid #424242',
-                  pl: 1.5
-                }}>
-                  <Typography variant='subtitle1' sx={{ fontWeight: 600 }}>
-                    Contacto
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                  <Box>
-                    <Typography variant='caption' sx={{ color: '#666' }}>Teléfono</Typography>
-                    <Typography variant='body2' sx={{ fontWeight: 500 }}>{viewData.telefono || '-'}</Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant='caption' sx={{ color: '#666' }}>Fax</Typography>
-                    <Typography variant='body2' sx={{ fontWeight: 500 }}>{viewData.fax || '-'}</Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant='caption' sx={{ color: '#666' }}>Email</Typography>
-                    <Typography variant='body2' sx={{ fontWeight: 500 }}>{viewData.email || '-'}</Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant='caption' sx={{ color: '#666' }}>Contacto</Typography>
-                    <Typography variant='body2' sx={{ fontWeight: 500 }}>{viewData.contacto || '-'}</Typography>
-                  </Box>
-                </Box>
+                <Typography variant='subtitle1' sx={{ fontWeight: 600, color: '#333', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ width: 4, height: 20, backgroundColor: '#333333', borderRadius: 2 }} />
+                  Contacto
+                </Typography>
+                <Grid container spacing={3}>
+                  <Grid item xs={12} sm={6}><Typography variant='caption' sx={{ color: '#666', display: 'block' }}>Teléfono</Typography><Typography variant='body1' sx={{ fontWeight: 500 }}>{viewData.telefono || '-'}</Typography></Grid>
+                  <Grid item xs={12} sm={6}><Typography variant='caption' sx={{ color: '#666', display: 'block' }}>Fax</Typography><Typography variant='body1' sx={{ fontWeight: 500 }}>{viewData.fax || '-'}</Typography></Grid>
+                  <Grid item xs={12} sm={6}><Typography variant='caption' sx={{ color: '#666', display: 'block' }}>Email</Typography><Typography variant='body1' sx={{ fontWeight: 500 }}>{viewData.email || '-'}</Typography></Grid>
+                  <Grid item xs={12} sm={6}><Typography variant='caption' sx={{ color: '#666', display: 'block' }}>Contacto</Typography><Typography variant='body1' sx={{ fontWeight: 500 }}>{viewData.contacto || '-'}</Typography></Grid>
+                </Grid>
               </Box>
 
               {/* Información Contable */}
-              <Box>
-                <Box sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 1, 
-                  mb: 2,
-                  borderLeft: '3px solid #424242',
-                  pl: 1.5
-                }}>
-                  <Typography variant='subtitle1' sx={{ fontWeight: 600 }}>
-                    Información Contable
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr', gap: 2 }}>
-                  <Box>
-                    <Typography variant='caption' sx={{ color: '#666' }}>Cuenta Contable</Typography>
-                    <Typography variant='body2' sx={{ fontWeight: 500 }}>{viewData.cuenta_contable || '-'}</Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant='caption' sx={{ color: '#666' }}>Observaciones</Typography>
-                    <Typography variant='body2' sx={{ fontWeight: 500 }}>{viewData.observaciones || '-'}</Typography>
-                  </Box>
-                </Box>
-              </Box>
+            <Box>
+              <Typography variant='subtitle1' sx={{ fontWeight: 600, color: '#333', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ width: 4, height: 20, backgroundColor: '#333333', borderRadius: 2 }} />
+                Información Contable
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <TextField 
+                    {...commonProps} 
+                    label="Cuenta Contable" 
+                    value={formData.cuenta_contable} 
+                    onChange={(e) => setFormData({ ...formData, cuenta_contable: e.target.value })} 
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField 
+                    {...commonProps} 
+                    label="Observaciones" 
+                    value={formData.observaciones} 
+                    onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })} 
+                  />
+                </Grid>
+              </Grid>
+            </Box>
 
             </Box>
           )}
         </DialogContent>
 
-        <DialogActions sx={{ px: 3, py: 2, bgcolor: '#fafafa', borderTop: '1px solid #e0e0e0' }}>
-          <Button 
-            onClick={handleViewClose}
-            sx={{ textTransform: 'uppercase', fontWeight: 600 }}
-          >
-            Cerrar
-          </Button>
+        <DialogActions sx={{ p: 2, bgcolor: '#f8f9fa', borderTop: '1px solid #e0e0e0' }}>
+          <Button onClick={handleViewClose} color="inherit" sx={{ fontWeight: 600 }}>Cerrar</Button>
         </DialogActions>
       </Dialog>
 

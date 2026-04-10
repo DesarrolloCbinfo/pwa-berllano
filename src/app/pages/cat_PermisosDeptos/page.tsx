@@ -12,6 +12,8 @@ import {
   Alert,
   Paper,
   Dialog,
+  DialogContent, 
+  DialogActions,
   Divider,
   Checkbox
 } from '@mui/material';
@@ -846,226 +848,220 @@ return (
         </Grid>
       </Grid>
 
-      {/* --- MODAL DE FORMULARIO DE PERFILES --- */}
+    {/* --- MODAL DE FORMULARIO DE PERFILES --- */}
       <Dialog 
         open={openPerfilModal} 
         onClose={handleClosePerfilModal} 
-        maxWidth="md" 
+        maxWidth="sm" 
         fullWidth
         PaperProps={{
-          sx: { borderRadius: '12px' }
+          sx: {
+            borderRadius: '16px',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+            border: '1px solid #e0e0e0',
+            overflow: 'hidden',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
+          }
         }}
       >
-        <Box sx={{ p: 4, bgcolor: '#fdfdfd' }}>
-          {/* Header del Modal */}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#333' }}>
-              {perfilForm.id_perfil ? '✏️ Editar Perfil' : 'Nuevo Perfil'}
+        <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
+          <Box sx={{ position: 'relative', zIndex: 2 }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
+              {perfilForm.clave_perfil ? 'Editar Perfil' : 'Nuevo Perfil'}
             </Typography>
-            <IconButton onClick={handleClosePerfilModal}>
-              <CloseIcon />
-            </IconButton>
+            <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+              {perfilForm.clave_perfil ? 'Modifique la descripción del perfil' : 'Ingrese la información del nuevo perfil'}
+            </Typography>
           </Box>
-
-          <Divider sx={{ mb: 3, borderBottomWidth: 2, borderColor: '#000000ff' }} />
-
-          {/* Formulario */}
-          <Box sx={modalSectionStyle}>
-            <Grid container spacing={3}>
-              <Grid item xs={12}>
-                <TextField
-                  {...commonProps}
-                  label="Descripción del Perfil"
-                  name="descripcion"
-                  value={perfilForm.descripcion}
-                  onChange={handlePerfilChange}
-                  placeholder="Ej. Asistente, Gerencia, etc."
-                  multiline
-                  rows={9}
-                  required
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-                  <Button 
-                    onClick={handleClosePerfilModal} 
-                    variant="outlined"
-                    sx={{ 
-                      borderColor: '#ccc',
-                      color: '#666',
-                      fontWeight: 'bold',
-                      px: 3
-                    }}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button 
-                    onClick={handleSavePerfil}
-                    variant="contained"
-                    disabled={loading}
-                    sx={{ 
-                      bgcolor: '#000000ff',
-                      color: 'white',
-                      fontWeight: 'bold',
-                      px: 4
-                    }}
-                  >
-                    {loading ? 'Guardando...' : 'Guardar'}
-                  </Button>
-                </Box>
-              </Grid>
-            </Grid>
-          </Box>
+          <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+          <IconButton 
+            onClick={handleClosePerfilModal}
+            sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+          >
+            <CloseIcon />
+          </IconButton>
         </Box>
+
+        <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+          <Grid container spacing={2} sx={{ mt: 0.5 }}>
+            <Grid item xs={12}>
+              <TextField
+                {...commonProps}
+                label="Descripción del Perfil *"
+                name="descripcion_perfil"
+                value={perfilForm.descripcion_perfil}
+                onChange={handlePerfilChange}
+                placeholder="Ej. Asistente, Gerencia, etc."
+                autoFocus
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        
+        <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
+          <Button 
+            onClick={handleClosePerfilModal}
+            color="inherit"
+            sx={{ borderRadius: '8px', fontWeight: 500, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleSavePerfil}
+            variant="contained"
+            disabled={loading}
+            sx={{ 
+              bgcolor: '#000000ff', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none', px: 4,
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)', transition: 'all 0.3s ease',
+              '&:hover': { bgcolor: '#333333', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }
+            }}
+          >
+            {loading ? 'Guardando...' : 'Guardar'}
+          </Button>
+        </DialogActions>
       </Dialog>
 
       {/* --- MODAL DE FORMULARIO DE ACCESOS --- */}
       <Dialog 
         open={openAccesoModal} 
         onClose={handleCloseAccesoModal} 
-        maxWidth="lg" 
+        maxWidth="sm" 
         fullWidth
         PaperProps={{
-          sx: { borderRadius: '12px' }
+          sx: {
+            borderRadius: '16px',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+            border: '1px solid #e0e0e0',
+            overflow: 'hidden',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
+          }
         }}
       >
-        <Box sx={{ p: 4, bgcolor: '#fdfdfd' }}>
-          {/* Header del Modal */}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#333' }}>
-              {accesoForm.id_acceso ? '✏️ Editar Acceso' : 'Nuevo Acceso'}
+        <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
+          <Box sx={{ position: 'relative', zIndex: 2 }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
+              {accesoForm.area ? 'Editar Acceso' : 'Nuevo Acceso'}
             </Typography>
-            <IconButton onClick={handleCloseAccesoModal}>
-              <CloseIcon />
-            </IconButton>
+            <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+              {perfilSeleccionado ? `Perfil: ${perfilSeleccionado.descripcion_perfil}` : 'Gestione los accesos del perfil'}
+            </Typography>
           </Box>
-
-          <Divider sx={{ mb: 3, borderBottomWidth: 2, borderColor: '#636363ff' }} />
-
-          {/* Info del perfil */}
-          {perfilSeleccionado && (
-            <Box sx={{ mb: 3, p: 2, bgcolor: '#e8f5e9', borderRadius: '8px', border: '1px solid #020202ff' }}>
-              <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                Perfil: {perfilSeleccionado.descripcion} (ID: {perfilSeleccionado.id_perfil})
-              </Typography>
-            </Box>
-          )}
-
-          {/* Formulario */}
-          <Box sx={modalSectionStyle}>
-            <Grid container spacing={3}>
-              <Grid item xs={12}>
-                <TextField
-                  {...commonProps}
-                  label="Área"
-                  name="area"
-                  value={accesoForm.area}
-                  onChange={handleAccesoChange}
-                  required
-                  disabled
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  {...commonProps}
-                  label="D_Área"
-                  name="area_descrip"
-                  value={accesoForm.area_descrip}
-                  onChange={handleAccesoChange}
-                  required
-                  select
-                >
-                  <option value=""> </option>
-                  {areas.map((area) => (
-                    <option key={area.area} value={area.descripcion}>
-                      {area.descripcion}
-                    </option>
-                  ))}
-                </TextField>
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  {...commonProps}
-                  label="Departamento"
-                  name="depto"
-                  value={accesoForm.depto}
-                  onChange={handleAccesoChange}
-                  required
-                  disabled
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  {...commonProps}
-                  label="D_Departamento"
-                  name="depto_descrip"
-                  value={accesoForm.depto_descrip}
-                  onChange={handleAccesoChange}
-                  required
-                  select
-                >
-                  <option value=""> </option>
-                  {deptos.map((depto) => (
-                    <option key={depto.depto} value={depto.descripcion}>
-                      {depto.descripcion}
-                    </option>
-                  ))}
-                </TextField>
-              </Grid>
-              <Grid item xs={12}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                    Permiso:
-                  </Typography>
-                  <Checkbox
-                    checked={accesoForm.permiso}
-                    onChange={(e) => {
-                      setAccesoForm(prev => ({
-                        ...prev,
-                        permiso: e.target.checked
-                      }));
-                    }}
-                    color="primary"
-                  />
-                  <Typography variant="body2">
-                    {accesoForm.permiso ? 'Concedido' : 'Denegado'}
-                  </Typography>
-                </Box>
-              </Grid>
-              <Grid item xs={12}>
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-                  <Button 
-                    onClick={handleCloseAccesoModal} 
-                    variant="outlined"
-                    sx={{ 
-                      borderColor: '#ccc',
-                      color: '#666',
-                      fontWeight: 'bold',
-                      px: 3
-                    }}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button 
-                    onClick={handleSaveAcceso}
-                    variant="contained"
-                    disabled={loading}
-                    sx={{ 
-                      bgcolor: '#000000ff',
-                      color: 'white',
-                      fontWeight: 'bold',
-                      px: 4
-                    }}
-                  >
-                    {loading ? 'Guardando...' : 'Guardar'}
-                  </Button>
-                </Box>
-              </Grid>
-            </Grid>
-          </Box>
+          <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+          <IconButton 
+            onClick={handleCloseAccesoModal}
+            sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+          >
+            <CloseIcon />
+          </IconButton>
         </Box>
-      </Dialog>
 
+        <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+          <Grid container spacing={2} sx={{ mt: 0.5 }}>
+            
+            <Grid item xs={12} sm={4}>
+              <TextField
+                {...commonProps}
+                label="Área"
+                name="area"
+                value={accesoForm.area}
+                disabled
+                sx={{ 
+                  ...commonProps.sx,
+                  '& .MuiOutlinedInput-root.Mui-disabled': { backgroundColor: '#f5f5f5', borderRadius: '8px' } 
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={8}>
+              <TextField
+                {...commonProps}
+                label="Descripción Área *"
+                name="area_descrip"
+                value={accesoForm.area_descrip}
+                onChange={handleAccesoChange}
+                select
+                SelectProps={{ native: true }}
+              >
+                <option value=""> </option>
+                {areas.map((area) => (
+                  <option key={area.area} value={area.descripcion}>
+                    {area.descripcion}
+                  </option>
+                ))}
+              </TextField>
+            </Grid>
+            
+            <Grid item xs={12} sm={4}>
+              <TextField
+                {...commonProps}
+                label="Departamento"
+                name="depto"
+                value={accesoForm.depto}
+                disabled
+                sx={{ 
+                  ...commonProps.sx,
+                  '& .MuiOutlinedInput-root.Mui-disabled': { backgroundColor: '#f5f5f5', borderRadius: '8px' } 
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={8}>
+              <TextField
+                {...commonProps}
+                label="Descripción Depto *"
+                name="depto_descrip"
+                value={accesoForm.depto_descrip}
+                onChange={handleAccesoChange}
+                select
+                SelectProps={{ native: true }}
+              >
+                <option value=""> </option>
+                {deptos.map((depto) => (
+                  <option key={depto.depto} value={depto.descripcion}>
+                    {depto.descripcion}
+                  </option>
+                ))}
+              </TextField>
+            </Grid>
+
+            <Grid item xs={12}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5, borderRadius: '8px', border: '1.5px solid #e0e0e0', bgcolor: '#f8f9fa', transition: 'all 0.3s ease', '&:hover': { borderColor: '#999', bgcolor: '#f5f5f5' } }}>
+                <Checkbox
+                  checked={accesoForm.permiso}
+                  onChange={(e) => setAccesoForm(prev => ({ ...prev, permiso: e.target.checked }))}
+                  sx={{ color: '#333', p: 0, '&.Mui-checked': { color: '#333' } }}
+                />
+                <Box>
+                  <Typography variant='body2' sx={{ fontWeight: 600, color: '#333' }}>
+                    Permiso {accesoForm.permiso ? '(Concedido)' : '(Denegado)'}
+                  </Typography>
+                </Box>
+              </Box>
+            </Grid>
+            
+          </Grid>
+        </DialogContent>
+
+        <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
+          <Button 
+            onClick={handleCloseAccesoModal}
+            color="inherit"
+            sx={{ borderRadius: '8px', fontWeight: 500, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleSaveAcceso}
+            variant="contained"
+            disabled={loading}
+            sx={{ 
+              bgcolor: '#000000ff', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none', px: 4,
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)', transition: 'all 0.3s ease',
+              '&:hover': { bgcolor: '#333333', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }
+            }}
+          >
+            {loading ? 'Guardando...' : 'Guardar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
       {/* --- SNACKBAR --- */}
       <Snackbar 
         open={!!message} 

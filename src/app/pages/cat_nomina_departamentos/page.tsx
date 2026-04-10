@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
-import { Box, CircularProgress, Alert, Typography, Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, Snackbar } from '@mui/material';
+import { Box, CircularProgress, Alert, Typography, Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, Snackbar, Grid } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
+import CloseIcon from '@mui/icons-material/Close';
 import Swal from 'sweetalert2';
 import useConsumoApi from "../../../hooks/useConsumoApi";
 import { useSessionContext } from '../../../context/SessionProvider'; 
@@ -274,54 +275,76 @@ return (
         </Typography>
       </Box>
 
-      {/* Dialog para agregar */}
+      {/* --- MODAL AGREGAR --- */}
       <Dialog 
         open={openAdd} 
-        onClose={() => setOpenAdd(false)}
+        onClose={() => setOpenAdd(false)} 
+        maxWidth="sm" 
+        fullWidth
         PaperProps={{
           sx: {
-            borderRadius: '12px',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-            border: '1px solid #e0e0e0'
+            borderRadius: '16px',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+            border: '1px solid #e0e0e0',
+            overflow: 'hidden',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
           }
         }}
       >
-        <DialogTitle sx={{ fontFamily: 'Georgia, "Times New Roman", serif', fontWeight: 'bold', color: '#1a365d' }}>
-          Agregar Departamento
-        </DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            {...commonProps}
-            label="Clave del Departamento*"
-            value={clave_departamento}
-            onChange={(e) => setClaveDepartamento(e.target.value)}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            {...commonProps}
-            label="Descripción del Departamento*"
-            value={descripcion_departamento}
-            onChange={(e) => setDescripcionDepartamento(e.target.value)}
-          />
+        <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
+          <Box sx={{ position: 'relative', zIndex: 2 }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
+              Agregar Departamento
+            </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+              Ingrese la información del departamento
+            </Typography>
+          </Box>
+          <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+          <IconButton 
+            onClick={() => setOpenAdd(false)}
+            sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </Box>
+
+        <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+          <Grid container spacing={2} sx={{ mt: 0.5 }}>
+            <Grid item xs={12}>
+              <TextField
+                {...commonProps}
+                label="Clave del Departamento *"
+                value={clave_departamento}
+                onChange={(e) => setClaveDepartamento(e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                {...commonProps}
+                label="Descripción del Departamento *"
+                value={descripcion_departamento}
+                onChange={(e) => setDescripcionDepartamento(e.target.value)}
+              />
+            </Grid>
+          </Grid>
         </DialogContent>
-        <DialogActions sx={{ p: 3 }}>
+        <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
           <Button 
             onClick={() => setOpenAdd(false)}
-            sx={{ 
-              backgroundColor: '#e0e0e0', color: '#000', fontWeight: 'bold',
-              '&:hover': { backgroundColor: '#d0d0d0' }, borderRadius: '8px'
-            }}
+            color="inherit"
+            sx={{ borderRadius: '8px', fontWeight: 500, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
           >
             Cancelar
           </Button>
           <Button
             onClick={handleAdd}
             disabled={saving}
+            variant="contained"
             sx={{ 
-              backgroundColor: '#333333', color: 'white', fontWeight: 600, textTransform: 'none', borderRadius: '8px',
-              boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)', transition: 'all 0.3s ease',
-              '&:hover': { backgroundColor: '#555555', boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)', transform: 'translateY(-1px)' }
+              bgcolor: '#000000ff', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none', px: 4,
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)', transition: 'all 0.3s ease',
+              '&:hover': { bgcolor: '#333333', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }
             }}
           >
             {saving ? 'Guardando...' : 'Guardar'}
@@ -329,54 +352,76 @@ return (
         </DialogActions>
       </Dialog>
 
-      {/* Dialog para editar */}
+      {/* --- MODAL EDITAR --- */}
       <Dialog 
         open={openEdit} 
-        onClose={() => setOpenEdit(false)}
+        onClose={() => setOpenEdit(false)} 
+        maxWidth="sm" 
+        fullWidth
         PaperProps={{
           sx: {
-            borderRadius: '12px',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-            border: '1px solid #e0e0e0'
+            borderRadius: '16px',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+            border: '1px solid #e0e0e0',
+            overflow: 'hidden',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
           }
         }}
       >
-        <DialogTitle sx={{ fontFamily: 'Georgia, "Times New Roman", serif', fontWeight: 'bold', color: '#1a365d' }}>
-          Editar Departamento
-        </DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            {...commonProps}
-            label="Clave del Departamento*"
-            value={editClaveDepartamento}
-            onChange={(e) => setEditClaveDepartamento(e.target.value)}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            {...commonProps}
-            label="Descripción del Departamento*"
-            value={editDescripcionDepartamento}
-            onChange={(e) => setEditDescripcionDepartamento(e.target.value)}
-          />
+        <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
+          <Box sx={{ position: 'relative', zIndex: 2 }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
+              Editar Departamento
+            </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+              Modifique la información del departamento seleccionado
+            </Typography>
+          </Box>
+          <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+          <IconButton 
+            onClick={() => setOpenEdit(false)}
+            sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </Box>
+
+        <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+          <Grid container spacing={2} sx={{ mt: 0.5 }}>
+            <Grid item xs={12}>
+              <TextField
+                {...commonProps}
+                label="Clave del Departamento *"
+                value={editClaveDepartamento}
+                onChange={(e) => setEditClaveDepartamento(e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                {...commonProps}
+                label="Descripción del Departamento *"
+                value={editDescripcionDepartamento}
+                onChange={(e) => setEditDescripcionDepartamento(e.target.value)}
+              />
+            </Grid>
+          </Grid>
         </DialogContent>
-        <DialogActions sx={{ p: 3 }}>
+        <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
           <Button 
             onClick={() => setOpenEdit(false)}
-            sx={{ 
-              backgroundColor: '#e0e0e0', color: '#000', fontWeight: 'bold',
-              '&:hover': { backgroundColor: '#d0d0d0' }, borderRadius: '8px'
-            }}
+            color="inherit"
+            sx={{ borderRadius: '8px', fontWeight: 500, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
           >
             Cancelar
           </Button>
           <Button
             onClick={handleUpdate}
             disabled={savingEdit}
+            variant="contained"
             sx={{ 
-              backgroundColor: '#333333', color: 'white', fontWeight: 600, textTransform: 'none', borderRadius: '8px',
-              boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)', transition: 'all 0.3s ease',
-              '&:hover': { backgroundColor: '#555555', boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)', transform: 'translateY(-1px)' }
+              bgcolor: '#000000ff', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none', px: 4,
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)', transition: 'all 0.3s ease',
+              '&:hover': { bgcolor: '#333333', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }
             }}
           >
             {savingEdit ? 'Actualizando...' : 'Actualizar'}
