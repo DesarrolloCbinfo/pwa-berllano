@@ -4,7 +4,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Box, Typography, Button, IconButton, TextField, Grid, 
   MenuItem, Checkbox, Snackbar, Alert, Paper, Dialog, Slide,
-  Tabs, Tab, FormControlLabel, Divider, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Autocomplete
+  Tabs, Tab, FormControlLabel, Divider, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Autocomplete, DialogContent,
+  DialogActions
 } from '@mui/material'; 
 import { TransitionProps } from '@mui/material/transitions';
 import { 
@@ -362,107 +363,151 @@ const ModalProgPrecio = ({ open, onClose, consumoApi, setMessage, claveSeleccion
         }
     };
 
-    return (
-        <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-            <Box sx={{ p: 3, bgcolor: '#fdfdfd' }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                    <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#333' }}>
-                        📅 Programación Global de Precios
-                    </Typography>
-                    <IconButton onClick={onClose}><CloseIcon /></IconButton>
-                </Box>
-                
-                <Box sx={{ mb: 2, p: 1.5, bgcolor: '#e3f2fd', borderLeft: '5px solid #1976d2' }}>
-                    <Typography variant="body2">
-                        Aquí están <strong>todos</strong> los precios programados en el sistema.
-                    </Typography>
-                </Box>
+   return (
+      <Dialog 
+        open={open} 
+        onClose={onClose} 
+        maxWidth="md" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+            border: '1px solid #e0e0e0',
+            overflow: 'hidden',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
+          }
+        }}
+      >
+        <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
+          <Box sx={{ position: 'relative', zIndex: 2 }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
+               Programación Global de Precios
+            </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+              Consulte y programe los cambios de precios a futuro de sus productos
+            </Typography>
+          </Box>
+          <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+          <IconButton 
+            onClick={onClose}
+            sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </Box>
 
-                <TableContainer component={Paper} sx={{ maxHeight: 500, border: '1px solid #e0e0e0', boxShadow: 'none', mb: 2 }}>
-                    <Table stickyHeader size="small">
-                        <TableHead>
-                            <TableRow>
-                                <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', width: '200px' }}>Clave Producto</TableCell>
-                                <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Fecha Aplicación</TableCell>
-                                <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', width: '100px' }}>No. Lista</TableCell>
-                                <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Nuevo Precio</TableCell>
-                                <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', width: '50px' }} align="center">Acción</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {loading ? (
-                                <TableRow><TableCell colSpan={5} align="center" sx={{ py: 3 }}>Cargando registros...</TableCell></TableRow>
-                            ) : datos.length > 0 ? (
-                                datos.map((row) => (
-                                    <TableRow key={row._uid} hover>
-                                        <TableCell>
-                                            <TextField 
-                                                defaultValue={row.clave_prod || ''}
-                                                onBlur={(e) => handleBlur(row._uid, 'clave_prod', e.target.value)}
-                                                size="small" variant="standard" fullWidth placeholder="Ej. 1004"
-                                            />
-                                        </TableCell>
-                                        <TableCell>
-                                            <TextField 
-                                                type="date"
-                                                defaultValue={row.fecha ? row.fecha.substring(0, 10) : ''}
-                                                onBlur={(e) => handleBlur(row._uid, 'fecha', e.target.value)}
-                                                size="small" variant="standard" fullWidth InputLabelProps={{ shrink: true }}
-                                            />
-                                        </TableCell>
-                                        <TableCell>
-                                            <TextField 
-                                                type="number"
-                                                defaultValue={row.lista}
-                                                onBlur={(e) => handleBlur(row._uid, 'lista', e.target.value)}
-                                                size="small" variant="standard" fullWidth
-                                            />
-                                        </TableCell>
-                                        <TableCell>
-                                            <TextField 
-                                                type="number"
-                                                defaultValue={row.precio}
-                                                onBlur={(e) => handleBlur(row._uid, 'precio', e.target.value)}
-                                                size="small" variant="standard" fullWidth
-                                                InputProps={{ startAdornment: <Typography sx={{ mr: 1, color: '#666' }}>$</Typography> }}
-                                            />
-                                        </TableCell>
-                                        <TableCell align="center">
-                                            <IconButton size="small" color="error" onClick={() => handleDeleteRow(row._uid)}>
-                                                <DeleteIcon fontSize="small" />
-                                            </IconButton>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            ) : (
-                                <TableRow>
-                                    <TableCell colSpan={5} align="center" sx={{ py: 4, color: '#999' }}>
-                                        No hay precios programados en la tabla.
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
+        <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+          <Box sx={{ mb: 3, p: 2, bgcolor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+             <Typography variant="body2" sx={{ color: '#333' }}>
+                 Aquí están <strong>todos</strong> los precios programados en el sistema. Modifique o agregue fechas futuras para la aplicación de nuevos precios.
+             </Typography>
+          </Box>
 
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
-                    <Button variant="outlined" size="small" onClick={handleAddRow} sx={{ fontWeight: 'bold' }}>
-                        + Agregar Nuevo
-                    </Button>
-                    <Box sx={{ display: 'flex', gap: 2 }}>
-                        <Button onClick={onClose} color="inherit">Cancelar</Button>
-                        <Button 
-                            variant="contained" 
-                            onClick={handleSave} 
-                            disabled={saving}
-                            sx={{ bgcolor: '#1976d2', color: '#fff', fontWeight: 'bold' }}
-                        >
-                            {saving ? "Guardando..." : "💾 Guardar Todos"}
-                        </Button>
-                    </Box>
-                </Box>
-            </Box>
-        </Dialog>
+          <TableContainer component={Paper} sx={{ maxHeight: 400, borderRadius: '8px', border: '1px solid #e0e0e0', boxShadow: 'none', mb: 2 }}>
+            <Table stickyHeader size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000', width: '200px' }}>Clave Producto</TableCell>
+                  <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>Fecha Aplicación</TableCell>
+                  <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000', width: '100px' }}>No. Lista</TableCell>
+                  <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>Nuevo Precio</TableCell>
+                  <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000', width: '50px' }} align="center">Acción</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {loading ? (
+                  <TableRow><TableCell colSpan={5} align="center" sx={{ py: 3, color: '#666' }}>Cargando registros...</TableCell></TableRow>
+                ) : datos.length > 0 ? (
+                  datos.map((row) => (
+                    <TableRow key={row._uid} hover sx={{ transition: 'all 0.2s ease', '&:hover': { bgcolor: '#f5f5f5' } }}>
+                      <TableCell sx={{ borderBottom: '1px solid #f1f3f4' }}>
+                        <TextField 
+                          defaultValue={row.clave_prod || ''}
+                          onBlur={(e) => handleBlur(row._uid, 'clave_prod', e.target.value)}
+                          size="small" variant="standard" fullWidth placeholder="Ej. 1004"
+                          InputProps={{ disableUnderline: true }}
+                          sx={{ '& .MuiInputBase-input': { py: 0.5, fontWeight: 500, color: '#1a365d' } }}
+                        />
+                      </TableCell>
+                      <TableCell sx={{ borderBottom: '1px solid #f1f3f4' }}>
+                        <TextField 
+                          type="date"
+                          defaultValue={row.fecha ? row.fecha.substring(0, 10) : ''}
+                          onBlur={(e) => handleBlur(row._uid, 'fecha', e.target.value)}
+                          size="small" variant="standard" fullWidth InputLabelProps={{ shrink: true }}
+                          InputProps={{ disableUnderline: true }}
+                          sx={{ '& .MuiInputBase-input': { py: 0.5 } }}
+                        />
+                      </TableCell>
+                      <TableCell sx={{ borderBottom: '1px solid #f1f3f4' }}>
+                        <TextField 
+                          type="number"
+                          defaultValue={row.lista}
+                          onBlur={(e) => handleBlur(row._uid, 'lista', e.target.value)}
+                          size="small" variant="standard" fullWidth
+                          InputProps={{ disableUnderline: true }}
+                          sx={{ '& .MuiInputBase-input': { py: 0.5 } }}
+                        />
+                      </TableCell>
+                      <TableCell sx={{ borderBottom: '1px solid #f1f3f4' }}>
+                        <TextField 
+                          type="number"
+                          defaultValue={row.precio}
+                          onBlur={(e) => handleBlur(row._uid, 'precio', e.target.value)}
+                          size="small" variant="standard" fullWidth
+                          InputProps={{ startAdornment: <Typography sx={{ mr: 1, color: '#666', fontWeight: 'bold' }}>$</Typography>, disableUnderline: true }}
+                          sx={{ '& .MuiInputBase-input': { py: 0.5 } }}
+                        />
+                      </TableCell>
+                      <TableCell align="center" sx={{ borderBottom: '1px solid #f1f3f4' }}>
+                        <IconButton size="small" color="error" onClick={() => handleDeleteRow(row._uid)}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow><TableCell colSpan={5} align="center" sx={{ py: 4, color: '#999' }}>No hay precios programados en la tabla.</TableCell></TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          
+          <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
+            <Button 
+              variant="text" 
+              size="small" 
+              onClick={handleAddRow} 
+              sx={{ fontWeight: 'bold', color: '#666', textTransform: 'none', '&:hover': { bgcolor: '#f5f5f5', color: '#333' } }}
+            >
+              + Agregar Nueva Fila
+            </Button>
+          </Box>
+        </DialogContent>
+
+        <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
+          <Button 
+            onClick={onClose} 
+            color="inherit"
+            sx={{ borderRadius: '8px', fontWeight: 600, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleSave} 
+            variant="contained" 
+            disabled={saving}
+            sx={{ 
+              bgcolor: '#000000ff', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none', px: 4,
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)', transition: 'all 0.3s ease',
+              '&:hover': { bgcolor: '#333333', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }
+            }}
+          >
+            {saving ? "Guardando..." : "Guardar Todos"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     );
 };
 // --- COMPONENTE AISLADO PARA SUSTITUTOS ---
@@ -554,103 +599,135 @@ const ModalSustitutos = ({ open, onClose, consumoApi, setMessage, productoForm }
     };
 
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-            <Box sx={{ p: 3, bgcolor: '#fdfdfd' }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#333', lineHeight: 1 }}>
-                        Lista de <br /> <span style={{ fontSize: '1.6rem' }}>Códigos Alternos</span>
-                    </Typography>
-                    <IconButton onClick={onClose}><CloseIcon /></IconButton>
-                </Box>
-                
-                <Divider sx={{ my: 2, borderBottomWidth: 3, borderColor: '#1976d2' }} />
+      <Dialog 
+        open={open} 
+        onClose={onClose} 
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+            border: '1px solid #e0e0e0',
+            overflow: 'hidden',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
+          }
+        }}
+      >
+        <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
+          <Box sx={{ position: 'relative', zIndex: 2 }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
+              Códigos Alternos / Sustitutos
+            </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+              Gestione los códigos adicionales o códigos de barras del producto
+            </Typography>
+          </Box>
+          <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+          <IconButton 
+            onClick={onClose}
+            sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </Box>
 
-                {/* ENCABEZADO */}
-                <Grid container spacing={2} sx={{ mb: 3, p: 1.5, bgcolor: '#f5f5f5', borderRadius: 2 }}>
-                    <Grid item xs={8}>
-                        <Typography variant="body2"><strong>Clave general:</strong> {productoForm.clave_prod}</Typography>
-                        <Typography variant="body2" sx={{ mt: 0.5 }}><strong>Descripción:</strong> {productoForm.descripcion}</Typography>
-                    </Grid>
-                    <Grid item xs={4} textAlign="right">
-                        <Typography variant="body2"><strong>Costo unitario:</strong></Typography>
-                        <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#2e7d32' }}>
-                            ${Number(productoForm.costo_unitario_iva).toFixed(2)}
-                        </Typography>
-                    </Grid>
-                </Grid>
-
-                {/* CAJITAS PARA AGREGAR NUEVO */}
-                <Box sx={{ display: 'flex', gap: 1, mb: 3, alignItems: 'flex-start' }}>
-                    <TextField 
-                        sx={{ flex: 1 }}
-                        size="small" 
-                        variant="outlined" 
-                        label="Nuevo Código" 
-                        placeholder="Ej. 7501234..."
-                        value={nuevaClave}
-                        onChange={(e) => setNuevaClave(e.target.value)}
-                        disabled={saving}
-                    />
-                    <TextField 
-                        sx={{ flex: 1.5 }}
-                        size="small" 
-                        variant="outlined" 
-                        label="Descripción del código" 
-                        placeholder="Ej. Barras Caja 12 Pzas"
-                        value={nuevaDesc}
-                        onChange={(e) => setNuevaDesc(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleAgregar()}
-                        disabled={saving}
-                    />
-                    <Button 
-                        variant="contained" 
-                        onClick={handleAgregar}
-                        disabled={!nuevaClave.trim() || saving}
-                        sx={{ bgcolor: '#1976d2', color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap', height: '40px' }}
-                    >
-                        {saving ? "..." : "+ Agregar"}
-                    </Button>
-                </Box>
-
-                {/* TABLA DE CÓDIGOS */}
-                <TableContainer component={Paper} sx={{ maxHeight: 300, border: '1px solid #ccc', boxShadow: 'none' }}>
-                    <Table size="small" stickyHeader>
-                        <TableHead>
-                            <TableRow>
-                                <TableCell sx={{ bgcolor: '#eee', fontWeight: 'bold' }}>Código / Barra</TableCell>
-                                <TableCell sx={{ bgcolor: '#eee', fontWeight: 'bold' }}>Descripción específica</TableCell>
-                                <TableCell sx={{ bgcolor: '#eee', fontWeight: 'bold', width: '50px' }} align="center">Acción</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {loading ? (
-                                <TableRow><TableCell colSpan={3} align="center">Cargando...</TableCell></TableRow>
-                            ) : datos.length > 0 ? (
-                                datos.map((s, idx) => (
-                                    <TableRow key={idx} hover>
-                                        <TableCell sx={{ fontWeight: 'bold' }}>{s.codigo}</TableCell>
-                                        <TableCell>{s.descripcion}</TableCell>
-                                        <TableCell align="center">
-                                            <IconButton size="small" color="error" onClick={() => handleBorrar(s.codigo)}>
-                                                <DeleteIcon fontSize="small" />
-                                            </IconButton>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            ) : (
-                                <TableRow><TableCell colSpan={3} align="center" sx={{ py: 3, color: '#999' }}>No hay claves alternas registradas.</TableCell></TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
-
-                <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
-                    <Button onClick={onClose} variant="outlined" sx={{ color: '#333', borderColor: '#ccc', px: 4 }}>
-                        Cerrar Ventana
-                    </Button>
-                </Box>
+        <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+          
+          {/* ENCABEZADO DE INFO DEL PRODUCTO */}
+          <Box sx={{ mb: 3, p: 2, bgcolor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e0e0e0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box>
+              <Typography variant="body2" sx={{ color: '#666' }}><strong>Clave General:</strong> {productoForm.clave_prod}</Typography>
+              <Typography variant="body2" sx={{ mt: 0.5, color: '#333', fontWeight: 500 }}>{productoForm.descripcion}</Typography>
             </Box>
-        </Dialog>
+            <Box sx={{ textAlign: 'right' }}>
+              <Typography variant="caption" sx={{ color: '#666', display: 'block' }}>Costo unitario</Typography>
+              <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#2e7d32', lineHeight: 1 }}>
+                ${Number(productoForm.costo_unitario_iva).toFixed(2)}
+              </Typography>
+            </Box>
+          </Box>
+
+          {/* CAJITAS PARA AGREGAR NUEVO */}
+          <Box sx={{ display: 'flex', gap: 1.5, mb: 3, alignItems: 'flex-start' }}>
+            <TextField 
+              sx={{ flex: 1, '& .MuiInputBase-root': { borderRadius: '8px' } }}
+              size="small" 
+              variant="outlined" 
+              label="Nuevo Código / Barra" 
+              placeholder="Ej. 7501234..."
+              value={nuevaClave}
+              onChange={(e) => setNuevaClave(e.target.value)}
+              disabled={saving}
+            />
+            <TextField 
+              sx={{ flex: 1.5, '& .MuiInputBase-root': { borderRadius: '8px' } }}
+              size="small" 
+              variant="outlined" 
+              label="Descripción (Opcional)" 
+              placeholder="Ej. Caja 12 Pzas"
+              value={nuevaDesc}
+              onChange={(e) => setNuevaDesc(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAgregar()}
+              disabled={saving}
+            />
+            <Button 
+              variant="contained" 
+              onClick={handleAgregar}
+              disabled={!nuevaClave.trim() || saving}
+              sx={{ 
+                bgcolor: '#000000ff', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none', height: '40px', px: 2,
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)', transition: 'all 0.3s ease',
+                '&:hover': { bgcolor: '#333333', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }
+              }}
+            >
+              {saving ? "..." : "+ Agregar"}
+            </Button>
+          </Box>
+
+          {/* TABLA DE CÓDIGOS */}
+          <TableContainer component={Paper} sx={{ maxHeight: 300, borderRadius: '8px', border: '1px solid #e0e0e0', boxShadow: 'none' }}>
+            <Table size="small" stickyHeader>
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>Código / Barra</TableCell>
+                  <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>Descripción Específica</TableCell>
+                  <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', width: '50px', borderBottom: '2px solid #000' }} align="center">Acción</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {loading ? (
+                  <TableRow><TableCell colSpan={3} align="center" sx={{ py: 3, color: '#666' }}>Cargando...</TableCell></TableRow>
+                ) : datos.length > 0 ? (
+                  datos.map((s, idx) => (
+                    <TableRow key={idx} hover sx={{ transition: 'all 0.2s ease', '&:hover': { bgcolor: '#f5f5f5' } }}>
+                      <TableCell sx={{ fontWeight: 'bold', color: '#1a365d', borderBottom: '1px solid #f1f3f4' }}>{s.codigo}</TableCell>
+                      <TableCell sx={{ borderBottom: '1px solid #f1f3f4' }}>{s.descripcion}</TableCell>
+                      <TableCell align="center" sx={{ borderBottom: '1px solid #f1f3f4' }}>
+                        <IconButton size="small" color="error" onClick={() => handleBorrar(s.codigo)}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow><TableCell colSpan={3} align="center" sx={{ py: 4, color: '#999' }}>No hay códigos alternos registrados.</TableCell></TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </DialogContent>
+
+        <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
+          <Button 
+            onClick={onClose} 
+            color="inherit"
+            sx={{ borderRadius: '8px', fontWeight: 600, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
+          >
+            Cerrar
+          </Button>
+        </DialogActions>
+      </Dialog>
     );
 };
 
@@ -726,78 +803,162 @@ const ModalProgCosto = ({ open, onClose, consumoApi, setMessage, claveSelecciona
         }
     };
 
-    return (
-        <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
-            <Box sx={{ p: 3, bgcolor: '#fdfdfd' }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                    <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#333' }}>
-                        📈 Programación Global de Costos
-                    </Typography>
-                    <IconButton onClick={onClose}><CloseIcon /></IconButton>
-                </Box>
-                
-                <Box sx={{ mb: 2, p: 1.5, bgcolor: '#e8f5e9', borderLeft: '5px solid #4caf50' }}>
-                    <Typography variant="body2">
-                        Aquí puedes programar los futuros <strong>Costos</strong>. Se actualizarán automáticamente al llegar la fecha.
-                    </Typography>
-                </Box>
+  return (
+      <Dialog 
+        open={open} 
+        onClose={onClose} 
+        maxWidth="lg" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+            border: '1px solid #e0e0e0',
+            overflow: 'hidden',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
+          }
+        }}
+      >
+        <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
+          <Box sx={{ position: 'relative', zIndex: 2 }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
+               Programación Global de Costos
+            </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+              Programe los futuros Costos. Se actualizarán automáticamente al llegar la fecha programada.
+            </Typography>
+          </Box>
+          <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+          <IconButton 
+            onClick={onClose}
+            sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </Box>
 
-                <TableContainer component={Paper} sx={{ maxHeight: 500, border: '1px solid #e0e0e0', boxShadow: 'none', mb: 2 }}>
-                    <Table stickyHeader size="small">
-                        <TableHead>
-                            <TableRow>
-                                <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', width: '200px' }}>Clave</TableCell>
-                                <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Fecha</TableCell>
-                                <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Costo Unitario</TableCell>
-                                <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Costo Paquete</TableCell>
-                                <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Costo Neto</TableCell>
-                                <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', width: '50px' }} align="center">Acción</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {loading ? (
-                                <TableRow><TableCell colSpan={6} align="center" sx={{ py: 3 }}>Cargando costos...</TableCell></TableRow>
-                            ) : datos.length > 0 ? (
-                                datos.map((row) => (
-                                    <TableRow key={row._uid} hover>
-                                        <TableCell>
-                                            <TextField defaultValue={row.clave_prod || ''} onBlur={(e) => handleBlur(row._uid, 'clave_prod', e.target.value)} size="small" variant="standard" fullWidth />
-                                        </TableCell>
-                                        <TableCell>
-                                            <TextField type="date" defaultValue={row.fecha ? row.fecha.substring(0, 10) : ''} onBlur={(e) => handleBlur(row._uid, 'fecha', e.target.value)} size="small" variant="standard" fullWidth InputLabelProps={{ shrink: true }} />
-                                        </TableCell>
-                                        <TableCell>
-                                            <TextField type="number" defaultValue={row.costo_unitario} onBlur={(e) => handleBlur(row._uid, 'costo_unitario', e.target.value)} size="small" variant="standard" fullWidth InputProps={{ startAdornment: <Typography sx={{ mr: 1, color: '#666' }}>$</Typography> }} />
-                                        </TableCell>
-                                        <TableCell>
-                                            <TextField type="number" defaultValue={row.costo_paquete} onBlur={(e) => handleBlur(row._uid, 'costo_paquete', e.target.value)} size="small" variant="standard" fullWidth InputProps={{ startAdornment: <Typography sx={{ mr: 1, color: '#666' }}>$</Typography> }} />
-                                        </TableCell>
-                                        <TableCell>
-                                            <TextField type="number" defaultValue={row.costoNeto} onBlur={(e) => handleBlur(row._uid, 'costoNeto', e.target.value)} size="small" variant="standard" fullWidth InputProps={{ startAdornment: <Typography sx={{ mr: 1, color: '#666' }}>$</Typography> }} />
-                                        </TableCell>
-                                        <TableCell align="center">
-                                            <IconButton size="small" color="error" onClick={() => handleDeleteRow(row._uid)}><DeleteIcon fontSize="small" /></IconButton>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            ) : (
-                                <TableRow><TableCell colSpan={6} align="center" sx={{ py: 4, color: '#999' }}>No hay costos programados en la tabla.</TableCell></TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
+        <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+          <Box sx={{ mb: 3, p: 2, bgcolor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+             <Typography variant="body2" sx={{ color: '#333' }}>
+                 Aquí están <strong>todos</strong> los costos programados en el sistema. Modifique o agregue fechas futuras para la aplicación de nuevos costos.
+             </Typography>
+          </Box>
 
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
-                    <Button variant="outlined" size="small" onClick={handleAddRow} sx={{ fontWeight: 'bold' }}>+ Agregar Nuevo</Button>
-                    <Box sx={{ display: 'flex', gap: 2 }}>
-                        <Button onClick={onClose} color="inherit">Cancelar</Button>
-                        <Button variant="contained" onClick={handleSave} disabled={saving} sx={{ bgcolor: '#2e7d32', color: '#fff', fontWeight: 'bold' }}>
-                            {saving ? "Guardando..." : "💾 Guardar Todos"}
-                        </Button>
-                    </Box>
-                </Box>
-            </Box>
-        </Dialog>
+          <TableContainer component={Paper} sx={{ maxHeight: 400, borderRadius: '8px', border: '1px solid #e0e0e0', boxShadow: 'none', mb: 2 }}>
+            <Table stickyHeader size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000', width: '200px' }}>Clave</TableCell>
+                  <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>Fecha</TableCell>
+                  <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>Costo Unitario</TableCell>
+                  <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>Costo Paquete</TableCell>
+                  <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>Costo Neto</TableCell>
+                  <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000', width: '50px' }} align="center">Acción</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {loading ? (
+                  <TableRow><TableCell colSpan={6} align="center" sx={{ py: 3, color: '#666' }}>Cargando costos...</TableCell></TableRow>
+                ) : datos.length > 0 ? (
+                  datos.map((row) => (
+                    <TableRow key={row._uid} hover sx={{ transition: 'all 0.2s ease', '&:hover': { bgcolor: '#f5f5f5' } }}>
+                      <TableCell sx={{ borderBottom: '1px solid #f1f3f4' }}>
+                        <TextField 
+                          defaultValue={row.clave_prod || ''}
+                          onBlur={(e) => handleBlur(row._uid, 'clave_prod', e.target.value)}
+                          size="small" variant="standard" fullWidth placeholder="Ej. 1004"
+                          InputProps={{ disableUnderline: true }}
+                          sx={{ '& .MuiInputBase-input': { py: 0.5, fontWeight: 500, color: '#1a365d' } }}
+                        />
+                      </TableCell>
+                      <TableCell sx={{ borderBottom: '1px solid #f1f3f4' }}>
+                        <TextField 
+                          type="date"
+                          defaultValue={row.fecha ? row.fecha.substring(0, 10) : ''}
+                          onBlur={(e) => handleBlur(row._uid, 'fecha', e.target.value)}
+                          size="small" variant="standard" fullWidth InputLabelProps={{ shrink: true }}
+                          InputProps={{ disableUnderline: true }}
+                          sx={{ '& .MuiInputBase-input': { py: 0.5 } }}
+                        />
+                      </TableCell>
+                      <TableCell sx={{ borderBottom: '1px solid #f1f3f4' }}>
+                        <TextField 
+                          type="number"
+                          defaultValue={row.costo_unitario}
+                          onBlur={(e) => handleBlur(row._uid, 'costo_unitario', e.target.value)}
+                          size="small" variant="standard" fullWidth
+                          InputProps={{ startAdornment: <Typography sx={{ mr: 1, color: '#666', fontWeight: 'bold' }}>$</Typography>, disableUnderline: true }}
+                          sx={{ '& .MuiInputBase-input': { py: 0.5 } }}
+                        />
+                      </TableCell>
+                      <TableCell sx={{ borderBottom: '1px solid #f1f3f4' }}>
+                        <TextField 
+                          type="number"
+                          defaultValue={row.costo_paquete}
+                          onBlur={(e) => handleBlur(row._uid, 'costo_paquete', e.target.value)}
+                          size="small" variant="standard" fullWidth
+                          InputProps={{ startAdornment: <Typography sx={{ mr: 1, color: '#666', fontWeight: 'bold' }}>$</Typography>, disableUnderline: true }}
+                          sx={{ '& .MuiInputBase-input': { py: 0.5 } }}
+                        />
+                      </TableCell>
+                      <TableCell sx={{ borderBottom: '1px solid #f1f3f4' }}>
+                        <TextField 
+                          type="number"
+                          defaultValue={row.costoNeto}
+                          onBlur={(e) => handleBlur(row._uid, 'costoNeto', e.target.value)}
+                          size="small" variant="standard" fullWidth
+                          InputProps={{ startAdornment: <Typography sx={{ mr: 1, color: '#666', fontWeight: 'bold' }}>$</Typography>, disableUnderline: true }}
+                          sx={{ '& .MuiInputBase-input': { py: 0.5 } }}
+                        />
+                      </TableCell>
+                      <TableCell align="center" sx={{ borderBottom: '1px solid #f1f3f4' }}>
+                        <IconButton size="small" color="error" onClick={() => handleDeleteRow(row._uid)}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow><TableCell colSpan={6} align="center" sx={{ py: 4, color: '#999' }}>No hay costos programados en la tabla.</TableCell></TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          
+          <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
+            <Button 
+              variant="text" 
+              size="small" 
+              onClick={handleAddRow} 
+              sx={{ fontWeight: 'bold', color: '#666', textTransform: 'none', '&:hover': { bgcolor: '#f5f5f5', color: '#333' } }}
+            >
+              + Agregar Nueva Fila
+            </Button>
+          </Box>
+        </DialogContent>
+
+        <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
+          <Button 
+            onClick={onClose} 
+            color="inherit"
+            sx={{ borderRadius: '8px', fontWeight: 600, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleSave} 
+            variant="contained" 
+            disabled={saving}
+            sx={{ 
+              bgcolor: '#000000ff', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none', px: 4,
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)', transition: 'all 0.3s ease',
+              '&:hover': { bgcolor: '#333333', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }
+            }}
+          >
+            {saving ? "Guardando..." : "Guardar Todos"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     );
 };
 
@@ -891,90 +1052,145 @@ const ModalStockSucursal = ({ open, onClose, consumoApi, setMessage, productoFor
     };
 
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-            <Box sx={{ p: 3, bgcolor: '#fdfdfd' }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                    <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#333' }}>
-                        📦 Configuración de Stock por Sucursal
-                    </Typography>
-                    <IconButton onClick={onClose}><CloseIcon /></IconButton>
-                </Box>
-                
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, p: 1.5, bgcolor: '#f5f5f5', borderLeft: '5px solid #333' }}>
-                    <Box>
-                        <Typography variant="body2"><strong>Clave:</strong> {productoForm.clave_prod}</Typography>
-                        <Typography variant="body2"><strong>Descripción:</strong> {productoForm.descripcion}</Typography>
-                    </Box>
-                    <Button variant="contained" color="primary" size="small" onClick={handleAddStockGeneral} sx={{ fontWeight: 'bold' }}>
-                        Agregar stock General
-                    </Button>
-                </Box>
+      <Dialog 
+        open={open} 
+        onClose={onClose} 
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+            border: '1px solid #e0e0e0',
+            overflow: 'hidden',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
+          }
+        }}
+      >
+        <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
+          <Box sx={{ position: 'relative', zIndex: 2 }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
+              📦 Configuración de Stock por Sucursal
+            </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+              Gestione el stock mínimo requerido por cada sucursal
+            </Typography>
+          </Box>
+          <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+          <IconButton 
+            onClick={onClose}
+            sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </Box>
 
-                <TableContainer component={Paper} sx={{ maxHeight: 350, border: '1px solid #e0e0e0', boxShadow: 'none', mb: 2 }}>
-                    <Table stickyHeader size="small">
-                        <TableHead>
-                            <TableRow>
-                                <TableCell sx={{ bgcolor: '#eee', fontWeight: 'bold' }}>Sucursal</TableCell>
-                                <TableCell sx={{ bgcolor: '#eee', fontWeight: 'bold' }} align="right">Stock Mínimo</TableCell>
-                                <TableCell sx={{ bgcolor: '#eee', fontWeight: 'bold', width: '50px' }} align="center">Acción</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {loading ? (
-                                <TableRow><TableCell colSpan={3} align="center" sx={{ py: 3 }}>Cargando stock...</TableCell></TableRow>
-                            ) : datos.length > 0 ? (
-                                datos.map((row) => (
-                                    <TableRow key={row._uid} hover>
-                                        <TableCell>
-                                            {/* Usamos un Select para que el usuario vea el nombre de la sucursal, no solo el ID */}
-                                            <TextField 
-                                                select
-                                                value={row.sucursal}
-                                                onChange={(e) => handleChange(row._uid, 'sucursal', e.target.value)}
-                                                size="small" variant="standard" fullWidth
-                                            >
-                                                {sucursales.map((s: any) => (
-                                                    <MenuItem key={s.id} value={s.id}>{s.descripcion}</MenuItem>
-                                                ))}
-                                            </TextField>
-                                        </TableCell>
-                                        <TableCell align="right">
-                                            <TextField 
-                                                type="number"
-                                                value={row.stock_minimo}
-                                                onChange={(e) => handleChange(row._uid, 'stock_minimo', e.target.value)}
-                                                size="small" variant="standard" 
-                                                sx={{ width: '100px' }}
-                                                inputProps={{ style: { textAlign: 'right' } }}
-                                            />
-                                        </TableCell>
-                                        <TableCell align="center">
-                                            <IconButton size="small" color="error" onClick={() => handleDeleteRow(row._uid)}>
-                                                <DeleteIcon fontSize="small" />
-                                            </IconButton>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            ) : (
-                                <TableRow><TableCell colSpan={3} align="center" sx={{ py: 4, color: '#999' }}>Sin configuración de stock.</TableCell></TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
-
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
-                    <Button variant="outlined" size="small" onClick={handleAddRow} sx={{ fontWeight: 'bold' }}>
-                        + Fila Manual
-                    </Button>
-                    <Box sx={{ display: 'flex', gap: 2 }}>
-                        <Button onClick={onClose} color="inherit">Cancelar</Button>
-                        <Button variant="contained" onClick={handleSave} disabled={saving} sx={{ bgcolor: '#333', color: '#fff', fontWeight: 'bold' }}>
-                            {saving ? "Guardando..." : "💾 Guardar"}
-                        </Button>
-                    </Box>
-                </Box>
+        <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+          
+          {/* INFO DEL PRODUCTO Y BOTÓN STOCK GENERAL */}
+          <Box sx={{ mb: 3, p: 2, bgcolor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e0e0e0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box>
+              <Typography variant="body2" sx={{ color: '#666' }}><strong>Clave:</strong> {productoForm.clave_prod}</Typography>
+              <Typography variant="body2" sx={{ mt: 0.5, color: '#333', fontWeight: 500 }}>{productoForm.descripcion}</Typography>
             </Box>
-        </Dialog>
+            <Button 
+              variant="outlined" 
+              size="small" 
+              onClick={handleAddStockGeneral} 
+              sx={{ fontWeight: 'bold', color: '#1a365d', borderColor: '#1a365d', borderRadius: '8px', textTransform: 'none', '&:hover': { bgcolor: 'rgba(26, 54, 93, 0.05)' } }}
+            >
+              + Stock General
+            </Button>
+          </Box>
+
+          <TableContainer component={Paper} sx={{ maxHeight: 350, borderRadius: '8px', border: '1px solid #e0e0e0', boxShadow: 'none', mb: 2 }}>
+            <Table stickyHeader size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>Sucursal</TableCell>
+                  <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }} align="right">Stock Mínimo</TableCell>
+                  <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', width: '50px', borderBottom: '2px solid #000' }} align="center">Acción</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {loading ? (
+                  <TableRow><TableCell colSpan={3} align="center" sx={{ py: 3, color: '#666' }}>Cargando stock...</TableCell></TableRow>
+                ) : datos.length > 0 ? (
+                  datos.map((row) => (
+                    <TableRow key={row._uid} hover sx={{ transition: 'all 0.2s ease', '&:hover': { bgcolor: '#f5f5f5' } }}>
+                      <TableCell sx={{ borderBottom: '1px solid #f1f3f4' }}>
+                        <TextField 
+                          select
+                          value={row.sucursal}
+                          onChange={(e) => handleChange(row._uid, 'sucursal', e.target.value)}
+                          size="small" variant="standard" fullWidth
+                          InputProps={{ disableUnderline: true }}
+                          sx={{ '& .MuiSelect-select': { py: 0.5, fontWeight: 500, color: '#1a365d' } }}
+                        >
+                          {sucursales.map((s: any) => (
+                            <MenuItem key={s.id} value={s.id}>{s.descripcion}</MenuItem>
+                          ))}
+                        </TextField>
+                      </TableCell>
+                      <TableCell align="right" sx={{ borderBottom: '1px solid #f1f3f4' }}>
+                        <TextField 
+                          type="number"
+                          value={row.stock_minimo}
+                          onChange={(e) => handleChange(row._uid, 'stock_minimo', e.target.value)}
+                          size="small" variant="standard" 
+                          InputProps={{ disableUnderline: true }}
+                          sx={{ width: '80px' }}
+                          inputProps={{ style: { textAlign: 'right', fontWeight: 'bold' } }}
+                        />
+                      </TableCell>
+                      <TableCell align="center" sx={{ borderBottom: '1px solid #f1f3f4' }}>
+                        <IconButton size="small" color="error" onClick={() => handleDeleteRow(row._uid)}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow><TableCell colSpan={3} align="center" sx={{ py: 4, color: '#999' }}>Sin configuración de stock.</TableCell></TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+          <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
+            <Button 
+              variant="text" 
+              size="small" 
+              onClick={handleAddRow} 
+              sx={{ fontWeight: 'bold', color: '#666', textTransform: 'none', '&:hover': { bgcolor: '#f5f5f5', color: '#333' } }}
+            >
+              + Agregar fila manual
+            </Button>
+          </Box>
+        </DialogContent>
+
+        <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
+          <Button 
+            onClick={onClose} 
+            color="inherit"
+            sx={{ borderRadius: '8px', fontWeight: 600, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleSave} 
+            variant="contained" 
+            disabled={saving}
+            sx={{ 
+              bgcolor: '#000000ff', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none', px: 4,
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)', transition: 'all 0.3s ease',
+              '&:hover': { bgcolor: '#333333', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }
+            }}
+          >
+            {saving ? "Guardando..." : "Guardar Stock"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     );
 };
 
@@ -1003,69 +1219,97 @@ const ModalInfoStock = ({ open, onClose, consumoApi, setMessage, productoForm }:
     };
 
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="xl" fullWidth>
-            <Box sx={{ p: 3, bgcolor: '#fdfdfd' }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                    <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#777', lineHeight: 1 }}>
-                        Información de <br /> <span style={{ fontSize: '1.8rem', color: '#000' }}>Stock</span>
-                    </Typography>
-                    <IconButton onClick={onClose}><CloseIcon /></IconButton>
-                </Box>
-                
-                <Divider sx={{ my: 2, borderBottomWidth: 4, borderColor: '#000' }} />
+      <Dialog 
+        open={open} 
+        onClose={onClose} 
+        maxWidth="xl" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+            border: '1px solid #e0e0e0',
+            overflow: 'hidden',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
+          }
+        }}
+      >
+        <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
+          <Box sx={{ position: 'relative', zIndex: 2 }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
+               Información de Stock
+            </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+              Consulta detallada de existencias, entradas, salidas y rotación
+            </Typography>
+          </Box>
+          <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+          <IconButton 
+            onClick={onClose}
+            sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </Box>
 
-                <Box sx={{ mb: 2, p: 0 }}>
-                    <Typography variant="body1"><strong>Clave:</strong> {productoForm.clave_prod}</Typography>
-                    <Typography variant="body1"><strong>Descripción:</strong> {productoForm.descripcion}</Typography>
-                </Box>
+        <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+          
+          <Box sx={{ mb: 3, p: 2, bgcolor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+            <Typography variant="body2" sx={{ color: '#666' }}><strong>Clave:</strong> {productoForm.clave_prod}</Typography>
+            <Typography variant="body2" sx={{ mt: 0.5, color: '#333', fontWeight: 500 }}><strong>Descripción:</strong> {productoForm.descripcion}</Typography>
+          </Box>
 
-                <TableContainer component={Paper} sx={{ maxHeight: 500, border: '1px solid #000', borderRadius: 0, boxShadow: 'none', overflowX: 'auto' }}>
-                    <Table stickyHeader size="small" sx={{ minWidth: 1500 }}>
-                        <TableHead>
-                            <TableRow>
-                                {["Sucursal", "Descripción", "Entradas", "Salidas", "Existencias", "Ventas Periodo", "Ventas Promedio", "Días Muestra", "Unid. Paq. Traspaso", "Días Rotación", "Días Min.", "Días Max.", "Nuevo Mínimo", "Nuevo Máximo"].map((col, idx) => (
-                                    <TableCell key={idx} align={idx > 1 ? "right" : "left"} sx={{ bgcolor: '#b3e5fc', fontWeight: 'bold', borderRight: '1px solid #fff', whiteSpace: 'nowrap' }}>
-                                        {col}
-                                    </TableCell>
-                                ))}
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {loading ? (
-                                <TableRow><TableCell colSpan={14} align="center" sx={{ py: 3 }}>Consultando información...</TableCell></TableRow>
-                            ) : datos.length > 0 ? (
-                                datos.map((row, idx) => (
-                                    <TableRow key={idx} hover sx={{ '& td': { borderRight: '1px solid #eee' } }}>
-                                        <TableCell>{row.sucursal}</TableCell>
-                                        <TableCell sx={{ whiteSpace: 'nowrap' }}>{row.descripcion}</TableCell>
-                                        <TableCell align="right">{Number(row.entradas || 0).toFixed(2)}</TableCell>
-                                        <TableCell align="right">{Number(row.salidas || 0).toFixed(2)}</TableCell>
-                                        <TableCell align="right" sx={{ fontWeight: 'bold' }}>{Number(row.existencias || 0).toFixed(2)}</TableCell>
-                                        <TableCell align="right">{Number(row.venta_periodo || 0).toFixed(2)}</TableCell>
-                                        <TableCell align="right">{Number(row.ventas_promedio || 0).toFixed(2)}</TableCell>
-                                        <TableCell align="right">{Number(row.dias_muestra || 0)}</TableCell>
-                                        <TableCell align="right">{Number(row.unidad_paq_traspaso || 0)}</TableCell>
-                                        <TableCell align="right">{Number(row.dias_rotacion || 0)}</TableCell>
-                                        <TableCell align="right">{Number(row.dias_min || 0)}</TableCell>
-                                        <TableCell align="right">{Number(row.dias_max || 0)}</TableCell>
-                                        <TableCell align="right" sx={{ fontWeight: 'bold', color: '#1976d2' }}>{Number(row.nuevo_minimo || 0).toFixed(2)}</TableCell>
-                                        <TableCell align="right" sx={{ fontWeight: 'bold', color: '#d32f2f' }}>{Number(row.nuevo_maximo || 0).toFixed(2)}</TableCell>
-                                    </TableRow>
-                                ))
-                            ) : (
-                                <TableRow><TableCell colSpan={14} align="center" sx={{ py: 4, color: '#999' }}>No hay información de stock para esta clave.</TableCell></TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
+          <TableContainer component={Paper} sx={{ maxHeight: 500, borderRadius: '8px', border: '1px solid #e0e0e0', boxShadow: 'none', overflowX: 'auto' }}>
+            <Table stickyHeader size="small" sx={{ minWidth: 1500 }}>
+              <TableHead>
+                <TableRow>
+                  {["Sucursal", "Descripción", "Entradas", "Salidas", "Existencias", "Ventas Periodo", "Ventas Promedio", "Días Muestra", "Unid. Paq. Traspaso", "Días Rotación", "Días Min.", "Días Max.", "Nuevo Mínimo", "Nuevo Máximo"].map((col, idx) => (
+                    <TableCell key={idx} align={idx > 1 ? "right" : "left"} sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000', whiteSpace: 'nowrap' }}>
+                        {col}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {loading ? (
+                    <TableRow><TableCell colSpan={14} align="center" sx={{ py: 3, color: '#666' }}>Consultando información...</TableCell></TableRow>
+                ) : datos.length > 0 ? (
+                    datos.map((row, idx) => (
+                        <TableRow key={idx} hover sx={{ transition: 'all 0.2s ease', '&:hover': { bgcolor: '#f5f5f5' } }}>
+                            <TableCell sx={{ borderBottom: '1px solid #f1f3f4' }}>{row.sucursal}</TableCell>
+                            <TableCell sx={{ whiteSpace: 'nowrap', borderBottom: '1px solid #f1f3f4' }}>{row.descripcion}</TableCell>
+                            <TableCell align="right" sx={{ borderBottom: '1px solid #f1f3f4' }}>{Number(row.entradas || 0).toFixed(2)}</TableCell>
+                            <TableCell align="right" sx={{ borderBottom: '1px solid #f1f3f4' }}>{Number(row.salidas || 0).toFixed(2)}</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 'bold', borderBottom: '1px solid #f1f3f4' }}>{Number(row.existencias || 0).toFixed(2)}</TableCell>
+                            <TableCell align="right" sx={{ borderBottom: '1px solid #f1f3f4' }}>{Number(row.venta_periodo || 0).toFixed(2)}</TableCell>
+                            <TableCell align="right" sx={{ borderBottom: '1px solid #f1f3f4' }}>{Number(row.ventas_promedio || 0).toFixed(2)}</TableCell>
+                            <TableCell align="right" sx={{ borderBottom: '1px solid #f1f3f4' }}>{Number(row.dias_muestra || 0)}</TableCell>
+                            <TableCell align="right" sx={{ borderBottom: '1px solid #f1f3f4' }}>{Number(row.unidad_paq_traspaso || 0)}</TableCell>
+                            <TableCell align="right" sx={{ borderBottom: '1px solid #f1f3f4' }}>{Number(row.dias_rotacion || 0)}</TableCell>
+                            <TableCell align="right" sx={{ borderBottom: '1px solid #f1f3f4' }}>{Number(row.dias_min || 0)}</TableCell>
+                            <TableCell align="right" sx={{ borderBottom: '1px solid #f1f3f4' }}>{Number(row.dias_max || 0)}</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 'bold', color: '#1976d2', borderBottom: '1px solid #f1f3f4' }}>{Number(row.nuevo_minimo || 0).toFixed(2)}</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 'bold', color: '#d32f2f', borderBottom: '1px solid #f1f3f4' }}>{Number(row.nuevo_maximo || 0).toFixed(2)}</TableCell>
+                        </TableRow>
+                    ))
+                ) : (
+                    <TableRow><TableCell colSpan={14} align="center" sx={{ py: 4, color: '#999' }}>No hay información de stock para esta clave.</TableCell></TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </DialogContent>
 
-                <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
-                    <Button onClick={onClose} variant="contained" sx={{ bgcolor: '#e0e0e0', color: '#333', '&:hover': { bgcolor: '#ccc' }, px: 6, fontWeight: 'bold' }}>
-                        Cerrar
-                    </Button>
-                </Box>
-            </Box>
-        </Dialog>
+        <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
+          <Button 
+            onClick={onClose} 
+            color="inherit"
+            sx={{ borderRadius: '8px', fontWeight: 600, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
+          >
+            Cerrar
+          </Button>
+        </DialogActions>
+      </Dialog>
     );
 };
 
@@ -1142,85 +1386,140 @@ const ModalProveedores = ({ open, onClose, consumoApi, setMessage, productoForm,
     };
 
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-            <Box sx={{ p: 3, bgcolor: '#fdfdfd' }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                    <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#333' }}>
-                        🏢 Proveedores Asignados
-                    </Typography>
-                    <IconButton onClick={onClose}><CloseIcon /></IconButton>
-                </Box>
-                
-                <Box sx={{ mb: 2, p: 1.5, bgcolor: '#f5f5f5', borderLeft: '5px solid #d32f2f' }}>
-                    <Typography variant="body2" sx={{ color: '#d32f2f', fontWeight: 'bold', mb: 0.5 }}>Clave general: {productoForm.clave_prod}</Typography>
-                    <Typography variant="body2" sx={{ color: '#d32f2f', fontWeight: 'bold' }}>Descripción: {productoForm.descripcion}</Typography>
-                </Box>
+      <Dialog 
+        open={open} 
+        onClose={onClose} 
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+            border: '1px solid #e0e0e0',
+            overflow: 'hidden',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
+          }
+        }}
+      >
+        {/* ENCABEZADO ELEGANTE */}
+        <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
+          <Box sx={{ position: 'relative', zIndex: 2 }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
+               Proveedores Asignados
+            </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+              Gestione los proveedores vinculados y sus descuentos para este producto
+            </Typography>
+          </Box>
+          <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+          <IconButton 
+            onClick={onClose}
+            sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </Box>
 
-                <TableContainer component={Paper} sx={{ maxHeight: 350, border: '1px solid #e0e0e0', boxShadow: 'none', mb: 2 }}>
-                    <Table stickyHeader size="small">
-                        <TableHead>
-                            <TableRow>
-                                <TableCell sx={{ bgcolor: '#eee', fontWeight: 'bold', color: '#8b0000' }}>Proveedores</TableCell>
-                                <TableCell sx={{ bgcolor: '#eee', fontWeight: 'bold', color: '#8b0000', width: '120px' }} align="center">Descuento</TableCell>
-                                <TableCell sx={{ bgcolor: '#eee', fontWeight: 'bold', width: '50px' }} align="center">Acción</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {loading ? (
-                                <TableRow><TableCell colSpan={3} align="center" sx={{ py: 3 }}>Cargando proveedores...</TableCell></TableRow>
-                            ) : datos.length > 0 ? (
-                                datos.map((row) => (
-                                    <TableRow key={row._uid} hover>
-                                        <TableCell>
-                                            <TextField 
-                                                select
-                                                value={row.cve_prov}
-                                                onChange={(e) => handleChange(row._uid, 'cve_prov', e.target.value)}
-                                                size="small" variant="outlined" fullWidth
-                                                sx={{ '& .MuiSelect-select': { py: 0.5 } }}
-                                            >
-                                                {proveedores.map((p: any) => (
-                                                    <MenuItem key={p.id} value={p.id}>{p.descripcion}</MenuItem>
-                                                ))}
-                                            </TextField>
-                                        </TableCell>
-                                        <TableCell align="center">
-                                            <TextField 
-                                                type="number"
-                                                value={row.descuento}
-                                                onChange={(e) => handleChange(row._uid, 'descuento', e.target.value)}
-                                                size="small" variant="outlined" 
-                                                inputProps={{ step: "0.01", min: "0", max: "1", style: { textAlign: 'center' } }}
-                                                sx={{ '& .MuiInputBase-input': { py: 0.5 } }}
-                                            />
-                                        </TableCell>
-                                        <TableCell align="center">
-                                            <IconButton size="small" color="error" onClick={() => handleDeleteRow(row._uid)}>
-                                                <DeleteIcon fontSize="small" />
-                                            </IconButton>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            ) : (
-                                <TableRow><TableCell colSpan={3} align="center" sx={{ py: 4, color: '#999' }}>No hay proveedores asignados.</TableCell></TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
+        <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+          
+          {/* INFO DEL PRODUCTO */}
+          <Box sx={{ mb: 3, p: 2, bgcolor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+            <Typography variant="body2" sx={{ color: '#666' }}><strong>Clave General:</strong> {productoForm.clave_prod}</Typography>
+            <Typography variant="body2" sx={{ mt: 0.5, color: '#333', fontWeight: 500 }}><strong>Descripción:</strong> {productoForm.descripcion}</Typography>
+          </Box>
 
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
-                    <Button variant="outlined" size="small" onClick={handleAddRow} sx={{ fontWeight: 'bold', color: '#333', borderColor: '#ccc' }}>
-                        * Agregar Fila
-                    </Button>
-                    <Box sx={{ display: 'flex', gap: 2 }}>
-                        <Button onClick={onClose} color="inherit" variant="outlined" sx={{ borderColor: '#ccc' }}>Salir</Button>
-                        <Button variant="contained" onClick={handleSave} disabled={saving} sx={{ bgcolor: '#333', color: '#fff', fontWeight: 'bold' }}>
-                            {saving ? "Guardando..." : "💾 Guardar"}
-                        </Button>
-                    </Box>
-                </Box>
-            </Box>
-        </Dialog>
+          {/* TABLA DE PROVEEDORES */}
+          <TableContainer component={Paper} sx={{ maxHeight: 350, borderRadius: '8px', border: '1px solid #e0e0e0', boxShadow: 'none', mb: 2 }}>
+            <Table stickyHeader size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>Proveedor</TableCell>
+                  <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', width: '120px', borderBottom: '2px solid #000' }} align="center">Descuento</TableCell>
+                  <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', width: '50px', borderBottom: '2px solid #000' }} align="center">Acción</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {loading ? (
+                  <TableRow><TableCell colSpan={3} align="center" sx={{ py: 3, color: '#666' }}>Cargando proveedores...</TableCell></TableRow>
+                ) : datos.length > 0 ? (
+                  datos.map((row) => (
+                    <TableRow key={row._uid} hover sx={{ transition: 'all 0.2s ease', '&:hover': { bgcolor: '#f5f5f5' } }}>
+                      <TableCell sx={{ borderBottom: '1px solid #f1f3f4' }}>
+                        <TextField 
+                          select
+                          value={row.cve_prov}
+                          onChange={(e) => handleChange(row._uid, 'cve_prov', e.target.value)}
+                          size="small" variant="standard" fullWidth
+                          InputProps={{ disableUnderline: true }}
+                          sx={{ '& .MuiSelect-select': { py: 0.5, color: '#1a365d', fontWeight: 500 } }}
+                        >
+                          {proveedores.map((p: any) => (
+                            <MenuItem key={p.id} value={p.id}>{p.descripcion}</MenuItem>
+                          ))}
+                        </TextField>
+                      </TableCell>
+                      <TableCell align="center" sx={{ borderBottom: '1px solid #f1f3f4' }}>
+                        <TextField 
+                          type="number"
+                          value={row.descuento}
+                          onChange={(e) => handleChange(row._uid, 'descuento', e.target.value)}
+                          size="small" variant="standard" 
+                          InputProps={{ disableUnderline: true }}
+                          inputProps={{ step: "0.01", min: "0", max: "1", style: { textAlign: 'center', fontWeight: 'bold' } }}
+                          sx={{ '& .MuiInputBase-input': { py: 0.5 } }}
+                        />
+                      </TableCell>
+                      <TableCell align="center" sx={{ borderBottom: '1px solid #f1f3f4' }}>
+                        <IconButton size="small" color="error" onClick={() => handleDeleteRow(row._uid)}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow><TableCell colSpan={3} align="center" sx={{ py: 4, color: '#999' }}>No hay proveedores asignados.</TableCell></TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+          {/* BOTÓN AGREGAR FILA */}
+          <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
+            <Button 
+              variant="text" 
+              size="small" 
+              onClick={handleAddRow} 
+              sx={{ fontWeight: 'bold', color: '#666', textTransform: 'none', '&:hover': { bgcolor: '#f5f5f5', color: '#333' } }}
+            >
+              + Agregar Fila
+            </Button>
+          </Box>
+
+        </DialogContent>
+
+        {/* BOTONES INFERIORES */}
+        <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
+          <Button 
+            onClick={onClose} 
+            color="inherit"
+            sx={{ borderRadius: '8px', fontWeight: 600, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleSave} 
+            variant="contained" 
+            disabled={saving}
+            sx={{ 
+              bgcolor: '#000000ff', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none', px: 4,
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)', transition: 'all 0.3s ease',
+              '&:hover': { bgcolor: '#333333', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }
+            }}
+          >
+            {saving ? "Guardando..." : "Guardar Cambios"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     );
 };
 
@@ -1286,104 +1585,165 @@ const ModalKardex = ({ open, onClose, consumoApi, setMessage, productoForm, sucu
     const totalSalidas = datos.reduce((sum, row) => sum + Number(row.cantidad_salida || 0), 0);
     const diferencia = totalEntradas - totalSalidas;
 
-    return (
-        <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
-            <Box sx={{ p: 3, bgcolor: '#fdfdfd', minHeight: '600px', display: 'flex', flexDirection: 'column' }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                    <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#777', lineHeight: 1 }}>
-                        Tarjeta de Almacén <br /> <span style={{ fontSize: '2rem', color: '#000' }}>KARDEX</span>
-                    </Typography>
-                    <IconButton onClick={onClose}><CloseIcon /></IconButton>
-                </Box>
-                
-                <Divider sx={{ my: 2, borderBottomWidth: 4, borderColor: '#000' }} />
+return (
+      <Dialog 
+        open={open} 
+        onClose={onClose} 
+        maxWidth="lg" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+            border: '1px solid #e0e0e0',
+            overflow: 'hidden',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
+            display: 'flex',
+            flexDirection: 'column',
+            maxHeight: '95vh'
+          }
+        }}
+      >
+        {/* ENCABEZADO OSCURO Y ELEGANTE */}
+        <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
+          <Box sx={{ position: 'relative', zIndex: 2 }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
+              🗂️ Tarjeta de Almacén (KARDEX)
+            </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+              Consulte los movimientos de entrada y salida por sucursal y periodo
+            </Typography>
+          </Box>
+          <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+          <IconButton 
+            onClick={onClose}
+            sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </Box>
 
-                {/* ZONA DE FILTROS */}
-                <Grid container spacing={2} alignItems="center" sx={{ mb: 2, bgcolor: '#f5f5f5', p: 1.5, borderRadius: 1 }}>
-                    <Grid item xs={12} md={3}>
-                        <TextField select fullWidth size="small" label="Sucursal" value={sucursalSel} onChange={(e) => setSucursalSel(e.target.value)}>
-                            {sucursales.map((s: any) => <MenuItem key={s.id} value={s.id}>{s.descripcion}</MenuItem>)}
-                        </TextField>
-                    </Grid>
-                    <Grid item xs={6} md={2}>
-                        <TextField type="date" fullWidth size="small" label="Del" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} InputLabelProps={{ shrink: true }}/>
-                    </Grid>
-                    <Grid item xs={6} md={2}>
-                        <TextField type="date" fullWidth size="small" label="Al" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)} InputLabelProps={{ shrink: true }}/>
-                    </Grid>
-                    <Grid item xs={12} md={3}>
-                        <Button variant="contained" fullWidth onClick={handleConsultar} disabled={loading} sx={{ bgcolor: '#333', color: 'white', fontWeight: 'bold', height: '40px' }}>
-                            {loading ? "Buscando..." : "Consultar Kardex"}
-                        </Button>
-                    </Grid>
-                </Grid>
+        <DialogContent sx={{ p: 3, backgroundColor: '#ffffff', display: 'flex', flexDirection: 'column', gap: 2 }}>
+          
+          {/* INFO DEL PRODUCTO */}
+          <Box sx={{ p: 2, bgcolor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+            <Typography variant="body2" sx={{ color: '#666' }}><strong>Clave:</strong> {productoForm.clave_prod}</Typography>
+            <Typography variant="body2" sx={{ mt: 0.5, color: '#333', fontWeight: 500 }}><strong>Producto:</strong> {productoForm.descripcion}</Typography>
+          </Box>
 
-                <Box sx={{ mb: 2 }}>
-                    <Typography variant="body2"><strong>Clave:</strong> {productoForm.clave_prod}</Typography>
-                    <Typography variant="body2"><strong>Producto:</strong> {productoForm.descripcion}</Typography>
-                </Box>
+          {/* ZONA DE FILTROS */}
+          <Box sx={{ p: 2, bgcolor: '#ffffff', borderRadius: '8px', border: '1px solid #e0e0e0', display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+            <TextField 
+              select 
+              size="small" 
+              label="Sucursal" 
+              value={sucursalSel} 
+              onChange={(e) => setSucursalSel(e.target.value)}
+              sx={{ minWidth: 200, '& .MuiInputBase-root': { borderRadius: '8px' } }}
+            >
+              {sucursales.map((s: any) => <MenuItem key={s.id} value={s.id}>{s.descripcion}</MenuItem>)}
+            </TextField>
+            <TextField 
+              type="date" 
+              size="small" 
+              label="Del" 
+              value={fechaInicio} 
+              onChange={(e) => setFechaInicio(e.target.value)} 
+              InputLabelProps={{ shrink: true }}
+              sx={{ width: 150, '& .MuiInputBase-root': { borderRadius: '8px' } }}
+            />
+            <TextField 
+              type="date" 
+              size="small" 
+              label="Al" 
+              value={fechaFin} 
+              onChange={(e) => setFechaFin(e.target.value)} 
+              InputLabelProps={{ shrink: true }}
+              sx={{ width: 150, '& .MuiInputBase-root': { borderRadius: '8px' } }}
+            />
+            <Button 
+              variant="contained" 
+              onClick={handleConsultar} 
+              disabled={loading} 
+              sx={{ 
+                bgcolor: '#000000ff', color: 'white', fontWeight: 600, height: '40px', borderRadius: '8px', textTransform: 'none', px: 3,
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)', transition: 'all 0.3s ease',
+                '&:hover': { bgcolor: '#333333', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }
+              }}
+            >
+              {loading ? "Buscando..." : "Consultar Kardex"}
+            </Button>
+          </Box>
 
-                {/* TABLA DE MOVIMIENTOS */}
-                <TableContainer component={Paper} sx={{ flex: 1, border: '1px solid #ccc', borderRadius: 0, boxShadow: 'none' }}>
-                    <Table stickyHeader size="small">
-                        <TableHead>
-                            <TableRow>
-                                <TableCell sx={{ bgcolor: '#eee', fontWeight: 'bold' }}>Fecha</TableCell>
-                                <TableCell sx={{ bgcolor: '#eee', fontWeight: 'bold' }}>Folio</TableCell>
-                                <TableCell sx={{ bgcolor: '#eee', fontWeight: 'bold' }}>Concepto</TableCell>
-                                <TableCell align="right" sx={{ bgcolor: '#eee', fontWeight: 'bold' }}>Entrada</TableCell>
-                                <TableCell align="right" sx={{ bgcolor: '#eee', fontWeight: 'bold' }}>Salida</TableCell>
-                                <TableCell align="right" sx={{ bgcolor: '#eee', fontWeight: 'bold' }}>Costo</TableCell>
-                                <TableCell align="center" sx={{ bgcolor: '#eee', fontWeight: 'bold' }}>Usuario</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {loading ? (
-                                <TableRow><TableCell colSpan={7} align="center" sx={{ py: 3 }}>Buscando movimientos...</TableCell></TableRow>
-                            ) : datos.length > 0 ? (
-                                datos.map((row, idx) => (
-                                    <TableRow key={idx} hover>
-                                        <TableCell sx={{ whiteSpace: 'nowrap' }}>{row.fecha_movto ? String(row.fecha_movto).replace('T', ' ').substring(0, 16) : ''}</TableCell>
-                                        <TableCell>{row.folio_movto}</TableCell>
-                                        <TableCell>{row.tipo_movimiento}</TableCell>
-                                        <TableCell align="right" sx={{ color: 'green', fontWeight: row.cantidad_entrada > 0 ? 'bold' : 'normal' }}>
-                                            {Number(row.cantidad_entrada) > 0 ? row.cantidad_entrada : '-'}
-                                        </TableCell>
-                                        <TableCell align="right" sx={{ color: 'red', fontWeight: row.cantidad_salida > 0 ? 'bold' : 'normal' }}>
-                                            {Number(row.cantidad_salida) > 0 ? row.cantidad_salida : '-'}
-                                        </TableCell>
-                                        <TableCell align="right">${Number(row.costo).toFixed(2)}</TableCell>
-                                        <TableCell align="center" sx={{ fontSize: '0.8rem', color: '#666' }}>{row.usr}</TableCell>
-                                    </TableRow>
-                                ))
-                            ) : (
-                                <TableRow><TableCell colSpan={7} align="center" sx={{ py: 4, color: '#999' }}>Realice una búsqueda para ver los movimientos.</TableCell></TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
+          {/* TABLA DE MOVIMIENTOS */}
+          <TableContainer component={Paper} sx={{ flex: 1, minHeight: 250, maxHeight: 400, borderRadius: '8px', border: '1px solid #e0e0e0', boxShadow: 'none', overflowY: 'auto' }}>
+            <Table stickyHeader size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>Fecha</TableCell>
+                  <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>Folio</TableCell>
+                  <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>Concepto</TableCell>
+                  <TableCell align="right" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>Entrada</TableCell>
+                  <TableCell align="right" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>Salida</TableCell>
+                  <TableCell align="right" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>Costo</TableCell>
+                  <TableCell align="center" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>Usuario</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {loading ? (
+                  <TableRow><TableCell colSpan={7} align="center" sx={{ py: 3, color: '#666' }}>Buscando movimientos...</TableCell></TableRow>
+                ) : datos.length > 0 ? (
+                  datos.map((row, idx) => (
+                    <TableRow key={idx} hover sx={{ transition: 'all 0.2s ease', '&:hover': { bgcolor: '#f5f5f5' } }}>
+                      <TableCell sx={{ whiteSpace: 'nowrap', borderBottom: '1px solid #f1f3f4', fontWeight: 500, color: '#1a365d' }}>
+                        {row.fecha_movto ? String(row.fecha_movto).replace('T', ' ').substring(0, 16) : ''}
+                      </TableCell>
+                      <TableCell sx={{ borderBottom: '1px solid #f1f3f4' }}>{row.folio_movto}</TableCell>
+                      <TableCell sx={{ borderBottom: '1px solid #f1f3f4' }}>{row.tipo_movimiento}</TableCell>
+                      <TableCell align="right" sx={{ borderBottom: '1px solid #f1f3f4', color: '#2e7d32', fontWeight: row.cantidad_entrada > 0 ? 'bold' : 'normal' }}>
+                        {Number(row.cantidad_entrada) > 0 ? row.cantidad_entrada : '-'}
+                      </TableCell>
+                      <TableCell align="right" sx={{ borderBottom: '1px solid #f1f3f4', color: '#d32f2f', fontWeight: row.cantidad_salida > 0 ? 'bold' : 'normal' }}>
+                        {Number(row.cantidad_salida) > 0 ? row.cantidad_salida : '-'}
+                      </TableCell>
+                      <TableCell align="right" sx={{ borderBottom: '1px solid #f1f3f4' }}>${Number(row.costo).toFixed(2)}</TableCell>
+                      <TableCell align="center" sx={{ borderBottom: '1px solid #f1f3f4', fontSize: '0.8rem', color: '#666' }}>{row.usr}</TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow><TableCell colSpan={7} align="center" sx={{ py: 4, color: '#999' }}>Realice una búsqueda para ver los movimientos.</TableCell></TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
 
-                {/* SUMATORIAS AL ESTILO ACCESS */}
-                <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-around', bgcolor: '#f9f9f9', p: 2, border: '1px solid #ccc' }}>
-                    <Box textAlign="center">
-                        <Typography variant="caption" color="textSecondary">Total de Entradas:</Typography>
-                        <Typography variant="h6" sx={{ color: 'green', fontWeight: 'bold' }}>{totalEntradas.toFixed(2)}</Typography>
-                    </Box>
-                    <Box textAlign="center">
-                        <Typography variant="caption" color="textSecondary">Total de Salidas:</Typography>
-                        <Typography variant="h6" sx={{ color: 'red', fontWeight: 'bold' }}>{totalSalidas.toFixed(2)}</Typography>
-                    </Box>
-                    <Box textAlign="center">
-                        <Typography variant="caption" color="textSecondary">Diferencia:</Typography>
-                        <Typography variant="h6" sx={{ color: diferencia < 0 ? 'red' : 'black', fontWeight: 'bold' }}>{diferencia.toFixed(2)}</Typography>
-                    </Box>
-                </Box>
-
-                <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
-                    <Button onClick={onClose} variant="outlined" sx={{ color: '#333', borderColor: '#ccc', px: 4 }}>Cerrar Kardex</Button>
-                </Box>
+          {/* SUMATORIAS AL ESTILO ACCESS */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-around', bgcolor: '#f8f9fa', p: 2, borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+            <Box textAlign="center">
+              <Typography variant="caption" sx={{ color: '#666', fontWeight: 600, textTransform: 'uppercase' }}>Total de Entradas</Typography>
+              <Typography variant="h6" sx={{ color: '#2e7d32', fontWeight: 'bold', lineHeight: 1.2 }}>{totalEntradas.toFixed(2)}</Typography>
             </Box>
-        </Dialog>
+            <Box textAlign="center">
+              <Typography variant="caption" sx={{ color: '#666', fontWeight: 600, textTransform: 'uppercase' }}>Total de Salidas</Typography>
+              <Typography variant="h6" sx={{ color: '#d32f2f', fontWeight: 'bold', lineHeight: 1.2 }}>{totalSalidas.toFixed(2)}</Typography>
+            </Box>
+            <Box textAlign="center">
+              <Typography variant="caption" sx={{ color: '#666', fontWeight: 600, textTransform: 'uppercase' }}>Diferencia</Typography>
+              <Typography variant="h6" sx={{ color: diferencia < 0 ? '#d32f2f' : '#1a365d', fontWeight: 'bold', lineHeight: 1.2 }}>{diferencia.toFixed(2)}</Typography>
+            </Box>
+          </Box>
+        </DialogContent>
+
+        <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
+          <Button 
+            onClick={onClose} 
+            color="inherit"
+            sx={{ borderRadius: '8px', fontWeight: 600, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
+          >
+            Cerrar Kardex
+          </Button>
+        </DialogActions>
+      </Dialog>
     );
 };
 export default function CatProductos() {
@@ -3111,45 +3471,82 @@ const cantidadesValidas = cantidadesDescarga
       </Dialog>
 
 {/* --- MODAL CLONADOR DE PRODUCTOS --- */}
-<Dialog open={openClonador} onClose={() => setOpenClonador(false)} maxWidth="xs" fullWidth>
-    <Box sx={{ p: 3, bgcolor: '#fdfdfd', textAlign: 'center' }}>
-        <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#1976d2', mb: 1 }}>
-            🧬 Generar Clon
-        </Typography>
-        
-        <Typography variant="body2" sx={{ color: '#555', mb: 3 }}>
-            Se creará un producto <strong>idéntico</strong> tomando como base la clave actual: <br/>
-            <span style={{ fontWeight: 'bold', color: '#333' }}>{claveSeleccionada}</span>.
-        </Typography>
+      <Dialog 
+        open={openClonador} 
+        onClose={() => setOpenClonador(false)} 
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+            border: '1px solid #e0e0e0',
+            overflow: 'hidden',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
+          }
+        }}
+      >
+        <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
+          <Box sx={{ position: 'relative', zIndex: 2 }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
+               Generar Clon
+            </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+              Se creará un producto idéntico tomando como base la clave: {claveSeleccionada}
+            </Typography>
+          </Box>
+          <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+          <IconButton 
+            onClick={() => setOpenClonador(false)}
+            sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </Box>
 
-        <TextField 
+        <DialogContent sx={{ p: 4, backgroundColor: '#ffffff', textAlign: 'center' }}>
+          <Typography variant="body1" sx={{ color: '#333', mb: 4, fontWeight: 500 }}>
+            Ingrese la nueva clave para el producto clonado.
+          </Typography>
+
+          <TextField 
             fullWidth 
             autoFocus
-            label="Escriba la Nueva Clave" 
+            label="Nueva Clave" 
             variant="outlined" 
             value={nuevaClaveClon}
             onChange={(e) => setNuevaClaveClon(e.target.value)}
             placeholder="Ej. NUEVA-CLAVE-123"
-            sx={{ mb: 3 }}
             InputLabelProps={{ shrink: true }}
             onKeyDown={(e) => e.key === 'Enter' && handleEjecutarClon()}
-        />
+            sx={{ 
+              '& .MuiInputBase-root': { height: '50px', borderRadius: '8px' }
+            }}
+          />
+        </DialogContent>
 
-        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2 }}>
-            <Button onClick={() => setOpenClonador(false)} variant="outlined" color="inherit">
-                Cancelar
-            </Button>
-            <Button 
-                variant="contained" 
-                onClick={handleEjecutarClon}
-                disabled={loading || !nuevaClaveClon.trim()}
-                sx={{ bgcolor: '#1976d2', color: '#fff', fontWeight: 'bold' }}
-            >
-                {loading ? "Clonando..." : "Confirmar Clonación"}
-            </Button>
-        </Box>
-    </Box>
-</Dialog>
+        <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa', justifyContent: 'center', gap: 2 }}>
+          <Button 
+            onClick={() => setOpenClonador(false)}
+            color="inherit"
+            sx={{ borderRadius: '8px', fontWeight: 500, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            variant="contained" 
+            onClick={handleEjecutarClon}
+            disabled={loading || !nuevaClaveClon.trim()}
+            sx={{ 
+              bgcolor: '#000000ff', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none', px: 4,
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)', transition: 'all 0.3s ease',
+              '&:hover': { bgcolor: '#333333', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }
+            }}
+          >
+            {loading ? "Clonando..." : "Confirmar Clonación"}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
 {/* --- MODAL DE SUSTITUTOS --- */}
 <ModalSustitutos 
@@ -3160,286 +3557,350 @@ const cantidadesValidas = cantidadesDescarga
     productoForm={productoForm}
 />
 
-<Dialog open={openKit} onClose={() => setOpenKit(false)} maxWidth="md" fullWidth>
-    <Box sx={{ p: 3, bgcolor: '#fff' }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 0, color: '#333' }}>
-                Catálogo de <br /> <span style={{ fontSize: '2.3rem' }}>Descargas - Kits</span>
+{/* --- MODAL COMPONENTES KIT --- */}
+      <Dialog 
+        open={openKit} 
+        onClose={() => setOpenKit(false)} 
+        maxWidth="md" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+            border: '1px solid #e0e0e0',
+            overflow: 'hidden',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
+          }
+        }}
+      >
+        <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
+          <Box sx={{ position: 'relative', zIndex: 2 }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
+              Catálogo de Descargas - Kits
             </Typography>
-            <IconButton onClick={() => setOpenKit(false)}><CloseIcon /></IconButton>
+            <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+              Gestione los componentes que conforman este Kit
+            </Typography>
+          </Box>
+          <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+          <IconButton 
+            onClick={() => setOpenKit(false)}
+            sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+          >
+            <CloseIcon />
+          </IconButton>
         </Box>
-        <Divider sx={{ mb: 2, borderBottomWidth: 4, borderColor: 'black' }} />
 
-        {/* INFO DEL PRODUCTO PADRE */}
-        <Box sx={{ mb: 2, p: 1.5, bgcolor: '#f9f9f9', borderLeft: '5px solid orange' }}>
-            <Typography variant="body1"><strong>Clave KIT:</strong> {productoForm.clave_prod}</Typography>
-            <Typography variant="body1"><strong>Descripción:</strong> {productoForm.descripcion}</Typography>
-        </Box>
+        <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+          
+          {/* INFO DEL PRODUCTO PADRE */}
+          <Box sx={{ mb: 3, p: 2, bgcolor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e0e0e0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box>
+              <Typography variant="body2" sx={{ color: '#666' }}><strong>Clave KIT:</strong> {productoForm.clave_prod}</Typography>
+              <Typography variant="body2" sx={{ mt: 0.5, color: '#333', fontWeight: 500 }}>{productoForm.descripcion}</Typography>
+            </Box>
+          </Box>
 
-        <TableContainer component={Paper} sx={{ border: '1px solid #000', borderRadius: 0, boxShadow: 'none' }}>
-    <Table size="small" stickyHeader>
-        {/* CABECERAS: Ya incluye la columna de Costo s/IVA */}
-        <TableHead>
-            <TableRow sx={{ bgcolor: '#eee' }}>
-                <TableCell><strong>Clave</strong></TableCell>
-                <TableCell><strong>Descripción</strong></TableCell>
-                <TableCell align="right"><strong>Cant.</strong></TableCell>
-                <TableCell align="right"><strong>Costo c/IVA</strong></TableCell>
-                <TableCell align="right"><strong>Costo s/IVA</strong></TableCell>
-                <TableCell align="center"><strong>Acción</strong></TableCell>
-            </TableRow>
-        </TableHead>
-        <TableBody>
-            {/* FILA DE CAPTURA DUAL CON FILTRADO EN TIEMPO REAL */}
-            <TableRow sx={{ bgcolor: '#fffde7', borderBottom: '2px solid #ccc' }}>
-                {/* AUTOCOMPLETE CLAVE */}
-                <TableCell sx={{ width: '150px' }}>
-                    <Autocomplete
-                        options={catBusqueda || []}
-                        getOptionLabel={(option) => option?.clave ? String(option.clave) : ""}
-                        inputValue={busquedaClave}
-                        onInputChange={(e, val) => setBusquedaClave(val || "")}
-                        value={itemSeleccionado}
-                        onChange={(e, newValue) => {
-                            setItemSeleccionado(newValue);
-                            setBusquedaClave(newValue?.clave ? String(newValue.clave) : "");
-                            setBusquedaDesc(newValue?.descripcion1 || "");
-                        }}
-                        isOptionEqualToValue={(option, value) => option.clave === value?.clave}
-                        filterOptions={(options, { inputValue }) => {
-                            const search = String(inputValue || "").toLowerCase().trim();
-                            if (!search) return options.slice(0, 50); // Muestra 50 por defecto
-                            return options.filter(o => 
-                                String(o?.clave || "").toLowerCase().includes(search)
-                            ).slice(0, 50); // Filtra en tiempo real mientras escribes
-                        }}
-                        renderInput={(params) => <TextField {...params} label="Clave" variant="standard" />}
-                    />
-                </TableCell>
-
-                {/* AUTOCOMPLETE DESCRIPCIÓN */}
-                <TableCell sx={{ minWidth: 300 }}>
-                    <Autocomplete
-                        options={catBusqueda || []}
-                        getOptionLabel={(option) => option?.descripcion1 || ""}
-                        inputValue={busquedaDesc}
-                        onInputChange={(e, val) => setBusquedaDesc(val || "")}
-                        value={itemSeleccionado}
-                        onChange={(e, newValue) => {
-                            setItemSeleccionado(newValue);
-                            setBusquedaDesc(newValue?.descripcion1 || "");
-                            setBusquedaClave(newValue?.clave ? String(newValue.clave) : "");
-                        }}
-                        isOptionEqualToValue={(option, value) => option.clave === value?.clave}
-                        filterOptions={(options, { inputValue }) => {
-                            const search = String(inputValue || "").toLowerCase().trim();
-                            if (!search) return options.slice(0, 50); // Muestra 50 por defecto
-                            return options.filter(o => 
-                                String(o?.descripcion1 || "").toLowerCase().includes(search)
-                            ).slice(0, 50); // Filtra en tiempo real mientras escribes
-                        }}
-                        renderInput={(params) => <TextField {...params} label="Descripción del Componente" variant="standard" />}
-                    />
-                </TableCell>
-
-                {/* CANTIDAD A DESCONTAR */}
-                <TableCell align="right">
-                    <TextField 
-                        type="number" size="small" variant="standard" 
-                        value={nuevaCantKit} onChange={(e) => setNuevaCantKit(Number(e.target.value))}
-                        sx={{ width: 60 }}
-                    />
-                </TableCell>
-                
-                {/* PREVISUALIZACIÓN DE COSTOS */}
-                <TableCell align="right" sx={{ fontWeight: 'bold', color: '#2e7d32' }}>
-                    ${itemSeleccionado && itemSeleccionado.costo_iva != null ? Number(itemSeleccionado.costo_iva).toFixed(2) : "0.00"}
-                </TableCell>
-                <TableCell align="right" sx={{ color: '#666' }}>
-                    ${itemSeleccionado && itemSeleccionado.costo_sin_iva != null ? Number(itemSeleccionado.costo_sin_iva).toFixed(2) : "0.00"}
-                </TableCell>
-
-                {/* BOTÓN AGREGAR */}
-                <TableCell align="center">
-                    <Button variant="contained" size="small" onClick={handleAddSelectedProduct} sx={{ bgcolor: '#2e7d32' }}>+</Button>
-                </TableCell>
-            </TableRow>
-
-            {/* LISTA DE COMPONENTES AGREGADOS */}
-            {(componentesKit || []).map((item, idx) => (
-                <TableRow key={idx}>
-                    <TableCell>{item.clave}</TableCell>
-                    <TableCell>{item.descripcion}</TableCell>
-                    <TableCell align="right">{Number(item.cantidad || 0).toFixed(3)}</TableCell>
-                    <TableCell align="right">${Number(item.costo_iva || 0).toFixed(2)}</TableCell>
-                    <TableCell align="right">${Number(item.costo_sin_iva || 0).toFixed(2)}</TableCell> {/* Celda agregada */}
-                    <TableCell align="center">
-                        <IconButton size="small" color="error" onClick={() => setComponentesKit(componentesKit.filter((_, i) => i !== idx))}>
-                            <DeleteIcon fontSize="small" />
-                        </IconButton>
-                    </TableCell>
+          <TableContainer component={Paper} sx={{ maxHeight: 400, borderRadius: '8px', border: '1px solid #e0e0e0', boxShadow: 'none' }}>
+            <Table size="small" stickyHeader>
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>Clave</TableCell>
+                  <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>Descripción</TableCell>
+                  <TableCell align="center" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>Cant.</TableCell>
+                  <TableCell align="right" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>Costo c/IVA</TableCell>
+                  <TableCell align="right" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>Costo s/IVA</TableCell>
+                  <TableCell align="center" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', width: '50px', borderBottom: '2px solid #000' }}>Acción</TableCell>
                 </TableRow>
-            ))}
+              </TableHead>
+              <TableBody>
+                {/* FILA DE CAPTURA DUAL CON FILTRADO EN TIEMPO REAL */}
+                <TableRow sx={{ bgcolor: '#f8f9fa', borderBottom: '2px solid #ccc' }}>
+                  {/* AUTOCOMPLETE CLAVE */}
+                  <TableCell sx={{ width: '150px', borderBottom: '1px solid #e0e0e0' }}>
+                    <Autocomplete
+                      options={catBusqueda || []}
+                      getOptionLabel={(option) => option?.clave ? String(option.clave) : ""}
+                      inputValue={busquedaClave}
+                      onInputChange={(e, val) => setBusquedaClave(val || "")}
+                      value={itemSeleccionado}
+                      onChange={(e, newValue) => {
+                        setItemSeleccionado(newValue);
+                        setBusquedaClave(newValue?.clave ? String(newValue.clave) : "");
+                        setBusquedaDesc(newValue?.descripcion1 || "");
+                      }}
+                      isOptionEqualToValue={(option, value) => option.clave === value?.clave}
+                      filterOptions={(options, { inputValue }) => {
+                        const search = String(inputValue || "").toLowerCase().trim();
+                        if (!search) return options.slice(0, 50);
+                        return options.filter(o => String(o?.clave || "").toLowerCase().includes(search)).slice(0, 50);
+                      }}
+                      renderInput={(params) => <TextField {...params} label="Clave" variant="standard" />}
+                    />
+                  </TableCell>
 
-            {/* TOTALES FINALES */}
-            <TableRow sx={{ bgcolor: '#fff9c4' }}>
-                <TableCell colSpan={2} align="right"><strong>TOTALES:</strong></TableCell>
-                <TableCell align="right"><strong>{componentesKit.reduce((sum, i) => sum + Number(i.cantidad || 0), 0).toFixed(3)}</strong></TableCell>
-                <TableCell align="right" sx={{ fontWeight: 'bold', color: '#2e7d32' }}>
+                  {/* AUTOCOMPLETE DESCRIPCIÓN */}
+                  <TableCell sx={{ minWidth: 250, borderBottom: '1px solid #e0e0e0' }}>
+                    <Autocomplete
+                      options={catBusqueda || []}
+                      getOptionLabel={(option) => option?.descripcion1 || ""}
+                      inputValue={busquedaDesc}
+                      onInputChange={(e, val) => setBusquedaDesc(val || "")}
+                      value={itemSeleccionado}
+                      onChange={(e, newValue) => {
+                        setItemSeleccionado(newValue);
+                        setBusquedaDesc(newValue?.descripcion1 || "");
+                        setBusquedaClave(newValue?.clave ? String(newValue.clave) : "");
+                      }}
+                      isOptionEqualToValue={(option, value) => option.clave === value?.clave}
+                      filterOptions={(options, { inputValue }) => {
+                        const search = String(inputValue || "").toLowerCase().trim();
+                        if (!search) return options.slice(0, 50);
+                        return options.filter(o => String(o?.descripcion1 || "").toLowerCase().includes(search)).slice(0, 50);
+                      }}
+                      renderInput={(params) => <TextField {...params} label="Descripción del Componente" variant="standard" />}
+                    />
+                  </TableCell>
+
+                  {/* CANTIDAD A DESCONTAR */}
+                  <TableCell align="center" sx={{ borderBottom: '1px solid #e0e0e0' }}>
+                    <TextField 
+                      type="number" size="small" variant="standard" 
+                      value={nuevaCantKit} onChange={(e) => setNuevaCantKit(Number(e.target.value))}
+                      sx={{ width: 60 }}
+                      inputProps={{ style: { textAlign: 'center' } }}
+                    />
+                  </TableCell>
+                  
+                  {/* PREVISUALIZACIÓN DE COSTOS */}
+                  <TableCell align="right" sx={{ fontWeight: 'bold', color: '#2e7d32', borderBottom: '1px solid #e0e0e0' }}>
+                    ${itemSeleccionado && itemSeleccionado.costo_iva != null ? Number(itemSeleccionado.costo_iva).toFixed(2) : "0.00"}
+                  </TableCell>
+                  <TableCell align="right" sx={{ color: '#666', borderBottom: '1px solid #e0e0e0' }}>
+                    ${itemSeleccionado && itemSeleccionado.costo_sin_iva != null ? Number(itemSeleccionado.costo_sin_iva).toFixed(2) : "0.00"}
+                  </TableCell>
+
+                  {/* BOTÓN AGREGAR */}
+                  <TableCell align="center" sx={{ borderBottom: '1px solid #e0e0e0' }}>
+                    <Button 
+                      variant="contained" 
+                      size="small" 
+                      onClick={handleAddSelectedProduct} 
+                      sx={{ bgcolor: '#000000ff', color: 'white', minWidth: '40px', '&:hover': { bgcolor: '#333' } }}
+                    >
+                      +
+                    </Button>
+                  </TableCell>
+                </TableRow>
+
+                {/* LISTA DE COMPONENTES AGREGADOS */}
+                {(componentesKit || []).map((item, idx) => (
+                  <TableRow key={idx} hover sx={{ transition: 'all 0.2s ease', '&:hover': { bgcolor: '#f5f5f5' } }}>
+                    <TableCell sx={{ borderBottom: '1px solid #f1f3f4', fontWeight: 500 }}>{item.clave}</TableCell>
+                    <TableCell sx={{ borderBottom: '1px solid #f1f3f4' }}>{item.descripcion}</TableCell>
+                    <TableCell align="center" sx={{ borderBottom: '1px solid #f1f3f4' }}>{Number(item.cantidad || 0).toFixed(3)}</TableCell>
+                    <TableCell align="right" sx={{ borderBottom: '1px solid #f1f3f4', color: '#2e7d32', fontWeight: 500 }}>${Number(item.costo_iva || 0).toFixed(2)}</TableCell>
+                    <TableCell align="right" sx={{ borderBottom: '1px solid #f1f3f4', color: '#666' }}>${Number(item.costo_sin_iva || 0).toFixed(2)}</TableCell>
+                    <TableCell align="center" sx={{ borderBottom: '1px solid #f1f3f4' }}>
+                      <IconButton size="small" color="error" onClick={() => setComponentesKit(componentesKit.filter((_, i) => i !== idx))}>
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))}
+
+                {/* TOTALES FINALES */}
+                <TableRow sx={{ bgcolor: '#f5f5f5' }}>
+                  <TableCell colSpan={2} align="right" sx={{ borderBottom: 'none' }}><strong>TOTALES:</strong></TableCell>
+                  <TableCell align="center" sx={{ borderBottom: 'none' }}><strong>{componentesKit.reduce((sum, i) => sum + Number(i.cantidad || 0), 0).toFixed(3)}</strong></TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 'bold', color: '#2e7d32', borderBottom: 'none' }}>
                     ${componentesKit.reduce((sum, i) => sum + (Number(i.costo_iva || 0) * Number(i.cantidad || 0)), 0).toFixed(2)}
-                </TableCell>
-                <TableCell align="right" sx={{ fontWeight: 'bold' }}>
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 'bold', borderBottom: 'none' }}>
                     ${componentesKit.reduce((sum, i) => sum + (Number(i.costo_sin_iva || 0) * Number(i.cantidad || 0)), 0).toFixed(2)}
-                </TableCell>
-                <TableCell />
-            </TableRow>
-        </TableBody>
-    </Table>
-</TableContainer> 
+                  </TableCell>
+                  <TableCell sx={{ borderBottom: 'none' }} />
+                </TableRow>
+              </TableBody>
+            </Table>
+          </TableContainer> 
+        </DialogContent>
 
-        {/* BOTONES FINALES */}
-        <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-            <Button onClick={() => setOpenKit(false)} variant="outlined" color="inherit">Cancelar</Button>
-            <Button 
-                onClick={handleSaveKit} 
-                variant="contained" 
-                sx={{ bgcolor: '#2e7d32', color: 'white', fontWeight: 'bold' }}
-                disabled={loadingSaveKit}
-            >
-                {loadingSaveKit ? "Guardando..." : "💾 Guardar Kit"}
-            </Button>
-        </Box>
-    </Box>
-</Dialog>
+        <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
+          <Button 
+            onClick={() => setOpenKit(false)} 
+            color="inherit"
+            sx={{ borderRadius: '8px', fontWeight: 600, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleSaveKit} 
+            variant="contained" 
+            disabled={loadingSaveKit}
+            sx={{ 
+              bgcolor: '#000000ff', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none', px: 4,
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)', transition: 'all 0.3s ease',
+              '&:hover': { bgcolor: '#333333', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }
+            }}
+          >
+            {loadingSaveKit ? "Guardando..." : "Guardar Kit"}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-<Dialog open={openBitacora} onClose={() => setOpenBitacora(false)} maxWidth="lg" fullWidth>
-    <Box sx={{ p: 3, bgcolor: '#fdfdfd' }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-            <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#333' }}>
-                📋 Bitácora de Movimientos (Historial)
+{/* --- MODAL BITÁCORA DE LA CLAVE --- */}
+      <Dialog 
+        open={openBitacora} 
+        onClose={() => setOpenBitacora(false)} 
+        maxWidth="lg" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+            border: '1px solid #e0e0e0',
+            overflow: 'hidden',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
+          }
+        }}
+      >
+        <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
+          <Box sx={{ position: 'relative', zIndex: 2 }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
+              📋 Bitácora de Movimientos (Historial)
             </Typography>
-            <IconButton onClick={() => setOpenBitacora(false)}><CloseIcon /></IconButton>
-        </Box>
-        
-        <Box sx={{ mb: 2, p: 1.5, bgcolor: '#e3f2fd', borderLeft: '5px solid #1976d2' }}>
-            <Typography variant="body2"><strong>Clave:</strong> {productoForm.clave_prod}</Typography>
-            <Typography variant="body2"><strong>Descripción Actual:</strong> {productoForm.descripcion}</Typography>
+            <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+              Consulta todos los cambios y actualizaciones realizados a esta clave
+            </Typography>
+          </Box>
+          <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+          <IconButton 
+            onClick={() => setOpenBitacora(false)}
+            sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+          >
+            <CloseIcon />
+          </IconButton>
         </Box>
 
-        <Divider sx={{ mb: 2, borderBottomWidth: 2, borderColor: '#ccc' }} />
+        <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+          
+          <Box sx={{ mb: 3, p: 2, bgcolor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+            <Typography variant="body2" sx={{ color: '#666' }}><strong>Clave:</strong> {productoForm.clave_prod}</Typography>
+            <Typography variant="body2" sx={{ mt: 0.5, color: '#333', fontWeight: 500 }}><strong>Descripción Actual:</strong> {productoForm.descripcion}</Typography>
+          </Box>
 
-        {/* Tabla con scroll horizontal habilitado */}
-{/* Tabla con scroll horizontal habilitado para ver los 39 campos en el orden de Access */}
-        <TableContainer component={Paper} sx={{ maxHeight: 500, border: '1px solid #e0e0e0', boxShadow: 'none', overflowX: 'auto' }}>
+          {/* Tabla con scroll horizontal habilitado para ver los 39 campos en el orden de Access */}
+          <TableContainer component={Paper} sx={{ maxHeight: 500, borderRadius: '8px', border: '1px solid #e0e0e0', boxShadow: 'none', overflowX: 'auto' }}>
             <Table stickyHeader size="small" sx={{ minWidth: 4000 }}>
                 <TableHead>
                     <TableRow>
-                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>ID</TableCell>
-                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', whiteSpace: 'nowrap' }}>FECHA CAMBIO</TableCell>
-                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>IP</TableCell>
-                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>ESTATUS</TableCell>
-                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>CLAVE PROD</TableCell>
-                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', whiteSpace: 'nowrap' }}>FECHA ALTA</TableCell>
-                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', whiteSpace: 'nowrap' }}>FECHA ACTUALIZACION</TableCell>
-                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', minWidth: 250 }}>DESCRIPCION</TableCell>
-                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', minWidth: 150 }}>DESCRIPCION CORTA</TableCell>
-                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>SUCURSAL ORIGEN</TableCell>
-                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>MARCA</TableCell>
-                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>AREA</TableCell>
-                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>DEPTO</TableCell>
-                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>CLASE</TableCell>
-                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', minWidth: 200 }}>OBSERVACIONES</TableCell>
+                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>ID</TableCell>
+                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', whiteSpace: 'nowrap', borderBottom: '2px solid #000' }}>FECHA CAMBIO</TableCell>
+                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>IP</TableCell>
+                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>ESTATUS</TableCell>
+                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>CLAVE PROD</TableCell>
+                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', whiteSpace: 'nowrap', borderBottom: '2px solid #000' }}>FECHA ALTA</TableCell>
+                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', whiteSpace: 'nowrap', borderBottom: '2px solid #000' }}>FECHA ACTUALIZACION</TableCell>
+                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', minWidth: 250, borderBottom: '2px solid #000' }}>DESCRIPCION</TableCell>
+                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', minWidth: 150, borderBottom: '2px solid #000' }}>DESCRIPCION CORTA</TableCell>
+                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>SUCURSAL ORIGEN</TableCell>
+                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>MARCA</TableCell>
+                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>AREA</TableCell>
+                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>DEPTO</TableCell>
+                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>CLASE</TableCell>
+                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', minWidth: 200, borderBottom: '2px solid #000' }}>OBSERVACIONES</TableCell>
                         
                         {/* Checkboxes */}
-                        <TableCell align="center" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>INVENTARIABLE</TableCell>
-                        <TableCell align="center" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>EXCENTOS</TableCell>
-                        <TableCell align="center" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>CONTROLADO</TableCell>
-                        <TableCell align="center" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>ES FRACCION</TableCell>
-                        <TableCell align="center" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>OBSOLETO</TableCell>
-                        <TableCell align="center" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>ES KIT</TableCell>
+                        <TableCell align="center" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>INVENTARIABLE</TableCell>
+                        <TableCell align="center" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>EXCENTOS</TableCell>
+                        <TableCell align="center" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>CONTROLADO</TableCell>
+                        <TableCell align="center" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>ES FRACCION</TableCell>
+                        <TableCell align="center" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>OBSOLETO</TableCell>
+                        <TableCell align="center" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>ES KIT</TableCell>
                         
                         {/* Costos, precios y cantidades */}
-                        <TableCell align="right" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>TASA IVA</TableCell>
-                        <TableCell align="right" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>COSTO</TableCell>
-                        <TableCell align="right" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>COSTO UNITARIO</TableCell>
-                        <TableCell align="right" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>COSTO PROMEDIO</TableCell>
-                        <TableCell align="right" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>COSTO UNITARIO AUTORIZADO</TableCell>
-                        <TableCell align="right" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>UNIDAD PAQ</TableCell>
-                        <TableCell align="right" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>UNIDAD PAQUETE TRASPASO</TableCell>
-                        <TableCell align="right" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>CANTIDAD 1</TableCell>
-                        <TableCell align="right" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>CANTIDAD 2</TableCell>
-                        <TableCell align="right" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>CANTIDAD 3</TableCell>
+                        <TableCell align="right" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>TASA IVA</TableCell>
+                        <TableCell align="right" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>COSTO</TableCell>
+                        <TableCell align="right" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>COSTO UNITARIO</TableCell>
+                        <TableCell align="right" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>COSTO PROMEDIO</TableCell>
+                        <TableCell align="right" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>COSTO UNITARIO AUTORIZADO</TableCell>
+                        <TableCell align="right" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>UNIDAD PAQ</TableCell>
+                        <TableCell align="right" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>UNIDAD PAQUETE TRASPASO</TableCell>
+                        <TableCell align="right" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>CANTIDAD 1</TableCell>
+                        <TableCell align="right" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>CANTIDAD 2</TableCell>
+                        <TableCell align="right" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>CANTIDAD 3</TableCell>
                         
                         {/* Promociones y otros */}
-                        <TableCell align="center" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>PROMOCION</TableCell>
-                        <TableCell align="right" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>PORCENTAJE PROMOCION</TableCell>
-                        <TableCell align="right" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>PRECIO PROMOCION</TableCell>
-                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', whiteSpace: 'nowrap' }}>FECHA INICIO</TableCell>
-                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', whiteSpace: 'nowrap' }}>FECHA FINAL</TableCell>
-                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>DIAS ROTACION</TableCell>
-                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>TIPO COSTEO</TableCell>
-                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>VERSION</TableCell>
+                        <TableCell align="center" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>PROMOCION</TableCell>
+                        <TableCell align="right" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>PORCENTAJE PROMOCION</TableCell>
+                        <TableCell align="right" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>PRECIO PROMOCION</TableCell>
+                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', whiteSpace: 'nowrap', borderBottom: '2px solid #000' }}>FECHA INICIO</TableCell>
+                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', whiteSpace: 'nowrap', borderBottom: '2px solid #000' }}>FECHA FINAL</TableCell>
+                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>DIAS ROTACION</TableCell>
+                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>TIPO COSTEO</TableCell>
+                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>VERSION</TableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
                     {loadingBitacora ? (
-                        <TableRow><TableCell colSpan={39} align="center" sx={{ py: 3 }}>Consultando historial en el servidor...</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={39} align="center" sx={{ py: 3, color: '#666' }}>Consultando historial en el servidor...</TableCell></TableRow>
                     ) : bitacoraDatos.length > 0 ? (
                         bitacoraDatos.map((row, idx) => (
-                            <TableRow key={idx} hover>
-                                <TableCell>{row.id}</TableCell>
-                                <TableCell sx={{ whiteSpace: 'nowrap', color: '#1976d2', fontWeight: 500 }}>
+                            <TableRow key={idx} hover sx={{ transition: 'all 0.2s ease', '&:hover': { bgcolor: '#f5f5f5' } }}>
+                                <TableCell sx={{ borderBottom: '1px solid #f1f3f4' }}>{row.id}</TableCell>
+                                <TableCell sx={{ whiteSpace: 'nowrap', color: '#1a365d', fontWeight: 600, borderBottom: '1px solid #f1f3f4' }}>
                                     {row.fecha_cambio ? String(row.fecha_cambio).replace('T', ' ').substring(0, 16) : ''}
                                 </TableCell>
-                                <TableCell sx={{ fontSize: '0.85rem' }}>{row.ip}</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', color: row.estatus === 'BAJA' ? '#d32f2f' : 'inherit' }}>
+                                <TableCell sx={{ fontSize: '0.85rem', borderBottom: '1px solid #f1f3f4', color: '#666' }}>{row.ip}</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', color: row.estatus === 'BAJA' ? '#d32f2f' : 'inherit', borderBottom: '1px solid #f1f3f4' }}>
                                     {row.estatus}
                                 </TableCell>
-                                <TableCell sx={{ fontWeight: 'bold' }}>{row.clave_prod}</TableCell>
-                                <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                                <TableCell sx={{ fontWeight: 'bold', borderBottom: '1px solid #f1f3f4' }}>{row.clave_prod}</TableCell>
+                                <TableCell sx={{ whiteSpace: 'nowrap', borderBottom: '1px solid #f1f3f4' }}>
                                     {row.fecha_alta ? String(row.fecha_alta).replace('T', ' ').substring(0, 16) : ''}
                                 </TableCell>
-                                <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                                <TableCell sx={{ whiteSpace: 'nowrap', borderBottom: '1px solid #f1f3f4' }}>
                                     {row.fecha_act ? String(row.fecha_act).replace('T', ' ').substring(0, 16) : ''}
                                 </TableCell>
-                                <TableCell sx={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 300 }}>{row.descripcion}</TableCell>
-                                <TableCell sx={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 200 }}>{row.descripcion_corta}</TableCell>
-                                <TableCell>{row.sucursal_origen}</TableCell>
-                                <TableCell>{row.marca}</TableCell>
-                                <TableCell>{row.area}</TableCell>
-                                <TableCell>{row.depto}</TableCell>
-                                <TableCell>{row.clase}</TableCell>
-                                <TableCell sx={{ fontSize: '0.8rem', color: '#666', maxWidth: 250, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.observacion}</TableCell>
+                                <TableCell sx={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 300, borderBottom: '1px solid #f1f3f4' }}>{row.descripcion}</TableCell>
+                                <TableCell sx={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 200, borderBottom: '1px solid #f1f3f4' }}>{row.descripcion_corta}</TableCell>
+                                <TableCell sx={{ borderBottom: '1px solid #f1f3f4' }}>{row.sucursal_origen}</TableCell>
+                                <TableCell sx={{ borderBottom: '1px solid #f1f3f4' }}>{row.marca}</TableCell>
+                                <TableCell sx={{ borderBottom: '1px solid #f1f3f4' }}>{row.area}</TableCell>
+                                <TableCell sx={{ borderBottom: '1px solid #f1f3f4' }}>{row.depto}</TableCell>
+                                <TableCell sx={{ borderBottom: '1px solid #f1f3f4' }}>{row.clase}</TableCell>
+                                <TableCell sx={{ fontSize: '0.8rem', color: '#666', maxWidth: 250, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', borderBottom: '1px solid #f1f3f4' }}>{row.observacion}</TableCell>
 
                                 {/* Checkboxes */}
-                                <TableCell align="center">{row.inventariable ? 'SÍ' : 'NO'}</TableCell>
-                                <TableCell align="center">{row.excentos ? 'SÍ' : 'NO'}</TableCell>
-                                <TableCell align="center">{row.controlado ? 'SÍ' : 'NO'}</TableCell>
-                                <TableCell align="center">{row.es_fraccion ? 'SÍ' : 'NO'}</TableCell>
-                                <TableCell align="center" sx={{ color: row.obsoleto ? '#d32f2f' : 'inherit', fontWeight: row.obsoleto ? 'bold' : 'normal' }}>{row.obsoleto ? 'SÍ' : 'NO'}</TableCell>
-                                <TableCell align="center">{row.es_kit ? 'SÍ' : 'NO'}</TableCell>
+                                <TableCell align="center" sx={{ borderBottom: '1px solid #f1f3f4' }}>{row.inventariable ? 'SÍ' : 'NO'}</TableCell>
+                                <TableCell align="center" sx={{ borderBottom: '1px solid #f1f3f4' }}>{row.excentos ? 'SÍ' : 'NO'}</TableCell>
+                                <TableCell align="center" sx={{ borderBottom: '1px solid #f1f3f4' }}>{row.controlado ? 'SÍ' : 'NO'}</TableCell>
+                                <TableCell align="center" sx={{ borderBottom: '1px solid #f1f3f4' }}>{row.es_fraccion ? 'SÍ' : 'NO'}</TableCell>
+                                <TableCell align="center" sx={{ color: row.obsoleto ? '#d32f2f' : 'inherit', fontWeight: row.obsoleto ? 'bold' : 'normal', borderBottom: '1px solid #f1f3f4' }}>{row.obsoleto ? 'SÍ' : 'NO'}</TableCell>
+                                <TableCell align="center" sx={{ borderBottom: '1px solid #f1f3f4' }}>{row.es_kit ? 'SÍ' : 'NO'}</TableCell>
 
                                 {/* Costos, precios y cantidades */}
-                                <TableCell align="right">{Number(row.tasa_iva || 0)}</TableCell>
-                                <TableCell align="right" sx={{ color: '#666' }}>${Number(row.costo || 0).toFixed(2)}</TableCell>
-                                <TableCell align="right" sx={{ fontWeight: 500 }}>${Number(row.costo_unitario || 0).toFixed(2)}</TableCell>
-                                <TableCell align="right">${Number(row.costo_promedio || 0).toFixed(2)}</TableCell>
-                                <TableCell align="right">${Number(row.costo_unitario_autorizado || 0).toFixed(2)}</TableCell>
-                                <TableCell align="right">{row.unidad_paq}</TableCell>
-                                <TableCell align="right">{row.unidad_paq_traspaso}</TableCell>
-                                <TableCell align="right">{row.cantidad1}</TableCell>
-                                <TableCell align="right">{row.cantidad2}</TableCell>
-                                <TableCell align="right">{row.cantidad3}</TableCell>
+                                <TableCell align="right" sx={{ borderBottom: '1px solid #f1f3f4' }}>{Number(row.tasa_iva || 0)}</TableCell>
+                                <TableCell align="right" sx={{ color: '#666', borderBottom: '1px solid #f1f3f4' }}>${Number(row.costo || 0).toFixed(2)}</TableCell>
+                                <TableCell align="right" sx={{ fontWeight: 500, borderBottom: '1px solid #f1f3f4' }}>${Number(row.costo_unitario || 0).toFixed(2)}</TableCell>
+                                <TableCell align="right" sx={{ borderBottom: '1px solid #f1f3f4' }}>${Number(row.costo_promedio || 0).toFixed(2)}</TableCell>
+                                <TableCell align="right" sx={{ borderBottom: '1px solid #f1f3f4' }}>${Number(row.costo_unitario_autorizado || 0).toFixed(2)}</TableCell>
+                                <TableCell align="right" sx={{ borderBottom: '1px solid #f1f3f4' }}>{row.unidad_paq}</TableCell>
+                                <TableCell align="right" sx={{ borderBottom: '1px solid #f1f3f4' }}>{row.unidad_paq_traspaso}</TableCell>
+                                <TableCell align="right" sx={{ borderBottom: '1px solid #f1f3f4' }}>{row.cantidad1}</TableCell>
+                                <TableCell align="right" sx={{ borderBottom: '1px solid #f1f3f4' }}>{row.cantidad2}</TableCell>
+                                <TableCell align="right" sx={{ borderBottom: '1px solid #f1f3f4' }}>{row.cantidad3}</TableCell>
 
                                 {/* Promociones y otros */}
-                                <TableCell align="center">{row.promocion ? 'SÍ' : 'NO'}</TableCell>
-                                <TableCell align="right">{Number(row.porcentaje_promocion || 0)}%</TableCell>
-                                <TableCell align="right" sx={{ color: '#FF9800', fontWeight: 'bold' }}>${Number(row.precio_promocion || 0).toFixed(2)}</TableCell>
-                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '0.85rem' }}>{row.fecha_inicio ? String(row.fecha_inicio).split('T')[0] : ''}</TableCell>
-                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '0.85rem' }}>{row.fecha_final ? String(row.fecha_final).split('T')[0] : ''}</TableCell>
-                                <TableCell>{row.dias_rotacion}</TableCell>
-                                <TableCell>{row.tipo_costeo}</TableCell>
-                                <TableCell>{row.version}</TableCell>
+                                <TableCell align="center" sx={{ borderBottom: '1px solid #f1f3f4' }}>{row.promocion ? 'SÍ' : 'NO'}</TableCell>
+                                <TableCell align="right" sx={{ borderBottom: '1px solid #f1f3f4' }}>{Number(row.porcentaje_promocion || 0)}%</TableCell>
+                                <TableCell align="right" sx={{ color: '#e65100', fontWeight: 'bold', borderBottom: '1px solid #f1f3f4' }}>${Number(row.precio_promocion || 0).toFixed(2)}</TableCell>
+                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '0.85rem', borderBottom: '1px solid #f1f3f4' }}>{row.fecha_inicio ? String(row.fecha_inicio).split('T')[0] : ''}</TableCell>
+                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '0.85rem', borderBottom: '1px solid #f1f3f4' }}>{row.fecha_final ? String(row.fecha_final).split('T')[0] : ''}</TableCell>
+                                <TableCell sx={{ borderBottom: '1px solid #f1f3f4' }}>{row.dias_rotacion}</TableCell>
+                                <TableCell sx={{ borderBottom: '1px solid #f1f3f4' }}>{row.tipo_costeo}</TableCell>
+                                <TableCell sx={{ borderBottom: '1px solid #f1f3f4' }}>{row.version}</TableCell>
                             </TableRow>
                         ))
                     ) : (
@@ -3451,84 +3912,119 @@ const cantidadesValidas = cantidadesDescarga
                     )}
                 </TableBody>
             </Table>
-        </TableContainer>
+          </TableContainer>
+        </DialogContent>
 
-        <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
-            <Button onClick={() => setOpenBitacora(false)} variant="contained" sx={{ bgcolor: '#333', color: 'white' }}>
-                Cerrar Historial
-            </Button>
-        </Box>
-    </Box>
-</Dialog>
+        <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
+          <Button 
+            onClick={() => setOpenBitacora(false)} 
+            color="inherit"
+            sx={{ borderRadius: '8px', fontWeight: 600, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
+          >
+            Cerrar Historial
+          </Button>
+        </DialogActions>
+      </Dialog>
 {/* --- MODAL DE BITÁCORA DE PRECIOS --- */}
-<Dialog open={openBitacoraPrecios} onClose={() => setOpenBitacoraPrecios(false)} maxWidth="md" fullWidth>
-    <Box sx={{ p: 3, bgcolor: '#fdfdfd' }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-            <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#333' }}>
-                💲 Bitácora de Cambios de Precios
+      <Dialog 
+        open={openBitacoraPrecios} 
+        onClose={() => setOpenBitacoraPrecios(false)} 
+        maxWidth="md" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+            border: '1px solid #e0e0e0',
+            overflow: 'hidden',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
+          }
+        }}
+      >
+        <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
+          <Box sx={{ position: 'relative', zIndex: 2 }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
+               Bitácora de Cambios de Precios
             </Typography>
-            <IconButton onClick={() => setOpenBitacoraPrecios(false)}><CloseIcon /></IconButton>
+            <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+              Consulte el historial de modificaciones de precios para esta clave
+            </Typography>
+          </Box>
+          <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+          <IconButton 
+            onClick={() => setOpenBitacoraPrecios(false)}
+            sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+          >
+            <CloseIcon />
+          </IconButton>
         </Box>
         
-        <Box sx={{ mb: 2, p: 1.5, bgcolor: '#e8f5e9', borderLeft: '5px solid #4caf50' }}>
-            <Typography variant="body2"><strong>Clave:</strong> {productoForm.clave_prod}</Typography>
-            <Typography variant="body2"><strong>Descripción:</strong> {productoForm.descripcion}</Typography>
-        </Box>
+        <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+          
+          {/* INFO DEL PRODUCTO */}
+          <Box sx={{ mb: 3, p: 2, bgcolor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+            <Typography variant="body2" sx={{ color: '#666' }}><strong>Clave:</strong> {productoForm.clave_prod}</Typography>
+            <Typography variant="body2" sx={{ mt: 0.5, color: '#333', fontWeight: 500 }}><strong>Descripción:</strong> {productoForm.descripcion}</Typography>
+          </Box>
 
-        <TableContainer component={Paper} sx={{ maxHeight: 400, border: '1px solid #e0e0e0', boxShadow: 'none' }}>
+          <TableContainer component={Paper} sx={{ maxHeight: 400, borderRadius: '8px', border: '1px solid #e0e0e0', boxShadow: 'none' }}>
             <Table stickyHeader size="small">
-                <TableHead>
-                    <TableRow>
-                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>ID</TableCell>
-                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', whiteSpace: 'nowrap' }}>Fecha Cambio</TableCell>
-                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Estatus</TableCell>
-                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>IP</TableCell>
-                        <TableCell align="center" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Clave Lista</TableCell>
-                        <TableCell align="right" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Precio</TableCell>
-                        <TableCell align="right" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Margen</TableCell>
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>ID</TableCell>
+                  <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', whiteSpace: 'nowrap', borderBottom: '2px solid #000' }}>Fecha Cambio</TableCell>
+                  <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>Estatus</TableCell>
+                  <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>IP</TableCell>
+                  <TableCell align="center" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>Clave Lista</TableCell>
+                  <TableCell align="right" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>Precio</TableCell>
+                  <TableCell align="right" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', borderBottom: '2px solid #000' }}>Margen</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {loadingBitacoraPrecios ? (
+                  <TableRow><TableCell colSpan={7} align="center" sx={{ py: 3, color: '#666' }}>Consultando cambios de precios...</TableCell></TableRow>
+                ) : bitacoraPreciosDatos.length > 0 ? (
+                  bitacoraPreciosDatos.map((row, idx) => (
+                    <TableRow key={idx} hover sx={{ transition: 'all 0.2s ease', '&:hover': { bgcolor: '#f5f5f5' } }}>
+                      <TableCell sx={{ borderBottom: '1px solid #f1f3f4' }}>{row.id}</TableCell>
+                      <TableCell sx={{ whiteSpace: 'nowrap', color: '#1a365d', fontWeight: 600, borderBottom: '1px solid #f1f3f4' }}>
+                        {row.fecha_cambio ? String(row.fecha_cambio).replace('T', ' ').substring(0, 16) : ''}
+                      </TableCell>
+                      <TableCell sx={{ fontWeight: 'bold', color: row.estatus === 'Actual' ? '#2e7d32' : '#666', borderBottom: '1px solid #f1f3f4' }}>
+                        {row.estatus}
+                      </TableCell>
+                      <TableCell sx={{ fontSize: '0.85rem', color: '#666', borderBottom: '1px solid #f1f3f4' }}>{row.ip}</TableCell>
+                      <TableCell align="center" sx={{ borderBottom: '1px solid #f1f3f4' }}>{row.clave_lista}</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 'bold', color: '#333', borderBottom: '1px solid #f1f3f4' }}>
+                        ${Number(row.precio || 0).toFixed(2)}
+                      </TableCell>
+                      <TableCell align="right" sx={{ borderBottom: '1px solid #f1f3f4' }}>
+                        {Number(row.margen || 0)}%
+                      </TableCell>
                     </TableRow>
-                </TableHead>
-                <TableBody>
-                    {loadingBitacoraPrecios ? (
-                        <TableRow><TableCell colSpan={7} align="center" sx={{ py: 3 }}>Consultando cambios de precios...</TableCell></TableRow>
-                    ) : bitacoraPreciosDatos.length > 0 ? (
-                        bitacoraPreciosDatos.map((row, idx) => (
-                            <TableRow key={idx} hover>
-                                <TableCell>{row.id}</TableCell>
-                                <TableCell sx={{ whiteSpace: 'nowrap', color: '#1976d2', fontWeight: 500 }}>
-                                    {row.fecha_cambio ? String(row.fecha_cambio).replace('T', ' ').substring(0, 16) : ''}
-                                </TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', color: row.estatus === 'Actual' ? '#2e7d32' : '#666' }}>
-                                    {row.estatus}
-                                </TableCell>
-                                <TableCell sx={{ fontSize: '0.85rem' }}>{row.ip}</TableCell>
-                                <TableCell align="center">{row.clave_lista}</TableCell>
-                                <TableCell align="right" sx={{ fontWeight: 'bold' }}>
-                                    ${Number(row.precio || 0).toFixed(2)}
-                                </TableCell>
-                                <TableCell align="right">
-                                    {Number(row.margen || 0)}
-                                </TableCell>
-                            </TableRow>
-                        ))
-                    ) : (
-                        <TableRow>
-                            <TableCell colSpan={7} align="center" sx={{ py: 4, color: '#999' }}>
-                                No hay registro de cambios de precios para esta clave.
-                            </TableCell>
-                        </TableRow>
-                    )}
-                </TableBody>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={7} align="center" sx={{ py: 4, color: '#999' }}>
+                      No hay registro de cambios de precios para esta clave.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
             </Table>
-        </TableContainer>
+          </TableContainer>
+        </DialogContent>
 
-        <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
-            <Button onClick={() => setOpenBitacoraPrecios(false)} variant="contained" sx={{ bgcolor: '#333', color: 'white' }}>
-                Cerrar
-            </Button>
-        </Box>
-    </Box>
-</Dialog>
+        <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
+          <Button 
+            onClick={() => setOpenBitacoraPrecios(false)} 
+            color="inherit"
+            sx={{ borderRadius: '8px', fontWeight: 600, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
+          >
+            Cerrar
+          </Button>
+        </DialogActions>
+      </Dialog>
 {/* --- MODAL DE PROGRAMACIÓN DE PRECIOS --- */}
 <ModalProgPrecio 
     open={openProgPrecio} 
