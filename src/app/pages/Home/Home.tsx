@@ -105,9 +105,6 @@ const Home: React.FC = () => {
     { id: 'categoriasGastos', title: 'Categorías de Gastos', path: routes.cat_Categorias },
     //Proveedores Admon
     { id: 'provAcreedores', title: 'Prov. Acreedores', path: routes.cat_Proveedores_Acreedores },
-    
-    
-    { id: 'ajustePrecios', title: 'Ajuste Masivo Precios', path: '/ajustemasivoprecios' },
   ];
 
   const RRHHItems = [
