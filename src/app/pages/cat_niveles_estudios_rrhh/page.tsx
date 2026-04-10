@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Box, Typography, Button, TextField, Grid, 
-  Snackbar, Alert, Paper, IconButton 
+  Snackbar, Alert, Paper, IconButton, Dialog, DialogContent, DialogActions 
 } from '@mui/material'; 
 import { 
   DataGrid, GridColDef, GridToolbar, 
@@ -11,6 +11,7 @@ import {
 } from '@mui/x-data-grid';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
+import CloseIcon from '@mui/icons-material/Close';
 import Swal from 'sweetalert2';
 
 import useConsumoApi from '../../../hooks/useConsumoApi';
@@ -35,8 +36,9 @@ export default function NivelesEstudios() {
 
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({ page: 0, pageSize: 50 });
+  const [openDialog, setOpenDialog] = useState(false);
   const [formData, setFormData] = useState(initialFormState);
 
   // Función interceptora para SweetAlert2
@@ -84,7 +86,17 @@ const [saving, setSaving] = useState(false);
       setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-const handleAgregarNuevo = async () => {
+  const handleOpenDialog = () => {
+    setFormData(initialFormState);
+    setOpenDialog(true);
+  };
+
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    setFormData(initialFormState);
+  };
+
+  const handleAgregarNuevo = async () => {
         // Validaciones elegantes
         if (!formData.clave_nivel) return setMessage({ text: "La Clave es obligatoria.", type: 'info' });
         if (!formData.descripcion_escolaridad.trim()) return setMessage({ text: "La descripción es obligatoria.", type: 'info' });
@@ -100,7 +112,7 @@ const handleAgregarNuevo = async () => {
             if (res.status === 200) {
                 setMessage({ text: `Nivel de estudios agregado exitosamente.`, type: 'success' });
                 fetchTabla();
-                setFormData(initialFormState);
+                handleCloseDialog();
             }
         } catch (error: any) {
             setMessage({ text: error.response?.data?.mensaje || "Error al agregar el registro.", type: 'error' });
@@ -120,16 +132,16 @@ const handleAgregarNuevo = async () => {
 
           const res = await consumoApi.put('/api/NivelesEscolaridad/sp_bw_cat_niveles_escolaridad_upd', payload);
           if (res.status === 200) {
-              setMessage({ text: "💾 Cambios guardados automáticamente.", type: 'info' });
+              setMessage({ text: "Cambios guardados automáticamente.", type: 'info' });
               return { ...newRow, descripcion_escolaridad: payload.descripcion_escolaridad }; 
           } else throw new Error("Error en actualización");
       } catch (error) {
-          setMessage({ text: "❌ Error al guardar.", type: 'error' });
+          setMessage({ text: "Error al guardar.", type: 'error' });
           return oldRow;
       }
   };
 
-const handleEliminar = async (clave: number) => {
+  const handleEliminar = async (clave: number) => {
       const confirmacion = await Swal.fire({
           title: '¿Estás seguro?',
           text: "¿Desea eliminar este nivel de estudios?",
@@ -176,9 +188,9 @@ const handleEliminar = async (clave: number) => {
       <Paper sx={{ p: 3, borderRadius: '8px' }}>
 
         {/* ENCABEZADO ESTILO ACCESS */}
-        <Box sx={{ border: '1px solid #2c3e50', p: 1.5, mb: 2, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
+        <Box sx={{ border: '1px solid #000000ff', p: 1.5, mb: 2, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
             <Box>
-                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#000000ff', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
                     Niveles de estudios RRHH
                 </Typography>
                 
@@ -191,24 +203,14 @@ const handleEliminar = async (clave: number) => {
             </Box>
         </Box>
 
-        <Grid container spacing={2} justifyContent="center" alignItems="center">
-            <Grid item xs={12} md={2}>
-                <TextField {...commonProps} type="number" label="Clave*" name="clave_nivel" value={formData.clave_nivel} onChange={handleInputChange} />
-            </Grid>
-            <Grid item xs={12} md={6}>
-                <TextField {...commonProps} label="Descripción del Nivel*" name="descripcion_escolaridad" value={formData.descripcion_escolaridad} onChange={handleInputChange} />
-            </Grid>
-            <Grid item xs={12} md={2}>
-                <Button variant="contained" onClick={handleAgregarNuevo} disabled={saving} fullWidth startIcon={<AddIcon />}
-                    sx={{ 
-                        height: '50px', backgroundColor: '#333333', color: 'white', fontWeight: 600, textTransform: 'none', borderRadius: '8px',
-                        boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)', transition: 'all 0.3s ease',
-                        '&:hover': { backgroundColor: '#555555', boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)', transform: 'translateY(-1px)' }
-                    }}>
-                    AGREGAR
-                </Button>
-            </Grid>
-        </Grid>
+        <Button variant="contained" onClick={handleOpenDialog} startIcon={<AddIcon />}
+            sx={{ 
+                height: '50px', backgroundColor: '#333333', color: 'white', fontWeight: 600, textTransform: 'none', borderRadius: '8px',
+                boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)', transition: 'all 0.3s ease', mb: 2,
+                '&:hover': { backgroundColor: '#555555', boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)', transform: 'translateY(-1px)' }
+            }}>
+            AGREGAR NIVEL
+        </Button>
       </Paper>
 
         {/* TABLA PRINCIPAL */}
@@ -239,7 +241,83 @@ const handleEliminar = async (clave: number) => {
           </Paper>
         </Box>
 
-  
+      {/* DIÁLOGO AGREGAR */}
+      <Dialog 
+        open={openDialog} 
+        onClose={handleCloseDialog}
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+            border: '1px solid #e0e0e0',
+            overflow: 'hidden'
+          }
+        }}
+      >
+        <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative' }}>
+          <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
+            Agregar Nivel de Estudios
+          </Typography>
+          <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+            Ingrese la información del nuevo nivel de estudios
+          </Typography>
+          <IconButton 
+            onClick={handleCloseDialog}
+            sx={{ position: 'absolute', top: 16, right: 16, color: 'white', bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </Box>
+
+        <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+          <Grid container spacing={2} sx={{ mt: 0.5 }}>
+            <Grid item xs={12}>
+              <TextField
+                {...commonProps}
+                type="number"
+                label="Clave *"
+                name="clave_nivel"
+                value={formData.clave_nivel}
+                onChange={handleInputChange}
+                autoFocus
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                {...commonProps}
+                label="Descripción del Nivel *"
+                name="descripcion_escolaridad"
+                value={formData.descripcion_escolaridad}
+                onChange={handleInputChange}
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+
+        <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
+          <Button 
+            onClick={handleCloseDialog}
+            color="inherit"
+            sx={{ borderRadius: '8px', fontWeight: 500, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleAgregarNuevo}
+            disabled={saving}
+            variant="contained"
+            sx={{ 
+              bgcolor: '#000000ff', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none', px: 4,
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)', transition: 'all 0.3s ease',
+              '&:hover': { bgcolor: '#333333', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }
+            }}
+          >
+            {saving ? 'Guardando...' : 'Guardar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
     </Box>
   );

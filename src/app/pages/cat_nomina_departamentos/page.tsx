@@ -100,10 +100,11 @@ const [loading, setLoading] = useState(true);
       const response = await consumoApi.get(
         '/api/CatNominaDepartamentos/sp_bw_cat_nomina_departamentos_sel',
       );
-      // Agregar id único a cada fila usando clave_departamento
+      // Agregar id único a cada fila usando index, manteniendo clave_departamento como string
       const rowsWithId = response.data.map((item: any, index: number) => ({
-        ...item,
-        id: item.clave_departamento || index
+        id: index,
+        clave_departamento: String(item.clave_departamento || ''),
+        descripcion_departamento: String(item.descripcion_departamento || '')
       }));
       setRows(rowsWithId);
     } catch (err) {
@@ -205,9 +206,9 @@ return (
 
       <Paper sx={{ p: 3, borderRadius: '8px' }}>
         {/* ENCABEZADO BERLLANO ELEGANTE 2 */}
-        <Box sx={{ border: '1px solid #2c3e50', borderRadius: '8px', backgroundColor: '#fff', p: 1.5, mb: 2, display: 'flex', justifyContent: 'space-between' }}>
+        <Box sx={{ border: '1px solid #000000ff', borderRadius: '8px', backgroundColor: '#fff', p: 1.5, mb: 2, display: 'flex', justifyContent: 'space-between' }}>
           <Box>
-            <Typography variant="h6" sx={{ fontFamily: 'Georgia, "Times New Roman", serif', fontWeight: 'bold', color: '#1a365d', fontSize: '1.1rem' }}>
+            <Typography variant="h6" sx={{ fontFamily: 'Georgia, "Times New Roman", serif', fontWeight: 'bold', color: '#000000ff', fontSize: '1.1rem' }}>
               Catálogo de Departamentos
             </Typography>
             
@@ -265,16 +266,7 @@ return (
         </Paper>
       </Box>
 
-      {/* PIE DE PÁGINA BERLLANO ELEGANTE 2 */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 3 }}>
-        <Button variant="contained" sx={{ backgroundColor: '#e0e0e0', color: '#000', fontWeight: 'bold', px: 4, mb: 2, '&:hover': { backgroundColor: '#d0d0d0' } }}>
-          Salir
-        </Button>
-        <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
-          CAT_NOMINA_DEPARTAMENTOS, ARAUCARIAS, {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/')}, USR:{session?.nombre || 'ADMIN'}
-        </Typography>
-      </Box>
-
+      
       {/* --- MODAL AGREGAR --- */}
       <Dialog 
         open={openAdd} 

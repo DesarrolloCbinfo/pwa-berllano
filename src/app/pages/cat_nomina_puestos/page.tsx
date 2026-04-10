@@ -196,9 +196,9 @@ return (
 
       <Paper sx={{ p: 3, borderRadius: '8px' }}>
         {/* ENCABEZADO BERLLANO ELEGANTE 2 */}
-        <Box sx={{ border: '1px solid #2c3e50', borderRadius: '8px', backgroundColor: '#fff', p: 1.5, mb: 2, display: 'flex', justifyContent: 'space-between' }}>
+        <Box sx={{ border: '1px solid #000000ff', borderRadius: '8px', backgroundColor: '#fff', p: 1.5, mb: 2, display: 'flex', justifyContent: 'space-between' }}>
           <Box>
-            <Typography variant="h6" sx={{ fontFamily: 'Georgia, "Times New Roman", serif', fontWeight: 'bold', color: '#1a365d', fontSize: '1.1rem' }}>
+            <Typography variant="h6" sx={{ fontFamily: 'Georgia, "Times New Roman", serif', fontWeight: 'bold', color: '#000000ff', fontSize: '1.1rem' }}>
               Catálogo de Puestos
             </Typography>
           

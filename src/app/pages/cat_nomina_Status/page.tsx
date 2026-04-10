@@ -120,9 +120,21 @@ const handleAdd = async () => {
     if (clave_status === '') return setMessage({ text: "La Clave del Status es obligatoria", type: 'info' });
     if (!descripcion.trim()) return setMessage({ text: "La descripción es obligatoria", type: 'info' });
 
+    const claveStatusNumber = Number(clave_status);
+    
+    // Validar que no sea negativo
+    if (claveStatusNumber < 0) {
+      return setMessage({ text: "El status no puede ser un valor negativo", type: 'info' });
+    }
+
+    // Validar que no exista ya en la lista
+    const statusExiste = rows.some(row => row.clave_status === claveStatusNumber);
+    if (statusExiste) {
+      return setMessage({ text: "Este status ya existe en el catálogo", type: 'info' });
+    }
+
     try {
       setSaving(true);
-      const claveStatusNumber = clave_status === '' ? 0 : Number(clave_status);
 
       const response = await consumoApi.post(
         `/api/CatNominaStatus/sp_bw_cat_nomina_status_add?clave_status=${claveStatusNumber}&descripcion=${encodeURIComponent(descripcion.toUpperCase())}`,
@@ -194,9 +206,9 @@ return (
 
       <Paper sx={{ p: 3, borderRadius: '8px' }}>
         {/* ENCABEZADO BERLLANO ELEGANTE 2 */}
-        <Box sx={{ border: '1px solid #2c3e50', borderRadius: '8px', backgroundColor: '#fff', p: 1.5, mb: 2, display: 'flex', justifyContent: 'space-between' }}>
+        <Box sx={{ border: '1px solid #000000ff', borderRadius: '8px', backgroundColor: '#fff', p: 1.5, mb: 2, display: 'flex', justifyContent: 'space-between' }}>
             <Box>
-                <Typography variant="h6" sx={{ fontFamily: 'Georgia, "Times New Roman", serif', fontWeight: 'bold', color: '#1a365d', fontSize: '1.1rem' }}>
+                <Typography variant="h6" sx={{ fontFamily: 'Georgia, "Times New Roman", serif', fontWeight: 'bold', color: '#000000ff', fontSize: '1.1rem' }}>
                     Catálogo de Status de Nómina
                 </Typography>
                 
@@ -304,9 +316,12 @@ return (
                     setClaveStatus('');
                   } else {
                     const parsed = parseInt(value);
-                    setClaveStatus(isNaN(parsed) ? '' : parsed);
+                    if (!isNaN(parsed) && parsed >= 0) {
+                      setClaveStatus(parsed);
+                    }
                   }
                 }}
+                inputProps={{ min: 0 }}
               />
             </Grid>
             <Grid item xs={12}>

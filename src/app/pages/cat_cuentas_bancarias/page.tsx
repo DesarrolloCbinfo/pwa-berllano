@@ -164,7 +164,7 @@ const handleAgregarNuevo = async () => {
 
           const res = await consumoApi.put('/api/CuentasBancarias/sp_bw_cat_cuentas_bancarias_upd', payload);
           if (res.status === 200) {
-              setMessage({ text: "💾 Cambios guardados automáticamente.", type: 'info' });
+              setMessage({ text: " Cambios guardados automáticamente.", type: 'info' });
               return { ...newRow, Descripcion: payload.descripcion }; 
           } else throw new Error("Error en actualización");
       } catch (error) {
@@ -233,9 +233,9 @@ const columns = useMemo<GridColDef[]>(() => [
       <Paper sx={{ p: 3, borderRadius: '8px' }}>
 
         {/* ENCABEZADO ESTILO ACCESS */}
-        <Box sx={{ border: '1px solid #2c3e50', p: 1.5, mb: 2, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
+        <Box sx={{ border: '1px solid #000000ff', p: 1.5, mb: 2, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
             <Box>
-                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#000000ff', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
                     Catálogo de Cuentas Bancarias
                 </Typography>
                 

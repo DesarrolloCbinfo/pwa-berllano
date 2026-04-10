@@ -172,9 +172,9 @@ const handleEliminar = async (id: number) => {
     <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
       <Paper sx={{ p: 3 }}>
         {/* ENCABEZADO ESTILO ACCESS */}
-        <Box sx={{ border: '1px solid #2c3e50', p: 1.5, mb: 2, borderRadius: '6px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
+        <Box sx={{ border: '1px solid #000000ffff', p: 1.5, mb: 2, borderRadius: '6px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
             <Box>
-                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#000000ff', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
                     Accesos Alternos (Sin Huella)
                 </Typography>
                 

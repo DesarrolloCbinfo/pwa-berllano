@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Box, Typography, Button, TextField, Grid, 
-  Snackbar, Alert, Paper, IconButton 
+  Snackbar, Alert, Paper, IconButton, Dialog, DialogTitle, DialogContent, DialogActions 
 } from '@mui/material'; 
 import { 
   DataGrid, GridColDef, GridToolbar, 
@@ -11,6 +11,7 @@ import {
 } from '@mui/x-data-grid';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
+import CloseIcon from '@mui/icons-material/Close';
 import Swal from 'sweetalert2';
 
 import useConsumoApi from '../../../hooks/useConsumoApi';
@@ -52,6 +53,7 @@ export default function ConceptosAjustes() {
 const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({ page: 0, pageSize: 50 });
+  const [openDialog, setOpenDialog] = useState(false);
   
   const [formData, setFormData] = useState(initialFormState);
 
@@ -102,7 +104,17 @@ const [loading, setLoading] = useState(false);
       setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-// 1. GUARDAR NUEVO (Desde el formulario superior)
+  const handleOpenDialog = () => {
+    setFormData(initialFormState);
+    setOpenDialog(true);
+  };
+
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    setFormData(initialFormState);
+  };
+
+  // 1. GUARDAR NUEVO (Desde el diálogo)
   const handleAgregarNuevo = async () => {
         if (!formData.descripcion.trim()) return setMessage({ text: "La descripción es obligatoria.", type: 'info' });
         if (formData.ajuste === '' || isNaN(Number(formData.ajuste))) return setMessage({ text: "El ajuste debe ser un número válido.", type: 'info' });
@@ -119,7 +131,7 @@ const [loading, setLoading] = useState(false);
             if (res.status === 200) {
                 setMessage({ text: `Nuevo concepto agregado exitosamente.`, type: 'success' });
                 fetchTablaConceptos();
-                setFormData(initialFormState); // Limpiar formulario
+                handleCloseDialog();
             }
         } catch (error) {
             setMessage({ text: "Error al agregar el registro.", type: 'error' });
@@ -207,9 +219,9 @@ const [loading, setLoading] = useState(false);
         
 
         {/* ENCABEZADO ESTILO ACCESS */}
-        <Box sx={{ border: '1px solid #2c3e50', p: 1.5, mb: 2, borderRadius: '6px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
+        <Box sx={{ border: '1px solid #000000ff', p: 1.5, mb: 2, borderRadius: '6px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
             <Box>
-                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#000000ff', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
                     Catálogo de Conceptos de Ajustes
                 </Typography>
                 
@@ -222,49 +234,26 @@ const [loading, setLoading] = useState(false);
             </Box>
         </Box>
 
-        <Grid container spacing={2}>
-            <Grid item xs={12} md={6}>
-                <TextField 
-                    {...commonProps} 
-                    label="Descripción del Ajuste" 
-                    name="descripcion" 
-                    value={formData.descripcion} 
-                    onChange={handleInputChange} 
-                />
-            </Grid>
-            <Grid item xs={12} md={2}>
-                <TextField 
-                    {...commonProps} 
-                    type="number" 
-                    label="Valor de Ajuste" 
-                    name="ajuste" 
-                    value={formData.ajuste} 
-                    onChange={handleInputChange} 
-                />
-            </Grid>
-
-            {/* Botón Agregar */}
-            <Grid item xs={12} md={2}>
-                <Button variant="contained" onClick={handleAgregarNuevo} disabled={saving} fullWidth startIcon={<AddIcon />}
-                    sx={{ 
-                        height: '50px', 
-                        backgroundColor: '#333333', 
-                        color: 'white', 
-                        fontWeight: 600,
-                        textTransform: 'none',
-                        borderRadius: '8px',
-                        boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)',
-                        transition: 'all 0.3s ease',
-                        '&:hover': { 
-                            backgroundColor: '#555555',
-                            boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)',
-                            transform: 'translateY(-1px)'
-                        }
-                    }}>
-                    AGREGAR
-                </Button>
-            </Grid>
-        </Grid>
+        {/* Botón Agregar */}
+        <Button variant="contained" onClick={handleOpenDialog} startIcon={<AddIcon />}
+            sx={{ 
+                height: '50px', 
+                backgroundColor: '#333333', 
+                color: 'white', 
+                fontWeight: 600,
+                textTransform: 'none',
+                borderRadius: '8px',
+                boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)',
+                transition: 'all 0.3s ease',
+                mb: 2,
+                '&:hover': { 
+                    backgroundColor: '#555555',
+                    boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)',
+                    transform: 'translateY(-1px)'
+                }
+            }}>
+            AGREGAR CONCEPTO
+        </Button>
       </Paper>
 
         {/* TABLA PRINCIPAL */}
@@ -302,7 +291,83 @@ const [loading, setLoading] = useState(false);
           </Paper>
         </Box>
 
+      {/* DIÁLOGO AGREGAR */}
+      <Dialog 
+        open={openDialog} 
+        onClose={handleCloseDialog}
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+            border: '1px solid #e0e0e0',
+            overflow: 'hidden'
+          }
+        }}
+      >
+        <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative' }}>
+          <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
+            Agregar Concepto de Ajuste
+          </Typography>
+          <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+            Ingrese la información del nuevo concepto
+          </Typography>
+          <IconButton 
+            onClick={handleCloseDialog}
+            sx={{ position: 'absolute', top: 16, right: 16, color: 'white', bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </Box>
 
+        <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+          <Grid container spacing={2} sx={{ mt: 0.5 }}>
+            <Grid item xs={12}>
+              <TextField
+                {...commonProps}
+                label="Descripción del Ajuste *"
+                name="descripcion"
+                value={formData.descripcion}
+                onChange={handleInputChange}
+                autoFocus
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                {...commonProps}
+                type="number"
+                label="Valor de Ajuste *"
+                name="ajuste"
+                value={formData.ajuste}
+                onChange={handleInputChange}
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+
+        <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
+          <Button 
+            onClick={handleCloseDialog}
+            color="inherit"
+            sx={{ borderRadius: '8px', fontWeight: 500, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleAgregarNuevo}
+            disabled={saving}
+            variant="contained"
+            sx={{ 
+              bgcolor: '#000000ff', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none', px: 4,
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)', transition: 'all 0.3s ease',
+              '&:hover': { bgcolor: '#333333', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }
+            }}
+          >
+            {saving ? 'Guardando...' : 'Guardar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
     </Box>
   );

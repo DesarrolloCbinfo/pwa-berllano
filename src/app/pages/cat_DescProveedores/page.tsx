@@ -4,6 +4,7 @@ import { DataGrid, GridColDef } from '@mui/x-data-grid'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
 import CloseIcon from '@mui/icons-material/Close'
+import Swal from 'sweetalert2'
 import useConsumoApi from '../../../hooks/useConsumoApi'
 import { useSessionContext } from '../../../context/SessionProvider'
 import PWABadge from '../../../PWABadge'
@@ -82,8 +83,15 @@ export default function CatDescProveedores() {
       headerName: 'Costo Neto',
       width: 150,
       type: 'boolean',
+      editable: true,
       renderCell: (params) => (
-        <Checkbox checked={!!params.value} disabled />
+        <Checkbox 
+          checked={!!params.value} 
+          sx={{ 
+            color: '#333',
+            '&.Mui-checked': { color: '#333' }
+          }}
+        />
       ),
     },
   ]
@@ -142,39 +150,63 @@ export default function CatDescProveedores() {
     setSelectedRow(null)
   }
 
-  const handleDeleteOpen = (row: DescuentoProveedor) => {
-    setSelectedRow(row)
-    setOpenDelete(true)
+  const handleDeleteOpen = async (row: DescuentoProveedor) => {
+    const result = await Swal.fire({
+      title: '¿Confirmar eliminación?',
+      html: `¿Está seguro que desea eliminar el descuento<br/><strong>"${row.descripcion}"</strong>?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#999999',
+      reverseButtons: true
+    })
+
+    if (result.isConfirmed) {
+      try {
+        const response = await consumoApi.delete(
+          '/api/CatDescuentoProveedores/sp_bw_cat_proveedores_descuentos_del',
+          {
+            params: {
+              id_descuento: row.id_descuento,
+            }
+          }
+        )
+
+        if (response.data?.[0]?.codigo === 0) {
+          await fetchDescuentos()
+          await Swal.fire({
+            title: '¡Eliminado!',
+            text: 'El descuento ha sido eliminado correctamente',
+            icon: 'success',
+            confirmButtonColor: '#000000',
+            timer: 2000,
+            showConfirmButton: false
+          })
+        } else {
+          await Swal.fire({
+            title: 'Error',
+            text: response.data?.[0]?.mensaje1 || 'Error al eliminar',
+            icon: 'error',
+            confirmButtonColor: '#000000'
+          })
+        }
+      } catch (err) {
+        console.error('Error al eliminar descuento:', err)
+        await Swal.fire({
+          title: 'Error',
+          text: 'Error al eliminar el descuento',
+          icon: 'error',
+          confirmButtonColor: '#000000'
+        })
+      }
+    }
   }
 
   const handleDeleteClose = () => {
     setOpenDelete(false)
     setSelectedRow(null)
-  }
-
-  const handleDelete = async () => {
-    if (!selectedRow) return
-
-    try {
-      const response = await consumoApi.delete(
-        '/api/CatDescuentoProveedores/sp_bw_cat_proveedores_descuentos_del',
-        {
-          params: {
-            id_descuento: selectedRow.id_descuento,
-          }
-        }
-      )
-
-      if (response.data?.[0]?.codigo === 0) {
-        await fetchDescuentos()
-        handleDeleteClose()
-      } else {
-        setError(response.data?.[0]?.mensaje1 || 'Error al eliminar')
-      }
-    } catch (err) {
-      console.error('Error al eliminar descuento:', err)
-      setError('Error al eliminar el descuento')
-    }
   }
 
   const handleAdd = async () => {
@@ -195,12 +227,30 @@ export default function CatDescProveedores() {
       if (response.data?.[0]?.codigo === 0) {
         await fetchDescuentos()
         handleAddClose()
+        await Swal.fire({
+          title: '¡Éxito!',
+          text: 'Descuento agregado correctamente',
+          icon: 'success',
+          confirmButtonColor: '#000000',
+          timer: 2000,
+          showConfirmButton: false
+        })
       } else {
-        setError(response.data?.[0]?.mensaje1 || 'Error al agregar')
+        await Swal.fire({
+          title: 'Error',
+          text: response.data?.[0]?.mensaje1 || 'Error al agregar',
+          icon: 'error',
+          confirmButtonColor: '#000000'
+        })
       }
     } catch (err) {
       console.error('Error al agregar descuento:', err)
-      setError('Error al agregar el descuento')
+      await Swal.fire({
+        title: 'Error',
+        text: 'Error al agregar el descuento',
+        icon: 'error',
+        confirmButtonColor: '#000000'
+      })
     }
   }
 
@@ -223,12 +273,60 @@ export default function CatDescProveedores() {
       if (response.data?.[0]?.codigo === 0) {
         await fetchDescuentos()
         handleEditClose()
+        await Swal.fire({
+          title: '¡Éxito!',
+          text: 'Descuento actualizado correctamente',
+          icon: 'success',
+          confirmButtonColor: '#000000',
+          timer: 2000,
+          showConfirmButton: false
+        })
+      } else {
+        await Swal.fire({
+          title: 'Error',
+          text: response.data?.[0]?.mensaje1 || 'Error al actualizar',
+          icon: 'error',
+          confirmButtonColor: '#000000'
+        })
+      }
+    } catch (err) {
+      console.error('Error al actualizar descuento:', err)
+      await Swal.fire({
+        title: 'Error',
+        text: 'Error al actualizar el descuento',
+        icon: 'error',
+        confirmButtonColor: '#000000'
+      })
+    }
+  }
+
+  const handleProcessRowUpdate = async (newRow: DescuentoProveedor, oldRow: DescuentoProveedor) => {
+    try {
+      const params = {
+        id_descuento: newRow.id_descuento,
+        descripcion: newRow.descripcion,
+        aplica_costo: newRow.aplica_costo
+      }
+      
+      const response = await consumoApi.put(
+        '/api/CatDescuentoProveedores/sp_bw_cat_proveedores_descuentos_upd',
+        {},
+        {
+          params
+        }
+      )
+
+      if (response.data?.[0]?.codigo === 0) {
+        await fetchDescuentos()
+        return newRow
       } else {
         setError(response.data?.[0]?.mensaje1 || 'Error al actualizar')
+        return oldRow
       }
     } catch (err) {
       console.error('Error al actualizar descuento:', err)
       setError('Error al actualizar el descuento')
+      return oldRow
     }
   }
   if (loading) {
@@ -254,9 +352,9 @@ return (
         <Box sx={{ backgroundColor: 'white', p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.05)', mb: 3 }}>
           
           {/* RECUADRO INTERIOR ELEGANTE */}
-          <Box sx={{ border: '1px solid #2c3e50', p: 1.5, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+          <Box sx={{ border: '1px solid #000000ff', p: 1.5, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between', mb: 2 }}>
               <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#000000ff', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
                       CATÁLOGO DE DESCUENTOS DE PROVEEDORES
                   </Typography>
                   
@@ -316,6 +414,11 @@ return (
               }}
               density="compact"
               disableRowSelectionOnClick
+              processRowUpdate={handleProcessRowUpdate}
+              onProcessRowUpdateError={(error) => {
+                console.error('Error al actualizar fila:', error)
+                setError('Error al actualizar el registro')
+              }}
               sx={{
                 border: 'none',
                 height: '100%',
@@ -534,66 +637,6 @@ return (
           </Button>
         </DialogActions>
       </Dialog>
-
-      {/* --- MODAL ELIMINAR --- */}
-      <Dialog 
-        open={openDelete} 
-        onClose={handleDeleteClose}
-        PaperProps={{
-          sx: {
-            borderRadius: '12px',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-            border: '1px solid #e0e0e0'
-          }
-        }}
-      >
-        <DialogTitle sx={{ background: 'linear-gradient(135deg, #000000ff 0%)', color: 'white', fontFamily: 'Georgia, "Times New Roman", serif' }}>
-          Confirmar Eliminación
-        </DialogTitle>
-        <DialogContent sx={{ p: 3, bgcolor: '#fff', mt: 2 }}>
-          <Typography sx={{ fontSize: '1.1rem', mb: 2 }}>
-            ¿Está seguro que desea eliminar el descuento "{selectedRow?.descripcion}"?
-          </Typography>
-          <Typography variant="body2" sx={{ color: '#666' }}>
-            Esta acción no se puede deshacer.
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, py: 2, bgcolor: '#f5f5f5', borderTop: '1px solid #e0e0e0' }}>
-          <Button 
-            onClick={handleDeleteClose}
-            sx={{ color: '#000', fontWeight: 600, textTransform: 'none', borderRadius: '8px', transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#d0d0d0' } }}
-          >
-            Cancelar
-          </Button>
-          <Button 
-            onClick={handleDelete} 
-            variant="contained" 
-            color="error"
-            sx={{ fontWeight: 600, textTransform: 'none', borderRadius: '8px', boxShadow: '0 4px 12px rgba(255, 255, 255, 0.4)' }}
-          >
-            Eliminar
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-
-
-      {/* Dialog Eliminar */}
-      <Dialog open={openDelete} onClose={handleDeleteClose}>
-        <DialogTitle>Confirmar Eliminación</DialogTitle>
-        <DialogContent>
-          <Typography>
-            ¿Está seguro que desea eliminar el descuento "{selectedRow?.descripcion}"?
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleDeleteClose}>Cancelar</Button>
-          <Button onClick={handleDelete} variant="contained" color="error">
-            Eliminar
-          </Button>
-        </DialogActions>
-      </Dialog>
-
      <PWABadge />
     </>
   )

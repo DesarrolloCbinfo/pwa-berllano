@@ -242,9 +242,9 @@ const handlePermisosMasivo = async (otorgarTodo: boolean) => {
       <Paper sx={{ p: 3, borderRadius: '8px', mb: 3 }}>
         
         {/* ENCABEZADO RECTANGULAR ELEGANTE CLONADO */}
-        <Box sx={{ border: '1px solid #2c3e50', p: 1.5, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
+        <Box sx={{ border: '1px solid #000000ff', p: 1.5, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
             <Box>
-                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#000000ff', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
                     PERFILES Y PERMISOS DE USUARIOS
                 </Typography>
                
@@ -449,8 +449,8 @@ const handlePermisosMasivo = async (otorgarTodo: boolean) => {
           <Box sx={{ mt: 1 }}>
             <Typography variant="body2" sx={{ mb: 3, color: '#666', lineHeight: 1.6 }}>
               {perfilForm.clave_perfil === 0 
-                ? "📝 Al crear un nuevo perfil, se le asignarán automáticamente todos los módulos del sistema con acceso denegado." 
-                : "📝 Modifica el nombre del perfil según sea necesario."
+                ? " Al crear un nuevo perfil, se le asignarán automáticamente todos los módulos del sistema con acceso denegado." 
+                : " Modifica el nombre del perfil según sea necesario."
               }
             </Typography>
             <TextField 
