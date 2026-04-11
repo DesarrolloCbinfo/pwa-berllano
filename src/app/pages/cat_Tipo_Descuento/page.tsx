@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Box, Typography, Button, TextField, Grid, 
-  Snackbar, Alert, Paper, IconButton 
+  Snackbar, Alert, Paper, IconButton,
+  Dialog, DialogContent, DialogActions
 } from '@mui/material'; 
 import { 
   DataGrid, GridColDef, GridToolbar, 
@@ -11,6 +12,7 @@ import {
 } from '@mui/x-data-grid';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
+import CloseIcon from '@mui/icons-material/Close';
 import Swal from 'sweetalert2';
 
 import useConsumoApi from '../../../hooks/useConsumoApi';
@@ -38,6 +40,7 @@ export default function CatTipoDescuentos() {
   const [rows, setRows] = useState<any[]>([]);
 const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [openAdd, setOpenAdd] = useState(false);
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({ page: 0, pageSize: 50 });
   const [formData, setFormData] = useState(initialFormState);
 
@@ -113,6 +116,7 @@ const payload = {
                 setMessage({ text: `Descuento agregado exitosamente.`, type: 'success' });
                 fetchTabla();
                 setFormData(initialFormState);
+                setOpenAdd(false);
             }
         } catch (error: any) {
             setMessage({ text: error.response?.data?.mensaje || "Error al agregar el registro.", type: 'error' });
@@ -210,97 +214,184 @@ const columns = useMemo<GridColDef[]>(() => [
         type: 'number'
     }
   ], []);
-  return (
+return (
     <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
-      <Paper sx={{ p: 3 }}>
-
-        {/* ENCABEZADO */}
-        <Box sx={{ border: '1px solid #000000ff', p: 1.5, mb: 2, borderRadius: '6px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
+      
+      {/* ENCABEZADO Y BOTÓN AGREGAR */}
+      <Paper sx={{ p: 3, borderRadius: '8px', mb: 3, boxShadow: '0 4px 8px rgba(0,0,0,0.05)' }}>
+        <Box sx={{ border: '1px solid #000000ff', p: 1.5, mb: 3, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
             <Box>
                 <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#000000ff', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
                     Catálogo de Tipos de Descuentos
                 </Typography>
-                
             </Box>
             <Box sx={{ textAlign: 'right' }}>
                 <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#333', lineHeight: 1.1, fontSize: '0.9rem' }}>
                     {new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' }).replace('.', '')}
                 </Typography>
-                
             </Box>
         </Box>
 
-        <Grid container spacing={2} justifyContent="center" alignItems="center">
-            {/* NO se pide ID porque es autogenerado por SQL */}
-            <Grid item xs={12} md={4}>
-                <TextField {...commonProps} label="Descripción del Descuento*" name="descripcion" value={formData.descripcion} onChange={handleInputChange} />
-            </Grid>
-           <Grid item xs={6} md={2}>
-    <TextField {...commonProps} type="number" inputProps={{ step: "1" }} label="Min Dto (Ej: 15 = 15%)" name="min_descto" value={formData.min_descto} onChange={handleInputChange} />
-</Grid>
-<Grid item xs={6} md={2}>
-    <TextField {...commonProps} type="number" inputProps={{ step: "1" }} label="Max Dto (Ej: 100 = 100%)" name="max_descto" value={formData.max_descto} onChange={handleInputChange} />
-</Grid>
-            
-            <Grid item xs={12} md={2}>
-                <Button variant="contained" onClick={handleAgregarNuevo} disabled={saving} fullWidth startIcon={<AddIcon />}
-                    sx={{ 
-                        height: '50px', backgroundColor: '#333333', color: 'white', fontWeight: 600, textTransform: 'none', borderRadius: '8px',
-                        boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)', transition: 'all 0.3s ease',
-                        '&:hover': { backgroundColor: '#555555', boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)', transform: 'translateY(-1px)' }
-                    }}>
-                    AGREGAR
-                </Button>
-            </Grid>
-        </Grid>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
+          <Button 
+            variant="contained" 
+            onClick={() => setOpenAdd(true)}
+            startIcon={<AddIcon />}
+            sx={{ 
+              height: '45px', 
+              backgroundColor: '#333333', 
+              color: 'white', 
+              fontWeight: 600, 
+              textTransform: 'none', 
+              borderRadius: '8px',
+              boxShadow: '0 4px 12px rgba(51, 51, 51, 0.2)', 
+              transition: 'all 0.3s ease',
+              '&:hover': { 
+                backgroundColor: '#555555', 
+                transform: 'translateY(-1px)' 
+              }
+            }}
+          >
+            AGREGAR TIPO DE DESCUENTO
+          </Button>
+        </Box>
       </Paper>
 
-{/* ============================================================ */}
-        {/* --- TABLA PRINCIPAL AL ESTILO OFICIAL (TURNOS DOBLES) --- */}
-        {/* ============================================================ */}
-        <Box sx={{ mt: 3 }}>
-          <Paper sx={{ p: 3, width: '100%', maxHeight: 600, mb: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
-            <DataGrid 
-                rows={Array.isArray(rows) ? rows : []} 
-                columns={columns} 
-                getRowId={(row) => row.tipo_descuento} 
-                loading={loading || saving} 
-                paginationModel={paginationModel} 
-                onPaginationModelChange={setPaginationModel} 
-                pageSizeOptions={[50, 100, 500]} 
-                slots={{ toolbar: GridToolbar, pagination: CustomPagination }} 
-                slotProps={{ toolbar: { showQuickFilter: true } }} 
-                density="compact"
-                disableRowSelectionOnClick
-                processRowUpdate={processRowUpdate} 
-                onProcessRowUpdateError={(error) => console.error(error)}
-                sx={{ 
-                    border: 'none', 
-                    // Encabezados estilo oficial (Borde inferior grueso, centrado, letra clara)
-                    '& .MuiDataGrid-columnHeaders': { 
-                        borderBottom: '2px solid #000',
-                        textAlign: 'center',
-                        fontSize: '1rem',
-                        fontWeight: 'bold'
-                    },
-                    // Línea divisoria muy sutil entre celdas
-                    '& .MuiDataGrid-cell': {
-                        borderBottom: '1px solid #e0e0e000' // Borde invisible para diseño limpio
-                    },
-                    // Estilos de edición (Igual a tu base oficial)
-                    '& .MuiDataGrid-cell--editable': { 
-                        backgroundColor: '#f9fbfd', 
-                        cursor: 'text' 
-                    }, 
-                    '& .MuiDataGrid-cell--editing': { 
-                        backgroundColor: '#fff', 
-                        boxShadow: '0 4px 12px rgba(255, 255, 255, 0.4)' 
-                    }
-                }} 
-            />
-          </Paper>
+      {/* TABLA PRINCIPAL AL ESTILO OFICIAL */}
+      <Box sx={{ mt: 3 }}>
+        <Paper sx={{ p: 3, width: '100%', maxHeight: 600, mb: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
+          <DataGrid 
+            rows={Array.isArray(rows) ? rows : []} 
+            columns={columns} 
+            getRowId={(row) => row.tipo_descuento} 
+            loading={loading || saving} 
+            paginationModel={paginationModel} 
+            onPaginationModelChange={setPaginationModel} 
+            pageSizeOptions={[50, 100, 500]} 
+            slots={{ toolbar: GridToolbar, pagination: CustomPagination }} 
+            slotProps={{ toolbar: { showQuickFilter: true } }} 
+            density="compact"
+            disableRowSelectionOnClick
+            processRowUpdate={processRowUpdate} 
+            onProcessRowUpdateError={(error) => console.error(error)}
+            sx={{ 
+                border: 'none', 
+                '& .MuiDataGrid-columnHeaders': { 
+                    borderBottom: '2px solid #000',
+                    textAlign: 'center',
+                    fontSize: '1rem',
+                    fontWeight: 'bold'
+                },
+                '& .MuiDataGrid-cell': {
+                    borderBottom: '1px solid #e0e0e000'
+                },
+                '& .MuiDataGrid-cell--editable': { 
+                    backgroundColor: '#f9fbfd', 
+                    cursor: 'text' 
+                }, 
+                '& .MuiDataGrid-cell--editing': { 
+                    backgroundColor: '#fff', 
+                    boxShadow: '0 4px 12px rgba(255, 255, 255, 0.4)' 
+                }
+            }} 
+          />
+        </Paper>
+      </Box>
+
+      {/* --- MODAL PARA AGREGAR NUEVO DESCUENTO --- */}
+      <Dialog 
+        open={openAdd} 
+        onClose={() => setOpenAdd(false)} 
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+            border: '1px solid #e0e0e0',
+            overflow: 'hidden',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
+          }
+        }}
+      >
+        <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
+          <Box sx={{ position: 'relative', zIndex: 2 }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
+              Nuevo Tipo de Descuento
+            </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+              Ingrese la descripción y los límites porcentuales
+            </Typography>
+          </Box>
+          <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+          <IconButton 
+            onClick={() => setOpenAdd(false)}
+            sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+          >
+            <CloseIcon />
+          </IconButton>
         </Box>
-        {/* ============================================================ */}
+
+        <DialogContent sx={{ p: 4, backgroundColor: '#ffffff' }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 1 }}>
+            <TextField 
+              {...commonProps} 
+              label="Descripción del Descuento *" 
+              name="descripcion" 
+              value={formData.descripcion} 
+              onChange={handleInputChange} 
+              autoFocus
+            />
+            
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <TextField 
+                {...commonProps} 
+                type="number" 
+                inputProps={{ step: "1" }} 
+                label="Min Dto (%)" 
+                name="min_descto" 
+                value={formData.min_descto} 
+                onChange={handleInputChange} 
+                helperText="Ej: 15 = 15%"
+                sx={{ ...commonProps.sx, '& .MuiFormHelperText-root': { ml: 0, fontWeight: 500, mt: 1 } }}
+              />
+              <TextField 
+                {...commonProps} 
+                type="number" 
+                inputProps={{ step: "1" }} 
+                label="Max Dto (%)" 
+                name="max_descto" 
+                value={formData.max_descto} 
+                onChange={handleInputChange} 
+                helperText="Ej: 100 = 100%"
+                sx={{ ...commonProps.sx, '& .MuiFormHelperText-root': { ml: 0, fontWeight: 500, mt: 1 } }}
+              />
+            </Box>
+          </Box>
+        </DialogContent>
+
+        <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
+          <Button 
+            onClick={() => setOpenAdd(false)} 
+            color="inherit"
+            sx={{ borderRadius: '8px', fontWeight: 600, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleAgregarNuevo} 
+            variant="contained" 
+            disabled={saving}
+            sx={{ 
+              bgcolor: '#000000ff', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none', px: 4,
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)', transition: 'all 0.3s ease',
+              '&:hover': { bgcolor: '#333333', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }
+            }}
+          >
+            {saving ? "Guardando..." : "Guardar Descuento"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

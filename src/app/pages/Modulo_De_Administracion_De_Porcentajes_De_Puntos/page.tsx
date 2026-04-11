@@ -3,6 +3,7 @@ import { Box, CircularProgress, Alert, Typography, Button, Dialog, DialogTitle, 
 import { DataGrid, GridColDef } from '@mui/x-data-grid'
 import DeleteIcon from '@mui/icons-material/Delete'
 import AddIcon from '@mui/icons-material/Add'
+import CloseIcon from '@mui/icons-material/Close'
 import useConsumoApi from '../../../hooks/useConsumoApi'
 import { useSessionContext } from '../../../context/SessionProvider'
 import PWABadge from '../../../PWABadge'
@@ -116,6 +117,7 @@ export default function AdministracionPorcentajesPuntos() {
   const [celdaSeleccionada, setCeldaSeleccionada] = useState<string | null>(null)
 
   const [saving, setSaving] = useState(false)
+  const [openAdd, setOpenAdd] = useState(false)
 
   const [openDelete, setOpenDelete] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
@@ -305,6 +307,7 @@ export default function AdministracionPorcentajesPuntos() {
       setDepartamentos([])
       setSelectedFormaPago('')
       setPorcentaje('')
+      setOpenAdd(false)
 
       // SweetAlert de éxito
       Swal.fire({
@@ -385,225 +388,246 @@ export default function AdministracionPorcentajesPuntos() {
     )
   }
 
-  return (
+return (
     <>
       <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#ececec' }}>
-        <Paper sx={{ p: 3, borderRadius: '8px' }}>
-          {/* ENCABEZADO */}
-          <Box sx={{ border: '1px solid #000000ff', p: 1.5, mb: 2, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
+        
+        {/* ENCABEZADO Y BOTÓN AGREGAR */}
+        <Paper sx={{ p: 3, borderRadius: '8px', mb: 3, boxShadow: '0 4px 8px rgba(0,0,0,0.05)' }}>
+          <Box sx={{ border: '1px solid #000000ff', p: 1.5, mb: 3, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
             <Box>
-                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#000000ff', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#000000ff', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem', textTransform: 'uppercase' }}>
                     Administración de Porcentajes de Puntos
                 </Typography>
-               
             </Box>
             <Box sx={{ textAlign: 'right' }}>
                 <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#333', lineHeight: 1.1, fontSize: '0.9rem' }}>
                     {new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' }).replace('.', '')}
                 </Typography>
-                
             </Box>
           </Box>
 
-          <Grid container spacing={2} justifyContent="flex-start" alignItems="center" sx={{ mb: 0.5 }}>
-            <Grid item xs={12} md={2}>
-              <FormControl fullWidth>
-                <InputLabel>Sucursal</InputLabel>
-                <Select
-                  {...selectProps}
-                  value={selectedSucursal}
-                  onChange={(e) => {
-                    setSelectedSucursal(e.target.value)
-                  }}
-                  label="Sucursal"
-                >
-                  {sucursales.map((sucursal) => (
-                    <MenuItem key={sucursal.cve_sucursal} value={String(sucursal.cve_sucursal)}> 
-                      {sucursal.nombre}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
+            <Button 
+              variant="contained" 
+              onClick={() => setOpenAdd(true)}
+              startIcon={<AddIcon />}
+              sx={{ 
+                height: '45px', 
+                backgroundColor: '#333333', 
+                color: 'white', 
+                fontWeight: 600, 
+                textTransform: 'none', 
+                borderRadius: '8px',
+                boxShadow: '0 4px 12px rgba(51, 51, 51, 0.2)', 
+                transition: 'all 0.3s ease',
+                '&:hover': { 
+                  backgroundColor: '#555555', 
+                  transform: 'translateY(-1px)' 
+                }
+              }}
+            >
+              AGREGAR PORCENTAJE
+            </Button>
+          </Box>
+        </Paper>
 
-            <Grid item xs={12} md={2.5}>
-              <FormControl fullWidth>
-                <InputLabel>Área</InputLabel>
-                <Select
-                  {...selectProps}
-                  value={selectedArea}
-                  onChange={(e) => setSelectedArea(e.target.value)}
-                  label="Área"
-                >
-                  {areas.map((area) => (
-                    <MenuItem key={area.area} value={area.area}>
-                      {area.descripcion}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
+        {/* TABLA PRINCIPAL */}
+        <Paper sx={{ p: 3, width: '100%', maxHeight: 600, mb: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.08)' }}>
+          {error && <Alert severity="error" sx={{ mb: 2 }}>Error: {error}</Alert>}
+          <DataGrid
+            rows={rows}
+            columns={columns}
+            pageSizeOptions={[5, 10, 25, 50]}
+            density="compact"
+            disableRowSelectionOnClick
+            initialState={{
+              pagination: { paginationModel: { pageSize: 10 } },
+            }}
+            sx={{
+              border: 'none',
+              '& .MuiDataGrid-columnHeaders': {
+                borderBottom: '2px solid #000',
+                fontSize: '1rem',
+                fontWeight: 'bold',
+                textAlign: 'center'
+              },
+              '& .MuiDataGrid-cell': { borderBottom: '1px solid #e0e0e000' },
+              '& .MuiDataGrid-row:hover': { bgcolor: '#f5f5f5' }
+            }}
+          />
+        </Paper>
 
-            <Grid item xs={12} md={2.5}>
-              <FormControl fullWidth>
-                <InputLabel>Depto.</InputLabel>
-                <Select
-                  {...selectProps}
-                  value={selectedDepto}
-                  onChange={(e) => setSelectedDepto(e.target.value)}
-                  label="Depto."
-                >
-                  {departamentos.map((depto) => (
-                    <MenuItem key={depto.depto} value={depto.depto}>
-                      {depto.descripcion}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
+        {/* --- MODAL PARA AGREGAR NUEVO PORCENTAJE --- */}
+        <Dialog 
+          open={openAdd} 
+          onClose={() => setOpenAdd(false)} 
+          maxWidth="md" 
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: '16px',
+              boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+              border: '1px solid #e0e0e0',
+              overflow: 'hidden',
+              background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
+            }
+          }}
+        >
+          <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
+            <Box sx={{ position: 'relative', zIndex: 2 }}>
+              <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
+                Nuevo Porcentaje de Puntos
+              </Typography>
+              <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+                Seleccione las opciones correspondientes para asignar el porcentaje
+              </Typography>
+            </Box>
+            <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+            <IconButton 
+              onClick={() => setOpenAdd(false)}
+              sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Box>
 
-            <Grid item xs={12} md={2}>
-              <FormControl fullWidth>
-                <InputLabel>Forma Pago</InputLabel>
-                <Select
-                  {...selectProps}
-                  value={selectedFormaPago}
-                  onChange={(e) => setSelectedFormaPago(e.target.value)}
-                  label="Forma Pago"
-                >
-                  {formasPago.map((forma) => (
-                    <MenuItem key={forma.tipo} value={String(forma.tipo)}>
-                      {forma.descripcion}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-
-            <Grid item xs={12} md={1.5}>
+<DialogContent sx={{ p: 4, backgroundColor: '#ffffff' }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 1 }}>
               <TextField
+                select
+                fullWidth
+                {...commonProps}
+                label="Sucursal"
+                value={selectedSucursal}
+                onChange={(e) => setSelectedSucursal(e.target.value)}
+              >
+                {sucursales.map((sucursal) => (
+                  <MenuItem key={sucursal.cve_sucursal} value={String(sucursal.cve_sucursal)}> 
+                    {sucursal.nombre}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <TextField
+                select
+                fullWidth
+                {...commonProps}
+                label="Área"
+                value={selectedArea}
+                onChange={(e) => setSelectedArea(e.target.value)}
+              >
+                {areas.map((area) => (
+                  <MenuItem key={area.area} value={area.area}>
+                    {area.descripcion}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <TextField
+                select
+                fullWidth
+                {...commonProps}
+                label="Departamento"
+                value={selectedDepto}
+                onChange={(e) => setSelectedDepto(e.target.value)}
+                disabled={!selectedArea}
+              >
+                {departamentos.map((depto) => (
+                  <MenuItem key={depto.depto} value={depto.depto}>
+                    {depto.descripcion}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <TextField
+                select
+                fullWidth
+                {...commonProps}
+                label="Forma de Pago"
+                value={selectedFormaPago}
+                onChange={(e) => setSelectedFormaPago(e.target.value)}
+                disabled={!selectedSucursal}
+              >
+                {formasPago.map((forma) => (
+                  <MenuItem key={forma.tipo} value={String(forma.tipo)}>
+                    {forma.descripcion}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <TextField
+                fullWidth
                 {...commonProps}
                 label="Porcentaje"
                 type="number"
                 value={porcentaje}
                 onChange={(e) => setPorcentaje(e.target.value)}
                 inputProps={{ step: "0.01", min: "0", max: "1" }}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={2}>
-              <Button 
-                variant="contained" 
-                onClick={handleAdd} 
-                disabled={!selectedSucursal || !selectedArea || !selectedDepto || !selectedFormaPago || !porcentaje || saving}
-                fullWidth
-                startIcon={<AddIcon />}
-                sx={{ 
-                  height: '50px', 
-                  backgroundColor: '#333333', 
-                  color: 'white', 
-                  fontWeight: 600, 
-                  textTransform: 'none', 
-                  borderRadius: '8px',
-                  boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)', 
-                  transition: 'all 0.3s ease',
-                  '&:hover': { 
-                    backgroundColor: '#555555', 
-                    boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)', 
-                    transform: 'translateY(-1px)' 
-                  }
+                InputProps={{
+                  endAdornment: <Typography sx={{ color: '#666', fontWeight: 'bold' }}>%</Typography>
                 }}
-              >
-                {saving ? 'Guardando...' : 'AGREGAR'}
-              </Button>
-            </Grid>
-          </Grid>
-        </Paper>
+                helperText="Ej: 0.15 para 15%"
+                sx={{ 
+                  ...commonProps.sx, 
+                  '& .MuiFormHelperText-root': { ml: 0, fontWeight: 500, mt: 1 } 
+                }}
+              />
+            </Box>
+          </DialogContent>
 
-        {/* TABLA PRINCIPAL */}
-        <Box sx={{ mt: 3 }}>
-          <Paper sx={{ 
-            p: 3, 
-            width: '100%', 
-            maxHeight: 600, 
-            mb: 3, 
-            borderRadius: '8px', 
-            boxShadow: '0 4px 8px rgba(0,0,0,0.08)' 
-          }}>
-            {error && <Alert severity="error" sx={{ mb: 2 }}>Error: {error}</Alert>}
-
-            <DataGrid
-              rows={rows}
-              columns={columns}
-              pageSizeOptions={[5, 10, 25, 50]}
-              density="compact"
-              disableRowSelectionOnClick
-              initialState={{
-                pagination: {
-                  paginationModel: {
-                    pageSize: 10,
-                  },
-                },
+          <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
+            <Button 
+              onClick={() => setOpenAdd(false)} 
+              color="inherit"
+              sx={{ borderRadius: '8px', fontWeight: 600, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleAdd} 
+              variant="contained" 
+              disabled={!selectedSucursal || !selectedArea || !selectedDepto || !selectedFormaPago || !porcentaje || saving}
+              sx={{ 
+                bgcolor: '#000000ff', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none', px: 4,
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)', transition: 'all 0.3s ease',
+                '&:hover': { bgcolor: '#333333', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' },
+                '&:disabled': { bgcolor: '#999999', color: '#fff' }
               }}
-              sx={{
-                border: 'none',
-                '& .MuiDataGrid-columnHeaders': {
-                  borderBottom: '2px solid #000',
-                  fontSize: '1rem',
-                  fontWeight: 'bold',
-                  textAlign: 'center'
-                },
-                '& .MuiDataGrid-cell': {
-                  borderBottom: '1px solid #e0e0e000'
-                }
-              }}
-            />
-          </Paper>
-        </Box>
+            >
+              {saving ? "Guardando..." : "Guardar Porcentaje"}
+            </Button>
+          </DialogActions>
+        </Dialog>
 
+        {/* MODAL DE ELIMINAR */}
         <Dialog 
           open={openDelete} 
           onClose={() => setOpenDelete(false)}
           PaperProps={{
-            sx: {
-              borderRadius: '12px',
-              boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-              border: '1px solid #e0e0e0'
-            }
+            sx: { borderRadius: '16px', boxShadow: '0 12px 32px rgba(0,0,0,0.18)', border: '1px solid #e0e0e0' }
           }}
         >
-          <DialogTitle sx={{ 
-            background: 'linear-gradient(135deg, #000000ff 0%)', 
-            color: 'white',
-            fontFamily: 'Georgia, "Times New Roman", serif'
-          }}>
-            Eliminar Registro
-          </DialogTitle>
+          <Box sx={{ background: 'linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%)', color: 'white', p: 2, position: 'relative', overflow: 'hidden' }}>
+            <Typography variant="h6" sx={{ fontWeight: 'bold', position: 'relative', zIndex: 2 }}>
+              ⚠️ Eliminar Registro
+            </Typography>
+            <Box sx={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', zIndex: 1 }} />
+          </Box>
 
-          <DialogContent sx={{ p: 3, bgcolor: '#fff' }}>
-            <Typography sx={{ fontSize: '1.1rem', mb: 2 }}>
-              ¿Seguro que deseas eliminar este registro?
+          <DialogContent sx={{ p: 4, bgcolor: '#fff', textAlign: 'center' }}>
+            <Typography sx={{ fontSize: '1.1rem', mb: 1, fontWeight: 500, color: '#333' }}>
+              ¿Seguro que deseas eliminar este porcentaje?
             </Typography>
             <Typography variant="body2" sx={{ color: '#666' }}>
               Esta acción no se puede deshacer.
             </Typography>
           </DialogContent>
 
-          <DialogActions sx={{ px: 3, py: 2, bgcolor: '#f5f5f5', borderTop: '1px solid #e0e0e0' }}>
+          <DialogActions sx={{ px: 3, py: 2, bgcolor: '#f8f9fa', borderTop: '1px solid #e0e0e0', justifyContent: 'center', gap: 2 }}>
             <Button 
               onClick={() => setOpenDelete(false)}
-              sx={{ 
-                backgroundColor: '#e0e0e0', 
-                color: '#000', 
-                fontWeight: 600,
-                textTransform: 'none',
-                borderRadius: '8px',
-                padding: '8px 16px',
-                transition: 'all 0.3s ease',
-                '&:hover': { 
-                  backgroundColor: '#d0d0d0' 
-                }
-              }}
+              sx={{ color: '#333', fontWeight: 600, borderRadius: '8px', '&:hover': { bgcolor: '#e0e0e0' } }}
             >
               Cancelar
             </Button>
@@ -612,22 +636,9 @@ export default function AdministracionPorcentajesPuntos() {
               variant='contained'
               onClick={handleDelete}
               disabled={deleting}
-              sx={{ 
-                backgroundColor: '#000000ff',
-                fontWeight: 600,
-                textTransform: 'none',
-                borderRadius: '8px',
-                padding: '8px 16px',
-                boxShadow: '0 4px 12px rgba(255, 255, 255, 0.4)',
-                transition: 'all 0.3s ease',
-                '&:hover': { 
-                  backgroundColor: '#727272ff',
-                  boxShadow: '0 4px 12px rgba(255, 255, 255, 0.4)',
-                  transform: 'translateY(-1px)'
-                }
-              }}
+              sx={{ fontWeight: 600, borderRadius: '8px', px: 3, boxShadow: '0 2px 8px rgba(211, 47, 47, 0.3)' }}
             >
-              {deleting ? 'Eliminando...' : 'Eliminar'}
+              {deleting ? 'Eliminando...' : 'Sí, eliminar'}
             </Button>
           </DialogActions>
         </Dialog>
@@ -636,4 +647,5 @@ export default function AdministracionPorcentajesPuntos() {
     </>
   )
 }
+
 
