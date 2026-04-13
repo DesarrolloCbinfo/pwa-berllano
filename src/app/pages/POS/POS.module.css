@@ -1,0 +1,50 @@
+/* POS Full Width - Solo para la tabla - Estilo más agresivo */
+.posFullWidthTable,
+.posFullWidthTable > div,
+.posFullWidthTable .MuiBox-root,
+.posFullWidthTable .MuiPaper-root {
+  margin-left: -24px !important;
+  margin-right: -24px !important;
+  width: calc(100% + 48px) !important;
+  max-width: none !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  box-sizing: border-box !important;
+}
+
+@media (max-width: 600px) {
+  .posFullWidthTable,
+  .posFullWidthTable > div,
+  .posFullWidthTable .MuiBox-root,
+  .posFullWidthTable .MuiPaper-root {
+    margin-left: -16px !important;
+    margin-right: -16px !important;
+    width: calc(100% + 32px) !important;
+  }
+}
+
+/* Forzar que la tabla dentro ocupe todo el ancho disponible */
+.posFullWidthTable .MuiPaper-root,
+.posFullWidthTable .MuiTableContainer-root,
+.posFullWidthTable .MuiTable-root,
+.posFullWidthTable [class*="MuiTable"] {
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 100% !important;
+}
+
+/* Estilos globales para máxima prioridad */
+body .posFullWidthTable {
+  margin-left: -24px !important;
+  margin-right: -24px !important;
+  width: calc(100% + 48px) !important;
+  max-width: none !important;
+}
+
+@media (max-width: 600px) {
+  body .posFullWidthTable {
+    margin-left: -16px !important;
+    margin-right: -16px !important;
+    width: calc(100% + 32px) !important;
+  }
+}

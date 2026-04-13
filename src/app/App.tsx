@@ -5,6 +5,8 @@ import CssBaseline from '@mui/material/CssBaseline';
 import theme from '../theme/theme';
 import Page from './pages/demo/page';
 import POS from './pages/POS';
+import POS_v2 from './pages/POS_v2';
+import POS_v3 from './pages/POS_v3/POS_v3';
 import Home from './pages/Home/Home';
 import GeneradorFormularios from './pages/GeneradorFormularios/GeneradorFormularios';
 import DemoStepper from './pages/DemoStepper/DemoStepper';
@@ -78,6 +80,8 @@ function App() {
           <Route path='/login' element={<Login />} />
 
           <Route path='/pos' element={<Layout><POS /></Layout>} />
+          <Route path='/pos2' element={<Layout><POS_v2 /></Layout>} />
+          <Route path='/pos3' element={<Layout><POS_v3 /></Layout>} />
 
           <Route path='/' element={<Layout><Home /></Layout>} />
           <Route path='/demo' element={<Layout><Page /></Layout>} />
@@ -132,6 +136,8 @@ function App() {
           <Route path='/cat_perfiles_permisos' element={<Layout><CatPerfilesPermisos/></Layout>} />
           <Route path='/cat_Categorias' element={<Layout><CatCategorias/></Layout>} />
           <Route path='/cat_PermisosDeptos' element={<Layout><CatPermisosDeptos/></Layout>} />
+          <Route path='/pos2' element={<Layout><POS/></Layout>} />
+          
           
 
 

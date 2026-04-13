@@ -258,13 +258,19 @@ export default function DetalleVentasTable({ data, onSelect, onAgregarInsumos }:
       muiTablePaperProps={{
         variant: "outlined",
         sx: {
+          width: '100% !important',
+          maxWidth: 'none !important',
+          marginLeft: '0 !important',
+          marginRight: '0 !important',
           '& .MuiTable-root': {
+            width: '100% !important',
             minWidth: { xs: 600, sm: 'auto' },
           }
         }
       }}
       muiTableContainerProps={{
         sx: {
+          width: '100%',
           overflowX: 'auto',
         }
       }}

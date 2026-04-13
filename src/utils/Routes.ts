@@ -61,5 +61,6 @@ export const routes = {
   cat_nomina_bajas: "/cat_nomina_bajas",
   cat_Categorias: "/cat_Categorias",
   cat_PermisosDeptos:"/cat_PermisosDeptos",
+  pos2: "/pos2",
 };
 

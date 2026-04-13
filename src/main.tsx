@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
+import "bootstrap/dist/css/bootstrap.min.css";
 // Fuentes serif elegantes para el tema BERLLANO
 import "@fontsource/playfair-display/400.css";
 import "@fontsource/playfair-display/600.css";
