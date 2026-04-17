@@ -239,6 +239,49 @@ export default function CatDescProveedores() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!selectedRow) return;
+
+    try {
+      const response = await consumoApi.delete(
+        '/api/CatDescuentoProveedores/sp_bw_cat_proveedores_descuentos_del',
+        {
+          params: {
+            id_descuento: selectedRow.id_descuento,
+          },
+        },
+      );
+
+      if (response.data?.[0]?.codigo === 0) {
+        await fetchDescuentos();
+        handleDeleteClose(); // Cerramos el modal
+        await Swal.fire({
+          title: '¡Eliminado!',
+          text: 'El descuento ha sido eliminado correctamente',
+          icon: 'success',
+          confirmButtonColor: '#000000',
+          timer: 2000,
+          showConfirmButton: false,
+        });
+      } else {
+        await Swal.fire({
+          title: 'Error',
+          text: response.data?.[0]?.mensaje1 || 'Error al eliminar',
+          icon: 'error',
+          confirmButtonColor: '#000000',
+        });
+      }
+    } catch (err) {
+      console.error('Error al eliminar descuento:', err);
+      await Swal.fire({
+        title: 'Error',
+        text: 'Error al eliminar el descuento',
+        icon: 'error',
+        confirmButtonColor: '#000000',
+      });
+    }
+  };
+
   const handleDeleteClose = () => {
     setOpenDelete(false);
     setSelectedRow(null);

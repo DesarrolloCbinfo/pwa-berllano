@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Box, Typography, Button, TextField, Grid, 
-  Snackbar, Alert, Paper, IconButton, MenuItem 
+  Snackbar, Alert, Paper, IconButton, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions   
 } from '@mui/material'; 
 import { 
   DataGrid, GridColDef, GridToolbar, 
@@ -12,7 +12,7 @@ import {
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import Swal from 'sweetalert2';
-
+import CloseIcon from '@mui/icons-material/Close';
 import useConsumoApi from '../../../hooks/useConsumoApi';
 import { useSessionContext } from '../../../context/SessionProvider'; 
 
@@ -53,6 +53,7 @@ export default function Horarios() {
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 const [saving, setSaving] = useState(false);
+const [openAddModal, setOpenAddModal] = useState(false); 
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({ page: 0, pageSize: 50 });
   const [formData, setFormData] = useState(initialFormState);
 
@@ -117,10 +118,11 @@ const handleAgregarNuevo = async () => {
                 h4: formData.h4
             };
 
-            const res = await consumoApi.post('/api/Horarios/sp_bw_cat_horarios_ins', payload);
+          const res = await consumoApi.post('/api/Horarios/sp_bw_cat_horarios_ins', payload);
             if (res.status === 200) {
                 setMessage({ text: `Horario agregado exitosamente.`, type: 'success' });
                 fetchTabla();
+                setOpenAddModal(false); // <--- CERRAR MODAL
                 setFormData(initialFormState);
             }
         } catch (error: any) {
@@ -216,72 +218,34 @@ const handleEliminar = async (clave: number) => {
 
   return (
     <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#ececec' }}>
-      <Paper sx={{ p: 3, borderRadius: '8px' }}>
-
-        {/* ENCABEZADO ESTILO ACCESS */}
-        <Box sx={{ border: '1px solid #2c3e50', p: 1.5, mb: 2, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
+{/* ENCABEZADO LIMPIO */}
+      <Paper sx={{ p: 3, borderRadius: '8px', mb: 3 }}>
+        <Box sx={{ border: '1px solid #2c3e50', p: 1.5, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Box>
-                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem', textTransform: 'uppercase' }}>
                     Catálogo de Horarios
                 </Typography>
-                
             </Box>
-            <Box sx={{ textAlign: 'right' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                 <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#333', lineHeight: 1.1, fontSize: '0.9rem' }}>
                     {new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' }).replace('.', '')}
                 </Typography>
                 
             </Box>
-        </Box>
-
-        <Grid container spacing={2} justifyContent="center" alignItems="center">
-            <Grid item xs={12} md={1}>
-                <TextField {...commonProps} type="number" label="Clave*" name="horario" value={formData.horario} onChange={handleInputChange} 
-                    sx={{ width: '120px', ...commonProps.sx }} />
-            </Grid>
-            <Grid item xs={12} md={3}>
-                <TextField {...commonProps} label="Descripción del Horario*" name="descripcion" value={formData.descripcion} onChange={handleInputChange} 
-                    sx={{ width: '300px', ...commonProps.sx }} />
-            </Grid>
-            <Grid item xs={6} md={1}>
-                <TextField {...selectProps} select label="Entrada 1" name="h1" value={formData.h1} onChange={handleInputChange}
-                    sx={{ width: '120px', ...selectProps.sx }}>
-                    <MenuItem value="">--:--</MenuItem>
-                    {opcionesHora.map(hora => <MenuItem key={`h1_${hora}`} value={hora}>{hora}</MenuItem>)}
-                </TextField>
-            </Grid>
-            <Grid item xs={6} md={1}>
-                <TextField {...selectProps} select label="Salida 1" name="h2" value={formData.h2} onChange={handleInputChange}
-                    sx={{ width: '120px', ...selectProps.sx }}>
-                    <MenuItem value="">--:--</MenuItem>
-                    {opcionesHora.map(hora => <MenuItem key={`h2_${hora}`} value={hora}>{hora}</MenuItem>)}
-                </TextField>
-            </Grid>
-            <Grid item xs={6} md={1}>
-                <TextField {...selectProps} select label="Entrada 2" name="h3" value={formData.h3} onChange={handleInputChange}
-                    sx={{ width: '120px', ...selectProps.sx }}>
-                    <MenuItem value="">--:--</MenuItem>
-                    {opcionesHora.map(hora => <MenuItem key={`h3_${hora}`} value={hora}>{hora}</MenuItem>)}
-                </TextField>
-            </Grid>
-            <Grid item xs={6} md={1}>
-                <TextField {...selectProps} select label="Salida 2" name="h4" value={formData.h4} onChange={handleInputChange}
-                    sx={{ width: '120px', ...selectProps.sx }}>
-                    <MenuItem value="">--:--</MenuItem>
-                    {opcionesHora.map(hora => <MenuItem key={`h4_${hora}`} value={hora}>{hora}</MenuItem>)}
-                </TextField>
-            </Grid>
-            <Grid item xs={12} md={2}>
-                <Button variant="contained" onClick={handleAgregarNuevo} disabled={saving} fullWidth startIcon={<AddIcon />}
-                    sx={{ 
-                        height: '50px', backgroundColor: '#333333', color: 'white', fontWeight: 600, textTransform: 'none', borderRadius: '8px',
-                        boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)', transition: 'all 0.3s ease',
-                        '&:hover': { backgroundColor: '#555555', boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)', transform: 'translateY(-1px)' }
-                    }}>
-                    AGREGAR
+            <Button 
+                  variant="contained" 
+                  onClick={() => setOpenAddModal(true)} 
+                  startIcon={<AddIcon />}
+                  sx={{ 
+                    backgroundColor: '#333333', color: 'white', fontWeight: 600, textTransform: 'none', borderRadius: '8px',
+                    boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)', transition: 'all 0.3s ease',
+                    '&:hover': { backgroundColor: '#555555', transform: 'translateY(-1px)' }
+                  }}
+                >
+                  NUEVO REGISTRO
                 </Button>
-            </Grid>
-        </Grid>
+        </Box>
+        
       </Paper>
 
         {/* TABLA PRINCIPAL */}
@@ -311,6 +275,101 @@ const handleEliminar = async (clave: number) => {
             />
           </Paper>
         </Box>
+
+        {/* MODAL CON TU FORMULARIO INTACTO */}
+      <Dialog 
+        open={openAddModal} 
+        onClose={() => setOpenAddModal(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: { borderRadius: '16px', boxShadow: '0 12px 32px rgba(0,0,0,0.18)', border: '1px solid #e0e0e0', overflow: 'hidden', background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)' }
+        }}
+      >
+        <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
+          <Box sx={{ position: 'relative', zIndex: 2 }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>Nuevo Horario</Typography>
+            <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>Complete la información solicitada.</Typography>
+          </Box>
+          <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+          <IconButton onClick={() => setOpenAddModal(false)} sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
+
+<DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+          
+          {/* --- ETIQUETA 1: Datos Generales --- */}
+          <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#333', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ width: 4, height: 20, backgroundColor: '#333333', borderRadius: 2 }} />
+            Datos Generales
+          </Typography>
+
+          {/* --- RENGLÓN 1: Clave y Descripción --- */}
+          <Grid container spacing={2} alignItems="center" sx={{ mb: 4 }}>
+            <Grid item xs={12} md="auto">
+                <TextField {...commonProps} type="number" label="Clave*" name="horario" value={formData.horario} onChange={handleInputChange} 
+                    sx={{ width: '120px', ...commonProps.sx }} />
+            </Grid>
+            <Grid item xs={12} md="auto">
+                <TextField {...commonProps} label="Descripción del Horario*" name="descripcion" value={formData.descripcion} onChange={handleInputChange} 
+                    sx={{ width: '300px', ...commonProps.sx }} />
+            </Grid>
+          </Grid>
+
+          {/* --- ETIQUETA 2: Horarios (La que pediste) --- */}
+          <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#333', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ width: 4, height: 20, backgroundColor: '#333333', borderRadius: 2 }} />
+            Horarios
+          </Typography>
+
+          {/* --- RENGLÓN 2: Las 4 Horas --- */}
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={6} md="auto">
+                <TextField {...selectProps} select label="Entrada 1" name="h1" value={formData.h1} onChange={handleInputChange}
+                    sx={{ width: '120px', ...selectProps.sx }}>
+                    <MenuItem value="">--:--</MenuItem>
+                    {opcionesHora.map(hora => <MenuItem key={`h1_${hora}`} value={hora}>{hora}</MenuItem>)}
+                </TextField>
+            </Grid>
+            <Grid item xs={6} md="auto">
+                <TextField {...selectProps} select label="Salida 1" name="h2" value={formData.h2} onChange={handleInputChange}
+                    sx={{ width: '120px', ...selectProps.sx }}>
+                    <MenuItem value="">--:--</MenuItem>
+                    {opcionesHora.map(hora => <MenuItem key={`h2_${hora}`} value={hora}>{hora}</MenuItem>)}
+                </TextField>
+            </Grid>
+            <Grid item xs={6} md="auto">
+                <TextField {...selectProps} select label="Entrada 2" name="h3" value={formData.h3} onChange={handleInputChange}
+                    sx={{ width: '120px', ...selectProps.sx }}>
+                    <MenuItem value="">--:--</MenuItem>
+                    {opcionesHora.map(hora => <MenuItem key={`h3_${hora}`} value={hora}>{hora}</MenuItem>)}
+                </TextField>
+            </Grid>
+            <Grid item xs={6} md="auto">
+                <TextField {...selectProps} select label="Salida 2" name="h4" value={formData.h4} onChange={handleInputChange}
+                    sx={{ width: '120px', ...selectProps.sx }}>
+                    <MenuItem value="">--:--</MenuItem>
+                    {opcionesHora.map(hora => <MenuItem key={`h4_${hora}`} value={hora}>{hora}</MenuItem>)}
+                </TextField>
+            </Grid>
+          </Grid>
+
+        </DialogContent>
+
+        <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
+          <Button onClick={() => setOpenAddModal(false)} sx={{ borderRadius: '8px', fontWeight: 500, color: '#333' }}>Cancelar</Button>
+          <Button 
+            variant='contained' 
+            onClick={handleAgregarNuevo} 
+            disabled={saving} 
+            startIcon={<AddIcon />} 
+            sx={{ bgcolor: '#333333', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none', '&:hover': { bgcolor: '#555555' } }}
+          >
+            {saving ? 'Guardando...' : 'Guardar Horario'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
 
     </Box>

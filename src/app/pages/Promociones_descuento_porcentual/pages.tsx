@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Box, CircularProgress, Alert, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions, MenuItem, Select, FormControl, InputLabel, IconButton, TextField } from '@mui/material'
+import { Box, CircularProgress, Alert, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions, MenuItem, Select, FormControl, InputLabel, IconButton, TextField, Grid } from '@mui/material'
 import { DataGrid, GridColDef } from '@mui/x-data-grid'
 import DeleteIcon from '@mui/icons-material/Delete'
+import AddIcon from '@mui/icons-material/Add'
+import CloseIcon from '@mui/icons-material/Close'
 import Swal from 'sweetalert2'
 import useConsumoApi from '../../../hooks/useConsumoApi'
 import { useSessionContext } from '../../../context/SessionProvider'
@@ -88,6 +90,7 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
 
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [openAddModal, setOpenAddModal] = useState(false)
 
   const columns: GridColDef[] = [
     {
@@ -283,7 +286,7 @@ const handleAdd = async () => {
       }
 
       await fetchPromociones()
-      
+      setOpenAddModal(false)
       setNombrePromo('')
       setSelectedSucursal('')
       setFechaDel('')
@@ -387,212 +390,33 @@ return (
           }
         `}</style>
 
-        {/* CONTENEDOR BLANCO SUPERIOR (ENCABEZADO + FORMULARIO) */}
+{/* CONTENEDOR BLANCO SUPERIOR (SOLO ENCABEZADO Y BOTÓN) */}
         <Box sx={{ backgroundColor: 'white', p: 3, borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.05)', mb: 3 }}>
-          
-          {/* RECUADRO INTERIOR ELEGANTE */}
-          <Box sx={{ border: '1px solid #000000ff', p: 1.5, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+          <Box sx={{ border: '1px solid #000000ff', p: 1.5, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Box>
                   <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#000000ff', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem', textTransform: 'uppercase' }}>
                       CONFIGURACIÓN DE PROMOCIONES CON DESCUENTO PORCENTUAL
                   </Typography>
-                  
               </Box>
-              <Box sx={{ textAlign: 'right' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                   <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#333', lineHeight: 1.1, fontSize: '0.9rem' }}>
                       {new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' }).replaceAll('/', '-')}
                   </Typography>
-                
+                  <Button 
+                    variant="contained" 
+                    onClick={() => setOpenAddModal(true)} 
+                    startIcon={<AddIcon />}
+                    sx={{ 
+                      backgroundColor: '#000000ff', color: 'white', fontWeight: 600, textTransform: 'none', borderRadius: '8px',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)', transition: 'all 0.3s ease',
+                      '&:hover': { backgroundColor: '#333333', transform: 'translateY(-1px)' }
+                    }}
+                  >
+                    NUEVO REGISTRO
+                  </Button>
               </Box>
           </Box>
-
-          {/* FORMULARIO DE AGREGAR DIRECTO EN EL CONTENEDOR PRINCIPAL */}
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'center', mt: 1 }}> <TextField
-              label="Nombre Promo"
-              value={nombrePromo}
-              onChange={(e) => setNombrePromo(e.target.value)}
-              sx={{ minWidth: 100, bgcolor: 'white' }}
-              size="small"
-            />
-
-            <FormControl sx={{ minWidth: 150 }} size="small">
-              <InputLabel>Sucursal</InputLabel>
-              <Select
-                value={selectedSucursal}
-                onChange={(e) => setSelectedSucursal(e.target.value)}
-                label="Sucursal"
-                sx={{ bgcolor: 'white' }}
-              >
-                {sucursales.map((sucursal) => (
-                  <MenuItem key={sucursal.cve_sucursal} value={String(sucursal.cve_sucursal)}>
-                    {sucursal.nombre}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            <TextField
-              label="Del"
-              type="date"
-              value={fechaDel}
-              onChange={(e) => setFechaDel(e.target.value)}
-              sx={{ minWidth: 130, bgcolor: 'white' }}
-              size="small"
-              InputLabelProps={{ shrink: true }}
-            />
-
-            <TextField
-              label="Al"
-              type="date"
-              value={fechaAl}
-              onChange={(e) => setFechaAl(e.target.value)}
-              sx={{ minWidth: 130, bgcolor: 'white' }}
-              size="small"
-              InputLabelProps={{ shrink: true }}
-            />
-
-            <FormControl sx={{ minWidth: 120 }} size="small">
-              <InputLabel>Área</InputLabel>
-              <Select
-                value={selectedArea}
-                onChange={(e) => setSelectedArea(e.target.value)}
-                label="Área"
-                sx={{ bgcolor: 'white' }}
-              >
-                {areas.map((area) => (
-                  <MenuItem key={area.id} value={area.id}>
-                    {area.descripcion}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            <FormControl sx={{ minWidth: 120 }} size="small">
-              <InputLabel>Depto</InputLabel>
-              <Select
-                value={selectedDepto}
-                onChange={(e) => setSelectedDepto(e.target.value)}
-                label="Depto"
-                disabled={!selectedArea}
-                sx={{ bgcolor: 'white' }}
-              >
-                {departamentos.map((depto) => (
-                  <MenuItem key={depto.id} value={depto.id}>
-                    {depto.descripcion}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-           <FormControl sx={{ minWidth: 120 }} size="small">
-              <InputLabel>Marca</InputLabel>
-              <Select
-                value={selectedMarca}
-                onChange={(e) => setSelectedMarca(e.target.value)}
-                label="Marca"
-                sx={{ bgcolor: 'white' }}
-              >
-                {marcas.map((marca) => (
-                  // MAGIA: value ahora es el ID, pero mostramos la marca
-                  <MenuItem key={marca.id} value={String(marca.id)}>
-                    {marca.marca}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            <FormControl sx={{ minWidth: 120 }} size="small">
-              <InputLabel>Familia</InputLabel>
-              <Select
-                value={selectedFamilia}
-                onChange={(e) => setSelectedFamilia(e.target.value)}
-                label="Familia"
-                disabled={!selectedMarca}
-                sx={{ bgcolor: 'white' }}
-              >
-                {familias.map((familia) => (
-                  // MAGIA: value ahora es la clave
-                  <MenuItem key={familia.clave} value={String(familia.clave)}>
-                    {familia.descripcion}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            <FormControl sx={{ minWidth: 150 }} size="small">
-              <InputLabel>Producto</InputLabel>
-              <Select
-                value={selectedProducto}
-                onChange={(e) => setSelectedProducto(e.target.value)}
-                label="Producto"
-                sx={{ bgcolor: 'white' }}
-              >
-                {productos.map((producto) => (
-                  // MAGIA: value ahora es la clave del producto
-                  <MenuItem key={producto.clave_prod} value={producto.clave_prod}>
-                    {producto.descripcion}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            <TextField
-              label="Cant"
-              type="number"
-              value={cantidad}
-              onChange={(e) => setCantidad(e.target.value)}
-              sx={{ minWidth: 80, bgcolor: 'white' }}
-              size="small"
-              inputProps={{ min: "1" }}
-            />
-
-            <TextField
-              label="Desc (Ej. 10 = 10%)"
-              type="number"
-              value={descPorcentaje}
-              onChange={(e) => setDescPorcentaje(e.target.value)}
-              sx={{ width: 160, bgcolor: 'white' }}
-              size="small"
-              // step a "1" para enteros, máximo 100
-              inputProps={{ step: "1", min: "0", max: "100" }} 
-            />
-
-            <FormControl sx={{ minWidth: 180 }} size="small">
-              <InputLabel>Tipo Descuento</InputLabel>
-              <Select
-                value={selectedTipoDescuento}
-                onChange={(e) => setSelectedTipoDescuento(e.target.value)}
-                label="Tipo Descuento"
-                sx={{ bgcolor: 'white' }}
-              >
-                {tiposDescuento.map((tipo) => (
-                  <MenuItem key={tipo.tipo_descuento} value={tipo.descripcion}>
-                    {tipo.descripcion}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            <Button
-              variant="contained"
-              onClick={handleAdd}
-              disabled={!nombrePromo || !selectedSucursal || !fechaDel || !fechaAl || !selectedArea || !selectedDepto || !selectedMarca || !selectedFamilia || !selectedProducto || !cantidad || !descPorcentaje || !selectedTipoDescuento || saving}
-              sx={{ 
-                height: 40,
-                bgcolor: '#333333',
-                color: '#fff',
-                fontWeight: 600,
-                textTransform: 'none',
-                borderRadius: '8px',
-                boxShadow: '0 4px 12px rgba(51, 51, 51, 0.2)',
-                '&:hover': { bgcolor: '#555555' }
-              }}
-            >
-              {saving ? 'Guardando...' : '+ AGREGAR'}
-            </Button>
-          </Box>
         </Box>
-
         {error && <Alert severity="error" sx={{ mb: 2 }}>Error: {error}</Alert>}
 
         {/* CONTENEDOR BLANCO SOLO PARA LA TABLA */}
@@ -634,8 +458,109 @@ return (
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
           </Box>
         </Box>
+        
       </Box>
+{/* MODAL CON TU FORMULARIO ORIGINAL INTACTO */}
+      <Dialog 
+        open={openAddModal} 
+        onClose={() => setOpenAddModal(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: { borderRadius: '16px', boxShadow: '0 12px 32px rgba(0,0,0,0.18)', border: '1px solid #e0e0e0', overflow: 'hidden', background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)' }
+        }}
+      >
+        <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
+          <Box sx={{ position: 'relative', zIndex: 2 }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>Nueva Promoción</Typography>
+            <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>Complete los campos para registrar un nuevo descuento.</Typography>
+          </Box>
+          <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+          <IconButton onClick={() => setOpenAddModal(false)} sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
 
+        <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+          
+          {/* EL MISMO BOX ORIGINAL DE TU CÓDIGO CON LOS MISMOS ANCHOS */}
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center', mt: 1 }}> 
+            
+            <TextField label="Nombre Promo" value={nombrePromo} onChange={(e) => setNombrePromo(e.target.value)} sx={{ minWidth: 100, bgcolor: 'white' }} size="small" />
+
+            <FormControl sx={{ minWidth: 150 }} size="small">
+              <InputLabel>Sucursal</InputLabel>
+              <Select value={selectedSucursal} onChange={(e) => setSelectedSucursal(e.target.value)} label="Sucursal" sx={{ bgcolor: 'white' }}>
+                {sucursales.map((sucursal) => (<MenuItem key={sucursal.cve_sucursal} value={String(sucursal.cve_sucursal)}>{sucursal.nombre}</MenuItem>))}
+              </Select>
+            </FormControl>
+
+            <TextField label="Del" type="date" value={fechaDel} onChange={(e) => setFechaDel(e.target.value)} sx={{ minWidth: 130, bgcolor: 'white' }} size="small" InputLabelProps={{ shrink: true }} />
+
+            <TextField label="Al" type="date" value={fechaAl} onChange={(e) => setFechaAl(e.target.value)} sx={{ minWidth: 130, bgcolor: 'white' }} size="small" InputLabelProps={{ shrink: true }} />
+
+            <FormControl sx={{ minWidth: 120 }} size="small">
+              <InputLabel>Área</InputLabel>
+              <Select value={selectedArea} onChange={(e) => setSelectedArea(e.target.value)} label="Área" sx={{ bgcolor: 'white' }}>
+                {areas.map((area) => (<MenuItem key={area.id} value={area.id}>{area.descripcion}</MenuItem>))}
+              </Select>
+            </FormControl>
+
+            <FormControl sx={{ minWidth: 120 }} size="small">
+              <InputLabel>Depto</InputLabel>
+              <Select value={selectedDepto} onChange={(e) => setSelectedDepto(e.target.value)} label="Depto" disabled={!selectedArea} sx={{ bgcolor: 'white' }}>
+                {departamentos.map((depto) => (<MenuItem key={depto.id} value={depto.id}>{depto.descripcion}</MenuItem>))}
+              </Select>
+            </FormControl>
+
+            <FormControl sx={{ minWidth: 120 }} size="small">
+              <InputLabel>Marca</InputLabel>
+              <Select value={selectedMarca} onChange={(e) => setSelectedMarca(e.target.value)} label="Marca" sx={{ bgcolor: 'white' }}>
+                {marcas.map((marca) => (<MenuItem key={marca.id} value={String(marca.id)}>{marca.marca}</MenuItem>))}
+              </Select>
+            </FormControl>
+
+            <FormControl sx={{ minWidth: 120 }} size="small">
+              <InputLabel>Familia</InputLabel>
+              <Select value={selectedFamilia} onChange={(e) => setSelectedFamilia(e.target.value)} label="Familia" disabled={!selectedMarca} sx={{ bgcolor: 'white' }}>
+                {familias.map((familia) => (<MenuItem key={familia.clave} value={String(familia.clave)}>{familia.descripcion}</MenuItem>))}
+              </Select>
+            </FormControl>
+
+            <FormControl sx={{ minWidth: 150 }} size="small">
+              <InputLabel>Producto</InputLabel>
+              <Select value={selectedProducto} onChange={(e) => setSelectedProducto(e.target.value)} label="Producto" sx={{ bgcolor: 'white' }}>
+                {productos.map((producto) => (<MenuItem key={producto.clave_prod} value={producto.clave_prod}>{producto.descripcion}</MenuItem>))}
+              </Select>
+            </FormControl>
+
+            <TextField label="Cant" type="number" value={cantidad} onChange={(e) => setCantidad(e.target.value)} sx={{ minWidth: 80, bgcolor: 'white' }} size="small" inputProps={{ min: "1" }} />
+
+            <TextField label="Desc (Ej. 10 = 10%)" type="number" value={descPorcentaje} onChange={(e) => setDescPorcentaje(e.target.value)} sx={{ width: 160, bgcolor: 'white' }} size="small" inputProps={{ step: "1", min: "0", max: "100" }} />
+
+            <FormControl sx={{ minWidth: 180 }} size="small">
+              <InputLabel>Tipo Descuento</InputLabel>
+              <Select value={selectedTipoDescuento} onChange={(e) => setSelectedTipoDescuento(e.target.value)} label="Tipo Descuento" sx={{ bgcolor: 'white' }}>
+                {tiposDescuento.map((tipo) => (<MenuItem key={tipo.tipo_descuento} value={tipo.descripcion}>{tipo.descripcion}</MenuItem>))}
+              </Select>
+            </FormControl>
+
+          </Box>
+        </DialogContent>
+
+        <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
+          <Button onClick={() => setOpenAddModal(false)} sx={{ borderRadius: '8px', fontWeight: 500, color: '#333' }}>Cancelar</Button>
+          <Button 
+            variant='contained' 
+            onClick={handleAdd} 
+            disabled={!nombrePromo || !selectedSucursal || !fechaDel || !fechaAl || !selectedArea || !selectedDepto || !selectedMarca || !selectedFamilia || !selectedProducto || !cantidad || !descPorcentaje || !selectedTipoDescuento || saving} 
+            startIcon={<AddIcon />} 
+            sx={{ bgcolor: '#000000ff', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none', '&:hover': { bgcolor: '#333333' } }}
+          >
+            {saving ? 'Guardando...' : 'Guardar Promoción'}
+          </Button>
+        </DialogActions>
+      </Dialog>
       <PWABadge />
     </>
   )

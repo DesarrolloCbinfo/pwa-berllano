@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Box, Typography, Button, TextField, Grid, 
-  Snackbar, Alert, Paper, IconButton, MenuItem, Checkbox, FormControlLabel 
+  Snackbar, Alert, Paper, IconButton, MenuItem, Checkbox, FormControlLabel, Dialog, DialogTitle, DialogContent, DialogActions 
 } from '@mui/material'; 
 import { 
   DataGrid, GridColDef, GridToolbar, 
@@ -11,6 +11,7 @@ import {
 } from '@mui/x-data-grid';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
+import CloseIcon from '@mui/icons-material/Close';
 import Swal from 'sweetalert2';
 
 import useConsumoApi from '../../../hooks/useConsumoApi';
@@ -55,6 +56,7 @@ export default function MovimientosNomina() {
   const [tiposMovimiento, setTiposMovimiento] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 const [saving, setSaving] = useState(false);
+const [openAddModal, setOpenAddModal] = useState(false);
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({ page: 0, pageSize: 50 });
   
   const [formData, setFormData] = useState(initialFormState);
@@ -137,6 +139,7 @@ const [saving, setSaving] = useState(false);
             if (res.status === 200) {
                 setMessage({ text: `Nuevo movimiento agregado exitosamente.`, type: 'success' });
                 fetchCatalogos();
+                setOpenAddModal(false); // <--- AGREGAR ESTA LÍNEA
                 setFormData(initialFormState);
             }
         } catch (error: any) {
@@ -242,73 +245,33 @@ const [saving, setSaving] = useState(false);
 
   return (
     <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#ececec' }}>
-      <Paper sx={{ p: 3, borderRadius: '8px' }}>
-        {/* ENCABEZADO BERLLANO ELEGANTE 2 */}
-        <Box sx={{ border: '1px solid #2c3e50', borderRadius: '8px', backgroundColor: '#fff', p: 1.5, mb: 2, display: 'flex', justifyContent: 'space-between' }}>
+{/* PAPER 1: ENCABEZADO Y BOTÓN NUEVO */}
+      <Paper sx={{ p: 3, borderRadius: '8px', mb: 3 }}>
+        <Box sx={{ border: '1px solid #2c3e50', borderRadius: '8px', backgroundColor: '#fff', p: 1.5, mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Box>
-                <Typography variant="h6" sx={{ fontFamily: 'Georgia, "Times New Roman", serif', fontWeight: 'bold', color: '#1a365d', fontSize: '1.1rem' }}>
+                <Typography variant="h6" sx={{ fontFamily: 'Georgia, "Times New Roman", serif', fontWeight: 'bold', color: '#1a365d', fontSize: '1.1rem', textTransform: 'uppercase' }}>
                     Catálogo de Movimientos de Nómina
                 </Typography>
-                
             </Box>
-            <Box sx={{ textAlign: 'right' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                 <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#333', fontSize: '0.9rem' }}>
                     {new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' }).replace('.', '')}
                 </Typography>
                 
             </Box>
         </Box>
-
-        <Grid container spacing={2} justifyContent="center" alignItems="center">
-            <Grid item xs={12} md={1}>
-                <TextField {...commonProps} type="number" label="Clave*" name="id_movimiento" value={formData.id_movimiento} onChange={handleInputChange} 
-                    sx={{ width: '120px', ...commonProps.sx }} />
-            </Grid>
-            <Grid item xs={12} md={3}>
-                <TextField {...commonProps} label="Descripción*" name="descripcion" value={formData.descripcion} onChange={handleInputChange} 
-                    sx={{ width: '300px', ...commonProps.sx }} />
-            </Grid>
-            
-            <Grid item xs={6} md={1}>
-                <TextField {...commonProps} type="number" label="Gasto" name="id_gasto" value={formData.id_gasto} onChange={handleInputChange} 
-                    sx={{ width: '100px', ...commonProps.sx }} />
-            </Grid>
-            <Grid item xs={6} md={1}>
-                <TextField {...commonProps} type="number" label="Subgasto" name="id_subgasto" value={formData.id_subgasto} onChange={handleInputChange} 
-                    sx={{ width: '100px', ...commonProps.sx }} />
-            </Grid>
-
-            {/* Checkboxes Centrados y Elegantes */}
-            <Grid item xs={6} md={1} sx={{ display: 'flex', justifyContent: 'center' }}>
-                <FormControlLabel control={<Checkbox size="small" name="deduccion" checked={formData.deduccion} onChange={handleInputChange} />} label={<Typography variant="body2" sx={{fontWeight: 500, color: '#555'}}>Deducción</Typography>} />
-            </Grid>
-            <Grid item xs={6} md={1} sx={{ display: 'flex', justifyContent: 'center' }}>
-                <FormControlLabel control={<Checkbox size="small" name="depositar" checked={formData.depositar} onChange={handleInputChange} />} label={<Typography variant="body2" sx={{fontWeight: 500, color: '#555'}}>Depositar</Typography>} />
-            </Grid>
-
-            {/* Lista Desplegable de Tipo Movimiento */}
-            <Grid item xs={12} md={2}>
-                <TextField {...selectProps} select label="Tipo de Movimiento*" name="tipo_movto" value={formData.tipo_movto} onChange={handleInputChange}
-                    sx={{ width: '200px', ...selectProps.sx }}>
-                    <MenuItem value="">-- SELECCIONE --</MenuItem>
-                    {tiposMovimiento.map(tipo => (
-                        <MenuItem key={tipo.id} value={tipo.id}>{tipo.descripcion}</MenuItem>
-                    ))}
-                </TextField>
-            </Grid>
-
-            {/* Botón Agregar */}
-            <Grid item xs={12} md={2}>
-                <Button variant="contained" onClick={handleAgregarNuevo} disabled={saving} fullWidth startIcon={<AddIcon />}
-                    sx={{ 
-                        height: '50px', backgroundColor: '#333333', color: 'white', fontWeight: 600, textTransform: 'none', borderRadius: '8px',
-                        boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)', transition: 'all 0.3s ease',
-                        '&:hover': { backgroundColor: '#555555', boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)', transform: 'translateY(-1px)' }
-                    }}>
-                    AGREGAR
+        <Button 
+                  variant="contained" 
+                  onClick={() => setOpenAddModal(true)} 
+                  startIcon={<AddIcon />}
+                  sx={{ 
+                    backgroundColor: '#333333', color: 'white', fontWeight: 600, textTransform: 'none', borderRadius: '8px',
+                    boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)', transition: 'all 0.3s ease',
+                    '&:hover': { backgroundColor: '#555555', transform: 'translateY(-1px)' }
+                  }}
+                >
+                  NUEVO REGISTRO
                 </Button>
-            </Grid>
-        </Grid>
       </Paper>
 
         {/* TABLA PRINCIPAL */}
@@ -338,7 +301,94 @@ const [saving, setSaving] = useState(false);
             />
           </Paper>
         </Box>
+                {/* MODAL DE NUEVO REGISTRO (ESTILO PREMIUM) */}
+      <Dialog 
+        open={openAddModal} 
+        onClose={() => setOpenAddModal(false)} 
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          sx: { borderRadius: '16px', boxShadow: '0 12px 32px rgba(0,0,0,0.18)', border: '1px solid #e0e0e0', overflow: 'hidden', background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)' }
+        }}
+      >
+        {/* ENCABEZADO ELEGANTE */}
+        <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
+          <Box sx={{ position: 'relative', zIndex: 2 }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>Nuevo Movimiento</Typography>
+            <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>Registre un nuevo concepto de nómina en el catálogo.</Typography>
+          </Box>
+          <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+          <IconButton onClick={() => setOpenAddModal(false)} sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
 
+        <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            
+            {/* SECCIÓN 1: DATOS BÁSICOS */}
+            <Box>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#333', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ width: 4, height: 20, backgroundColor: '#333333', borderRadius: 2 }} /> Datos Básicos
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                    <TextField {...commonProps} type="number" label="Clave*" name="id_movimiento" value={formData.id_movimiento} onChange={handleInputChange} sx={{ width: '120px', ...commonProps.sx }} />
+                    <TextField {...commonProps} label="Descripción*" name="descripcion" value={formData.descripcion} onChange={handleInputChange} sx={{ width: '300px', ...commonProps.sx }} />
+                  </Box>
+                </Grid>
+              </Grid>
+            </Box>
+
+            {/* SECCIÓN 2: CONFIGURACIÓN CONTABLE */}
+            <Box>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#333', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ width: 4, height: 20, backgroundColor: '#333333', borderRadius: 2 }} /> Configuración y Tipo
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 2 }}>
+                    <TextField {...commonProps} type="number" label="Gasto" name="id_gasto" value={formData.id_gasto} onChange={handleInputChange} sx={{ width: '120px', ...commonProps.sx }} />
+                    <TextField {...commonProps} type="number" label="Subgasto" name="id_subgasto" value={formData.id_subgasto} onChange={handleInputChange} sx={{ width: '120px', ...commonProps.sx }} />
+                  </Box>
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField {...selectProps} select label="Tipo de Movimiento*" name="tipo_movto" value={formData.tipo_movto} onChange={handleInputChange} sx={{ width: '300px', ...selectProps.sx }}>
+                    <MenuItem value="">-- SELECCIONE --</MenuItem>
+                    {tiposMovimiento.map(tipo => (<MenuItem key={tipo.id} value={tipo.id}>{tipo.descripcion}</MenuItem>))}
+                  </TextField>
+                </Grid>
+              </Grid>
+            </Box>
+
+            {/* SECCIÓN 3: OPCIONES */}
+            <Box>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#333', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ width: 4, height: 20, backgroundColor: '#333333', borderRadius: 2 }} /> Opciones
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 4 }}>
+                <FormControlLabel control={<Checkbox size="small" name="deduccion" checked={formData.deduccion} onChange={handleInputChange} />} label={<Typography variant="body2" sx={{fontWeight: 600, color: '#555'}}>Es Deducción</Typography>} />
+                <FormControlLabel control={<Checkbox size="small" name="depositar" checked={formData.depositar} onChange={handleInputChange} />} label={<Typography variant="body2" sx={{fontWeight: 600, color: '#555'}}>Se Deposita</Typography>} />
+              </Box>
+            </Box>
+
+          </Box>
+        </DialogContent>
+
+        <DialogActions sx={{ backgroundColor: '#f8f9fa', borderTop: '1px solid #e0e0e0', p: 3 }}>
+          <Button onClick={() => setOpenAddModal(false)} sx={{ borderRadius: '8px', fontWeight: 600, px: 3, color: '#666' }}>Cancelar</Button>
+          <Button 
+            variant='contained' 
+            onClick={handleAgregarNuevo} 
+            disabled={saving} 
+            startIcon={<AddIcon />} 
+            sx={{ bgcolor: '#333333', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none', px: 4, '&:hover': { bgcolor: '#555555' } }}
+          >
+            {saving ? 'Guardando...' : 'Guardar Movimiento'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       
     </Box>

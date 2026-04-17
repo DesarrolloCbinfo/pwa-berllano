@@ -3,6 +3,7 @@ import { Box, CircularProgress, Alert, Typography, Button, Dialog, DialogTitle, 
 import { DataGrid, GridColDef } from '@mui/x-data-grid'
 import DeleteIcon from '@mui/icons-material/Delete'
 import AddIcon from '@mui/icons-material/Add'
+import CloseIcon from '@mui/icons-material/Close'
 import Swal from 'sweetalert2'
 import useConsumoApi from '../../../hooks/useConsumoApi'
 import { useSessionContext } from '../../../context/SessionProvider'
@@ -93,6 +94,7 @@ export default function AdministracionServiciosInsumos() {
   const [selectedServicio, setSelectedServicio] = useState('')
 
   const [saving, setSaving] = useState(false)
+  const [openAddModal, setOpenAddModal] = useState(false)
   const [openDelete, setOpenDelete] = useState(false)
   const [deleteId, setDeleteId] = useState<any>(null)
   const [deleting, setDeleting] = useState(false)
@@ -212,7 +214,7 @@ const handleAdd = async () => {
       }
 
       await fetchServiciosInsumos()
-      
+      setOpenAddModal(false)
       setSelectedArea('')
       setSelectedDepto('')
       setSelectedServicio('')
@@ -298,104 +300,41 @@ return (
       `}</style>
       <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#ececec' }}>
         <Paper sx={{ p: 3, borderRadius: '8px' }}>
-          {/* ENCABEZADO */}
-          <Box sx={{ border: '1px solid #000000ff', p: 1.5, mb: 2, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
+        {/* ENCABEZADO CON BOTÓN NUEVO */}
+          <Box sx={{ border: '1px solid #000000ff', p: 1.5, mb: 2, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Box>
               <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#000000ff', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
                 Administración de Servicios Insumos
               </Typography>
-              
             </Box>
-            <Box sx={{ textAlign: 'right' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
               <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#333', lineHeight: 1.1, fontSize: '0.9rem' }}>
                 {new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' }).replace('.', '')}
               </Typography>
-              
+             
             </Box>
           </Box>
-
-          <Grid container spacing={2} justifyContent="flex-start" alignItems="center" sx={{ mb: 0.5 }}>
-            <Grid item xs={12} md={2.5}>
-              <FormControl fullWidth>
-                <InputLabel>Área</InputLabel>
-                <Select
-                  {...selectProps}
-                  value={selectedArea}
-                  onChange={(e) => setSelectedArea(e.target.value)}
-                  label="Área"
-                >
-                  {areas.map((area) => (
-                    <MenuItem key={area.area} value={area.area}>
-                      {area.descripcion}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-
-            <Grid item xs={12} md={2.5}>
-              <FormControl fullWidth>
-                <InputLabel>Depto.</InputLabel>
-                <Select
-                  {...selectProps}
-                  value={selectedDepto}
-                  onChange={(e) => setSelectedDepto(e.target.value)}
-                  label="Depto."
-                >
-                  {departamentos.map((depto) => (
-                    <MenuItem key={depto.depto} value={depto.depto}>
-                      {depto.descripcion}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-
-            <Grid item xs={12} md={4.5}>
-              <FormControl fullWidth>
-                <InputLabel>Servicio</InputLabel>
-                <Select
-                  {...selectProps}
-                  value={selectedServicio}
-                  onChange={(e) => setSelectedServicio(e.target.value)}
-                  label="Servicio"
-                >
-                  {servicios.map((servicio) => (
-                    <MenuItem key={servicio.clave_prod} value={servicio.clave_prod}>
-                      {servicio.descripcion}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-
-            <Grid item xs={12} md={2.5}>
-              <Button 
+           <Button 
                 variant="contained" 
-                onClick={handleAdd} 
-                disabled={!selectedArea || !selectedDepto || !selectedServicio || saving}
-                fullWidth
+                onClick={() => setOpenAddModal(true)} 
                 startIcon={<AddIcon />}
                 sx={{ 
-                  height: '50px', 
-                  backgroundColor: '#333333', 
+                  backgroundColor: '#000000ff', 
                   color: 'white', 
                   fontWeight: 600, 
                   textTransform: 'none', 
                   borderRadius: '8px',
-                  boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)', 
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)', 
                   transition: 'all 0.3s ease',
                   '&:hover': { 
-                    backgroundColor: '#555555', 
-                    boxShadow: '0 6px 16px rgba(51, 51, 51, 0.4)', 
+                    backgroundColor: '#333333', 
+                    boxShadow: '0 6px 16px rgba(0, 0, 0, 0.3)', 
                     transform: 'translateY(-1px)' 
                   }
                 }}
               >
-                {saving ? 'Guardando...' : 'AGREGAR'}
+                NUEVO REGISTRO
               </Button>
-            </Grid>
-          </Grid>
         </Paper>
 
         {/* TABLA PRINCIPAL */}
@@ -439,49 +378,190 @@ return (
             />
           </Paper>
         </Box>
+
+{/* =========================================
+            MODAL DE NUEVO REGISTRO (DISEÑO PREMIUM)
+        ========================================= */}
         <Dialog 
-          open={openDelete} 
-          onClose={() => setOpenDelete(false)}
+          open={openAddModal} 
+          onClose={() => setOpenAddModal(false)}
+          maxWidth="sm"
+          fullWidth
           PaperProps={{
             sx: {
-              borderRadius: '12px',
-              boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-              border: '1px solid #e0e0e0'
+              borderRadius: '16px',
+              boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+              border: '1px solid #e0e0e0',
+              overflow: 'hidden',
+              background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
             }
           }}
         >
-          <DialogTitle sx={{ 
-            background: 'linear-gradient(135deg, #000000ff 0%)', 
-            color: 'white',
-            fontFamily: 'Georgia, "Times New Roman", serif'
-          }}>
-            Eliminar Registro
-          </DialogTitle>
+          {/* ENCABEZADO DEGRADADO */}
+          <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
+            <Box sx={{ position: 'relative', zIndex: 2 }}>
+              <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
+                Nuevo Servicio/Insumo
+              </Typography>
+              <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+                Seleccione el área, departamento y servicio a relacionar.
+              </Typography>
+            </Box>
+            {/* Círculo decorativo */}
+            <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+            
+            <IconButton 
+              onClick={() => setOpenAddModal(false)}
+              sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Box>
 
-          <DialogContent sx={{ p: 3, bgcolor: '#fff' }}>
-            <Typography sx={{ fontSize: '1.1rem', mb: 2 }}>
-              ¿Seguro que deseas eliminar este registro?
-            </Typography>
-            <Typography variant="body2" sx={{ color: '#666' }}>
-              Esta acción no se puede deshacer.
+          <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              
+              {/* Sección de Formulario */}
+              <Box>
+                <Typography variant='subtitle1' sx={{ fontWeight: 600, color: '#333', mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ width: 4, height: 20, backgroundColor: '#333333', borderRadius: 2 }} />
+                  Información de la Relación
+                </Typography>
+
+                <Grid container spacing={3}>
+                  <Grid item xs={12}>
+                    <FormControl fullWidth>
+                      <InputLabel>Área</InputLabel>
+                      <Select
+                        {...selectProps}
+                        value={selectedArea}
+                        onChange={(e) => setSelectedArea(e.target.value)}
+                        label="Área"
+                      >
+                        {areas.map((area) => (
+                          <MenuItem key={area.area} value={area.area}>
+                            {area.descripcion}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <FormControl fullWidth>
+                      <InputLabel>Depto.</InputLabel>
+                      <Select
+                        {...selectProps}
+                        value={selectedDepto}
+                        onChange={(e) => setSelectedDepto(e.target.value)}
+                        label="Depto."
+                      >
+                        {departamentos.map((depto) => (
+                          <MenuItem key={depto.depto} value={depto.depto}>
+                            {depto.descripcion}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <FormControl fullWidth>
+                      <InputLabel>Servicio</InputLabel>
+                      <Select
+                        {...selectProps}
+                        value={selectedServicio}
+                        onChange={(e) => setSelectedServicio(e.target.value)}
+                        label="Servicio"
+                      >
+                        {servicios.map((servicio) => (
+                          <MenuItem key={servicio.clave_prod} value={servicio.clave_prod}>
+                            {servicio.descripcion}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                </Grid>
+              </Box>
+            </Box>
+          </DialogContent>
+
+          <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
+            <Button 
+              onClick={() => setOpenAddModal(false)}
+              color="inherit"
+              sx={{ borderRadius: '8px', fontWeight: 500, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant='contained'
+              onClick={handleAdd}
+              disabled={!selectedArea || !selectedDepto || !selectedServicio || saving}
+              startIcon={<AddIcon />}
+              sx={{ 
+                bgcolor: '#000000ff', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)', transition: 'all 0.3s ease',
+                '&:hover': { bgcolor: '#333333', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' },
+                '&.Mui-disabled': { backgroundColor: '#a0a0a0', color: '#ffffff' }
+              }}
+            >
+              {saving ? 'Guardando...' : 'Guardar Registro'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+
+        {/* =========================================
+            MODAL ELIMINAR (DISEÑO PREMIUM ROJO)
+        ========================================= */}
+        <Dialog 
+          open={openDelete} 
+          onClose={() => setOpenDelete(false)}
+          maxWidth="sm"
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: '16px',
+              boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+              border: '1px solid #e0e0e0',
+              overflow: 'hidden',
+              background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
+            }
+          }}
+        >
+          {/* ENCABEZADO DEGRADADO ROJO PARA ALERTA */}
+          <Box sx={{ background: 'linear-gradient(135deg, #d32f2f 0%, #9a0007 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
+            <Box sx={{ position: 'relative', zIndex: 2 }}>
+              <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
+                Eliminar Registro
+              </Typography>
+              <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
+                Atención: Esta acción es irreversible.
+              </Typography>
+            </Box>
+            <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+            
+            <IconButton 
+              onClick={() => setOpenDelete(false)}
+              sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Box>
+
+          <DialogContent sx={{ p: 4, bgcolor: '#ffffff' }}>
+            <Typography sx={{ fontSize: '1.1rem', textAlign: 'center', mt: 2 }}>
+              ¿Seguro que deseas eliminar este registro de Insumos/Servicios?
             </Typography>
           </DialogContent>
 
-          <DialogActions sx={{ px: 3, py: 2, bgcolor: '#f5f5f5', borderTop: '1px solid #e0e0e0' }}>
+          <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa', justifyContent: 'center', gap: 2 }}>
             <Button 
               onClick={() => setOpenDelete(false)}
-              sx={{ 
-                backgroundColor: '#e0e0e0', 
-                color: '#000', 
-                fontWeight: 600,
-                textTransform: 'none',
-                borderRadius: '8px',
-                padding: '8px 16px',
-                transition: 'all 0.3s ease',
-                '&:hover': { 
-                  backgroundColor: '#d0d0d0' 
-                }
-              }}
+              color="inherit"
+              sx={{ borderRadius: '8px', fontWeight: 500, px: 3, transition: 'all 0.3s ease', '&:hover': { backgroundColor: '#e0e0e0', color: '#333' } }}
             >
               Cancelar
             </Button>
@@ -491,21 +571,12 @@ return (
               onClick={handleDelete}
               disabled={deleting}
               sx={{ 
-                backgroundColor: '#000000ff',
-                fontWeight: 600,
-                textTransform: 'none',
-                borderRadius: '8px',
-                padding: '8px 16px',
-                boxShadow: '0 4px 12px rgba(255, 255, 255, 0.4)',
-                transition: 'all 0.3s ease',
-                '&:hover': { 
-                  backgroundColor: '#727272ff',
-                  boxShadow: '0 4px 12px rgba(255, 255, 255, 0.4)',
-                  transform: 'translateY(-1px)'
-                }
+                fontWeight: 600, textTransform: 'none', borderRadius: '8px', px: 4,
+                boxShadow: '0 4px 12px rgba(211, 47, 47, 0.4)', transition: 'all 0.3s ease',
+                '&:hover': { transform: 'translateY(-1px)', boxShadow: '0 6px 16px rgba(211, 47, 47, 0.5)' }
               }}
             >
-              {deleting ? 'Eliminando...' : 'Eliminar'}
+              {deleting ? 'Eliminando...' : 'Sí, Eliminar'}
             </Button>
           </DialogActions>
         </Dialog>
