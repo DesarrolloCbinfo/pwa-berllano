@@ -237,7 +237,7 @@ export default function CatPlasticosAutorizados() {
     if (!busquedaCliente.trim()) {
       Swal.fire({
         title: 'Atención',
-        text: 'Ingrese un nombre para buscar',
+        text: 'Ingrese un nombre o número de cliente para buscar',
         icon: 'warning',
         confirmButtonColor: '#333333'
       });
@@ -246,13 +246,20 @@ export default function CatPlasticosAutorizados() {
 
     setLoadingClientes(true);
     try {
-      const res = await consumoApi.get(`/api/CatPlasticos_Autorizados/sp_bw_cat_clientes_suc_sel?No_cliente=${busquedaCliente.trim()}`);
+      const res = await consumoApi.get('/api/CatClientesSuc/sp_bw_cat_clientes_sel', {
+        params: {
+          page: 1,
+          pageSize: 50,
+          busqueda: busquedaCliente.trim()
+        }
+      });
       
       if (res.data && Array.isArray(res.data)) {
+        console.log('Datos de la API:', res.data);
         const clientesFormateados = res.data.map((cliente: any) => ({
-          clave: cliente.No_cliente,
+          clave: cliente.id,
           rfc: cliente.rfc || '',
-          nombre: `${cliente.nombre} ${cliente.ap_paterno || ''} ${cliente.ap_materno || ''}`.trim(),
+          nombre: cliente.nombre_completo || '',
           direccion: cliente.domicilio || '',
           // Datos completos del cliente
           telefono: cliente.telefono,
@@ -263,6 +270,7 @@ export default function CatPlasticosAutorizados() {
           colonia: cliente.colonia,
           ciudad: cliente.ciudad,
           estado: cliente.estado,
+          municipio: cliente.Municipio,
           contacto: cliente.contacto,
           email: cliente.email,
           limite_credito: cliente.limite_credito,
@@ -274,9 +282,13 @@ export default function CatPlasticosAutorizados() {
           usr_asig_plast: cliente.usr_asig_plast,
           fecha_asig_plast: cliente.fecha_asig_plast,
           plastico_activo: cliente.plastico_activo,
-          clave_lista_credito: cliente.clave_lista_credito,
-          clave_lista_mayoreo: cliente.clave_lista_mayoreo,
-          sucursal_origen: cliente.sucursal_origen
+          suc_asig_plast: cliente.suc_asig_plast,
+          sucursal_nombre: cliente.sucursal_nombre,
+          credito: cliente.credito,
+          mayoreo_lista: cliente.mayoreo_lista,
+          genero: cliente.genero,
+          fecha_nac: cliente.fecha_nac,
+          correo_factura: cliente.correo_factura
         }));
         setClientesData(clientesFormateados);
         
@@ -799,7 +811,7 @@ export default function CatPlasticosAutorizados() {
 
           {/* Tabla de clientes */}
           <Box sx={{ 
-            border: '2px solid #000', 
+            border: '2px solid #797979ff', 
             borderRadius: '8px', 
             overflow: 'hidden',
             mb: 3,
@@ -809,7 +821,7 @@ export default function CatPlasticosAutorizados() {
             <Box sx={{ 
               display: 'grid', 
               gridTemplateColumns: '1fr 1fr 2fr 2fr',
-              bgcolor: '#000',
+              bgcolor: '#8b8b8bff',
               color: 'white',
               fontWeight: 'bold',
               p: 1.5,
@@ -830,7 +842,7 @@ export default function CatPlasticosAutorizados() {
                     gridTemplateColumns: '1fr 1fr 2fr 2fr',
                     p: 1.5,
                     cursor: 'pointer',
-                    bgcolor: clienteSeleccionado?.clave === cliente.clave ? '#000' : (index % 2 === 0 ? '#fff' : '#f5f5f5'),
+                    bgcolor: clienteSeleccionado?.clave === cliente.clave ? '#969696ff' : (index % 2 === 0 ? '#fff' : '#f5f5f5'),
                     color: clienteSeleccionado?.clave === cliente.clave ? '#fff' : '#000',
                     transition: 'all 0.2s ease',
                     borderBottom: '1px solid #e0e0e0',
@@ -998,7 +1010,7 @@ export default function CatPlasticosAutorizados() {
                     <Typography variant="body2" sx={{ fontWeight: 'bold', minWidth: '150px' }}>
                       L. Precios Contado:
                     </Typography>
-                    <Typography variant="body2">{clienteSeleccionado.clave_lista_mayoreo || ''}</Typography>
+                    <Typography variant="body2">{clienteSeleccionado.mayoreo_lista || ''}</Typography>
                   </Box>
                 </Grid>
                 <Grid item xs={12} md={6}>
@@ -1006,7 +1018,7 @@ export default function CatPlasticosAutorizados() {
                     <Typography variant="body2" sx={{ fontWeight: 'bold', minWidth: '150px' }}>
                       Lista de Precios Crédito:
                     </Typography>
-                    <Typography variant="body2">{clienteSeleccionado.clave_lista_credito || ''}</Typography>
+                    <Typography variant="body2">{clienteSeleccionado.credito || ''}</Typography>
                   </Box>
                 </Grid>
 
@@ -1015,7 +1027,7 @@ export default function CatPlasticosAutorizados() {
                     <Typography variant="body2" sx={{ fontWeight: 'bold', minWidth: '80px' }}>
                       Sucursal:
                     </Typography>
-                    <Typography variant="body2">{clienteSeleccionado.sucursal_origen || ''}</Typography>
+                    <Typography variant="body2">{clienteSeleccionado.sucursal_nombre || ''}</Typography>
                   </Box>
                 </Grid>
                 <Grid item xs={12} md={6}>
@@ -1034,10 +1046,40 @@ export default function CatPlasticosAutorizados() {
         {/* FOOTER Y BOTONES */}
         <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa', justifyContent: 'center', gap: 2 }}>
           <Button 
-            onClick={() => {
+            onClick={async () => {
               if (clienteSeleccionado) {
-                setReasignacionData({ ...reasignacionData, cliente: clienteSeleccionado.nombre });
-                setOpenBuscarCliente(false);
+                try {
+                  const res = await consumoApi.get(`/api/CatClientes/sp_bw_cat_clientes_suc_sel?No_cliente=${clienteSeleccionado.clave}`);
+                  console.log('Respuesta del endpoint de cliente completo:', res.data);
+                  if (res.data && res.data.length > 0) {
+                    const clienteCompleto = res.data[0];
+                    console.log('Cliente completo:', clienteCompleto);
+                    console.log('Datos a asignar:', {
+                      cliente: clienteCompleto.nombre_completo,
+                      plasticoActual: clienteCompleto.plastico_actual,
+                      usuarioAsig: clienteCompleto.usuario_assigned,
+                      fechaAsignacion: clienteCompleto.fecha_asignacion,
+                      activo: clienteCompleto.activo
+                    });
+                    setReasignacionData({ 
+                      ...reasignacionData, 
+                      cliente: clienteCompleto.nombre_completo,
+                      plasticoActual: clienteCompleto.plastico_actual || '',
+                      usuarioAsig: clienteCompleto.usuario_assigned || '',
+                      fechaAsignacion: clienteCompleto.fecha_asignacion || '',
+                      activo: clienteCompleto.activo || false
+                    });
+                    setOpenBuscarCliente(false);
+                  }
+                } catch (error) {
+                  console.error('Error al obtener datos del cliente:', error);
+                  Swal.fire({
+                    title: 'Error',
+                    text: 'Error al obtener los datos completos del cliente',
+                    icon: 'error',
+                    confirmButtonColor: '#333333'
+                  });
+                }
               }
             }}
             variant="contained"
