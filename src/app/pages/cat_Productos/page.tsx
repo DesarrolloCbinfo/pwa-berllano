@@ -967,6 +967,7 @@ const ModalStockSucursal = ({ open, onClose, consumoApi, setMessage, productoFor
   const [datos, setDatos] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [stockMasivo, setStockMasivo] = useState<number | string>('');
 
   useEffect(() => {
     if (open && productoForm.clave_prod) fetchDatos();
@@ -1019,6 +1020,23 @@ const ModalStockSucursal = ({ open, onClose, consumoApi, setMessage, productoFor
 
   const handleChange = (uid: string, campo: string, valor: any) => {
     setDatos(prev => prev.map(row => row._uid === uid ? { ...row, [campo]: valor } : row));
+  };
+
+  const handleAplicarMasivo = () => {
+    if (stockMasivo === '' || Number(stockMasivo) < 0) {
+      alert("Ingrese una cantidad válida mayor o igual a 0.");
+      return;
+    }
+    if (datos.length === 0) {
+      alert("Primero agregue las sucursales a la lista (Puede usar el botón + Stock General).");
+      return;
+    }
+    
+    // Recorremos todas las filas y les inyectamos el valor masivo
+    setDatos(prev => prev.map(row => ({ ...row, stock_minimo: Number(stockMasivo) })));
+    
+    // Opcional: Limpiamos la cajita después de aplicar
+    setStockMasivo('');
   };
 
   const handleSave = async () => {
@@ -1087,20 +1105,71 @@ const ModalStockSucursal = ({ open, onClose, consumoApi, setMessage, productoFor
 
       <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
 
-        {/* INFO DEL PRODUCTO Y BOTÓN STOCK GENERAL */}
-        <Box sx={{ mb: 3, p: 2, bgcolor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e0e0e0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      {/* INFO DEL PRODUCTO Y BOTÓN STOCK GENERAL */}
+        <Box sx={{ mb: 3, p: 2, bgcolor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e0e0e0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
           <Box>
             <Typography variant="body2" sx={{ color: '#666' }}><strong>Clave:</strong> {productoForm.clave_prod}</Typography>
             <Typography variant="body2" sx={{ mt: 0.5, color: '#333', fontWeight: 500 }}>{productoForm.descripcion}</Typography>
           </Box>
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={handleAddStockGeneral}
-            sx={{ fontWeight: 'bold', color: '#1a365d', borderColor: '#1a365d', borderRadius: '8px', textTransform: 'none', '&:hover': { bgcolor: 'rgba(26, 54, 93, 0.05)' } }}
-          >
-            + Stock General
-          </Button>
+          
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+
+            <TextField 
+              size="small" 
+              type="number" 
+              placeholder="Cant." 
+              value={stockMasivo} 
+              onChange={(e) => setStockMasivo(e.target.value)}
+              sx={{ 
+                  width: '90px', 
+                  bgcolor: '#fff', 
+                  '& .MuiInputBase-root': { borderRadius: '8px', height: '36px' },
+                  '& .MuiOutlinedInput-notchedOutline': { borderColor: '#d1d5db' }
+              }}
+            />
+            <Button 
+              variant="contained" 
+              onClick={handleAplicarMasivo} 
+              sx={{ 
+                bgcolor: '#000000', 
+                color: 'white', 
+                fontWeight: 600, 
+                textTransform: 'none', 
+                borderRadius: '8px', 
+                height: '36px',
+                px: 2,
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.15)', 
+                transition: 'all 0.3s ease',
+                '&:hover': { 
+                    bgcolor: '#333333', 
+                    transform: 'translateY(-1px)', 
+                    boxShadow: '0 4px 10px rgba(0, 0, 0, 0.25)' 
+                }
+              }}
+            >
+              Aplicar a todas
+            </Button>
+
+            <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
+
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={handleAddStockGeneral}
+              sx={{ 
+                  fontWeight: 'bold', 
+                  color: '#333333', 
+                  borderColor: '#cccccc', 
+                  backgroundColor: '#ffffff',
+                  borderRadius: '8px', 
+                  height: '36px',
+                  textTransform: 'none', 
+                  '&:hover': { bgcolor: '#f5f5f5', borderColor: '#999999', color: '#000000' } 
+              }}
+            >
+              + Stock General
+            </Button>
+          </Box>
         </Box>
 
         <TableContainer component={Paper} sx={{ maxHeight: 350, borderRadius: '8px', border: '1px solid #e0e0e0', boxShadow: 'none', mb: 2 }}>
@@ -1125,7 +1194,7 @@ const ModalStockSucursal = ({ open, onClose, consumoApi, setMessage, productoFor
                         onChange={(e) => handleChange(row._uid, 'sucursal', e.target.value)}
                         size="small" variant="standard" fullWidth
                         InputProps={{ disableUnderline: true }}
-                        sx={{ '& .MuiSelect-select': { py: 0.5, fontWeight: 500, color: '#1a365d' } }}
+                        sx={{ '& .MuiSelect-select': { py: 0.5, fontWeight: 600, color: '#333333' } }}
                       >
                         {sucursales.map((s: any) => (
                           <MenuItem key={s.id} value={s.id}>{s.descripcion}</MenuItem>
@@ -1545,38 +1614,107 @@ const ModalKardex = ({ open, onClose, consumoApi, setMessage, productoForm, sucu
   };
   const [sucursalSel, setSucursalSel] = useState<string>(sucursalUsuario());
 
+// --- 1. EL NUEVO EFECTO (Dispara la búsqueda automática al abrir) ---
   useEffect(() => {
-    if (open) {
-      setDatos([]); // Limpiar la tabla al abrir
+    if (open && productoForm.clave_prod) {
+      ejecutarConsulta(true); // El "true" significa que es la carga inicial (todas las fechas)
+    } else {
+      setDatos([]); 
     }
-  }, [open]);
+  }, [open, productoForm.clave_prod]);
 
-  const handleConsultar = async () => {
+  // --- 2. LA NUEVA FUNCIÓN MAESTRA (Reemplaza la lógica anterior) ---
+  const ejecutarConsulta = async (esCargaInicial: boolean = false) => {
     if (!sucursalSel) {
-      alert("Seleccione una sucursal para consultar.");
+      if (!esCargaInicial) alert("Seleccione una sucursal para consultar.");
       return;
     }
-    if (fechaInicio > fechaFin) {
+    if (!esCargaInicial && fechaInicio > fechaFin) {
       alert("La fecha final debe ser mayor o igual a la inicial.");
       return;
     }
 
     setLoading(true);
     try {
-      const res = await consumoApi.get('/api/CatProductosC/sp_bw_cat_producto_kardex_sel', {
-        params: {
-          clave: productoForm.clave_prod,
-          sucursal: sucursalSel,
-          fecha_inicio: fechaInicio,
-          fecha_fin: fechaFin
-        }
-      });
+      const params = {
+        clave: productoForm.clave_prod,
+        sucursal: sucursalSel, // Siempre usamos la sucursal del login/select
+        // Si es la carga inicial, abrimos el filtro de fechas desde 2000 hasta 2099
+        fecha_inicio: esCargaInicial ? '2000-01-01' : fechaInicio,
+        fecha_fin: esCargaInicial ? '2099-12-31' : fechaFin
+      };
+
+      const res = await consumoApi.get('/api/CatProductosC/sp_bw_cat_producto_kardex_sel', { params });
       setDatos(res.data || []);
-      if (res.data.length === 0) setMessage({ text: "No se encontraron movimientos en este periodo.", type: 'success' });
+      
+      // Solo mostramos la alerta de "vacío" si el usuario dio clic en consultar
+      if(!esCargaInicial && res.data.length === 0) {
+        setMessage({ text: "No se encontraron movimientos con estos filtros.", type: 'info' });
+      }
     } catch (error) {
+      console.error(error);
       setMessage({ text: "Error al consultar el Kardex", type: 'error' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  // --- 3. EL BOTÓN CONSULTAR AHORA SOLO LLAMA A LA MAESTRA ---
+  const handleConsultar = () => ejecutarConsulta(false); // El "false" respeta las fechas de las cajitas
+
+  const handleExportExcelKardex = async () => {
+    if (datos.length === 0) {
+      alert("No hay movimientos para exportar. Primero realice una consulta.");
+      return;
+    }
+
+    try {
+      setMessage({ text: "⏳ Generando reporte de movimientos...", type: 'success' });
+      const XLSX = await import('xlsx-js-style');
+
+      // 1. Mapeamos los datos de la tabla al Excel con nombres claros
+      const worksheetData = datos.map(row => ({
+        "FECHA MOVIMIENTO": row.fecha_movto ? String(row.fecha_movto).replace('T', ' ').substring(0, 16) : '',
+        "FOLIO": row.folio_movto,
+        "CONCEPTO / TIPO": row.tipo_movimiento,
+        "ENTRADA": Number(row.cantidad_entrada || 0),
+        "SALIDA": Number(row.cantidad_salida || 0),
+        "COSTO": Number(row.costo || 0),
+        "USUARIO": row.usr
+      }));
+
+      // 2. Creamos el libro y la hoja
+      const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+      
+      // --- 🎨 ESTILO BERLLANO (Encabezado Gris y Negritas) ---
+      const range = XLSX.utils.decode_range(worksheet['!ref'] || "A1");
+      for (let C = range.s.c; C <= range.e.c; ++C) {
+        const address = XLSX.utils.encode_cell({ r: 0, c: C });
+        if (!worksheet[address]) continue;
+        worksheet[address].s = {
+          fill: { patternType: "solid", fgColor: { rgb: "D9D9D9" } },
+          font: { bold: true, color: { rgb: "000000" } },
+          alignment: { horizontal: "center" }
+        };
+      }
+
+      // Ajuste automático de columnas
+      const wscols = [
+        { wch: 20 }, { wch: 12 }, { wch: 30 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 15 }
+      ];
+      worksheet['!cols'] = wscols;
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Kardex");
+
+      // 3. Descarga del archivo con nombre descriptivo
+      const nombreArchivo = `Kardex_${productoForm.clave_prod}_${new Date().getTime()}.xlsx`;
+      XLSX.writeFile(workbook, nombreArchivo);
+
+      setMessage({ text: "✅ Kardex exportado correctamente", type: 'success' });
+    } catch (error) {
+      console.error(error);
+      setMessage({ text: "Error al generar el Excel del Kardex", type: 'error' });
     }
   };
 
@@ -1673,6 +1811,19 @@ const ModalKardex = ({ open, onClose, consumoApi, setMessage, productoForm, sucu
           >
             {loading ? "Buscando..." : "Consultar Kardex"}
           </Button>
+
+          <Button 
+              variant="contained" 
+              onClick={handleExportExcelKardex} 
+              disabled={loading || datos.length === 0} 
+              sx={{ 
+                bgcolor: '#2e7d32', color: 'white', fontWeight: 600, height: '40px', borderRadius: '8px', textTransform: 'none', px: 3,
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)', transition: 'all 0.3s ease',
+                '&:hover': { bgcolor: '#1b5e20', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)' }
+              }}
+            >
+              📊 Exportar Excel
+            </Button>
         </Box>
 
         {/* TABLA DE MOVIMIENTOS */}
@@ -2182,8 +2333,12 @@ export default function CatProductos() {
   };
 
   const handleOpenAdd = () => {
+    const sucursalLoggeada = getSucursalUsuario();
     setClaveSeleccionada(null);
-    setProductoForm(initialProductoState);
+   setProductoForm({
+      ...initialProductoState,
+      sucursal_origen: sucursalLoggeada !== 0 ? String(sucursalLoggeada) : ''
+    });
     setDeptosModal([]);
     setClasesModal([]);
     setFamiliasFiltradasModal([]);
@@ -2295,7 +2450,7 @@ export default function CatProductos() {
         es_producto: !!d.es_producto,
         es_kit: !!d.es_kit,
         producto_libre: !!d.productoLibre,
-        entrega_directa: !!d.entregaDirecta
+        entrega_directa: !!d.entregaDirecta,
       });
 
       setModalTabValue(0);
@@ -2863,7 +3018,7 @@ export default function CatProductos() {
           <Box sx={{ border: '1px solid #2c3e50', p: 1.5, mb: 2, borderRadius: '6px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
             <Box>
               <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem', textTransform: 'uppercase' }}>
-                Catálogo de Producto
+                Catálogo de Productos
               </Typography>
 
             </Box>
