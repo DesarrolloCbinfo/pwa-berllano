@@ -48,7 +48,10 @@ export default function CatSucursal() {
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['catSucursal'],
-    queryFn: (): Promise<ICatSucursal[]> => consumoApi.get(CatSucursalApis.get).then((res) => res.data),
+    queryFn: (): Promise<ICatSucursal[]> => consumoApi.get(CatSucursalApis.get).then((res) => {
+      // Filtrar la sucursal TODAS para que no se muestre en el catálogo
+      return res.data.filter((sucursal: ICatSucursal) => sucursal.nombre !== 'TODAS')
+    }),
   })
 
   const [openForm, setOpenForm] = useState(false);

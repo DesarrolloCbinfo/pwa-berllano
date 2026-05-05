@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Box, CircularProgress, Alert, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions, MenuItem, Select, FormControl, InputLabel, IconButton, TextField, Grid } from '@mui/material'
 import { DataGrid, GridColDef } from '@mui/x-data-grid'
 import DeleteIcon from '@mui/icons-material/Delete'
+import EditIcon from '@mui/icons-material/Edit'
 import AddIcon from '@mui/icons-material/Add'
 import CloseIcon from '@mui/icons-material/Close'
 import Swal from 'sweetalert2'
@@ -91,22 +92,33 @@ export default function ConfiguracionPromocionesDescuentoPorcentual() {
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [openAddModal, setOpenAddModal] = useState(false)
+  const [openEditModal, setOpenEditModal] = useState(false)
+  const [editingPromocion, setEditingPromocion] = useState<Promocion | null>(null)
 
   const columns: GridColDef[] = [
     {
       field: 'acciones',
       headerName: '',
-      width: 70,
+      width: 120,
       sortable: false,
       filterable: false,
       renderCell: (params) => (
-        <IconButton
-          color="error"
-          onClick={() => handleDeleteOpen(params.row)}
-          size="small"
-        >
-          <DeleteIcon />
-        </IconButton>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <IconButton
+            color="primary"
+            onClick={() => handleEditOpen(params.row)}
+            size="small"
+          >
+            <EditIcon />
+          </IconButton>
+          <IconButton
+            color="error"
+            onClick={() => handleDeleteOpen(params.row)}
+            size="small"
+          >
+            <DeleteIcon />
+          </IconButton>
+        </Box>
       ),
     },
     { field: 'nombrePromo', headerName: 'Nombre Promo', width: 200 },
@@ -316,6 +328,139 @@ const handleAdd = async () => {
     }
   }
 
+  const handleEditOpen = async (row: Promocion) => {
+    console.log('Datos de la promoción a editar:', row)
+    
+    setEditingPromocion(row)
+    setNombrePromo(row.nombrePromo)
+    
+    // Buscar sucursal por nombre
+    const sucursal = sucursales.find(s => s.nombre === row.sucursal)
+    setSelectedSucursal(sucursal ? String(sucursal.cve_sucursal) : '0')
+    
+    // Formatear fechas al formato YYYY-MM-DD para input type="date"
+    const formatDate = (dateString: string) => {
+      if (!dateString) return ''
+      const date = new Date(dateString)
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+    
+    setFechaDel(formatDate(row.f1))
+    setFechaAl(formatDate(row.f2))
+    
+    // Buscar área por descripción
+    const area = areas.find(a => a.descripcion.trim() === row.area)
+    const areaId = area ? area.id : '%'
+    setSelectedArea(areaId)
+    
+    // Cargar departamentos si hay un área seleccionada y buscar el departamento
+    let deptoId = '%'
+    if (areaId && areaId !== '%') {
+      await fetchDepartamentos(areaId)
+      await new Promise(resolve => setTimeout(resolve, 150))
+    }
+    setSelectedDepto(deptoId)
+    
+    // Buscar marca por nombre
+    const marca = marcas.find(m => m.marca === row.marca)
+    const marcaId = marca ? String(marca.id) : '0'
+    setSelectedMarca(marcaId)
+    
+    // Cargar familias si hay una marca seleccionada y buscar la familia
+    let familiaId = '%'
+    if (marcaId && marcaId !== '0' && marcaId !== '%') {
+      await fetchFamilias(Number(marcaId))
+      await new Promise(resolve => setTimeout(resolve, 150))
+    }
+    setSelectedFamilia(familiaId)
+    
+    // Buscar producto por clave
+    const producto = productos.find(p => p.descripcion === row.clave_prod || p.clave_prod === row.clave_prod)
+    setSelectedProducto(producto ? producto.clave_prod : '%')
+    
+    setCantidad(String(row.cantidad))
+    setDescPorcentaje(String(row.descuento))
+    
+    // Buscar tipo de descuento por descripción
+    const tipoDesc = tiposDescuento.find(t => t.descripcion === row.idDescuento)
+    if (tipoDesc) {
+      setSelectedTipoDescuento(tipoDesc.descripcion)
+    }
+    
+    setOpenEditModal(true)
+  }
+
+  const handleUpdate = async () => {
+    if (!editingPromocion || !nombrePromo || !selectedSucursal || !fechaDel || !fechaAl || !selectedArea || !selectedDepto || !selectedMarca || !selectedFamilia || !selectedProducto || !cantidad || !descPorcentaje || !selectedTipoDescuento) return
+
+    try {
+      setSaving(true)
+
+      const tipoDescuento = tiposDescuento.find(t => t.descripcion === selectedTipoDescuento)
+      if (!tipoDescuento) {
+        throw new Error('Tipo de descuento no válido')
+      }
+
+      const response = await consumoApi.put(
+        `/api/CatConfigPromoDescPorcen/sp_bw_t_promocionesDescuentos_upd`,
+        {
+          id: editingPromocion.id,
+          nombrePromo: nombrePromo,
+          sucursal: selectedSucursal === '0' ? '%' : selectedSucursal,
+          f1: fechaDel,
+          f2: fechaAl,
+          area: (selectedArea === '0' || selectedArea === '%') ? '%' : selectedArea,
+          depto: (selectedDepto === '0' || selectedDepto === '%') ? '%' : selectedDepto,
+          marca: selectedMarca === '0' ? '%' : selectedMarca,
+          familia: (selectedFamilia === '0' || selectedFamilia === '%') ? '%' : selectedFamilia,
+          clave_prod: (selectedProducto === '0' || selectedProducto === '%') ? '%' : selectedProducto,
+          cantidad: parseInt(cantidad),
+          descuento: parseFloat(descPorcentaje) / 100,
+          idDescuento: tipoDescuento.tipo_descuento,
+        }
+      )
+
+      const result = response.data?.[0]
+
+      if (result?.codigo !== 0) {
+        throw new Error(result?.mensaje1 || 'Error al actualizar')
+      }
+
+      await fetchPromociones()
+      setOpenEditModal(false)
+      setEditingPromocion(null)
+      setNombrePromo('')
+      setSelectedSucursal('')
+      setFechaDel('')
+      setFechaAl('')
+      setSelectedArea('')
+      setSelectedDepto('')
+      setSelectedMarca('')
+      setSelectedFamilia('')
+      setSelectedProducto('')
+      setCantidad('')
+      setDescPorcentaje('')
+      setSelectedTipoDescuento('')
+      setDepartamentos([])
+      setFamilias([])
+
+      Swal.fire({
+        title: '¡Éxito!',
+        text: 'La promoción ha sido actualizada correctamente.',
+        icon: 'success',
+        timer: 2000,
+        showConfirmButton: false
+      })
+    } catch (err: any) {
+      Swal.fire('Error', err.message || 'Error al actualizar', 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const handleDeleteOpen = async (row: Promocion) => {
     const result = await Swal.fire({
       title: '¿Eliminar Promoción?',
@@ -509,6 +654,7 @@ return (
             <FormControl sx={{ minWidth: 120 }} size="small">
               <InputLabel>Depto</InputLabel>
               <Select value={selectedDepto} onChange={(e) => setSelectedDepto(e.target.value)} label="Depto" disabled={!selectedArea} sx={{ bgcolor: 'white' }}>
+                <MenuItem value="%">TODAS</MenuItem>
                 {departamentos.map((depto) => (<MenuItem key={depto.id} value={depto.id}>{depto.descripcion}</MenuItem>))}
               </Select>
             </FormControl>
@@ -523,6 +669,7 @@ return (
             <FormControl sx={{ minWidth: 120 }} size="small">
               <InputLabel>Familia</InputLabel>
               <Select value={selectedFamilia} onChange={(e) => setSelectedFamilia(e.target.value)} label="Familia" disabled={!selectedMarca} sx={{ bgcolor: 'white' }}>
+                <MenuItem value="%">TODAS</MenuItem>
                 {familias.map((familia) => (<MenuItem key={familia.clave} value={String(familia.clave)}>{familia.descripcion}</MenuItem>))}
               </Select>
             </FormControl>
@@ -530,6 +677,7 @@ return (
             <FormControl sx={{ minWidth: 150 }} size="small">
               <InputLabel>Producto</InputLabel>
               <Select value={selectedProducto} onChange={(e) => setSelectedProducto(e.target.value)} label="Producto" sx={{ bgcolor: 'white' }}>
+                <MenuItem value="%">TODAS</MenuItem>
                 {productos.map((producto) => (<MenuItem key={producto.clave_prod} value={producto.clave_prod}>{producto.descripcion}</MenuItem>))}
               </Select>
             </FormControl>
@@ -558,6 +706,108 @@ return (
             sx={{ bgcolor: '#000000ff', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none', '&:hover': { bgcolor: '#333333' } }}
           >
             {saving ? 'Guardando...' : 'Guardar Promoción'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* MODAL DE EDICIÓN */}
+      <Dialog 
+        open={openEditModal} 
+        onClose={() => setOpenEditModal(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: { borderRadius: '16px', boxShadow: '0 12px 32px rgba(0,0,0,0.18)', border: '1px solid #e0e0e0', overflow: 'hidden', background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)' }
+        }}
+      >
+        <Box sx={{ background: 'linear-gradient(135deg, #000000ff 0%, #464646ff 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
+          <Box sx={{ position: 'relative', zIndex: 2 }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>Editar Promoción</Typography>
+            <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>Modifique los campos necesarios para actualizar el descuento.</Typography>
+          </Box>
+          <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+          <IconButton onClick={() => setOpenEditModal(false)} sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
+
+        <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center', mt: 1 }}> 
+            
+            <TextField label="Nombre Promo" value={nombrePromo} onChange={(e) => setNombrePromo(e.target.value)} sx={{ minWidth: 100, bgcolor: 'white' }} size="small" />
+
+            <FormControl sx={{ minWidth: 150 }} size="small">
+              <InputLabel>Sucursal</InputLabel>
+              <Select value={selectedSucursal} onChange={(e) => setSelectedSucursal(e.target.value)} label="Sucursal" sx={{ bgcolor: 'white' }}>
+                {sucursales.map((sucursal) => (<MenuItem key={sucursal.cve_sucursal} value={String(sucursal.cve_sucursal)}>{sucursal.nombre}</MenuItem>))}
+              </Select>
+            </FormControl>
+
+            <TextField label="Del" type="date" value={fechaDel} onChange={(e) => setFechaDel(e.target.value)} sx={{ minWidth: 130, bgcolor: 'white' }} size="small" InputLabelProps={{ shrink: true }} />
+
+            <TextField label="Al" type="date" value={fechaAl} onChange={(e) => setFechaAl(e.target.value)} sx={{ minWidth: 130, bgcolor: 'white' }} size="small" InputLabelProps={{ shrink: true }} />
+
+            <FormControl sx={{ minWidth: 120 }} size="small">
+              <InputLabel>Área</InputLabel>
+              <Select value={selectedArea} onChange={(e) => setSelectedArea(e.target.value)} label="Área" sx={{ bgcolor: 'white' }}>
+                {areas.map((area) => (<MenuItem key={area.id} value={area.id}>{area.descripcion}</MenuItem>))}
+              </Select>
+            </FormControl>
+
+            <FormControl sx={{ minWidth: 120 }} size="small">
+              <InputLabel>Depto</InputLabel>
+              <Select value={selectedDepto} onChange={(e) => setSelectedDepto(e.target.value)} label="Depto" disabled={!selectedArea} sx={{ bgcolor: 'white' }}>
+                <MenuItem value="%">TODAS</MenuItem>
+                {departamentos.map((depto) => (<MenuItem key={depto.id} value={depto.id}>{depto.descripcion}</MenuItem>))}
+              </Select>
+            </FormControl>
+
+            <FormControl sx={{ minWidth: 120 }} size="small">
+              <InputLabel>Marca</InputLabel>
+              <Select value={selectedMarca} onChange={(e) => setSelectedMarca(e.target.value)} label="Marca" sx={{ bgcolor: 'white' }}>
+                {marcas.map((marca) => (<MenuItem key={marca.id} value={String(marca.id)}>{marca.marca}</MenuItem>))}
+              </Select>
+            </FormControl>
+
+            <FormControl sx={{ minWidth: 120 }} size="small">
+              <InputLabel>Familia</InputLabel>
+              <Select value={selectedFamilia} onChange={(e) => setSelectedFamilia(e.target.value)} label="Familia" disabled={!selectedMarca} sx={{ bgcolor: 'white' }}>
+                <MenuItem value="%">TODAS</MenuItem>
+                {familias.map((familia) => (<MenuItem key={familia.clave} value={String(familia.clave)}>{familia.descripcion}</MenuItem>))}
+              </Select>
+            </FormControl>
+
+            <FormControl sx={{ minWidth: 150 }} size="small">
+              <InputLabel>Producto</InputLabel>
+              <Select value={selectedProducto} onChange={(e) => setSelectedProducto(e.target.value)} label="Producto" sx={{ bgcolor: 'white' }}>
+                <MenuItem value="%">TODAS</MenuItem>
+                {productos.map((producto) => (<MenuItem key={producto.clave_prod} value={producto.clave_prod}>{producto.descripcion}</MenuItem>))}
+              </Select>
+            </FormControl>
+
+            <TextField label="Cant" type="number" value={cantidad} onChange={(e) => setCantidad(e.target.value)} sx={{ minWidth: 80, bgcolor: 'white' }} size="small" inputProps={{ min: "1" }} />
+
+            <TextField label="Desc (Ej. 10 = 10%)" type="number" value={descPorcentaje} onChange={(e) => setDescPorcentaje(e.target.value)} sx={{ width: 160, bgcolor: 'white' }} size="small" inputProps={{ step: "1", min: "0", max: "100" }} />
+
+            <FormControl sx={{ minWidth: 180 }} size="small">
+              <InputLabel>Tipo Descuento</InputLabel>
+              <Select value={selectedTipoDescuento} onChange={(e) => setSelectedTipoDescuento(e.target.value)} label="Tipo Descuento" sx={{ bgcolor: 'white' }}>
+                {tiposDescuento.map((tipo) => (<MenuItem key={tipo.tipo_descuento} value={tipo.descripcion}>{tipo.descripcion}</MenuItem>))}
+              </Select>
+            </FormControl>
+
+          </Box>
+        </DialogContent>
+
+        <DialogActions sx={{ borderTop: '1px solid #e0e0e0', pt: 2, px: 3, pb: 2, backgroundColor: '#f8f9fa' }}>
+          <Button onClick={() => setOpenEditModal(false)} sx={{ borderRadius: '8px', fontWeight: 500, color: '#333' }}>Cancelar</Button>
+          <Button 
+            variant='contained' 
+            onClick={handleUpdate} 
+            disabled={!nombrePromo || !selectedSucursal || !fechaDel || !fechaAl || !selectedArea || !selectedDepto || !selectedMarca || !selectedFamilia || !selectedProducto || !cantidad || !descPorcentaje || !selectedTipoDescuento || saving} 
+            sx={{ bgcolor: '#000000ff', color: 'white', borderRadius: '8px', fontWeight: 600, textTransform: 'none', '&:hover': { bgcolor: '#505050ff' } }}
+          >
+            {saving ? 'Actualizando...' : 'Actualizar Promoción'}
           </Button>
         </DialogActions>
       </Dialog>

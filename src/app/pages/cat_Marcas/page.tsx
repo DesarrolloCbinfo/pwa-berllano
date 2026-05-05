@@ -21,6 +21,7 @@ import PWABadge from '../../../PWABadge';
 interface CatMarcas {
   id: number;
   marca: string;
+  obsoleto: boolean;
 }
 
 export default function CatMarcas() {
@@ -32,12 +33,14 @@ export default function CatMarcas() {
   // Elementos para agregar marcas
   const [openAdd, setOpenAdd] = useState(false);
   const [marca, setMarca] = useState('');
+  const [obsoleto, setObsoleto] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // Elementos para editar marcas
   const [openEdit, setOpenEdit] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [editMarca, setEditMarca] = useState('');
+  const [editObsoleto, setEditObsoleto] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
 
   // Estado para eliminar marcas (solo para el loading)
@@ -85,39 +88,97 @@ export default function CatMarcas() {
       sortable: false,
       filterable: false,
       renderCell: (params) => (
-        <>
-          <IconButton 
-            onClick={() => handleEditOpen(params.row)}
-            sx={{
-              '&:hover': {
-                backgroundColor: 'rgba(51, 51, 51, 0.04)',
-                color: '#333'
-              }
-            }}
-          >
-            <EditIcon />
-          </IconButton>
-          <IconButton
-            color='error'
-            onClick={() => handleDeleteOpen(params.row)}
-            sx={{
-              '&:hover': {
-                backgroundColor: 'rgba(211, 47, 47, 0.04)',
-              }
-            }}
-          >
-            <DeleteIcon />
-          </IconButton>
-        </>
+        <IconButton 
+          onClick={() => handleEditOpen(params.row)}
+          disabled={params.row.id === 0}
+          sx={{
+            '&:hover': {
+              backgroundColor: params.row.id === 0 ? 'transparent' : 'rgba(51, 51, 51, 0.04)',
+              color: params.row.id === 0 ? 'inherit' : '#333'
+            },
+            opacity: params.row.id === 0 ? 0.3 : 1,
+            cursor: params.row.id === 0 ? 'not-allowed' : 'pointer'
+          }}
+        >
+          <EditIcon />
+        </IconButton>
       ),
     },
     { field: 'id', headerName: 'ID', width: 80, type: 'number' },
-    { field: 'marca', headerName: 'Marca', width: 200, type: 'string' },
+    { field: 'marca', headerName: 'Marca', width: 300, type: 'string' },
+    {
+      field: 'obsoleto',
+      headerName: 'Obsoleto',
+      width: 100,
+      sortable: false,
+      filterable: false,
+      renderCell: (params) => (
+        <input
+          type="checkbox"
+          checked={params.row.obsoleto}
+          disabled={params.row.id === 0}
+          onChange={async (e) => {
+            e.stopPropagation();
+            const newValue = e.target.checked;
+            console.log('Cambiando obsoleto:', { id: params.row.id, marca: params.row.marca, obsoleto: newValue });
+            
+            try {
+              const response = await consumoApi.put(
+                `/api/CatMarcas/sp_bw_cat_marcas_upd`,
+                null,
+                {
+                  params: {
+                    id: params.row.id,
+                    marca: params.row.marca,
+                    obsoleto: newValue,
+                  },
+                },
+              );
+
+              console.log('Respuesta del servidor:', response.data);
+              const result = response.data?.[0];
+
+              if (result?.codigo !== 0) {
+                throw new Error(result?.mensaje1 || result?.mensaje || 'Error al actualizar');
+              }
+
+              await Swal.fire({
+                title: '¡Éxito!',
+                text: 'Estado actualizado correctamente',
+                icon: 'success',
+                confirmButtonColor: '#000000ff',
+                timer: 1500,
+                showConfirmButton: false
+              });
+
+              fetchMarcas();
+            } catch (err) {
+              console.error('Error al actualizar:', err);
+              const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
+              await Swal.fire({
+                title: 'Error',
+                text: errorMessage,
+                icon: 'error',
+                confirmButtonColor: '#000000ff'
+              });
+              fetchMarcas();
+            }
+          }}
+          style={{ 
+            width: '18px', 
+            height: '18px', 
+            cursor: params.row.id === 0 ? 'not-allowed' : 'pointer',
+            opacity: params.row.id === 0 ? 0.5 : 1
+          }}
+        />
+      ),
+    },
   ];
 
   const handleEditOpen = (row: CatMarcas) => {
     setEditId(row.id);
     setEditMarca(row.marca);
+    setEditObsoleto(row.obsoleto);
     setOpenEdit(true);
   };
 
@@ -180,7 +241,9 @@ export default function CatMarcas() {
       const response = await consumoApi.get(
         '/api/CatMarcas/sp_bw_cat_marcas_sel?id=0',
       );
-      setRows(response.data);
+      // Filtrar la marca con id 0 (TODAS) para que no se muestre en la tabla
+      const filteredData = response.data.filter((marca: CatMarcas) => marca.id !== 0);
+      setRows(filteredData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
     } finally {
@@ -204,6 +267,7 @@ export default function CatMarcas() {
         {
           params: {
             marca,
+            obsoleto,
           },
         },
       );
@@ -216,6 +280,7 @@ export default function CatMarcas() {
 
       setOpenAdd(false);
       setMarca('');
+      setObsoleto(false);
       fetchMarcas(); // 🔁 refresca grid
       
       await Swal.fire({
@@ -250,6 +315,7 @@ export default function CatMarcas() {
           params: {
             id: editId,
             marca: editMarca,
+            obsoleto: editObsoleto,
           },
         },
       );
@@ -462,6 +528,19 @@ export default function CatMarcas() {
                   {...commonProps}
                 />
               </Grid>
+              <Grid item xs={12}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                  <input
+                    type="checkbox"
+                    checked={obsoleto}
+                    onChange={(e) => setObsoleto(e.target.checked)}
+                    style={{ marginRight: '8px', width: '18px', height: '18px', cursor: 'pointer' }}
+                  />
+                  <Typography variant="body1" sx={{ fontWeight: 500, color: '#333' }}>
+                    Obsoleto
+                  </Typography>
+                </Box>
+              </Grid>
             </Grid>
           </DialogContent>
 
@@ -546,6 +625,19 @@ export default function CatMarcas() {
                   onChange={(e) => setEditMarca(e.target.value)}
                   {...commonProps}
                 />
+              </Grid>
+              <Grid item xs={12}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                  <input
+                    type="checkbox"
+                    checked={editObsoleto}
+                    onChange={(e) => setEditObsoleto(e.target.checked)}
+                    style={{ marginRight: '8px', width: '18px', height: '18px', cursor: 'pointer' }}
+                  />
+                  <Typography variant="body1" sx={{ fontWeight: 500, color: '#333' }}>
+                    Obsoleto
+                  </Typography>
+                </Box>
               </Grid>
             </Grid>
           </DialogContent>

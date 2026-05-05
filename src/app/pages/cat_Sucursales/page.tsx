@@ -578,7 +578,10 @@ export default function CatSucursales() {
         }
       );
       
-      const data = response.data.map((item: any) => {
+      // Filtrar la sucursal TODAS antes de mapear
+      const filteredData = response.data.filter((item: any) => item.nombre !== 'TODAS');
+      
+      const data = filteredData.map((item: any) => {
         console.log('Item de API:', item);
         const mappedItem = {
           ...item,

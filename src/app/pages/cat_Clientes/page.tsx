@@ -34,6 +34,7 @@ interface ClienteRow {
   id: string;
   nombre_completo: string;
   fecha_alta: string;
+  fecha_act?: string;
   fecha_act_formateada?: string;
   sucursal_nombre: string;
   ciudad: string;
@@ -183,8 +184,6 @@ export default function CatClientes({ embedded = false, onClienteGuardado, onClo
  
   const formatDateForInput = (dateString: string | null | undefined): string => {
     if (!dateString) return '';
-    
-
     return dateString.split('T')[0];
   };
 
@@ -211,11 +210,41 @@ export default function CatClientes({ embedded = false, onClienteGuardado, onClo
         timeout: 120000 
       });
 
-      const data = response.data;
-      setRows(data);
+      // Mapear los datos de la API al formato esperado por el DataGrid
+      const mappedData = response.data.map((item: any, index: number) => {
+        // Convertir fecha_act_formateada (dd/mm/yyyy) a formato ISO (yyyy-mm-dd)
+        let fechaActISO = '';
+        if (item.fecha_act_formateada) {
+          const parts = item.fecha_act_formateada.split('/');
+          if (parts.length === 3) {
+            const [day, month, year] = parts;
+            fechaActISO = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+          }
+        }
+        
+        // Convertir fecha_alta_formateada (dd/mm/yyyy) a formato ISO (yyyy-mm-dd)
+        let fechaAltaISO = '';
+        if (item.fecha_alta_formateada) {
+          const parts = item.fecha_alta_formateada.split('/');
+          if (parts.length === 3) {
+            const [day, month, year] = parts;
+            fechaAltaISO = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+          }
+        }
+        
+        return {
+          ...item,
+          No_cliente: item.id, // El campo 'id' de la API es el No_cliente (00001, 00002, etc.)
+          fecha_act: fechaActISO, // Convertir fecha_act_formateada a ISO
+          fecha_alta: fechaAltaISO, // Convertir fecha_alta_formateada a ISO
+          id: item.rfc || `temp-${index}`, // Usar rfc como id único para el DataGrid
+        };
+      });
+      
+      setRows(mappedData);
 
-      if (data && data.length > 0 && data[0].TotalRegistros) {
-          setRowCount(data[0].TotalRegistros);
+      if (mappedData && mappedData.length > 0 && mappedData[0].TotalRegistros) {
+          setRowCount(mappedData[0].TotalRegistros);
       } else {
           if (paginationModel.page === 0) setRowCount(0);
       }
@@ -273,7 +302,11 @@ export default function CatClientes({ embedded = false, onClienteGuardado, onClo
   };
 
   const handleOpenAdd = () => {
-    setFormData(initialFormState);
+    const fechaActual = new Date().toISOString().split('T')[0];
+    setFormData({
+      ...initialFormState,
+      fecha_alta: fechaActual
+    });
     setColonias([]); 
     setIsEditing(false);
     setTabValue(0); 
@@ -282,7 +315,7 @@ export default function CatClientes({ embedded = false, onClienteGuardado, onClo
 
   const handleOpenEdit = (row: ClienteRow) => {
     // Validar y convertir el ID de forma segura
-    const idCliente = row.id ? String(row.id).trim() : '';
+    const idCliente = row.No_cliente ? String(row.No_cliente).trim() : (row.id ? String(row.id).trim() : '');
     
     setFormData({
       clave_cliente: idCliente, 
@@ -302,7 +335,7 @@ export default function CatClientes({ embedded = false, onClienteGuardado, onClo
       clave_registro: '',
       suspendido: row.suspendido || false,
       fecha_alta: row.fecha_alta || '',
-      fecha_act: row.fecha_act_formateada || '',
+      fecha_act: row.fecha_act || '',
     });
     if (row.cp) fetchColonias(row.cp);
     setIsEditing(true);
@@ -321,8 +354,8 @@ const handleSave = async () => {
         nombre: formData.nombre,
         sucursal_id: Number(formData.sucursal_id),
         suspendido: formData.suspendido,
-        ap_paterno: formData.apellido_paterno, // Corregir nombre de campo
-        ap_materno: formData.apellido_materno,  // Corregir nombre de campo
+        ap_paterno: formData.apellido_paterno,
+        ap_materno: formData.apellido_materno,
         email: formData.email,
         telefono: formData.telefono,
         ciudad: formData.ciudad,
@@ -343,11 +376,10 @@ const handleSave = async () => {
         
         // Para actualización: agregar no_cliente y enviar en body JSON
         const updateParams = {
-          no_cliente: formData.id_cliente.trim(), // Usar no_cliente en lugar de id_cliente
+          no_cliente: formData.id_cliente.trim(),
           ...baseParams
         };
         
-        // Enviar como body JSON, no como query params
         await consumoApi.put('/api/CatClientesSuc/sp_bw_cat_clientes_upd', updateParams);
         Swal.fire({ title: '¡Éxito!', text: 'Cliente actualizado correctamente', icon: 'success', confirmButtonColor: '#333333' });
         
@@ -374,14 +406,21 @@ const handleSave = async () => {
           onClienteGuardado(clienteActualizado);
         }
       } else {
-        // Para inserción: enviar en body JSON
-        await consumoApi.post('/api/CatClientesSuc/sp_bw_cat_clientes_ins', baseParams);
-        Swal.fire({ title: '¡Éxito!', text: 'Cliente creado correctamente', icon: 'success', confirmButtonColor: '#333333' });
+        // Para inserción: capturar el número de cliente generado
+        const response = await consumoApi.post('/api/CatClientesSuc/sp_bw_cat_clientes_ins', baseParams);
+        const nuevoNoCliente = response.data?.idGenerado || 'N/A';
+        
+        Swal.fire({ 
+          title: '¡Éxito!', 
+          text: `Cliente creado correctamente.\nNúmero de Cliente: ${nuevoNoCliente}`, 
+          icon: 'success', 
+          confirmButtonColor: '#333333' 
+        });
         
         if (embedded && onClienteGuardado) {
           const nombreCompleto = `${formData.nombre} ${formData.apellido_paterno || ''} ${formData.apellido_materno || ''}`.trim();
           const clienteCreado: ClienteRow = {
-            id: nombreCompleto,
+            id: nuevoNoCliente,
             nombre_completo: nombreCompleto,
             nombre: formData.nombre,
             ap_paterno: formData.apellido_paterno,
@@ -395,7 +434,7 @@ const handleSave = async () => {
             colonia: formData.colonia,
             id_sucursal: Number(formData.sucursal_id),
             genero: formData.genero,
-            No_cliente: nombreCompleto,
+            No_cliente: nuevoNoCliente,
             fecha_alta: new Date().toISOString().split('T')[0],
             sucursal_nombre: '',
           };
@@ -440,11 +479,11 @@ const handleDelete = async (id: string) => {
       renderCell: (params: GridRenderCellParams) => (
         <Box sx={{ display: 'flex', gap: 1 }}>
           <IconButton size="small" color="primary" onClick={() => handleOpenEdit(params.row)}><EditIcon fontSize="small" /></IconButton>
-          <IconButton size="small" color="error" onClick={() => handleDelete(params.row.id)}><DeleteIcon fontSize="small" /></IconButton>
+          <IconButton size="small" color="error" onClick={() => handleDelete(params.row.No_cliente || params.row.id)}><DeleteIcon fontSize="small" /></IconButton>
         </Box>
       ),
     },
-    { field: 'id', headerName: 'Clave', width: 150 },
+    { field: 'No_cliente', headerName: 'Clave', width: 100 },
     { field: 'nombre_completo', headerName: 'Nombre', flex: 1, minWidth: 250 },
     { field: 'fecha_alta', headerName: 'Fecha Alta', width: 200 },
     { field: 'sucursal_nombre', headerName: 'Sucursal', width: 180 },
@@ -771,22 +810,34 @@ return (
                       label='Fecha Alta' 
                       name="fecha_alta" 
                       value={formatDateForInput(formData.fecha_alta)} 
-                      onChange={handleInputChange}
                       InputLabelProps={{ shrink: true }}
+                      InputProps={{ readOnly: true }}
+                      sx={{
+                        ...commonProps.sx,
+                        '& .MuiInputBase-root': {
+                          ...commonProps.sx?.['& .MuiInputBase-root'],
+                          backgroundColor: '#f5f5f5',
+                          cursor: 'not-allowed'
+                        }
+                      }}
                     />
                   </Grid>
                   <Grid item xs={12} md={4}>
                     <TextField 
                       {...commonProps} 
                       type="date"
-                      label='Fecha Registro' 
+                      label='Fecha Actualización' 
                       name="fecha_act" 
                       value={formatDateForInput(formData.fecha_act)} 
-                      onChange={handleInputChange}
                       InputLabelProps={{ shrink: true }}
+                      InputProps={{ readOnly: true }}
                       sx={{
                         ...commonProps.sx,
-                        '& .MuiInputBase-input': { py: 1.5 }
+                        '& .MuiInputBase-root': {
+                          ...commonProps.sx?.['& .MuiInputBase-root'],
+                          backgroundColor: '#f5f5f5',
+                          cursor: 'not-allowed'
+                        }
                       }}
                     />
                   </Grid>

@@ -730,9 +730,9 @@ export default function CatCategorias() {
 
       {/* PAPER 1: ENCABEZADO ESTILO BERLLANO */}
       <Paper sx={{ p: 3, borderRadius: '8px', mb: 3 }}>
-        <Box sx={{ border: '1px solid #2c3e50', p: 1.5, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
+        <Box sx={{ border: '1px solid #000000ff', p: 1.5, borderRadius: '8px', backgroundColor: '#fff', display: 'flex', justifyContent: 'space-between' }}>
             <Box>
-                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#000000ff', fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.1, fontSize: '1.1rem' }}>
                     CATÁLOGO DE CATEGORÍAS DE GASTOS
                 </Typography>
                 
@@ -747,11 +747,14 @@ export default function CatCategorias() {
       </Paper>
 
       {/* --- TRES TABLAS EN LÍNEA --- */}
-      <Grid container spacing={2}>
+      <Grid container spacing={3}>
         {/* TABLA DE CATEGORÍAS */}
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} sm={12} md={6} lg={4}>
           <Paper sx={{ 
-            height: 600, 
+            height: {
+              xs: 'auto',
+              md: 500
+            }, 
             borderRadius: '12px',
             boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
             '& .super-app-theme--header': {
@@ -785,9 +788,10 @@ export default function CatCategorias() {
                 Agregar Categoría
               </Button>
             </Box>
-            <DataGrid
-              rows={rows}
-              columns={[
+            <Box sx={{ height: '100%', width: '100%', overflow: 'hidden' }}>
+              <DataGrid
+                rows={rows}
+                columns={[
                  {
                   field: 'acciones',
                   headerName: 'Acciones',
@@ -821,7 +825,8 @@ export default function CatCategorias() {
                 {
                   field: 'descripcion',
                   headerName: 'Descripción',
-                  width: 200,
+                  flex: 1,
+                  minWidth: 150,
                   headerClassName: 'super-app-theme--header',
                 },
                
@@ -855,14 +860,18 @@ export default function CatCategorias() {
                   cursor: 'pointer',
                 },
               }}
-            />
+              />
+            </Box>
           </Paper>
         </Grid>
 
         {/* TABLA DE SUBCATEGORÍAS */}
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} sm={12} md={6} lg={4}>
           <Paper sx={{ 
-            height: 600, 
+            height: {
+              xs: 'auto',
+              md: 500
+            }, 
             borderRadius: '12px',
             boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
            '& .super-app-theme--header': {
@@ -911,9 +920,10 @@ export default function CatCategorias() {
                 Agregar Subcategoría
               </Button>
             </Box>
-            <DataGrid
-              rows={subcategorias}
-              columns={[
+            <Box sx={{ height: '100%', width: '100%', overflow: 'hidden' }}>
+              <DataGrid
+                rows={subcategorias}
+                columns={[
                 {
                   field: 'acciones',
                   headerName: 'Acciones',
@@ -949,7 +959,8 @@ export default function CatCategorias() {
                 {
                   field: 'descripcion',
                   headerName: 'Descripción',
-                  width: 200,
+                  flex: 1,
+                  minWidth: 150,
                   headerClassName: 'super-app-theme--header',
                 },
                 
@@ -983,14 +994,18 @@ export default function CatCategorias() {
                   cursor: 'pointer',
                 },
               }}
-            />
+              />
+            </Box>
           </Paper>
         </Grid>
 
         {/* TABLA DE SUB-SUBCATEGORÍAS */}
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} sm={12} md={6} lg={4}>
           <Paper sx={{ 
-            height: 600, 
+            height: {
+              xs: 'auto',
+              md: 500
+            }, 
             borderRadius: '12px',
             boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
            '& .super-app-theme--header': {
@@ -1042,9 +1057,10 @@ export default function CatCategorias() {
                 Agregar Sub-subcategoría
               </Button>
             </Box>
-            <DataGrid
-              rows={subsubcategorias}
-              columns={[
+            <Box sx={{ height: '100%', width: '100%', overflow: 'hidden' }}>
+              <DataGrid
+                rows={subsubcategorias}
+                columns={[
                  {
                   field: 'acciones',
                   headerName: 'Acciones',
@@ -1080,7 +1096,8 @@ export default function CatCategorias() {
                 {
                   field: 'descripcion',
                   headerName: 'Descripción',
-                  width: 180,
+                  flex: 1,
+                  minWidth: 150,
                   headerClassName: 'super-app-theme--header',
                 },
                 {
@@ -1152,7 +1169,8 @@ export default function CatCategorias() {
                   cursor: 'pointer',
                 },
               }}
-            />
+              />
+            </Box>
           </Paper>
         </Grid>
       </Grid>

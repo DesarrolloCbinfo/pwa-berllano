@@ -304,6 +304,7 @@ export default function CatAreasDeptosClases() {
   }
   const handleAreaSelect = (areaId: string) => {
     setSelectedArea(areaId)
+    setSelectedDepto('0') // Resetear departamento seleccionado al cambiar de área
     fetchDeptos(areaId) // Cargar departamentos filtrados por área
   }
   const handleOpenNewDepto = () => {
@@ -711,7 +712,7 @@ return (
               rows={areas}
               columns={[
                 { field: 'area', headerName: 'ID', width: 60 },
-                { field: 'descripcion', headerName: 'Descripción', flex: 1 },
+                { field: 'descripcion', headerName: 'Descripción', width:250 },
                 {
                   field: 'acciones',
                   headerName: 'Acciones',
@@ -804,7 +805,7 @@ return (
                 { field: 'area', headerName: 'Área', width: 60 },
                 { field: 'depto', headerName: 'ID', width: 60 },
                 
-                { field: 'descripcion', headerName: 'Descripción', flex: 1 },
+                { field: 'descripcion', headerName: 'Descripción', width: 220 },
                 { field: 'claveSAT', headerName: 'C. SAT', width: 90 },
                 { field: 'unidadMedidaSAT', headerName: 'U. SAT', width: 90 },
                 {
@@ -869,7 +870,7 @@ return (
                 Clases
               </Typography>
             </Box>
-            <Box sx={{ p: 1, bgcolor: '#f5f5f5', borderBottom: '1px solid #e0e0e0' }}>
+            <Box sx={{ p: 1, bgcolor: '#f5f5f5', borderBottom: '1px solid #e0e0e0', display: 'flex', justifyContent: 'center' }}>
               <Button 
                 variant="contained" 
                 size="small"
@@ -898,13 +899,8 @@ return (
               columns={[
                 { field: 'area', headerName: 'Área', width: 60 },
                 { field: 'depto', headerName: 'Depto', width: 60 },
-                { field: 'clase', headerName: 'ID', width: 60 },
-                { field: 'descripcion', headerName: 'Descripción', flex: 1, minWidth: 120 },
-                { field: 'dias_min', headerName: 'D. Min', width: 70 },
-                { field: 'dias_max', headerName: 'D. Max', width: 70 },
-                { field: 'dias_muestra', headerName: 'Muestra', width: 80 },
-                { field: 'margen_minimo_remates', headerName: 'Remates', width: 80 },
-                { field: 'tasa_iva', headerName: 'IVA', width: 60 },
+                { field: 'clase', headerName: 'Clase', width: 60 },
+                { field: 'descripcion', headerName: 'Descripción', width: 340 },
                 {
                   field: 'acciones',
                   headerName: 'Acciones',
@@ -1077,7 +1073,7 @@ return (
                 label="Área"
                 value={deptoForm.area}
                 onChange={(e) => setDeptoForm({ ...deptoForm, area: e.target.value })}
-                disabled={!editingDepto}
+                disabled={true}
               />
             </Grid>
             <Grid item xs={12} md={4}>
@@ -1213,75 +1209,6 @@ return (
                 value={claseForm.clase}
                 onChange={(e) => setClaseForm({ ...claseForm, clase: e.target.value })}
                 disabled={!!editingClase}
-              />
-            </Grid>
-
-            {/* --- FILA 2 (4 + 4 + 4 = 12) --- */}
-            <Grid item xs={12} md={4}>
-              <TextField
-                {...commonProps}
-                label="Días Mínimos"
-                type="number"
-                value={claseForm.dias_min}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value) || 0;
-                  if (val >= 0) setClaseForm({ ...claseForm, dias_min: val });
-                }}
-                inputProps={{ min: 0, step: 1 }}
-              />
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <TextField
-                {...commonProps}
-                label="Días Máximos"
-                type="number"
-                value={claseForm.dias_max}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value) || 0;
-                  if (val >= 0) setClaseForm({ ...claseForm, dias_max: val });
-                }}
-                inputProps={{ min: 0, step: 1 }}
-              />
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <TextField
-                {...commonProps}
-                label="Días Muestra"
-                type="number"
-                value={claseForm.dias_muestra}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value) || 0;
-                  if (val >= 0) setClaseForm({ ...claseForm, dias_muestra: val });
-                }}
-                inputProps={{ min: 0, step: 1 }}
-              />
-            </Grid>
-
-            {/* --- FILA 3 (4 + 4 + 4 = 12) --- */}
-            <Grid item xs={12} md={4}>
-              <TextField
-                {...commonProps}
-                label="Margen Mínimo Remates *"
-                type="number"
-                value={claseForm.margen_minimo_remates}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value) || 0;
-                  if (val >= 0) setClaseForm({ ...claseForm, margen_minimo_remates: val });
-                }}
-                inputProps={{ min: 0, step: 1 }}
-              />
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <TextField
-                {...commonProps}
-                label="Tasa IVA *"
-                type="number"
-                value={claseForm.tasa_iva}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value) || 0;
-                  if (val >= 0) setClaseForm({ ...claseForm, tasa_iva: val });
-                }}
-                inputProps={{ min: 0, step: 1 }}
               />
             </Grid>
             <Grid item xs={12} md={4}>
