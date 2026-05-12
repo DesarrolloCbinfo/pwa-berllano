@@ -128,3 +128,56 @@
   font-size: 1rem;
   color: #666;
 }
+
+/* Media Queries para dispositivos móviles */
+@media (max-width: 768px) {
+  .mainMenu {
+    padding: 12px;
+  }
+
+  .dashboardTitle {
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+    padding: 0 8px;
+  }
+
+  .mainActions {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .actionCard {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .actionIcon {
+    font-size: 2rem;
+  }
+
+  .actionContent h3 {
+    font-size: 1.1rem;
+  }
+
+  .actionContent p {
+    font-size: 0.8rem;
+  }
+
+  .catalogsSection {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .catalogSubsection {
+    padding: 16px;
+  }
+
+  .catalogsGrid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .subsectionTitle {
+    font-size: 1rem;
+  }
+}

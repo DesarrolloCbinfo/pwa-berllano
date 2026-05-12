@@ -16,7 +16,15 @@ import {
   FormControl,
   CircularProgress,
   Typography,
+  useMediaQuery,
+  useTheme,
+  IconButton,
+  Drawer,
+  Divider,
+  ListItemButton,
 } from "@mui/material";
+import MenuIcon from '@mui/icons-material/Menu';
+import CloseIcon from '@mui/icons-material/Close';
 
 import { IUsuario } from "../interfaces/IUsuario";
 import Swal from "sweetalert2";
@@ -35,10 +43,13 @@ const SidebarHorizontal = () => {
   const navigate = useNavigate();
   const session = useSession();
   const { setSession } = useSessionContext();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const [anchorCatalogos, setAnchorCatalogos] = useState<null | HTMLElement>(null);
   const [anchorModuloComercial, setAnchorModuloComercial] = useState<null | HTMLElement>(null);
   const [anchorPerfil, setAnchorPerfil] = useState<null | HTMLElement>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const openCatalogos = Boolean(anchorCatalogos);
   const openModuloComercial = Boolean(anchorModuloComercial);
@@ -101,187 +112,49 @@ const SidebarHorizontal = () => {
 
   return (
     <AppBar position="sticky" sx={{ backgroundColor: "#adb4b1ff" }}>
-      <Toolbar sx={{ width: "70%", mx: "auto" }}>
+      <Toolbar sx={{ 
+        width: isMobile ? "100%" : "70%", 
+        mx: "auto",
+        px: isMobile ? 1 : 2,
+        minHeight: isMobile ? '56px' : '64px'
+      }}>
         
+        {/* Botón de menú hamburguesa en móvil */}
+        {isMobile && (
+          <IconButton
+            color="inherit"
+            edge="start"
+            onClick={() => setDrawerOpen(true)}
+            sx={{ mr: 1 }}
+          >
+            <MenuIcon />
+          </IconButton>
+        )}
+
         {/* LOGO */}
         <Box
           component="img"
           src={logoImage}
           alt="logo"
-          sx={{ width: 160, mr: 2, cursor: "pointer" }}
+          sx={{ 
+            width: isMobile ? 100 : 160, 
+            mr: isMobile ? 'auto' : 2, 
+            cursor: "pointer" 
+          }}
           onClick={() => navigate(routes.mainMenu)}
         />
 
-        
-
-       
-
-        {/* CATÁLOGOS */}
-        <Button
-          color="inherit"
-          onClick={(e) => setAnchorCatalogos(e.currentTarget)}
-        >
-          CATÁLOGOS
-        </Button>
-
-        <Menu
-          anchorEl={anchorCatalogos}
-          open={openCatalogos}
-          onClose={() => setAnchorCatalogos(null)}
-        >
-          <MenuItem onClick={() => navigate(routes.cat_Clientes)}>
-            Catálogo de clientes
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_Proveedores)}>
-            Catálogo de proveedores
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_Clientes)}>
-            Clientes
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_Marcas)}>
-            Marcas
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.AsignacionHorarios)}>
-            Asignación de horarios
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.Cat_Marcas_Familias)}>
-            Marcas familias
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.modulo_servicios_insumos)}>
-            Servicios e insumos
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.modulo_porcentajes_puntos)}>
-            Porcentajes y puntos
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_AreasDeptosClases)}>
-            Áreas, Departamentos y Clases
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_Tipo_Descuento)}>
-            Tipo de descuentos
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_Compradores)}>
-            Compradores
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_Sucursales)}>
-            Sucursales
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_act_Precios_grupo)}>
-            Act. precios grupo
-          </MenuItem>
-           <MenuItem onClick={() => navigate(routes.cat_Productos)}>
-            Productos
-          </MenuItem>
-           <MenuItem onClick={() => navigate(routes.cat_metaempleados)}>
-            Metas empleados
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_metaempleados)}>
-            Meta Empleados
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_metasucursal)}>
-            Metas Sucursal
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_configcomisiones)}>
-            Configuración de Comisiones
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_configcomisiones2)}>
-            Configuración de Comisiones 2
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_accesosalternos)}>
-            Accesos Alternos
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_conceptos_ajustes)}>
-            Conceptos de Ajustes
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_tipos_movimientos)}>
-            Tipos de Movimientos
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.config_promociones_descuento_porcentual)}>
-            Configuración Promociones Descuento Porcentual
-            </MenuItem>
-          
-          <MenuItem onClick={() => navigate(routes.cat_Plasticos_Autorizados)}>
-            Plásticos Autorizados
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_Medios_Pago)}>
-            Medios de Pagos
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_DescProveedores)}>
-            Descuento Proveedores
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_Proveedores_Acreedores)}>
-            Proveedores Acreedores
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_Trabajadores)}>
-            Trabajadores
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_nomina_departamentos)}>
-            Nómina Departamentos
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_nomina_Status)}>
-            Nómina Status
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_nomina_formas_pagos)}>
-            Nómina Formas de Pagos
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_nomina_puestos)}>
-            Nómina Puestos
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_nomina_bajas)}>
-            Nómina Bajas
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.FactoresSucursal)}>
-            Factores Sucursales
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_nominas_movimientos)}>
-            Movimientos
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_dias_festivos)}>
-            Días Festivos
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_niveles_estudios_rrhh)}>
-            Niveles de Estudio
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_nominas_horarios)}>
-            Horarios
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_cuentas_bancarias)}>
-            Cuentas Bancarias
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_tipos_cuentas)}>
-            Tipos de Cuentas
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_usuarios)}>
-            Usuarios del Sistema
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_nominas_folios)}>
-            Administración de Folios
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.Cat_turnos_dobles)}>
-            Turnos Dobles
-          </MenuItem>
-
-          <MenuItem onClick={() => navigate(routes.cat_perfiles_permisos)}>
-            Perfiles y Permisos
-          </MenuItem>
-          
-
-          <MenuItem onClick={() => navigate(routes.cat_Categorias)}>
-            Categorías de Gastos 
-          </MenuItem>
-          <MenuItem onClick={() => navigate(routes.cat_PermisosDeptos)}>
-            Perfiles y Permisos para Deptos Comerciales
-          </MenuItem>
-
-        </Menu>
-
- {/* MODULO COMERCIAL */}
- <Button color="inherit" onClick={(e) => setAnchorModuloComercial(e.currentTarget)}>Modulo Comercial</Button>
+ {/* MODULO COMERCIAL - Oculto en móvil */}
+        {!isMobile && (
+          <Button color="inherit" onClick={(e) => setAnchorModuloComercial(e.currentTarget)}>
+            MÓDULO COMERCIAL
+          </Button>
+        )}
 
         <Menu
           anchorEl={anchorModuloComercial}
           open={openModuloComercial}
           onClose={() => setAnchorModuloComercial(null)}
-
         >
             <MenuItem onClick={() => { setAnchorModuloComercial(null); navigate(routes.pos); }}>Punto de venta</MenuItem> 
             <MenuItem onClick={() => { setAnchorModuloComercial(null); navigate(routes.retiros); }}>Retiros</MenuItem>     
@@ -289,14 +162,15 @@ const SidebarHorizontal = () => {
             <MenuItem onClick={() => { setAnchorModuloComercial(null); navigate(routes.corte_dia); }}>Corte Dia</MenuItem>
         </Menu>
 
-
-        {/* PERFIL */}
-        <Button
-          color="inherit"
-          onClick={(e) => setAnchorPerfil(e.currentTarget)}
-        >
-          PERFIL
-        </Button>
+        {/* PERFIL - Oculto en móvil */}
+        {!isMobile && (
+          <Button
+            color="inherit"
+            onClick={(e) => setAnchorPerfil(e.currentTarget)}
+          >
+            PERFIL
+          </Button>
+        )}
 
 
 {/* --- cambios del recuadro aqui --- */}
@@ -304,7 +178,7 @@ const SidebarHorizontal = () => {
 
 
         <Box sx={{ 
-          display: 'flex', 
+          display: isMobile ? 'none' : 'flex', 
           flexDirection: 'column', 
           alignItems: 'flex-end', 
           justifyContent: 'center',
@@ -387,6 +261,68 @@ const SidebarHorizontal = () => {
           </MenuItem>
         </Menu>
       </Toolbar>
+
+      {/* Drawer para menú móvil */}
+      <Drawer
+        anchor="left"
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        sx={{
+          '& .MuiDrawer-paper': {
+            width: 280,
+            backgroundColor: '#f5f5f5'
+          }
+        }}
+      >
+        <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#adb4b1ff' }}>
+          <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1a365d' }}>
+            Menú
+          </Typography>
+          <IconButton onClick={() => setDrawerOpen(false)}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
+        
+        <Divider />
+        
+        {/* Información del usuario */}
+        <Box sx={{ p: 2, backgroundColor: '#fff', borderBottom: '1px solid #e0e0e0' }}>
+          <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#1a365d' }}>
+            {session?.nombre || 'Usuario'}
+          </Typography>
+          <Typography variant="caption" sx={{ color: '#666' }}>
+            {session?.dSucursal || 'Sucursal'}
+          </Typography>
+        </Box>
+
+        <List>
+          {/* Módulo Comercial */}
+          <ListItemButton onClick={() => { navigate(routes.pos); setDrawerOpen(false); }}>
+            <ListItemText primary="Punto de Venta" />
+          </ListItemButton>
+          <ListItemButton onClick={() => { navigate(routes.retiros); setDrawerOpen(false); }}>
+            <ListItemText primary="Retiros" />
+          </ListItemButton>
+          <ListItemButton onClick={() => { navigate(routes.corte_parcial); setDrawerOpen(false); }}>
+            <ListItemText primary="Corte Parcial" />
+          </ListItemButton>
+          <ListItemButton onClick={() => { navigate(routes.corte_dia); setDrawerOpen(false); }}>
+            <ListItemText primary="Corte Día" />
+          </ListItemButton>
+
+          <Divider sx={{ my: 1 }} />
+
+          <Divider sx={{ my: 1 }} />
+
+          {/* Perfil y Cerrar Sesión */}
+          <ListItemButton onClick={() => { setDrawerOpen(false); setAnchorPerfil(document.body); }}>
+            <ListItemText primary="Perfil" />
+          </ListItemButton>
+          <ListItemButton onClick={() => { setDrawerOpen(false); cierraSesion(); }} sx={{ color: 'error.main' }}>
+            <ListItemText primary="Cerrar Sesión" />
+          </ListItemButton>
+        </List>
+      </Drawer>
     </AppBar>
   );
 };
