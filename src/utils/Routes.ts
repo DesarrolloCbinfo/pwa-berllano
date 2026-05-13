@@ -62,5 +62,6 @@ export const routes = {
   cat_Categorias: "/cat_Categorias",
   cat_PermisosDeptos:"/cat_PermisosDeptos",
   pos2: "/pos2",
+  carteleraDigital: "/cartelera-digital",
 };
 

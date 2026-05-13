@@ -13,6 +13,7 @@ import {
   Storefront,
   Inventory,
   Assessment,
+  Slideshow,
 } from '@mui/icons-material';
 import { routes } from '../../../utils/Routes';
 
@@ -46,6 +47,14 @@ const Home: React.FC = () => {
       icon: Inventory, 
       color: '#fd7e14', 
       path: routes.recepcion 
+    },
+    { 
+      id: 'carteleraDigital', 
+      title: 'Cartelera Digital', 
+      description: 'Gestión de cartelera digital', 
+      icon: Slideshow, 
+      color: '#e83e8c', 
+      path: routes.carteleraDigital 
     },
     { 
       id: 'comercial', 
