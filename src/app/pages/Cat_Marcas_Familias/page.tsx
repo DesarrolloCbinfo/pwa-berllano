@@ -224,20 +224,31 @@ const handleAdd = async () => {
 
     setSaving(true);
     try {
-        await consumoApi.post('/api/CatMarcasFamilias/sp_bw_cat_marcasfamilias_ins', null, {
+        // 1. Guardamos la respuesta en una constante
+        const response = await consumoApi.post('/api/CatMarcasFamilias/sp_bw_cat_marcasfamilias_ins', null, {
             params: {
                 id_marca: Number(newFormData.id_marca),
                 familia: newFormData.familia.toUpperCase()
             }
         });
 
+        // 2. Extraemos el resultado que mandó el SP
+        const result = response.data?.[0];
+
+        // 3. Validamos: Si el código NO es 0, lanzamos el error con el mensaje de SQL
+        if (result?.codigo !== 0) {
+            throw new Error(result?.mensaje1 || 'Error al guardar');
+        }
+
+        // Si pasa la validación, fue un éxito
         setMensaje({ texto: '¡Familia agregada exitosamente!', tipo: 'success' });
         setOpenAdd(false); 
         setNewFormData({ id_marca: '', familia: '' }); 
-        await cargarDatos(); // <--- LE AGREGAMOS 'await' AQUÍ PARA QUE ESPERE
-    } catch (error) {
+        await cargarDatos();
+    } catch (error: any) {
         console.error("Error al agregar:", error);
-        setMensaje({ texto: 'Error al agregar el registro', tipo: 'error' });
+        // 4. Mostramos el mensaje exacto que rebotó el SP ("Esta familia ya se encuentra asignada...")
+        setMensaje({ texto: error.message || 'Error al agregar el registro', tipo: 'error' });
     } finally {
         setSaving(false);
     }
