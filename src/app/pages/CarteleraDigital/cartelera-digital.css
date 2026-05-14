@@ -1,0 +1,27 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+.cartelera-root {
+  min-height: 100vh;
+  width: 100%;
+  background: linear-gradient(135deg, #0a1929 0%, #0d2137 50%, #0a1929 100%);
+}
+
+.cartelera-header {
+  background: linear-gradient(135deg, #132f4c 0%, #1a3a5c 100%);
+  border-bottom: 1px solid #1e4976;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+}
+
+.cartelera-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cartelera-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+
+.cartelera-card-selected {
+  border-color: #1976d2 !important;
+  background-color: rgba(25,118,210,0.12) !important;
+}

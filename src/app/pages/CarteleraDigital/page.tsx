@@ -1,14 +1,16 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ThemeProvider } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
 import {
   Box, Typography, TextField, Button, Select, MenuItem, FormControl,
   InputLabel, IconButton, Card, CardContent, CircularProgress, Alert,
   InputAdornment, Dialog, DialogTitle, DialogContent, DialogActions,
-  ToggleButtonGroup, ToggleButton, Divider
+  ToggleButtonGroup, ToggleButton, Tabs, Tab
 } from '@mui/material';
 import {
-  ArrowBack, Visibility, VisibilityOff, Edit, Delete,
-  Image, Movie, CloudUpload, Close
+  ArrowBack, Visibility, VisibilityOff, Edit, Delete, Download,
+  Image, Movie, CloudUpload, Close, Key, PhotoLibrary, Schedule, PlaylistPlay
 } from '@mui/icons-material';
 import useConsumoApi from '../../../hooks/useConsumoApi';
 import useConsumoApiCartelera from '../../../hooks/useConsumoApiCartelera';
@@ -18,6 +20,10 @@ import { ICarteleraContenido } from './interfaces/ICarteleraContenido';
 import { ApiResponse } from './interfaces/IApiResponse';
 import Swal from 'sweetalert2';
 import { routes } from '../../../utils/Routes';
+import carteleraTheme from './carteleraTheme';
+import ProgramacionTab from './ProgramacionTab';
+import PlaylistPreview from './PlaylistPreview';
+import './cartelera-digital.css';
 
 interface SucursalMain {
   sucursalId: number;
@@ -41,6 +47,44 @@ export default function CarteleraDigital() {
   const { session } = useSessionContext();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleDownload = async (id: number, nombre: string) => {
+    try {
+      const res = await apiCartelera.get(`/api/download/${id}`, {
+        responseType: 'blob',
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', nombre);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch {
+      Swal.fire('Error', 'No se pudo descargar el archivo', 'error');
+    }
+  };
+
+  const handleDeleteContenido = async (id: number, nombre: string) => {
+    const result = await Swal.fire({
+      title: '¿Eliminar?',
+      text: `Se eliminará "${nombre}"`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Eliminar',
+      cancelButtonText: 'Cancelar',
+    });
+    if (!result.isConfirmed) return;
+    try {
+      const res = await apiCartelera.delete<ApiResponse<null>>(`/api/Contenido/${id}`);
+      if (!res.data.success) throw new Error(res.data.message || 'Error al eliminar');
+      Swal.fire({ icon: 'success', title: 'Eliminado', timer: 1500, showConfirmButton: false });
+      fetchContenidos(filtroTipo);
+    } catch (err: any) {
+      Swal.fire('Error', err.message || 'Error al eliminar', 'error');
+    }
+  };
 
   // --- API Keys state ---
   const [sucursalesAll, setSucursalesAll] = useState<SucursalMain[]>([]);
@@ -69,6 +113,9 @@ export default function CarteleraDigital() {
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadPreview, setUploadPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+
+  // --- Tab state ---
+  const [tabValue, setTabValue] = useState(0);
 
   // --- API Keys logic ---
   const fetchSucursalesMain = async () => {
@@ -292,247 +339,293 @@ export default function CarteleraDigital() {
 
   if (loading) {
     return (
-      <Box sx={{ maxWidth: 600, mx: 'auto', px: 2, py: 3, minHeight: '100vh', backgroundColor: '#f5f5f5', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-        <CircularProgress />
-      </Box>
+      <ThemeProvider theme={carteleraTheme}>
+        <CssBaseline />
+        <Box className="cartelera-root" sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          <CircularProgress />
+        </Box>
+      </ThemeProvider>
     );
   }
 
   return (
-    <Box sx={{ maxWidth: 600, mx: 'auto', px: 2, py: 3, minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-        <IconButton onClick={() => navigate(routes.mainMenu)} sx={{ mr: 1 }}>
-          <ArrowBack />
-        </IconButton>
-        <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#1a365d' }}>
-          Cartelera Digital
-        </Typography>
-      </Box>
-
-      {fetchError && (
-        <Alert severity="error" sx={{ mb: 2 }} action={
-          <Button size="small" onClick={loadAll}>Reintentar</Button>
-        }>{fetchError}</Alert>
-      )}
-
-      {/* ══════ API KEYS SECTION ══════ */}
-      <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#1a365d', mb: 2 }}>
-        Config. API Keys
-      </Typography>
-
-      <FormControl fullWidth size="small" sx={{ mb: 2 }}>
-        <InputLabel>Sucursal</InputLabel>
-        <Select
-          value={selectedSucId ?? 0}
-          label="Sucursal"
-          onChange={(e) => handleSelectChange(Number(e.target.value))}
-        >
-          <MenuItem value={0}>-- Selecciona sucursal --</MenuItem>
-          {sucursalesAll.map(s => (
-            <MenuItem key={s.sucursalId} value={s.sucursalId}>{s.nombre}</MenuItem>
-          ))}
-        </Select>
-      </FormControl>
-
-      <Card variant="outlined" sx={{ borderRadius: 3, mb: 3 }}>
-        <CardContent sx={{ p: 3 }}>
-          <TextField
-            fullWidth size="small" label="Nombre"
-            value={nombre}
-            onChange={(e) => setNombre(e.target.value)}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            fullWidth size="small" label="API Key"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            type={showKey ? 'text' : 'password'}
-            slotProps={{
-              input: {
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton size="small" onClick={() => setShowKey(!showKey)} edge="end">
-                      {showKey ? <VisibilityOff /> : <Visibility />}
-                    </IconButton>
-                  </InputAdornment>
-                )
-              }
-            }}
-            sx={{ mb: 2.5 }}
-          />
-          <Button
-            variant="contained" fullWidth size="large"
-            onClick={handleSaveApiKey} disabled={saving || !nombre.trim()}
-            sx={{ textTransform: 'none', fontWeight: 'bold', py: 1.2, borderRadius: 2 }}
-          >
-            {saving ? <CircularProgress size={22} sx={{ color: 'white' }} /> : (isEditingKey ? 'Actualizar API Key' : 'Guardar API Key')}
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Typography variant="subtitle2" sx={{ color: '#666', mb: 1.5, fontWeight: 600 }}>
-        API Keys configuradas ({configuraciones.length})
-      </Typography>
-
-      {configuraciones.length === 0 ? (
-        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2, mb: 2 }}>
-          No hay API Keys configuradas.
-        </Typography>
-      ) : (
-        configuraciones.map(s => (
-          <Card key={s.idSucursal} variant="outlined" sx={{
-            borderRadius: 2, mb: 1.5, cursor: 'pointer',
-            borderColor: isEditingKey && apiKeyConfigActual!.idSucursal === s.idSucursal ? '#1976d2' : '#e0e0e0',
-            bgcolor: isEditingKey && apiKeyConfigActual!.idSucursal === s.idSucursal ? '#e3f2fd' : 'white',
-            transition: 'all 0.2s',
-            '&:hover': { borderColor: '#1976d2' }
-          }} onClick={() => selectByNombre(s)}>
-            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 }, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Box>
-                <Typography variant="body1" sx={{ fontWeight: 600 }}>{s.nombre}</Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ fontFamily: 'monospace', fontSize: 13 }}>
-                  API Key: {'●'.repeat(Math.min(s.apiKey.length, 16))}
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'flex', gap: 0.5 }}>
-                <IconButton size="small" color="primary" onClick={(e) => { e.stopPropagation(); selectByNombre(s); }}>
-                  <Edit fontSize="small" />
-                </IconButton>
-                <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); handleDeleteApiKey(s); }} disabled={deleting}>
-                  <Delete fontSize="small" />
-                </IconButton>
-              </Box>
-            </CardContent>
-          </Card>
-        ))
-      )}
-
-      <Divider sx={{ my: 3 }} />
-
-      {/* ══════ CONTENIDO DIGITAL SECTION ══════ */}
-      <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#1a365d', mb: 2 }}>
-        Contenido Digital
-      </Typography>
-
-      <ToggleButtonGroup
-        value={filtroTipo}
-        exclusive
-        onChange={(_, val) => { if (val !== null) setFiltroTipo(val); }}
-        size="small"
-        fullWidth
-        sx={{ mb: 2 }}
-      >
-        <ToggleButton value={0}>Todos</ToggleButton>
-        <ToggleButton value={1}>Imágenes</ToggleButton>
-        <ToggleButton value={2}>Videos</ToggleButton>
-      </ToggleButtonGroup>
-
-      <Button
-        variant="contained" fullWidth size="large"
-        startIcon={<CloudUpload />}
-        onClick={() => setModalOpen(true)}
-        sx={{ textTransform: 'none', fontWeight: 'bold', py: 1.2, borderRadius: 2, mb: 2.5 }}
-      >
-        Cargar Contenido
-      </Button>
-
-      {loadingContenido ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-          <CircularProgress size={28} />
+    <ThemeProvider theme={carteleraTheme}>
+      <CssBaseline />
+      <Box className="cartelera-root" sx={{ position: 'relative' }}>
+        <Box className="cartelera-header" sx={{ position: 'sticky', top: 0, zIndex: 10, px: 2, py: 1.5 }}>
+          <Box sx={{ maxWidth: 900, mx: 'auto', display: 'flex', alignItems: 'center' }}>
+            <IconButton onClick={() => navigate(routes.mainMenu)} sx={{ mr: 1, color: '#90caf9' }}>
+              <ArrowBack />
+            </IconButton>
+            <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#ffffff' }}>
+              Cartelera Digital
+            </Typography>
+          </Box>
         </Box>
-      ) : contenidos.length === 0 ? (
-        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
-          No hay contenido disponible.
-        </Typography>
-      ) : (
-        contenidos.map(c => (
-          <Card key={c.idContenido} variant="outlined" sx={{ borderRadius: 2, mb: 1.5 }}>
-            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 }, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-              <Box sx={{
-                width: 44, height: 44, borderRadius: 1.5,
-                bgcolor: c.tipo === 1 ? '#e3f2fd' : '#fce4ec',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0
-              }}>
-                {c.tipo === 1 ? <Image sx={{ color: '#1976d2' }} /> : <Movie sx={{ color: '#d32f2f' }} />}
-              </Box>
-              <Box sx={{ minWidth: 0, flex: 1 }}>
-                <Typography variant="body2" sx={{ fontWeight: 600, truncate: true }} noWrap>
-                  {c.nombreOriginal}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {c.tipo === 1 ? 'Imagen' : 'Video'} · {formatBytes(c.pesobytes)} · {formatDate(c.fechaCarga)}
-                </Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        ))
-      )}
 
-      {/* ══════ UPLOAD MODAL ══════ */}
-      <Dialog open={modalOpen} onClose={handleCloseModal} maxWidth="sm" fullWidth
-        PaperProps={{ sx: { borderRadius: 3 } }}
-      >
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 'bold' }}>
-          Cargar Contenido
-          <IconButton size="small" onClick={handleCloseModal} disabled={uploading}>
-            <Close />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent sx={{ pt: 2 }}>
-          <FormControl fullWidth size="small" sx={{ mb: 2 }}>
-            <InputLabel>Tipo</InputLabel>
-            <Select value={uploadTipo} label="Tipo" onChange={(e) => setUploadTipo(Number(e.target.value))}>
-              <MenuItem value={1}>Imagen</MenuItem>
-              <MenuItem value={2}>Video</MenuItem>
-            </Select>
-          </FormControl>
+        <Box sx={{ maxWidth: 900, mx: 'auto', px: 2, py: 3 }}>
+          {fetchError && (
+            <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }} action={
+              <Button size="small" onClick={loadAll}>Reintentar</Button>
+            }>{fetchError}</Alert>
+          )}
 
-          <TextField
-            fullWidth size="small" label="Nombre del archivo (opcional)"
-            value={uploadNombre}
-            onChange={(e) => setUploadNombre(e.target.value)}
-            placeholder={uploadFile ? uploadFile.name.replace(/\.[^.]+$/, '') : ''}
-            sx={{ mb: 2 }}
-          />
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            hidden
-            accept={uploadTipo === 1 ? 'image/*' : 'video/*'}
-            onChange={handleFileSelect}
-          />
-
-          <Button
-            variant="outlined" fullWidth
-            startIcon={<CloudUpload />}
-            onClick={() => fileInputRef.current?.click()}
-            sx={{ textTransform: 'none', py: 1.2, borderRadius: 2, mb: 2 }}
+          <Tabs
+            value={tabValue}
+            onChange={(_, v) => setTabValue(v)}
+            sx={{
+              mb: 3,
+              '& .MuiTab-root': { color: '#90caf9', fontWeight: 600, textTransform: 'none', fontSize: '0.95rem' },
+              '& .Mui-selected': { color: '#ffffff' },
+              '& .MuiTabs-indicator': { backgroundColor: '#1976d2' },
+            }}
           >
-            {uploadFile ? uploadFile.name : 'Seleccionar archivo'}
-          </Button>
+            <Tab icon={<Key />} iconPosition="start" label="API Keys" />
+            <Tab icon={<PhotoLibrary />} iconPosition="start" label="Contenido" />
+            <Tab icon={<Schedule />} iconPosition="start" label="Programación" />
+            <Tab icon={<PlaylistPlay />} iconPosition="start" label="Vista Previa" />
+          </Tabs>
 
-          {uploadPreview && (
-            <Box sx={{ borderRadius: 2, overflow: 'hidden', mb: 1 }}>
-              <img src={uploadPreview} alt="Preview" style={{ width: '100%', maxHeight: 250, objectFit: 'contain', display: 'block' }} />
+          {/* ══════ TAB 0: API KEYS ══════ */}
+          {tabValue === 0 && (
+            <Box>
+              <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#90caf9', mb: 2 }}>
+                Config. API Keys
+              </Typography>
+
+              <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+                <InputLabel>Sucursal</InputLabel>
+                <Select
+                  value={selectedSucId ?? 0}
+                  label="Sucursal"
+                  onChange={(e) => handleSelectChange(Number(e.target.value))}
+                >
+                  <MenuItem value={0}>-- Selecciona sucursal --</MenuItem>
+                  {sucursalesAll.map(s => (
+                    <MenuItem key={s.sucursalId} value={s.sucursalId}>{s.nombre}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <Card variant="outlined" sx={{ mb: 3 }}>
+                <CardContent sx={{ p: 3 }}>
+                  <TextField
+                    fullWidth size="small" label="Nombre"
+                    value={nombre}
+                    onChange={(e) => setNombre(e.target.value)}
+                    sx={{ mb: 2 }}
+                  />
+                  <TextField
+                    fullWidth size="small" label="API Key"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    type={showKey ? 'text' : 'password'}
+                    slotProps={{
+                      input: {
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <IconButton size="small" onClick={() => setShowKey(!showKey)} edge="end">
+                              {showKey ? <VisibilityOff /> : <Visibility />}
+                            </IconButton>
+                          </InputAdornment>
+                        )
+                      }
+                    }}
+                    sx={{ mb: 2.5 }}
+                  />
+                  <Button
+                    variant="contained" fullWidth size="large"
+                    onClick={handleSaveApiKey} disabled={saving || !nombre.trim()}
+                    sx={{ fontWeight: 'bold', py: 1.2 }}
+                  >
+                    {saving ? <CircularProgress size={22} sx={{ color: 'white' }} /> : (isEditingKey ? 'Actualizar API Key' : 'Guardar API Key')}
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Typography variant="subtitle2" sx={{ color: '#b2bac2', mb: 1.5, fontWeight: 600 }}>
+                API Keys configuradas ({configuraciones.length})
+              </Typography>
+
+              {configuraciones.length === 0 ? (
+                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2, mb: 2 }}>
+                  No hay API Keys configuradas.
+                </Typography>
+              ) : (
+                configuraciones.map(s => (
+                  <Card key={s.idSucursal} variant="outlined" sx={{
+                    mb: 1.5, cursor: 'pointer',
+                    borderColor: isEditingKey && apiKeyConfigActual!.idSucursal === s.idSucursal ? '#1976d2' : '#1e4976',
+                    bgcolor: isEditingKey && apiKeyConfigActual!.idSucursal === s.idSucursal ? 'rgba(25,118,210,0.12)' : '#132f4c',
+                    transition: 'all 0.2s',
+                    '&:hover': { borderColor: '#1976d2' }
+                  }} onClick={() => selectByNombre(s)}>
+                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 }, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Box>
+                        <Typography variant="body1" sx={{ fontWeight: 600, color: '#ffffff' }}>{s.nombre}</Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ fontFamily: 'monospace', fontSize: 13 }}>
+                          API Key: {'●'.repeat(Math.min(s.apiKey.length, 16))}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', gap: 0.5 }}>
+                        <IconButton size="small" color="primary" onClick={(e) => { e.stopPropagation(); selectByNombre(s); }}>
+                          <Edit fontSize="small" />
+                        </IconButton>
+                        <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); handleDeleteApiKey(s); }} disabled={deleting}>
+                          <Delete fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
             </Box>
           )}
 
-          {uploadFile && !uploadPreview && uploadTipo === 2 && (
-            <Box sx={{ p: 3, textAlign: 'center', bgcolor: '#f5f5f5', borderRadius: 2, mb: 1 }}>
-              <Movie sx={{ fontSize: 48, color: '#d32f2f' }} />
-              <Typography variant="body2" color="text.secondary">Video seleccionado</Typography>
+          {/* ══════ TAB 1: CONTENIDO DIGITAL ══════ */}
+          {tabValue === 1 && (
+            <Box>
+              <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#90caf9', mb: 2 }}>
+                Contenido Digital
+              </Typography>
+
+              <ToggleButtonGroup
+                value={filtroTipo}
+                exclusive
+                onChange={(_, val) => { if (val !== null) setFiltroTipo(val); }}
+                size="small"
+                fullWidth
+                sx={{ mb: 2 }}
+              >
+                <ToggleButton value={0}>Todos</ToggleButton>
+                <ToggleButton value={1}>Imágenes</ToggleButton>
+                <ToggleButton value={2}>Videos</ToggleButton>
+              </ToggleButtonGroup>
+
+              <Button
+                variant="contained" fullWidth size="large"
+                startIcon={<CloudUpload />}
+                onClick={() => setModalOpen(true)}
+                sx={{ fontWeight: 'bold', py: 1.2, mb: 2.5 }}
+              >
+                Cargar Contenido
+              </Button>
+
+              {loadingContenido ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                  <CircularProgress size={28} />
+                </Box>
+              ) : contenidos.length === 0 ? (
+                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+                  No hay contenido disponible.
+                </Typography>
+              ) : (
+                contenidos.map(c => (
+                  <Card key={c.idContenido} variant="outlined" sx={{ mb: 1.5 }}>
+                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 }, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Box sx={{
+                        width: 44, height: 44, borderRadius: 1.5,
+                        bgcolor: c.tipo === 1 ? 'rgba(25,118,210,0.15)' : 'rgba(244,67,54,0.15)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        flexShrink: 0
+                      }}>
+                        {c.tipo === 1 ? <Image sx={{ color: '#42a5f5' }} /> : <Movie sx={{ color: '#ef5350' }} />}
+                      </Box>
+                      <Box sx={{ minWidth: 0, flex: 1 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#ffffff' }} noWrap>
+                          {c.nombreOriginal}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {c.tipo === 1 ? 'Imagen' : 'Video'} · {formatBytes(c.pesobytes)} · {formatDate(c.fechaCarga)}
+                        </Typography>
+                      </Box>
+                      <IconButton size="small" color="primary" onClick={() => handleDownload(c.idContenido, c.nombreOriginal)}>
+                        <Download fontSize="small" />
+                      </IconButton>
+                      <IconButton size="small" color="error" onClick={() => handleDeleteContenido(c.idContenido, c.nombreOriginal)}>
+                        <Delete fontSize="small" />
+                      </IconButton>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
             </Box>
           )}
-        </DialogContent>
-        <DialogActions sx={{ p: 2, pt: 0 }}>
-          <Button onClick={handleCloseModal} color="inherit" disabled={uploading}>Cancelar</Button>
-          <Button variant="contained" onClick={handleUpload} disabled={uploading || !uploadFile}>
-            {uploading ? <CircularProgress size={20} sx={{ color: 'white' }} /> : 'Subir'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+
+          {/* ══════ TAB 2: PROGRAMACIÓN ══════ */}
+          {tabValue === 2 && (
+            <ProgramacionTab configuraciones={configuraciones} contenidos={contenidos} />
+          )}
+
+          {/* ══════ TAB 3: VISTA PREVIA ══════ */}
+          {tabValue === 3 && (
+            <PlaylistPreview configuraciones={configuraciones} />
+          )}
+
+          {/* ══════ UPLOAD MODAL (compartido) ══════ */}
+          <Dialog open={modalOpen} onClose={handleCloseModal} maxWidth="sm" fullWidth>
+            <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              Cargar Contenido
+              <IconButton size="small" onClick={handleCloseModal} disabled={uploading} sx={{ color: '#90caf9' }}>
+                <Close />
+              </IconButton>
+            </DialogTitle>
+            <DialogContent sx={{ pt: 2 }}>
+              <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+                <InputLabel>Tipo</InputLabel>
+                <Select value={uploadTipo} label="Tipo" onChange={(e) => setUploadTipo(Number(e.target.value))}>
+                  <MenuItem value={1}>Imagen</MenuItem>
+                  <MenuItem value={2}>Video</MenuItem>
+                </Select>
+              </FormControl>
+
+              <TextField
+                fullWidth size="small" label="Nombre del archivo (opcional)"
+                value={uploadNombre}
+                onChange={(e) => setUploadNombre(e.target.value)}
+                placeholder={uploadFile ? uploadFile.name.replace(/\.[^.]+$/, '') : ''}
+                sx={{ mb: 2 }}
+              />
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                hidden
+                accept={uploadTipo === 1 ? 'image/*' : 'video/*'}
+                onChange={handleFileSelect}
+              />
+
+              <Button
+                variant="outlined" fullWidth
+                startIcon={<CloudUpload />}
+                onClick={() => fileInputRef.current?.click()}
+                sx={{ py: 1.2, mb: 2 }}
+              >
+                {uploadFile ? uploadFile.name : 'Seleccionar archivo'}
+              </Button>
+
+              {uploadPreview && (
+                <Box sx={{ borderRadius: 2, overflow: 'hidden', mb: 1 }}>
+                  <img src={uploadPreview} alt="Preview" style={{ width: '100%', maxHeight: 250, objectFit: 'contain', display: 'block' }} />
+                </Box>
+              )}
+
+              {uploadFile && !uploadPreview && uploadTipo === 2 && (
+                <Box sx={{ p: 3, textAlign: 'center', bgcolor: '#0a1929', borderRadius: 2, mb: 1 }}>
+                  <Movie sx={{ fontSize: 48, color: '#ef5350' }} />
+                  <Typography variant="body2" color="text.secondary">Video seleccionado</Typography>
+                </Box>
+              )}
+            </DialogContent>
+            <DialogActions sx={{ p: 2, pt: 0 }}>
+              <Button onClick={handleCloseModal} color="inherit" disabled={uploading}>Cancelar</Button>
+              <Button variant="contained" onClick={handleUpload} disabled={uploading || !uploadFile}>
+                {uploading ? <CircularProgress size={20} sx={{ color: 'white' }} /> : 'Subir'}
+              </Button>
+            </DialogActions>
+          </Dialog>
+        </Box>
+      </Box>
+    </ThemeProvider>
   );
 }

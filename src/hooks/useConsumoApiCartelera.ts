@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 
@@ -26,38 +26,38 @@ const useConsumoApiCartelera = () => {
     setTokenTemp(token);
   }, [token]);
 
-  useEffect(() => {
-    setrTempToken(tokenTemp);
-  }, [tokenTemp]);
+  // Store tokenTemp in a ref so the interceptor always reads the latest token
+  const tokenRef = useRef(tokenTemp);
+  tokenRef.current = tokenTemp;
 
-  const setrTempToken = (newToken: token | null) => {
-    return newToken;
-  };
+  const consumoApi = useMemo(() => {
+    const api = axios.create({
+      baseURL: "https://api.cbinformatica.net:9080",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      timeout: 10000,
+    });
 
-  const consumoApi = axios.create({
-    baseURL: "https://localhost:7047",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    timeout: 10000,
-  });
-
-  consumoApi.interceptors.request.use(
-    (config) => {
-      const authToken = tokenTemp;
-      if (authToken) {
-        config.headers.Authorization = `Bearer ${authToken}`;
+    api.interceptors.request.use(
+      (config) => {
+        const authToken = tokenRef.current;
+        if (authToken) {
+          config.headers.Authorization = `Bearer ${authToken}`;
+        }
+        config.headers["Cache-Control"] = "no-cache";
+        return config;
+      },
+      (error) => {
+        if (error.response && error.response.status === 401) {
+          console.error("Error de CORS:", error.message);
+        }
+        return Promise.reject(error);
       }
-      config.headers["Cache-Control"] = "no-cache";
-      return config;
-    },
-    (error) => {
-      if (error.response && error.response.status === 401) {
-        console.error("Error de CORS:", error.message);
-      }
-      return Promise.reject(error);
-    }
-  );
+    );
+
+    return api;
+  }, []);
 
   return { consumoApi };
 };

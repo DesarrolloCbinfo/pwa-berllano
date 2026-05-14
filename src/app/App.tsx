@@ -137,7 +137,7 @@ function App() {
           <Route path='/cat_perfiles_permisos' element={<Layout><CatPerfilesPermisos/></Layout>} />
           <Route path='/cat_Categorias' element={<Layout><CatCategorias/></Layout>} />
            <Route path='/cat_PermisosDeptos' element={<Layout><CatPermisosDeptos/></Layout>} />
-           <Route path='/cartelera-digital' element={<Layout><CarteleraDigital/></Layout>} />
+           <Route path='/cartelera-digital' element={<Layout><CarteleraDigital /></Layout>} />
            <Route path='/pos2' element={<Layout><POS/></Layout>} />
           
           
