@@ -602,7 +602,7 @@ const POS_v3: React.FC = () => {
 
   const handleRegistrar = () => {
     if (!estilistaSeleccionado || !productoSeleccionado) {
-      alert('Por favor selecciona un estilista y un producto');
+      alert('Por favor seleccione un estilista y un producto');
       return;
     }
 
