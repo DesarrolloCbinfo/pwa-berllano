@@ -501,7 +501,7 @@ const puedeFinalizar = totalPagado >= totalVenta && totalPagado > 0;
           cantidad: detalle.Cant,
           precio: detalle.precio,
           descuento: detalle.descuento,
-          tiempo: detalle.tiempo,
+          tiempo: detalle.tiempo != null ? String(detalle.tiempo) : "00:00",
           hora: detalle.hora,
           insumos: (detalle.insumos || []).map(insumo => ({
             clave_prod: insumo.clave_prod,
@@ -656,6 +656,7 @@ const puedeFinalizar = totalPagado >= totalVenta && totalPagado > 0;
       });
     }
   };
+  
 
   const handleAbrirCobro = () => {
     if (detallesVenta.length === 0) {
@@ -954,18 +955,13 @@ const puedeFinalizar = totalPagado >= totalVenta && totalPagado > 0;
 
 
  const fetchEstilistas = async () => {
-  const res = await consumoApi.get(`/api/PuntoDeVenta/sp_pos_estilistas_listado?sucursal=1`);
+  const res = await consumoApi.get(`/api/PuntoDeVenta/sp_pos_estilistas_listado?sucursal=${sucursal}`);
   setEstilistas(res.data ?? []);
-
-
  };
 
-
   const fetchAuxiliares = async () => {
-  const res = await consumoApi.get(`/api/PuntoDeVenta/sp_pos_auxiliar_listado?sucursal=1`);
+  const res = await consumoApi.get(`/api/PuntoDeVenta/sp_pos_auxiliar_listado?sucursal=${sucursal}`);
   setEstilistaAuxiliar(res.data ?? []);
-
-
  };
 
 
@@ -1106,6 +1102,17 @@ const {
   setPage: setPageInsumos,
   setSearch: setSearchInsumos,
 } = useServerTable<Producto>(fetchInsumos, 10);
+
+  const handleEditarRenglon = React.useCallback((id: string, campo: string, nuevoValor: any) => {
+    setDetallesVenta(prev => prev.map(item => {
+      if (item.id === id) {
+        const itemActualizado = { ...item, [campo]: nuevoValor };
+        itemActualizado.importe = itemActualizado.Cant * itemActualizado.precio;
+        return itemActualizado;
+      }
+      return item;
+    }));
+  }, []);
 
   return (
     <>
@@ -1302,10 +1309,11 @@ const {
       minWidth: { xs: 600, sm: 'auto' } // Ancho mínimo para la tabla
     }
   }}>
-    <DetalleVentasTable 
+<DetalleVentasTable 
       data={detallesVenta} 
       onSelect={handleCancelarRenglon}
       onAgregarInsumos={handleAbrirAgregarInsumos}
+      onEditarRenglon={handleEditarRenglon} 
     />
 
 <Box sx={{ 
@@ -1400,9 +1408,9 @@ const {
         </Button> */}
       </Box>
       
-      <Typography variant="h6" sx={{ fontWeight: "bold" }}>
-        TOTAL: ${total.toFixed(2)}
-      </Typography>
+<Typography variant="h6" sx={{ fontWeight: "bold" }}>
+  TOTAL: ${totalVenta.toFixed(2)}  
+</Typography>
     </Box>
 
     

@@ -1,46 +1,32 @@
-
-// import {
-//   Table,
-//   TableBody,
-//   TableCell,
-//   TableHead,
-//   TableRow,
-//   Paper,
-//   Button,
-//   Box,
-//   Typography,
-//   useTheme,
-//   useMediaQuery,
-// } from "@mui/material";
-
 import { MaterialReactTable, type MRT_ColumnDef } from "material-react-table";
 import { Button, Typography, useTheme, useMediaQuery, Box } from "@mui/material";
 import React, { useMemo } from "react";
 
 type DetalleVenta = {
-    id:string;
+  id: string;
   estilista: string;
-d_estilista: string;
-hora: string;
-clave_prod: string;
-d_producto: string;
-tiempo:string;
-Cant:number;
-precio:number;
-importe:number;
-descuento:number;
-auxiliar:string;
-d_auxiliar:string;
-insumos?: DetalleVenta[]; // Insumos asociados
+  d_estilista: string;
+  hora: string;
+  clave_prod: string;
+  d_producto: string;
+  tiempo: string;
+  Cant: number;
+  precio: number;
+  importe: number;
+  descuento: number;
+  auxiliar: string;
+  d_auxiliar: string;
+  insumos?: DetalleVenta[]; // Insumos asociados
 };
 
 type Props = {
   data: DetalleVenta[];
   onSelect: (detalle: DetalleVenta) => void;
   onAgregarInsumos?: (detalle: DetalleVenta) => void;
+  onEditarRenglon: (id: string, campo: string, nuevoValor: any) => void;
 };
 
-export default function DetalleVentasTable({ data, onSelect, onAgregarInsumos }: Props) {
+export default function DetalleVentasTable({ data, onSelect, onAgregarInsumos, onEditarRenglon }: Props) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
@@ -51,6 +37,12 @@ export default function DetalleVentasTable({ data, onSelect, onAgregarInsumos }:
       size: 150,
       minSize: 120,
       maxSize: 200,
+      muiEditTextFieldProps: ({ cell, row, table }) => ({
+        onBlur: (e) => {
+          onEditarRenglon(row.original.id, "d_estilista", e.target.value);
+          table.setEditingCell(null); // Obliga a salir del modo edición
+        },
+      }),
     },
     !isMobile && {
       accessorKey: "hora",
@@ -58,6 +50,12 @@ export default function DetalleVentasTable({ data, onSelect, onAgregarInsumos }:
       size: 100,
       minSize: 80,
       maxSize: 120,
+      muiEditTextFieldProps: ({ cell, row, table }) => ({
+        onBlur: (e) => {
+          onEditarRenglon(row.original.id, "hora", e.target.value);
+          table.setEditingCell(null);
+        },
+      }),
     },
     {
       accessorKey: "clave_prod",
@@ -65,6 +63,12 @@ export default function DetalleVentasTable({ data, onSelect, onAgregarInsumos }:
       size: 80,
       minSize: 60,
       maxSize: 100,
+      muiEditTextFieldProps: ({ cell, row, table }) => ({
+        onBlur: (e) => {
+          onEditarRenglon(row.original.id, "clave_prod", e.target.value);
+          table.setEditingCell(null);
+        },
+      }),
     },
     {
       accessorKey: "d_producto",
@@ -72,11 +76,17 @@ export default function DetalleVentasTable({ data, onSelect, onAgregarInsumos }:
       size: 100,
       minSize: 100,
       maxSize: 150,
-      Cell: ({ cell }) => (
+      Cell: ({ cell }: any) => (
         <Typography variant="body2" noWrap>
-          {cell.getValue<string>()}
+          {cell.getValue()}
         </Typography>
       ),
+      muiEditTextFieldProps: ({ cell, row, table }) => ({
+        onBlur: (e) => {
+          onEditarRenglon(row.original.id, "d_producto", e.target.value);
+          table.setEditingCell(null);
+        },
+      }),
     },
     !isMobile && {
       accessorKey: "tiempo",
@@ -84,6 +94,12 @@ export default function DetalleVentasTable({ data, onSelect, onAgregarInsumos }:
       size: 80,
       minSize: 60,
       maxSize: 100,
+      muiEditTextFieldProps: ({ cell, row, table }) => ({
+        onBlur: (e) => {
+          onEditarRenglon(row.original.id, "tiempo", e.target.value);
+          table.setEditingCell(null);
+        },
+      }),
     },
     {
       accessorKey: "Cant",
@@ -91,6 +107,14 @@ export default function DetalleVentasTable({ data, onSelect, onAgregarInsumos }:
       size: 60,
       minSize: 50,
       maxSize: 80,
+      muiEditTextFieldProps: ({ cell, row, table }) => ({
+        type: "number",
+        inputProps: { min: 0.001, step: "any" },
+        onBlur: (e) => {
+          onEditarRenglon(row.original.id, "Cant", Math.max(0.001, Number(e.target.value)));
+          table.setEditingCell(null);
+        },
+      }),
     },
     {
       accessorKey: "precio",
@@ -98,7 +122,15 @@ export default function DetalleVentasTable({ data, onSelect, onAgregarInsumos }:
       size: 100,
       minSize: 80,
       maxSize: 120,
-      Cell: ({ cell }) => `$${cell.getValue<number>().toFixed(2)}`,
+      Cell: ({ cell }: any) => `$${Number(cell.getValue()).toFixed(2)}`,
+      muiEditTextFieldProps: ({ cell, row, table }) => ({
+        type: "number",
+        inputProps: { min: 0, step: "0.01" },
+        onBlur: (e) => {
+          onEditarRenglon(row.original.id, "precio", Math.max(0, Number(e.target.value)));
+          table.setEditingCell(null);
+        },
+      }),
     },
     {
       accessorKey: "importe",
@@ -106,9 +138,10 @@ export default function DetalleVentasTable({ data, onSelect, onAgregarInsumos }:
       size: 100,
       minSize: 80,
       maxSize: 120,
-      Cell: ({ cell }) => (
+      enableEditing: false, // El importe no se edita a mano, se calcula
+      Cell: ({ cell }: any) => (
         <Typography fontWeight="medium">
-          ${cell.getValue<number>().toFixed(2)}
+          ${Number(cell.getValue()).toFixed(2)}
         </Typography>
       ),
     },
@@ -118,7 +151,15 @@ export default function DetalleVentasTable({ data, onSelect, onAgregarInsumos }:
       size: 100,
       minSize: 80,
       maxSize: 120,
-      Cell: ({ cell }) => `$${cell.getValue<number>().toFixed(2)}`,
+      Cell: ({ cell }: any) => `$${Number(cell.getValue()).toFixed(2)}`,
+      muiEditTextFieldProps: ({ cell, row, table }) => ({
+        type: "number",
+        inputProps: { min: 0, step: "0.01" },
+        onBlur: (e) => {
+          onEditarRenglon(row.original.id, "descuento", Math.max(0, Number(e.target.value)));
+          table.setEditingCell(null);
+        },
+      }),
     },
     !isMobile && {
       accessorKey: "d_auxiliar",
@@ -126,15 +167,21 @@ export default function DetalleVentasTable({ data, onSelect, onAgregarInsumos }:
       size: 120,
       minSize: 100,
       maxSize: 150,
+      muiEditTextFieldProps: ({ cell, row, table }) => ({
+        onBlur: (e) => {
+          onEditarRenglon(row.original.id, "d_auxiliar", e.target.value);
+          table.setEditingCell(null);
+        },
+      }),
     },
-  ].filter(Boolean) as MRT_ColumnDef<DetalleVenta>[], [isMobile]);
+  ].filter(Boolean) as MRT_ColumnDef<DetalleVenta>[], [isMobile, onEditarRenglon]);
 
-
-
-    return (
+  return (
     <MaterialReactTable
       columns={columns}
       data={data}
+      autoResetPageIndex={false} // Evita el parpadeo de datos
+      autoResetExpanded={false}
       enablePagination={true}
       enableColumnActions={false}
       enableDensityToggle={false}
@@ -148,6 +195,21 @@ export default function DetalleVentasTable({ data, onSelect, onAgregarInsumos }:
       enableRowVirtualization={false}
       enableRowActions={true}
       positionActionsColumn="last"
+      
+      // 🛠️ AQUÍ SUCEDE LA MAGIA DEL DOBLE CLIC
+      enableEditing={true}
+      editDisplayMode="cell"
+      muiTableBodyCellProps={({ cell, table }) => ({
+        onClick: (event) => {
+          event.stopPropagation(); // Apaga el clic sencillo
+        },
+        onDoubleClick: (event) => {
+          if (cell.column.id !== "importe") { // Todo es editable menos el importe
+            table.setEditingCell(cell);
+          }
+        },
+      })}
+
       displayColumnDefOptions={{
         "mrt-row-actions": {
           header: "Acción",
@@ -166,7 +228,6 @@ export default function DetalleVentasTable({ data, onSelect, onAgregarInsumos }:
               Insumos asociados:
             </Typography>
             
-            {/* Headers de la tabla de insumos */}
             <Box sx={{ 
               display: 'flex', 
               borderBottom: '2px solid #e0e0e0',
@@ -175,18 +236,10 @@ export default function DetalleVentasTable({ data, onSelect, onAgregarInsumos }:
               fontSize: '0.875rem',
               fontWeight: 'medium'
             }}>
-              <Box sx={{ flex: 1, minWidth: 150 }}>
-                Clave - Descripción
-              </Box>
-              <Box sx={{ minWidth: 80, textAlign: 'right' }}>
-                Precio
-              </Box>
-              <Box sx={{ minWidth: 50, textAlign: 'center' }}>
-                Cant
-              </Box>
-              <Box sx={{ minWidth: 90, textAlign: 'right', fontWeight: 'bold' }}>
-                Importe
-              </Box>
+              <Box sx={{ flex: 1, minWidth: 150 }}>Clave - Descripción</Box>
+              <Box sx={{ minWidth: 80, textAlign: 'right' }}>Precio</Box>
+              <Box sx={{ minWidth: 50, textAlign: 'center' }}>Cant</Box>
+              <Box sx={{ minWidth: 90, textAlign: 'right', fontWeight: 'bold' }}>Importe</Box>
             </Box>
             
             {insumos.map((insumo, index) => (
@@ -197,9 +250,7 @@ export default function DetalleVentasTable({ data, onSelect, onAgregarInsumos }:
                 py: 0.75,
                 px: 2,
                 borderBottom: index < insumos.length - 1 ? '1px solid #e0e0e0' : 'none',
-                '&:hover': {
-                  backgroundColor: 'grey.100'
-                }
+                '&:hover': { backgroundColor: 'grey.100' }
               }}>
                 <Typography variant="body2" sx={{ flex: 1, fontSize: '0.875rem' }}>
                   {insumo.clave_prod} - {insumo.d_producto}
@@ -284,16 +335,6 @@ export default function DetalleVentasTable({ data, onSelect, onAgregarInsumos }:
           importe: 100,
         },
       }}
-      state={{
-        columnSizing: {
-          clave_prod: 80,
-          d_producto: 100,
-          Cant: 60,
-          precio: 100,
-          importe: 100,
-        },
-      }}
     />
   );
 }
-
