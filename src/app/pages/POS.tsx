@@ -921,9 +921,7 @@ const verificaDatosVenta = () => {
   return true;
 };
 
-const handleFinalizarVenta = async () => {
-  // 1. Validaciones previas de Access
-  if (!verificaDatosVenta()) return;
+
 
  const handleFinalizarVenta = async () => {
     // 1. Validaciones previas de Access
@@ -942,13 +940,13 @@ const handleFinalizarVenta = async () => {
 
     setFinalizandoVenta(true);
     try {
-      // 2. Construir el arreglo de pagos exactamente como lo hace Access (detalle_ventas_medios_pagos)
+  
       let pagosFinales: any[] = [];
 
       if (isCredito) {
         // Si es crédito, Access manda un solo pago Tipo 10 por el Total a Pagar
         pagosFinales.push({
-          tipo_Pago: 10,
+          tipo_pago: 10,
           referencia: "Venta a crédito",
           importe: totalVenta
         });
@@ -956,7 +954,7 @@ const handleFinalizarVenta = async () => {
         // A. Agregar Tarjetas CLIP (Tipo 7)
         pagosRegistro.forEach(p => {
           pagosFinales.push({
-            tipo_Pago: 7, 
+            tipo_pago: 7, 
             referencia: p.descripcion || "TC CLIP",
             importe: p.importe
           });
@@ -966,7 +964,7 @@ const handleFinalizarVenta = async () => {
         const efectivoNeto = pagoEfectivo - cambio;
         if (efectivoNeto > 0) {
           pagosFinales.push({
-            tipo_Pago: 1,
+            tipo_pago: 1,
             referencia: "Pago en efectivo",
             importe: efectivoNeto
           });
@@ -975,7 +973,7 @@ const handleFinalizarVenta = async () => {
         // C. Agregar Pago con Puntos (Tipo 5)
         if (puntosPago > 0) {
           pagosFinales.push({
-            tipo_Pago: 5,
+            tipo_pago: 5,
             referencia: "Pago con puntos",
             importe: puntosPago
           });
@@ -2681,4 +2679,4 @@ return (
 
     </>
   );
-};
+}
