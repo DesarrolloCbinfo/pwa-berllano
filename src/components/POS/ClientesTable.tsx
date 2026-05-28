@@ -5,7 +5,6 @@ import {
   TableHead,
   TableRow,
   Paper,
-  Button,
   Box,
   Typography,
   useTheme,
@@ -17,6 +16,11 @@ type Cliente = {
   nombre: string;
   ap_paterno?: string | null;
   ap_materno?: string | null;
+  validado?: string | boolean | null;
+  fecha_ultima_visita?: string | null;
+  no_visitas?: number | null;
+  tarjeta?: string | null;
+  fecha_asignacion?: string | null;
 };
 
 type Props = {
@@ -30,61 +34,68 @@ export default function ClientesTable({ data, onSelect }: Props) {
 
   return (
     <Paper variant="outlined" sx={{ width: '100%', overflow: 'hidden' }}>
-      <Box sx={{ overflowX: 'auto' }}>
-        <Table size={isMobile ? "small" : "medium"}>
+      <Box sx={{ overflowX: 'auto', maxHeight: 300 }}>
+        <Table stickyHeader size={isMobile ? "small" : "small"}>
           <TableHead>
             <TableRow>
-              <TableCell sx={{ minWidth: { xs: 80, sm: 100 } }}>Clave</TableCell>
-              <TableCell sx={{ minWidth: { xs: 120, sm: 200 } }}>Nombre</TableCell>
-              {!isMobile && (
-                <>
-                  <TableCell sx={{ minWidth: 150 }}>Paterno</TableCell>
-                  <TableCell sx={{ minWidth: 150 }}>Materno</TableCell>
-                </>
-              )}
-              <TableCell sx={{ minWidth: { xs: 100, sm: 120 } }} align="center">
-                Acción
-              </TableCell>
+              <TableCell sx={{ minWidth: 80, fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>No. Cliente</TableCell>
+              <TableCell sx={{ minWidth: 200, fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Nombre Completo</TableCell>
+              <TableCell sx={{ minWidth: 90, fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Validado</TableCell>
+              <TableCell sx={{ minWidth: 120, fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Última Visita</TableCell>
+              <TableCell sx={{ minWidth: 90, fontWeight: 'bold', backgroundColor: '#f5f5f5', textAlign: 'center' }}>Visitas</TableCell>
+              <TableCell sx={{ minWidth: 120, fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Tarjeta</TableCell>
+              <TableCell sx={{ minWidth: 120, fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>F. Asignación</TableCell>
             </TableRow>
           </TableHead>
 
           <TableBody>
-            {data.map((c) => (
-              <TableRow key={c.No_cliente} hover>
-                <TableCell>{c.No_cliente}</TableCell>
-                <TableCell>
-                  <Typography variant="body2" noWrap>
-                    {c.nombre}
-                  </Typography>
-                </TableCell>
-                {!isMobile && (
-                  <>
-                    <TableCell>{c.ap_paterno}</TableCell>
-                    <TableCell>{c.ap_materno}</TableCell>
-                  </>
-                )}
-                <TableCell align="center">
-                  <Button
-                    size={isMobile ? "small" : "medium"}
-                    variant="contained"
-                    onClick={() => onSelect(c)}
-                    sx={{ minWidth: { xs: 60, sm: 80 } }}
-                  >
-                    {isMobile ? "✓" : "Seleccionar"}
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
+            {data.map((c) => {
+              const nombreCompleto = `${c.nombre || ''} ${c.ap_paterno || ''} ${c.ap_materno || ''}`.trim();
+
+              return (
+                <TableRow 
+                  key={c.No_cliente} 
+                  hover 
+                  onClick={() => onSelect(c)}
+                  sx={{ 
+                    cursor: 'pointer', 
+                    '&:hover': { backgroundColor: 'action.hover' } 
+                  }}
+                >
+                  <TableCell>{c.No_cliente}</TableCell>
+                  <TableCell>
+                    <Typography variant="body2" noWrap fontWeight="medium">
+                      {nombreCompleto}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    {c.validado === true || c.validado === '1' || c.validado === 1 ? 'Sí' : 'No'}
+                  </TableCell>
+                  <TableCell>
+                    {c.fecha_ultima_visita ? new Date(c.fecha_ultima_visita).toLocaleDateString() : '-'}
+                  </TableCell>
+                  <TableCell align="center">
+                    {c.no_visitas || 0}
+                  </TableCell>
+                  <TableCell>
+                    {c.tarjeta || '-'}
+                  </TableCell>
+                  <TableCell>
+                    {c.fecha_asignacion ? new Date(c.fecha_asignacion).toLocaleDateString() : '-'}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
 
             {data.length === 0 && (
               <TableRow>
                 <TableCell 
-                  colSpan={isMobile ? 3 : 5} 
+                  colSpan={7} 
                   align="center"
-                  sx={{ py: { xs: 2, sm: 3 } }}
+                  sx={{ py: 4 }}
                 >
                   <Typography variant="body2" color="text.secondary">
-                    Sin resultados
+                    Sin resultados. Escribe un nombre o RFC para buscar.
                   </Typography>
                 </TableCell>
               </TableRow>

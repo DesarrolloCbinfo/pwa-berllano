@@ -1,6 +1,16 @@
 import { MaterialReactTable, type MRT_ColumnDef } from "material-react-table";
-import { Button, Typography, useTheme, useMediaQuery, Box } from "@mui/material";
+import { Button, Typography, useTheme, useMediaQuery, Box, MenuItem, Select } from "@mui/material";
 import React, { useMemo } from "react";
+
+type Estilista = {
+  clave_empleado: string;
+  nombre: string;
+};
+
+type Auxiliar = {
+  clave_empleado: string;
+  nombre: string;
+};
 
 type DetalleVenta = {
   id: string;
@@ -16,17 +26,28 @@ type DetalleVenta = {
   descuento: number;
   auxiliar: string;
   d_auxiliar: string;
-  insumos?: DetalleVenta[]; // Insumos asociados
+  insumos?: DetalleVenta[];
 };
 
 type Props = {
   data: DetalleVenta[];
+  estilistasLista?: Estilista[]; 
+  auxiliaresLista?: Auxiliar[];  
   onSelect: (detalle: DetalleVenta) => void;
   onAgregarInsumos?: (detalle: DetalleVenta) => void;
   onEditarRenglon: (id: string, campo: string, nuevoValor: any) => void;
+  onBuscarProducto?: () => void; 
 };
 
-export default function DetalleVentasTable({ data, onSelect, onAgregarInsumos, onEditarRenglon }: Props) {
+export default function DetalleVentasTable({ 
+  data, 
+  estilistasLista = [], 
+  auxiliaresLista = [], 
+  onSelect, 
+  onAgregarInsumos, 
+  onEditarRenglon,
+  onBuscarProducto 
+}: Props) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
@@ -37,12 +58,35 @@ export default function DetalleVentasTable({ data, onSelect, onAgregarInsumos, o
       size: 150,
       minSize: 120,
       maxSize: 200,
-      muiEditTextFieldProps: ({ cell, row, table }) => ({
-        onBlur: (e) => {
-          onEditarRenglon(row.original.id, "d_estilista", e.target.value);
-          table.setEditingCell(null); // Obliga a salir del modo edición
-        },
-      }),
+      Edit: ({ cell, row, table }) => {
+        const currentId = row.original.estilista; 
+        
+        return (
+          <Select
+            size="small"
+            value={currentId || ""}
+            autoFocus
+            sx={{ width: '100%', minWidth: '120px' }}
+            onChange={(e) => {
+              const newId = e.target.value as string;
+              const estilistaEncontrado = estilistasLista.find(est => est.clave_empleado === newId);
+              
+              if (estilistaEncontrado) {
+                onEditarRenglon(row.original.id, "estilista", newId);
+                onEditarRenglon(row.original.id, "d_estilista", estilistaEncontrado.nombre);
+              }
+              table.setEditingCell(null); 
+            }}
+            onBlur={() => table.setEditingCell(null)}
+          >
+            {estilistasLista.map((est) => (
+              <MenuItem key={est.clave_empleado} value={est.clave_empleado}>
+                {est.nombre}
+              </MenuItem>
+            ))}
+          </Select>
+        );
+      },
     },
     !isMobile && {
       accessorKey: "hora",
@@ -70,16 +114,17 @@ export default function DetalleVentasTable({ data, onSelect, onAgregarInsumos, o
         },
       }),
     },
-    {
+ {
       accessorKey: "d_producto",
       header: "Descripción",
       size: 100,
       minSize: 100,
       maxSize: 150,
+      // 🔥 Quitamos el Typography y usamos un Box simple para heredar el tamaño exacto del renglón
       Cell: ({ cell }: any) => (
-        <Typography variant="body2" noWrap>
+        <Box sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {cell.getValue()}
-        </Typography>
+        </Box>
       ),
       muiEditTextFieldProps: ({ cell, row, table }) => ({
         onBlur: (e) => {
@@ -132,18 +177,15 @@ export default function DetalleVentasTable({ data, onSelect, onAgregarInsumos, o
         },
       }),
     },
-    {
+ {
       accessorKey: "importe",
       header: "Importe",
       size: 100,
       minSize: 80,
       maxSize: 120,
-      enableEditing: false, // El importe no se edita a mano, se calcula
-      Cell: ({ cell }: any) => (
-        <Typography fontWeight="medium">
-          ${Number(cell.getValue()).toFixed(2)}
-        </Typography>
-      ),
+      enableEditing: false, 
+      // 🔥 Eliminamos el Typography fontWeight="medium" que hacía los números gigantes
+      Cell: ({ cell }: any) => `$${Number(cell.getValue()).toFixed(2)}`,
     },
     !isMobile && {
       accessorKey: "descuento",
@@ -167,20 +209,50 @@ export default function DetalleVentasTable({ data, onSelect, onAgregarInsumos, o
       size: 120,
       minSize: 100,
       maxSize: 150,
-      muiEditTextFieldProps: ({ cell, row, table }) => ({
-        onBlur: (e) => {
-          onEditarRenglon(row.original.id, "d_auxiliar", e.target.value);
-          table.setEditingCell(null);
-        },
-      }),
+      Edit: ({ cell, row, table }) => {
+        const currentId = row.original.auxiliar; 
+        
+        return (
+          <Select
+            size="small"
+            value={currentId || ""}
+            autoFocus
+            displayEmpty
+            sx={{ width: '100%', minWidth: '100px' }}
+            onChange={(e) => {
+              const newId = e.target.value as string;
+              
+              if (newId === "") {
+                onEditarRenglon(row.original.id, "auxiliar", "");
+                onEditarRenglon(row.original.id, "d_auxiliar", "");
+              } else {
+                const auxiliarEncontrado = auxiliaresLista.find(aux => aux.clave_empleado === newId);
+                if (auxiliarEncontrado) {
+                  onEditarRenglon(row.original.id, "auxiliar", newId);
+                  onEditarRenglon(row.original.id, "d_auxiliar", auxiliarEncontrado.nombre);
+                }
+              }
+              table.setEditingCell(null); 
+            }}
+            onBlur={() => table.setEditingCell(null)}
+          >
+            <MenuItem value=""><em>Ninguno</em></MenuItem>
+            {auxiliaresLista.map((aux) => (
+              <MenuItem key={aux.clave_empleado} value={aux.clave_empleado}>
+                {aux.nombre}
+              </MenuItem>
+            ))}
+          </Select>
+        );
+      },
     },
-  ].filter(Boolean) as MRT_ColumnDef<DetalleVenta>[], [isMobile, onEditarRenglon]);
+  ].filter(Boolean) as MRT_ColumnDef<DetalleVenta>[], [isMobile, onEditarRenglon, estilistasLista, auxiliaresLista]);
 
   return (
     <MaterialReactTable
       columns={columns}
       data={data}
-      autoResetPageIndex={false} // Evita el parpadeo de datos
+      autoResetPageIndex={false}
       autoResetExpanded={false}
       enablePagination={true}
       enableColumnActions={false}
@@ -196,15 +268,26 @@ export default function DetalleVentasTable({ data, onSelect, onAgregarInsumos, o
       enableRowActions={true}
       positionActionsColumn="last"
       
-      // 🛠️ AQUÍ SUCEDE LA MAGIA DEL DOBLE CLIC
       enableEditing={true}
       editDisplayMode="cell"
       muiTableBodyCellProps={({ cell, table }) => ({
         onClick: (event) => {
-          event.stopPropagation(); // Apaga el clic sencillo
+          // 🔥 Evitamos bloquear el clic en la columna de botones
+          if (cell.column.id !== 'mrt-row-actions') {
+            event.stopPropagation();
+          }
         },
         onDoubleClick: (event) => {
-          if (cell.column.id !== "importe") { // Todo es editable menos el importe
+          if (cell.column.id !== 'mrt-row-actions') {
+            event.stopPropagation();
+          }
+          
+          if (cell.column.id === "clave_prod" || cell.column.id === "d_producto") {
+            if (onBuscarProducto) {
+              onBuscarProducto();
+            }
+          } 
+          else if (cell.column.id !== "importe" && cell.column.id !== "mrt-row-actions") {
             table.setEditingCell(cell);
           }
         },
@@ -213,9 +296,10 @@ export default function DetalleVentasTable({ data, onSelect, onAgregarInsumos, o
       displayColumnDefOptions={{
         "mrt-row-actions": {
           header: "Acción",
-          size: 60,
-          minSize: 50,
-          maxSize: 80,
+          // 🔥 Ensanchamos la columna para que los botones entren y no se recorten
+          size: 150, 
+          minSize: 120,
+          maxSize: 200,
         },
       }}
       renderDetailPanel={({ row }) => {
@@ -277,29 +361,20 @@ export default function DetalleVentasTable({ data, onSelect, onAgregarInsumos, o
               variant="outlined"
               size="small"
               onClick={() => onAgregarInsumos(row.original)}
-              sx={{
-                minWidth: 'auto',
-                px: isMobile ? 1 : 2,
-                fontSize: isMobile ? '0.75rem' : '0.875rem',
-                whiteSpace: 'nowrap'
-              }}
+              sx={{ whiteSpace: 'nowrap' }}
             >
-              {isMobile ? "INS" : "Insumos"}
+              Insumos
             </Button>
           )}
+          {/* 🔥 Restauramos el botón de cancelar garantizando su visibilidad */}
           <Button
             color="error"
             variant="contained"
             size="small"
             onClick={() => onSelect(row.original)}
-            sx={{
-              minWidth: 'auto',
-              px: isMobile ? 1 : 2,
-              fontSize: isMobile ? '0.75rem' : '0.875rem',
-              whiteSpace: 'nowrap'
-            }}
+            sx={{ whiteSpace: 'nowrap' }}
           >
-            {isMobile ? "✕" : "Cancelar"}
+            Cancelar
           </Button>
         </Box>
       )}

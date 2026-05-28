@@ -13,6 +13,7 @@ import useCantidadesProducto from "../../hooks/useCantidadesProducto";
 import CatClientes from "./cat_Clientes/page";
 import { History } from "@mui/icons-material";
 
+
 type Cliente = {
   No_cliente: string;
   nombre: string;
@@ -157,8 +158,17 @@ export default function POS() {
   const [historialInsumosLoading, setHistorialInsumosLoading] = React.useState(false);
   const [historialInsumosPage, setHistorialInsumosPage] = React.useState(1);
   const [hasMoreHistorialInsumos, setHasMoreHistorialInsumos] = React.useState(true);
-  const [selectedVenta, setSelectedVenta] = React.useState<{cliente: string, suc: number, venta: number, serv: string} | null>(null);
-
+  
+ const [selectedVenta, setSelectedVenta] = React.useState<{
+    cliente: string, 
+    suc: number, 
+    venta: number, 
+    serv: string,
+    clienteNombre?: string,
+    servDesc?: string,
+    fecha?: string,
+    estilista?: string
+  } | null>(null);
   const [modalAgregarInsumosOpen, setModalAgregarInsumosOpen] = React.useState(false);
   const [detalleSeleccionadoInsumos, setDetalleSeleccionadoInsumos] = React.useState<DetalleVenta | null>(null);
   const [busquedaInsumo, setBusquedaInsumo] = React.useState("");
@@ -174,6 +184,7 @@ export default function POS() {
   const [insumoSeleccionadoParaCantidades, setInsumoSeleccionadoParaCantidades] = React.useState<string | null>(null);
   const [cantidadesCache, setCantidadesCache] = React.useState<Record<string, number[]>>({});
   const [insumoCargandoCantidades, setInsumoCargandoCantidades] = React.useState<string | null>(null);
+ 
   
   // Hook para obtener cantidades disponibles del insumo seleccionado
   const { cantidades, loading: loadingCantidades } = useCantidadesProducto(insumoSeleccionadoParaCantidades);
@@ -221,6 +232,8 @@ export default function POS() {
     }
   }, [insumoSeleccionadoParaCantidades, cantidades]);
 
+  
+
   const [clienteSeleccionado, setClienteSeleccionado] = React.useState<
   Cliente | null
 >(null);
@@ -246,15 +259,87 @@ const [formasPago, setFormasPago] = React.useState<FormaPago[]>([]);
 const [loadingFormasPago, setLoadingFormasPago] = React.useState(false);
 const [pagosRegistro, setPagosRegistro] = React.useState<PagoRegistro[]>([]);
 const [formaPagoSeleccionada, setFormaPagoSeleccionada] = React.useState<number | "">("");
-const [importePago, setImportePago] = React.useState<string>("");
-const [finalizandoVenta, setFinalizandoVenta] = React.useState(false);
+const [importePago, setImportePago] = React.useState(""); 
+  const [autorizacionInput, setAutorizacionInput] = React.useState(""); // 🔥 Estado para la caja de autorización editable
+  const [isCredito, setIsCredito] = React.useState(false); 
+  const [cuentaPuntos, setCuentaPuntos] = React.useState("");      
+  const [puntosPago, setPuntosPago] = React.useState<number>(0);     // 🔥 Ahora es una cantidad editable manual
+  const [pagoEfectivo, setPagoEfectivo] = React.useState<number>(0); // 🔥 Ahora es una cantidad editable manual
+  const [sumaManual, setSumaManual] = React.useState<number>(0);     // 🔥 Ahora es una cantidad editable manual
+  const [saldoPuntosCte, setSaldoPuntosCte] = React.useState<number>(0); 
+  const [cuentaRecompensa, setCuentaRecompensa] = React.useState(""); 
+  const [puntosGanados, setPuntosGanados] = React.useState<number>(0); 
+  const [nc, setNc] = React.useState<number>(0);
+const [bonificacion, setBonificacion] = React.useState<number>(0);
+const [folioDev, setFolioDev] = React.useState<string>("");
+  const [finalizandoVenta, setFinalizandoVenta] = React.useState(false);
+  const [clientePreview, setClientePreview] = React.useState<Cliente | null>(null);
+  const [tmpPuntosPago, setTmpPuntosPago] = React.useState<number | string>(0);
+  const [tmpPagoEfectivo, setTmpPagoEfectivo] = React.useState<number | string>(0);
 
-// Calcular total de la venta
-const totalVenta = detallesVenta.reduce((sum, item) => sum + item.importe, 0);
-const totalPagado = pagosRegistro.reduce((sum, item) => sum + item.importe, 0);
-const cambio = totalPagado - totalVenta;
-const puedeFinalizar = totalPagado >= totalVenta && totalPagado > 0;
+  const [modalTabuladorOpen, setModalTabuladorOpen] = React.useState(false);
+const [denominaciones, setDenominaciones] = React.useState<Record<string, number>>({
+  "1000": 0, "500": 0, "200": 0, "100": 0, "50": 0, "20": 0, "10": 0, "5": 0, "2": 0, "1": 0, "0.50": 0, "0.20": 0, "0.10": 0, "vales": 0
+});
 
+const listaDenominaciones = ["1000", "500", "200", "100", "50", "20", "10", "5", "2", "1", "0.50", "0.20", "0.10", "vales"];
+
+const totalTabulador = Object.entries(denominaciones).reduce((sum, [key, cant]) => {
+  const factor = key === "vales" ? 1 : parseFloat(key);
+  return sum + (factor * cant);
+}, 0);
+  
+
+  // 🔥 MATEMÁTICA DE TOTALES CONTROLADOS MANUALMENTE
+  const totalVenta = detallesVenta.reduce((sum, item) => sum + item.importe, 0);
+  
+  // El total recibido suma la caja manual de tarjetas, el efectivo y el canje de puntos
+  const totalPagado = isCredito ? 0 : (sumaManual + pagoEfectivo + puntosPago);
+  const cambio = isCredito ? 0 : (totalPagado - totalVenta > 0 ? totalPagado - totalVenta : 0);
+  const puedeFinalizar = isCredito ? true : (totalPagado >= totalVenta && totalPagado > 0);
+
+
+// 🔥 CÁLCULO AUTOMÁTICO DE RECOMPENSA (PUNTOS GANADOS)
+React.useEffect(() => {
+  if (!modalCobroOpen || !clienteSeleccionado) return;
+
+  // 💡 REGLA DE MODALIDADES: Si no se ha ingresado dinero ni activado crédito,
+  // la recompensa se queda en 0.00 y no hace peticiones al servidor.
+  if (pagoEfectivo === 0 && sumaManual === 0 && puntosPago === 0 && !isCredito) {
+    setPuntosGanados(0);
+    return;
+  }
+
+  const calcularPuntos = async () => {
+    try {
+      const efectivoNeto = (pagoEfectivo - cambio) > 0 ? (pagoEfectivo - cambio) : 0;
+
+      const res = await consumoApi.get('/api/PuntoDeVenta/sp_obtiene_ptos_vta', {
+        params: {
+          sucursal: sucursal,
+          cliente: clienteSeleccionado.No_cliente,
+          efectivo: efectivoNeto,
+          tarjeta: sumaManual,
+          puntos: puntosPago,
+          isCredito: isCredito ? 1 : 0
+        }
+      });
+      
+      if (res.data && res.data.ptos_totales !== undefined) {
+        setPuntosGanados(res.data.ptos_totales);
+      }
+    } catch (error) {
+      console.error("Error al calcular puntos de recompensa:", error);
+    }
+  };
+
+  const timer = setTimeout(() => {
+    calcularPuntos();
+  }, 500);
+
+  return () => clearTimeout(timer);
+  
+}, [pagoEfectivo, sumaManual, puntosPago, isCredito, modalCobroOpen, cambio]);
   // Función para cargar desde archivo JSON externo
   const cargarDatosDesdeArchivo = async () => {
     try {
@@ -334,13 +419,18 @@ const puedeFinalizar = totalPagado >= totalVenta && totalPagado > 0;
     }
   };
 
-  const handleOpenInsumos = async (item: HistorialItem) => {
+ const handleOpenInsumos = async (item: HistorialItem) => {
     if (!clienteSeleccionado) return;
     setSelectedVenta({
       cliente: clienteSeleccionado.No_cliente,
       suc: item.cve_sucursal,
       venta: item.no_venta,
-      serv: item.clave_prod
+      serv: item.clave_prod,
+      // 🔥 Nuevos datos para pintar el encabezado tipo Access
+      clienteNombre: `${clienteSeleccionado.nombre} ${clienteSeleccionado.ap_paterno || ''} ${clienteSeleccionado.ap_materno || ''}`.trim(),
+      servDesc: item.prod_serv,
+      fecha: item.fecha,
+      estilista: item.estilista
     });
     setHistorialInsumosPage(1);
     setHasMoreHistorialInsumos(true);
@@ -658,72 +748,244 @@ const puedeFinalizar = totalPagado >= totalVenta && totalPagado > 0;
   };
   
 
-  const handleAbrirCobro = () => {
-    if (detallesVenta.length === 0) {
-      alert('No hay productos para cobrar');
-      return;
-    }
-    setPagosRegistro([]);
-    setFormaPagoSeleccionada("");
-    setImportePago("");
-    fetchFormasPago();
-    setModalCobroOpen(true);
-  };
+const handleAbrirCobro = () => {
+  if (detallesVenta.length === 0) {
+    alert('No hay productos para cobrar');
+    return;
+  }
 
-  const handleAgregarPago = () => {
-    if (!formaPagoSeleccionada) {
-      alert('Selecciona una forma de pago');
-      return;
-    }
+  // 🧹 LIMPIEZA TOTAL DE ESTADOS (Emula el Form_Open de Access)
+  setPagosRegistro([]);
+  setFormaPagoSeleccionada("");
+  setImportePago("");
+  setAutorizacionInput("");
+  setIsCredito(false);
+  
+  // Limpieza de cajas de texto e inputs
+  setCuentaPuntos("");
+  setCuentaRecompensa("");
+  setPagoEfectivo(0);
+  setSumaManual(0);
+  
+  // Limpieza del motor de monedero
+  setSaldoPuntosCte(0);
+  setPuntosPago(0);    // Puntos reales aplicados
+  setTmpPuntosPago(""); // Buffer temporal para la caja de texto
+  setPuntosGanados(0);
+
+  // Cargar formas de pago de la API y desplegar modal
+  fetchFormasPago();
+  setModalCobroOpen(true);
+};
+
+const handleAgregarPago = () => {
     const importe = parseFloat(importePago);
     if (isNaN(importe) || importe <= 0) {
       alert('Ingresa un importe válido');
       return;
     }
 
-    const formaPago = formasPago.find(f => f.tipo === formaPagoSeleccionada);
+    // Access rule: Al presionar "+", empaqueta el nombre y el número de autorización tipeado
+    const descConAutorizacion = autorizacionInput ? `TC CLIP - AUT: ${autorizacionInput}` : "TC CLIP";
+
     setPagosRegistro(prev => [...prev, {
-      tipo: formaPagoSeleccionada as number,
-      descripcion: formaPago?.descripcion || '',
+      tipo: 7, // Código de tipo para tarjetas
+      descripcion: descConAutorizacion,
       importe
     }]);
+
+    // 🔥 Acumula automáticamente el valor en el campo de "Suma" al vuelo
+    setSumaManual(prev => prev + importe);
     setImportePago("");
+    setAutorizacionInput(""); // Limpia la caja
   };
 
   const handleEliminarPago = (index: number) => {
     setPagosRegistro(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleFinalizarVenta = async () => {
+// ... aquí termina tu función handleEliminarPago ...
+
+  // 🔴 ASEGÚRATE DE QUE ESTAS TRES QUEDEN AQUÍ ADENTRO:
+  const handleKeyDownPuntos = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const puntosAIntercambiar = parseFloat(String(tmpPuntosPago)) || 0;
+
+      if (puntosAIntercambiar > saldoPuntosCte) {
+        Swal.fire("Saldo Insuficiente", "El cliente no cuenta con los puntos suficientes.", "warning");
+        setTmpPuntosPago(0);
+        setPuntosPago(0);
+        return;
+      }
+      setPuntosPago(puntosAIntercambiar);
+    }
+  };
+
+  const handleKeyDownCuentaPuntos = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (!cuentaPuntos) return;
+
+      try {
+        const res = await consumoApi.get('/api/PuntoDeVenta/obtiene_puntos_cliente', {
+          params: { cuenta: cuentaPuntos }
+        });
+        setSaldoPuntosCte(res.data.puntosDisponibles || 0);
+        setTmpPuntosPago(0); 
+        setPuntosPago(0);     
+      } catch (error) {
+        console.error("Error al validar tarjeta de lealtad:", error);
+        Swal.fire("Error", "No se pudo validar la cuenta de puntos.", "error");
+        setSaldoPuntosCte(0);
+      }
+    }
+  };
+
+const handleKeyDownEfectivo = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const montoDigitado = parseFloat(String(tmpPagoEfectivo)) || 0;
+    
+    if (montoDigitado <= 0) {
+      Swal.fire("Atención", "Ingrese una cantidad válida de efectivo.", "warning");
+      return;
+    }
+
+    setDenominaciones({
+      "1000": 0, "500": 0, "200": 0, "100": 0, "50": 0, "20": 0, "10": 0, "5": 0, "2": 0, "1": 0, "0.50": 0, "0.20": 0, "0.10": 0, "vales": 0
+    });
+
+    setModalTabuladorOpen(true);
+  }
+};
+
+const handleAceptarTabulador = () => {
+  const montoEsperado = parseFloat(String(tmpPagoEfectivo)) || 0;
+
+  if (Math.round(totalTabulador * 100) !== Math.round(montoEsperado * 100)) {
+    // 💥 CAMBIAMOS A CONFIGURACIÓN DE OBJETO EN SWAL PARA INYECTAR EL Z-INDEX:
+    Swal.fire({
+      title: "Arqueo de Efectivo",
+      text: `Los importes de efectivo no coinciden. El desglose suma $${totalTabulador.toFixed(2)} pero indicaste que recibiste $${montoEsperado.toFixed(2)}. ¡Verifique!`,
+      icon: "error",
+      confirmButtonText: "Aceptar",
+      // 🔥 TRUCO: Fuerza a SweetAlert a ponerse por encima de cualquier modal de Material UI
+      willOpen: () => {
+        const container = Swal.getContainer();
+        if (container) {
+          container.style.zIndex = "9999";
+        }
+      }
+    });
+    return;
+  }
+
+  setPagoEfectivo(montoEsperado);
+  setModalTabuladorOpen(false);
+};
+
+
+const handleCancelarTabulador = () => {
+  setModalTabuladorOpen(false);
+  setTmpPagoEfectivo(0);
+  setPagoEfectivo(0);
+};
+
+// 🔥 FUNCIÓN DE VALIDACIÓN RESTAURADA
+const verificaDatosVenta = () => {
+  if (detallesVenta.length === 0) {
+    Swal.fire("Atención", "No hay productos o servicios para cobrar.", "warning");
+    return false;
+  }
+  
+  // Evitar Cantidades o Precios en Cero
+  const tieneCeros = detallesVenta.some(d => d.Cant <= 0 || d.precio <= 0);
+  if (tieneCeros) {
+    Swal.fire("Error", "Hay productos o servicios con cantidad o precio en Cero. Verifique.", "error");
+    return false;
+  }
+  
+  // Evitar crédito a Público en General
+  if (isCredito && clienteSeleccionado?.No_cliente === "00001") {
+    Swal.fire("Atención", "Seleccione un cliente válido para el crédito. No aplica a Público en General.", "warning");
+    return false;
+  }
+
+  // Validar saldo de puntos
+  if (puntosPago > saldoPuntosCte) {
+    Swal.fire("Atención", "El saldo del cliente es insuficiente para pagar con los puntos indicados.", "warning");
+    return false;
+  }
+
+  return true;
+};
+
+const handleFinalizarVenta = async () => {
+  // 1. Validaciones previas de Access
+  if (!verificaDatosVenta()) return;
+
+ const handleFinalizarVenta = async () => {
+    // 1. Validaciones previas de Access
+    if (!verificaDatosVenta()) return; 
     if (!clienteSeleccionado || !estilistaSeleccionado) {
       alert('Faltan datos para finalizar la venta');
       return;
     }
 
+    // Regla Access: Validar que no pague con más puntos de los que tiene
+    if (puntosPago > saldoPuntosCte) {
+      Swal.fire("Atención", "El saldo del cliente es insuficiente para pagar con los puntos indicados. Verifique.", "warning");
+      setPuntosPago(0);
+      return;
+    }
+
     setFinalizandoVenta(true);
     try {
-      // Ajustar los pagos para que el total sea exactamente igual a la venta
-      // El último pago (generalmente efectivo) debe cubrir exactamente lo que falta
-      let pagosAjustados = [...pagosRegistro];
-      const totalPagadoOriginal = pagosAjustados.reduce((sum, p) => sum + p.importe, 0);
-      
-      if (totalPagadoOriginal > totalVenta && pagosAjustados.length > 0) {
-        // Encontrar el último pago en efectivo (tipo 1 generalmente es efectivo)
-        // o usar el último pago registrado
-        const ultimoPagoIndex = pagosAjustados.length - 1;
-        const pagosAnteriores = pagosAjustados.slice(0, ultimoPagoIndex);
-        const totalAnteriores = pagosAnteriores.reduce((sum, p) => sum + p.importe, 0);
+      // 2. Construir el arreglo de pagos exactamente como lo hace Access (detalle_ventas_medios_pagos)
+      let pagosFinales: any[] = [];
+
+      if (isCredito) {
+        // Si es crédito, Access manda un solo pago Tipo 10 por el Total a Pagar
+        pagosFinales.push({
+          tipo_Pago: 10,
+          referencia: "Venta a crédito",
+          importe: totalVenta
+        });
+      } else {
+        // A. Agregar Tarjetas CLIP (Tipo 7)
+        pagosRegistro.forEach(p => {
+          pagosFinales.push({
+            tipo_Pago: 7, 
+            referencia: p.descripcion || "TC CLIP",
+            importe: p.importe
+          });
+        });
+
+        // B. Agregar Efectivo (Tipo 1) -> Importe exacto cobrado (Efectivo - Cambio)
+        const efectivoNeto = pagoEfectivo - cambio;
+        if (efectivoNeto > 0) {
+          pagosFinales.push({
+            tipo_Pago: 1,
+            referencia: "Pago en efectivo",
+            importe: efectivoNeto
+          });
+        }
+
+        // C. Agregar Pago con Puntos (Tipo 5)
+        if (puntosPago > 0) {
+          pagosFinales.push({
+            tipo_Pago: 5,
+            referencia: "Pago con puntos",
+            importe: puntosPago
+          });
+        }
         
-        // El último pago debe ser exactamente lo que falta para cubrir la venta
-        const importeUltimoPago = totalVenta - totalAnteriores;
-        
-        // Actualizar el último pago con el importe ajustado
-        pagosAjustados[ultimoPagoIndex] = {
-          ...pagosAjustados[ultimoPagoIndex],
-          importe: Math.max(0, importeUltimoPago)
-        };
+        // (Nota: Si tu backend necesita recibir la NC o Bonificación como "Forma de pago",
+        // se agregarían aquí con sus respectivos tipos).
       }
 
+      // 3. Empaquetar todo el payload expandido para el Stored Procedure Web
       const payload = {
         cia: 1,
         sucursal: sucursal,
@@ -731,13 +993,20 @@ const puedeFinalizar = totalPagado >= totalVenta && totalPagado > 0;
         cve_Cliente: clienteSeleccionado.No_cliente,
         estilista: estilistaSeleccionado,
         usuario: session?.id || '',
-        pagos: pagosAjustados.map(p => ({
-          tipo_Pago: p.tipo,
-          referencia: p.descripcion,
-          importe: p.importe
-        }))
+        
+        // Banderas y datos descubiertos en VBA:
+        isCredito: isCredito ? 1 : 0,
+        cuentaPuntos: cuentaPuntos || "",
+        cuentaRecompensa: cuentaRecompensa || "",
+        puntosGanados: puntosGanados,
+        folioDev: folioDev || "",
+        notaCredito: nc || 0,
+        bonificacion: bonificacion || 0,
+
+        pagos: pagosFinales
       };
 
+      // 4. Disparar a la API
       const res = await consumoApi.post(
         '/api/PuntoDeVenta/sp_bw_pos_finaliza_venta',
         payload
@@ -750,12 +1019,22 @@ const puedeFinalizar = totalPagado >= totalVenta && totalPagado > 0;
           text: `${res.data?.mensaje} - Folio: ${res.data?.folio}`,
           confirmButtonText: 'Aceptar'
         });
+        
+        // Limpieza de pantalla (Emula inicializa_pantalla() de Access)
         setModalCobroOpen(false);
         setDetallesVenta([]);
         setClienteSeleccionado(null);
         setEstilistaSeleccionado('');
         setAuxiliarSeleccionado('');
         setPagosRegistro([]);
+        setSumaManual(0);
+        setPagoEfectivo(0);
+        setPuntosPago(0);
+        setCuentaPuntos("");
+        setCuentaRecompensa("");
+        setNc(0);
+        setBonificacion(0);
+        setFolioDev("");
       } else {
         Swal.fire({
           icon: 'error',
@@ -1017,11 +1296,19 @@ const fetchDetalleVenta = async (cliente: string, estilista: string) => {
     const detalles: DetalleVenta[] = [];
     
     for (const producto of venta.productos) {
+      // Función para extraer solo HH:MM si viene como "HH:MM:SS" o desde un formato DateTime completo
+      const limpiarHora = (h: string) => {
+        if (!h) return '00:00';
+        const soloTiempo = h.includes('T') ? h.split('T')[1] : (h.includes(' ') ? h.split(' ')[1] : h);
+        return soloTiempo ? soloTiempo.substring(0, 5) : h.substring(0, 5);
+      };
+      const horaLimpia = limpiarHora(producto.hora);
+
       const productoDetalle: DetalleVenta = {
         id: `${producto.clave_prod}-${Date.now()}-${Math.random()}`,
         estilista: producto.id_estilista,
         d_estilista: producto.d_estilista,
-        hora: producto.hora,
+        hora: horaLimpia, // Usa la hora recortada HH:MM
         clave_prod: producto.clave_prod,
         d_producto: producto.d_producto,
         tiempo: producto.tiempo || '00:00',
@@ -1035,7 +1322,7 @@ const fetchDetalleVenta = async (cliente: string, estilista: string) => {
           id: `${insumo.clave_prod}-${Date.now()}-${Math.random()}`,
           estilista: producto.id_estilista,
           d_estilista: producto.d_estilista,
-          hora: producto.hora,
+          hora: horaLimpia, // Usa la hora recortada HH:MM
           clave_prod: insumo.clave_prod,
           d_producto: insumo.d_producto,
           tiempo: '00:00',
@@ -1114,359 +1401,387 @@ const {
     }));
   }, []);
 
-  return (
+return (
     <>
-
-<Box sx={{ p: { xs: 2, sm: 3 } }}>
-  {/* Sección de cliente */}
-  <Box sx={{ 
-    display: 'flex', 
-    flexDirection: { xs: 'column', sm: 'row' },
-    gap: { xs: 2, sm: 2 }, 
-    alignItems: { xs: 'stretch', sm: 'center' },
-    mb: { xs: 3, sm: 4 }
-  }}>
-    <TextField
-      size={isMobile ? "medium" : "small"}
-      label="Cliente"
-      value={clienteSeleccionado ? `${clienteSeleccionado.nombre} ${clienteSeleccionado.ap_paterno || ''} ${clienteSeleccionado.ap_materno || ''}`.trim() : ""}
-      fullWidth
-      sx={{ 
-        flex: 1,
-        '& .MuiInputBase-root': {
-          height: { xs: 56, sm: 40 }, // Altura consistente
-        }
-      }}
-    />
-    <Box sx={{ 
-      display: 'flex', 
-      gap: { xs: 1, sm: 2 },
-      flexDirection: { xs: 'row', sm: 'row' }
-    }}>
-      <Button
-        size={isMobile ? "medium" : "small"}
-        variant="contained"
-        onClick={() => {
-          setSearchText("");
-          setSearch("");
-          setPage(0);
-          setModalClienteOpen(true);
-        }}
-        sx={{ 
-          minWidth: { xs: 120, sm: 'auto' },
-          height: { xs: 56, sm: 'auto' }
-        }}
-      >
-        Seleccionar
-      </Button>
-      <Button 
-        size={isMobile ? "medium" : "small"} 
-        variant="outlined" 
-        onClick={() => setModalNuevoClienteOpen(true)}
-        sx={{ 
-          minWidth: { xs: 56, sm: 'auto' },
-          height: { xs: 56, sm: 'auto' }
-        }}
-      >
-        +
-      </Button>
-      <IconButton 
-        color="primary"
-        onClick={handleOpenHistorial}
-        disabled={!clienteSeleccionado}
-        sx={{ 
-          height: { xs: 56, sm: 40 },
-          width: { xs: 56, sm: 40 },
-          border: '1px solid',
-          borderColor: clienteSeleccionado ? 'primary.main' : 'grey.300',
-          borderRadius: 1,
-          opacity: clienteSeleccionado ? 1 : 0.5
-        }}
-      >
-        <History />
-      </IconButton>
-    </Box>
-  </Box>
-
-  <Divider sx={{ mb: { xs: 3, sm: 4 } }} />
-
-  {/* Sección de agregar venta */}
-  <Box sx={{ mb: { xs: 3, sm: 4 } }}>
-    <Box sx={{ 
-      display: 'grid', 
-      gridTemplateColumns: { 
-        xs: '1fr', 
-        sm: 'repeat(2, 1fr)', 
-        lg: 'repeat(3, 1fr)' 
-      }, 
-      gap: { xs: 2, sm: 2 } 
-    }}>
-      {/* Estilista */}
-      <Box>
-        <FormControl size={isMobile ? "medium" : "small"} fullWidth>
-          <InputLabel id="estilista-label">Estilista</InputLabel>
-          <Select
-            labelId="estilista-label"
-            label="Estilista"
-            value={estilistaSeleccionado}
-            onChange={(e) => setEstilistaSeleccionado(e.target.value)}
-            sx={{
-              '& .MuiInputBase-root': {
-                height: { xs: 56, sm: 40 },
-              }
-            }}
-          >
-            <MenuItem value="">
-              <em>Selecciona</em>
-            </MenuItem>
-            {estilistas.map((est) => (
-              <MenuItem key={est.clave_empleado} value={est.clave_empleado}>
-                {est.nombre}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      </Box>
-
-      {/* Producto */}
-      <Box sx={{ display: "flex", gap: { xs: 1, sm: 1 }, alignItems: "center" }}>
-        <TextField
-          size={isMobile ? "medium" : "small"}
-          type="text"
-          value={productoSeleccionado ? `${productoSeleccionado.descripcion}  ` : ""}
-          fullWidth
-          placeholder="Seleccionar producto"
-          sx={{
-            '& .MuiInputBase-root': {
-              height: { xs: 56, sm: 40 },
-            }
-          }}
-        />
-        <Button 
-          size={isMobile ? "medium" : "small"} 
-          variant="outlined" 
-          onClick={() => {
-            setPageProductos(0);
-            setSearchProductos("");
-            setEsInsumo(false);
-            setModalProductoOpen(true);
-          }}
-          sx={{ 
-            minWidth: { xs: 80, sm: 'auto' },
-            height: { xs: 56, sm: 'auto' },
-            whiteSpace: 'nowrap'
-          }}
-        >
-          prod
-        </Button>
-      </Box>
-
-      {/* Auxiliar */}
-      <Box sx={{ display: "flex", gap: { xs: 1, sm: 1 }, alignItems: "center" }}>
-        <FormControl size={isMobile ? "medium" : "small"} fullWidth>
-          <InputLabel id="auxiliar-label">Auxiliar</InputLabel>
-          <Select
-            labelId="auxiliar-label"
-            label="Auxiliar"
-            value={auxiliarSeleccionado}
-            onChange={(e) => setAuxiliarSeleccionado(e.target.value)}
-            sx={{
-              '& .MuiInputBase-root': {
-                height: { xs: 56, sm: 40 },
-              }
-            }}
-          >
-            <MenuItem value="">
-              <em>Selecciona</em>
-            </MenuItem>
-            {estilistaAuxiliar?.map((est) => (
-              <MenuItem key={est.clave_empleado} value={est.clave_empleado}>
-                {est.nombre}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        <Button 
-          size={isMobile ? "medium" : "small"} 
-          variant="outlined"
-          onClick={handleRegistrar}
-          sx={{ 
-            minWidth: { xs: 100, sm: 'auto' },
-            height: { xs: 56, sm: 'auto' },
-            whiteSpace: 'nowrap'
-          }}
-        >
-          registrar
-        </Button>
-      </Box>
-    </Box>
-  </Box>
-
-  {/* Tabla de detalles - responsive */}
-  <Box sx={{ 
-    overflowX: 'auto', // Para scroll horizontal en móviles
-    '& .MuiPaper-root': {
-      minWidth: { xs: 600, sm: 'auto' } // Ancho mínimo para la tabla
-    }
-  }}>
-<DetalleVentasTable 
-      data={detallesVenta} 
-      onSelect={handleCancelarRenglon}
-      onAgregarInsumos={handleAbrirAgregarInsumos}
-      onEditarRenglon={handleEditarRenglon} 
-    />
-
-<Box sx={{ 
-      display: "flex", 
-      justifyContent: "space-between", 
-      alignItems: "flex-end",
-      mt: { xs: 2, sm: 3 },
-      gap: { xs: 2, sm: 3 }
-    }}>
-      <Box sx={{ 
-        display: "flex", 
-        gap: { xs: 1, sm: 2 }, 
-        flexWrap: "wrap" 
-      }}>
-        <Button
-          variant="contained" 
-          sx={{ 
-            backgroundColor: 'grey.500',
-            color: 'black',
-            '&:hover': {
-              backgroundColor: 'grey.600',
-            }
-          }}
-          onClick={handleAbrirCobro}
-        >
-          Cobrar
-        </Button>
-        {/* <Button 
-          variant="contained" 
-          sx={{ 
-            backgroundColor: 'grey.500',
-            color: 'black',
-            '&:hover': {
-              backgroundColor: 'grey.600',
-            }
-          }}
+      <Box sx={{ p: 1, maxWidth: '1200px', margin: '0 auto' }}>
+        
+        {/* === CONTENEDOR SUPERIOR DEL FORMULARIO === */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 1 }}>
           
-        >
-          Cobrar varios Ctes Tc
-        </Button> */}
-        <Button 
-          variant="contained" 
-          sx={{ 
-            backgroundColor: 'grey.500',
-            color: 'black',
-            '&:hover': {
-              backgroundColor: 'grey.600',
-            }
-          }}
-          onClick={() => {
-            fetchVentasEnProceso();
-            setModalVentasEnProcesoOpen(true);
-          }}
-        >
-          En proceso
-        </Button>
-        <Button 
-          variant="contained" 
-          sx={{ 
-            backgroundColor: 'grey.500',
-            color: 'black',
-            '&:hover': {
-              backgroundColor: 'grey.600',
-            }
-          }}
-        >
-          Cambiar cliente
-        </Button>
-        {/* <Button 
-          variant="contained" 
-          sx={{ 
-            backgroundColor: 'grey.500',
-            color: 'black',
-            '&:hover': {
-              backgroundColor: 'grey.600',
-            }
-          }}
-        >
-          Salir
-        </Button> */}
-        {/* <Button 
-          variant="contained" 
-          color="warning"
-          onClick={cargarDatosDesdeArchivo}
-          sx={{ 
-            '&:hover': {
-              backgroundColor: 'orange.700',
-            }
-          }}
-        >
-          Cargar Archivo
-        </Button> */}
+          {/* Renglón 1: Cliente y Estilista */}
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, width: '100%', gap: 1 }}>
+            <Box sx={{ display: 'flex', flex: 2, gap: 0.5 }}>
+              <TextField
+                size="small"
+                label="Cliente"
+                value={clienteSeleccionado ? `${clienteSeleccionado.nombre} ${clienteSeleccionado.ap_paterno || ''} ${clienteSeleccionado.ap_materno || ''}`.trim() : ""}
+                fullWidth
+                InputProps={{ readOnly: true }}
+              />
+              <Button
+                size="small"
+                variant="contained"
+                sx={{ minWidth: '110px', backgroundColor: '#1a1a1a', color: 'white' }}
+                onClick={() => {
+                  setSearchText("");
+                  setSearch("");
+                  setPage(0);
+                  setModalClienteOpen(true);
+                }}
+              >
+                Seleccionar
+              </Button>
+              <Button 
+                size="small" 
+                variant="outlined" 
+                sx={{ minWidth: '40px' }}
+                onClick={() => setModalNuevoClienteOpen(true)}
+              >
+                +
+              </Button>
+              <IconButton 
+                size="small"
+                color="primary"
+                onClick={handleOpenHistorial}
+                disabled={!clienteSeleccionado}
+                sx={{ border: '1px solid', borderRadius: 1, p: '5px' }}
+              >
+                <History fontSize="small"/>
+              </IconButton>
+            </Box>
+
+            <FormControl size="small" sx={{ flex: 1, minWidth: '150px' }}>
+              <InputLabel>Estilista</InputLabel>
+              <Select
+                label="Estilista"
+                value={estilistaSeleccionado}
+                onChange={(e) => setEstilistaSeleccionado(e.target.value)}
+              >
+                {estilistas.map((est) => (
+                  <MenuItem key={est.clave_empleado} value={est.clave_empleado}>
+                    {est.nombre}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+
+          {/* Renglón 2: Producto, Auxiliar y Registrar */}
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, width: '100%', gap: 1 }}>
+            <Box sx={{ display: "flex", flex: 2, gap: 0.5 }}>
+              <TextField
+                size="small"
+                value={productoSeleccionado ? productoSeleccionado.descripcion : ""}
+                fullWidth
+                placeholder="Seleccionar producto"
+                InputProps={{ readOnly: true }}
+              />
+              <Button 
+                size="small" 
+                variant="outlined" 
+                sx={{ minWidth: '60px' }}
+                onClick={() => {
+                  setPageProductos(0);
+                  setSearchProductos("");
+                  setEsInsumo(false);
+                  setModalProductoOpen(true);
+                }}
+              >
+                Prod
+              </Button>
+            </Box>
+
+            <Box sx={{ display: "flex", flex: 1, gap: 0.5 }}>
+              <FormControl size="small" fullWidth>
+                <InputLabel>Auxiliar</InputLabel>
+                <Select
+                  label="Auxiliar"
+                  value={auxiliarSeleccionado}
+                  onChange={(e) => setAuxiliarSeleccionado(e.target.value)}
+                >
+                  <MenuItem value=""><em>Ninguno</em></MenuItem>
+                  {estilistaAuxiliar?.map((est) => (
+                    <MenuItem key={est.clave_empleado} value={est.clave_empleado}>
+                      {est.nombre}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <Button 
+                size="small" 
+                variant="contained"
+                color="primary"
+                sx={{ minWidth: '100px' }}
+                onClick={handleRegistrar}
+              >
+                Registrar
+              </Button>
+            </Box>
+          </Box>
+
+          {/* Renglón 3: Barra de Acciones Intermedia */}
+          <Box sx={{ display: "flex", gap: 1, mt: 0.5, mb: 0.5 }}>
+            <Button
+              size="small"
+              variant="contained" 
+              sx={{ backgroundColor: '#9e9e9e', color: 'black', fontWeight: 'bold', '&:hover': { backgroundColor: '#757575' } }}
+              onClick={handleAbrirCobro}
+            >
+              Cobrar
+            </Button>
+            <Button 
+              size="small"
+              variant="contained" 
+              sx={{ backgroundColor: '#9e9e9e', color: 'black', fontWeight: 'bold', '&:hover': { backgroundColor: '#757575' } }}
+              onClick={() => {
+                fetchVentasEnProceso();
+                setModalVentasEnProcesoOpen(true);
+              }}
+            >
+              En Proceso
+            </Button>
+            <Button 
+              size="small"
+              variant="contained" 
+              sx={{ backgroundColor: '#9e9e9e', color: 'black', fontWeight: 'bold', '&:hover': { backgroundColor: '#757575' } }}
+            >
+              Cambiar Cliente
+            </Button>
+          </Box>
+
+        </Box>
+
+        {/* Separador entre el formulario y la tabla */}
+        <Divider sx={{ mb: 1 }} />
+
+        {/* === TABLA DE VENTAS === */}
+        <Box sx={{ 
+          height: 'calc(100vh - 265px)',
+          mb: 1,
+          border: '1px solid #e0e0e0',
+          borderRadius: 1,
+          backgroundColor: '#fcfcfc',     
+          
+          '& > *': { height: '100% !important' },
+          '& .MuiTableContainer-root': { height: '100% !important', overflowX: 'hidden !important' },
+          '& .MuiPaper-root': { height: '100% !important', boxShadow: 'none' },
+          
+          '& .MuiTableCell-root': {
+            padding: '2px 4px !important',
+            fontSize: '0.8rem !important',
+          },
+          
+          '& .MuiTableCell-root:nth-of-type(1)': {
+            width: '24px !important',
+            maxWidth: '24px !important',
+            padding: '0 !important',
+            textAlign: 'center'
+          },
+
+          '& .MuiTableCell-root:nth-of-type(2)': {
+            maxWidth: '120px !important',
+            overflow: 'hidden !important',
+            textOverflow: 'ellipsis !important',
+            whiteSpace: 'nowrap !important'
+          },
+
+          '& .MuiTableCell-root:nth-of-type(11)': {
+            maxWidth: '100px !important',
+            overflow: 'hidden !important',
+            textOverflow: 'ellipsis !important',
+            whiteSpace: 'nowrap !important'
+          },
+          
+          '& .MuiButton-root': {
+            minWidth: 'auto !important',
+            padding: '1px 5px !important',
+            fontSize: '0.72rem !important',
+            whiteSpace: 'nowrap !important',
+            textTransform: 'none !important'
+          }
+        }}>
+          <DetalleVentasTable 
+            data={detallesVenta} 
+            estilistasLista={estilistas}          // 🔥 Le pasamos el array de estilistas que ya descargaste
+            auxiliaresLista={estilistaAuxiliar}   // 🔥 Le pasamos el array de auxiliares que ya descargaste
+            onSelect={handleCancelarRenglon}
+            onAgregarInsumos={handleAbrirAgregarInsumos}
+            onEditarRenglon={handleEditarRenglon} 
+            onBuscarProducto={() => {
+              // 🔥 Dispara la apertura del buscador al hacer doble clic
+              setPageProductos(0);
+              setSearchProductos("");
+              setEsInsumo(false);
+              setModalProductoOpen(true);
+            }}
+          />
+        </Box>
+
+        {/* === BARRA INFERIOR (Solo Total) === */}
+        <Box sx={{ display: "flex", justifyContent: "flex-end", alignItems: "center", mt: 1 }}>
+          <Typography variant="h5" sx={{ fontWeight: "900" }}>
+            TOTAL: ${totalVenta.toFixed(2)}  
+          </Typography>
+        </Box>
+
       </Box>
-      
-<Typography variant="h6" sx={{ fontWeight: "bold" }}>
-  TOTAL: ${totalVenta.toFixed(2)}  
-</Typography>
-    </Box>
 
-    
-  </Box>
-</Box>
 
-{/* modals */}
-<Dialog 
-  maxWidth={isMobile ? "sm" : "lg"} 
-  fullWidth
-  open={modalClienteOpen} 
-  onClose={() => setModalClienteOpen(false)}
-  PaperProps={{
-    sx: {
-      m: { xs: 1, sm: 2 },
-      maxHeight: { xs: '90vh', sm: '85vh' }
-    }
-  }}
->
-  <DialogTitle>Seleccionar Cliente</DialogTitle>
-  <DialogContent sx={{ p: { xs: 2, sm: 3 } }}>
-    <TextField
-      size={isMobile ? "medium" : "small"}
-      label="Buscar cliente"
-      fullWidth
-      sx={{ 
-        mb: { xs: 2, sm: 2 },
-        '& .MuiInputBase-root': {
-          height: { xs: 56, sm: 40 },
-        }
-      }}
-      value={searchText}
-      onChange={(e) => {
-        const value = e.target.value;
-        setSearchText(value);
-        setPage(0);
-        setSearch(value);
-      }}
-    />
-    <Box sx={{ mb: { xs: 2, sm: 2 } }}>
-      <ClientesTable
-        data={clients}
-        onSelect={(cliente) => {
-          setClienteSeleccionado(cliente);
-          setModalClienteOpen(false);
-        }}
-      />
-    </Box>
-    <PaginationControls
-      page={page}
-      total={total}
-      pageSize={pageSize}
-      onChange={setPage}
-    />
-  </DialogContent>
-</Dialog>
+{/* === 1. MODAL BUSCADOR DE CLIENTES === */}
+      <Dialog 
+        maxWidth="lg" 
+        fullWidth
+        open={modalClienteOpen} 
+        onClose={() => setModalClienteOpen(false)}
+        PaperProps={{ sx: { m: { xs: 1, sm: 2 }, height: '90vh', display: 'flex', flexDirection: 'column' } }}
+      >
+        <DialogTitle sx={{ borderBottom: '2px solid black', mx: 3, mt: 2, p: 0, pb: 1 }}>
+          <Typography variant="h5" fontWeight="900" fontStyle="italic">Buscador de Clientes</Typography>
+        </DialogTitle>
+        
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, p: { xs: 2, sm: 3 }, overflow: 'hidden' }}>
+          
+          {/* 🔥 1. BARRA DE BÚSQUEDA Y PAGINACIÓN EN LA MISMA LÍNEA */}
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 0.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Typography fontWeight="bold">Buscar:</Typography>
+              <TextField 
+                size="small" 
+                variant="standard" 
+                sx={{ width: 300 }} 
+                value={searchText} 
+                onChange={(e) => { 
+                  setSearchText(e.target.value); 
+                  setPage(0); 
+                  setSearch(e.target.value); 
+                  setClientePreview(null); 
+                  setHistorialData([]); 
+                }} 
+              />
+              <Button variant="contained" size="small" onClick={() => setSearch(searchText)}>Buscar</Button>
+            </Box>
+            
+            {/* Paginación de clientes compactada a la derecha */}
+            <Box sx={{ transform: 'scale(0.9)', transformOrigin: 'right center' }}>
+              <PaginationControls page={page} total={total} pageSize={pageSize} onChange={setPage} />
+            </Box>
+          </Box>
+
+          {/* TABLA SUPERIOR */}
+          <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            <ClientesTable 
+              data={clients} 
+              onSelect={async (cliente) => { 
+                setClientePreview(cliente); 
+                setHistorialPage(1); 
+                setHistorialLoading(true); 
+                const data = await fetchHistorial(cliente.No_cliente, 1); 
+                setHistorialData(data || []); 
+                setHistorialLoading(false); 
+              }} 
+            />
+          </Box>
+
+          <Divider sx={{ borderBottomWidth: 3 }} />
+
+          {/* TABLA INFERIOR */}
+          <Box sx={{ flex: 1.2, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            
+            {/* 🔥 2. TÍTULO HISTORIAL Y PAGINACIÓN EN LA MISMA LÍNEA */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', mb: 0.5 }}>
+              <Typography variant="subtitle2" fontWeight="bold">
+                Historial de Visitas {clientePreview ? `- ${clientePreview.nombre || ''}` : ''}
+              </Typography>
+              
+              {/* Botones del historial compactados a la derecha */}
+              {clientePreview && historialData.length > 0 && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Button 
+                    size="small" 
+                    variant="outlined" 
+                    sx={{ py: 0, px: 1, minWidth: 'auto', fontSize: '0.75rem', textTransform: 'none' }}
+                    onClick={async () => {
+                      const newPage = historialPage - 1;
+                      setHistorialLoading(true);
+                      const data = await fetchHistorial(clientePreview.No_cliente, newPage);
+                      setHistorialData(data || []);
+                      setHistorialPage(newPage);
+                      setHistorialLoading(false);
+                    }} 
+                    disabled={historialPage === 1 || historialLoading}
+                  >
+                    Anterior
+                  </Button>
+                  <Typography variant="caption" fontWeight="bold">Pág. {historialPage}</Typography>
+                  <Button 
+                    size="small" 
+                    variant="outlined" 
+                    sx={{ py: 0, px: 1, minWidth: 'auto', fontSize: '0.75rem', textTransform: 'none' }}
+                    onClick={async () => {
+                      const newPage = historialPage + 1;
+                      setHistorialLoading(true);
+                      const data = await fetchHistorial(clientePreview.No_cliente, newPage);
+                      if (data && data.length > 0) {
+                        setHistorialData(data);
+                        setHistorialPage(newPage);
+                      } else {
+                        setHasMoreHistorial(false);
+                      }
+                      setHistorialLoading(false);
+                    }} 
+                    disabled={!hasMoreHistorial || historialLoading}
+                  >
+                    Siguiente
+                  </Button>
+                </Box>
+              )}
+            </Box>
+
+            <TableContainer component={Paper} variant="outlined" sx={{ flex: 1, overflow: 'auto' }}>
+              <Table stickyHeader size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5 }}>Sucursal</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5 }}>Fecha</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5 }}>Producto/Servicio</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5 }}>Cant.</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5 }}>Precio</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5 }}>Estilista</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5 }}>Forma Pago</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {historialLoading ? (
+                    <TableRow><TableCell colSpan={7} align="center" sx={{ py: 3 }}><CircularProgress size={24} /></TableCell></TableRow>
+                  ) : !clientePreview ? (
+                    <TableRow><TableCell colSpan={7} align="center" sx={{ py: 3, color: 'text.secondary' }}>Selecciona un cliente arriba para cargar historial</TableCell></TableRow>
+                  ) : historialData.length === 0 ? (
+                    <TableRow><TableCell colSpan={7} align="center" sx={{ py: 3, color: 'text.secondary' }}>Este cliente no tiene historial de visitas</TableCell></TableRow>
+                  ) : (
+                    historialData.map((item, index) => (
+                      <TableRow key={index} hover>
+                        <TableCell sx={{ py: 0.25 }}>{item.cve_sucursal}</TableCell>
+                        <TableCell sx={{ py: 0.25 }}>{item.fecha ? new Date(item.fecha).toLocaleDateString() : '-'}</TableCell>
+                        <TableCell sx={{ py: 0.25 }}>{item.prod_serv}</TableCell>
+                        <TableCell sx={{ py: 0.25 }}>{item.cant_producto}</TableCell>
+                        <TableCell sx={{ py: 0.25 }}>${item.Precio?.toFixed(2) || '0.00'}</TableCell>
+                        <TableCell sx={{ py: 0.25 }}>{item.estilista}</TableCell>
+                        <TableCell sx={{ py: 0.25 }}>{item.forma_pago}</TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
+        </DialogContent>
+        
+        {/* BOTONES INFERIORES */}
+        <Box sx={{ p: 1.5, display: 'flex', justifyContent: 'center', gap: 4, borderTop: '1px solid #e0e0e0', backgroundColor: '#fafafa' }}>
+          <Button variant="contained" color="inherit" disabled={!clientePreview} onClick={() => { if (clientePreview) { setClienteSeleccionado({ No_cliente: clientePreview.No_cliente || '', nombre: clientePreview.nombre || 'PÚBLICO EN GENERAL', ap_paterno: clientePreview.ap_paterno || '', ap_materno: clientePreview.ap_materno || '' }); setModalClienteOpen(false); } }} sx={{ minWidth: 150, fontWeight: 'bold', color: 'black', backgroundColor: '#e0e0e0' }}>Aceptar</Button>
+          <Button variant="contained" color="inherit" onClick={() => setModalClienteOpen(false)} sx={{ minWidth: 150, fontWeight: 'bold', color: 'black', backgroundColor: '#e0e0e0' }}>Cerrar</Button>
+        </Box>
+      </Dialog>
 
 {/* Dialog para crear nuevo cliente */}
 <Dialog
@@ -1528,35 +1843,45 @@ const {
       </Typography>
     ) : (
       <>
-        <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
+ <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
           <Table stickyHeader size="small">
             <TableHead>
               <TableRow>
-                <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Fecha</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>No. Venta</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Producto</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Cant.</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Precio</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Estilista</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Forma Pago</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Insumos</TableCell>
+                {/* Reducimos el padding vertical (py) en los encabezados */}
+                <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5 }}>Fecha</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5 }}>No. Venta</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5 }}>Producto</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5, textAlign: 'center' }}>Cant.</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5 }}>Precio</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5 }}>Estilista</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5 }}>Forma Pago</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5, textAlign: 'center' }}>Insumos</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {historialData.map((item, index) => (
-                <TableRow key={`${item.no_venta}-${item.clave_prod}-${index}`}>
-                  <TableCell>{new Date(item.fecha).toLocaleDateString()}</TableCell>
-                  <TableCell>{item.no_venta}</TableCell>
-                  <TableCell>{item.prod_serv}</TableCell>
-                  <TableCell>{item.cant_producto}</TableCell>
-                  <TableCell>${item.Precio?.toFixed(2) || '0.00'}</TableCell>
-                  <TableCell>{item.estilista}</TableCell>
-                  <TableCell>{item.forma_pago}</TableCell>
-                  <TableCell>
+                <TableRow key={`${item.no_venta}-${item.clave_prod}-${index}`} hover>
+                  {/* Forzamos un padding vertical mínimo (py: 0.25) en cada celda para aplastar las filas */}
+                  <TableCell sx={{ py: 0.25 }}>{new Date(item.fecha).toLocaleDateString()}</TableCell>
+                  <TableCell sx={{ py: 0.25 }}>{item.no_venta}</TableCell>
+                  <TableCell sx={{ py: 0.25 }}>{item.prod_serv}</TableCell>
+                  <TableCell sx={{ py: 0.25, textAlign: 'center' }}>{item.cant_producto}</TableCell>
+                  <TableCell sx={{ py: 0.25 }}>${item.Precio?.toFixed(2) || '0.00'}</TableCell>
+                  <TableCell sx={{ py: 0.25 }}>{item.estilista}</TableCell>
+                  <TableCell sx={{ py: 0.25 }}>{item.forma_pago}</TableCell>
+                  <TableCell sx={{ py: 0.25, textAlign: 'center' }}>
                     <Button 
                       size="small" 
                       variant="outlined"
                       onClick={() => handleOpenInsumos(item)}
+                      sx={{ 
+                        py: 0,             // Elimina el espacio arriba y abajo adentro del botón
+                        px: 1,             // Espacio horizontal cómodo
+                        minHeight: 0,      // Permite que el botón sea más bajo de lo normal
+                        fontSize: '0.75rem', // Letra ligeramente más pequeña tipo sistema de escritorio
+                        whiteSpace: 'nowrap', // 🚫 EVITA QUE EL TEXTO SE ROMPA EN DOS LÍNEAS
+                        textTransform: 'none' // Evita las mayúsculas toscas de Material UI
+                      }}
                     >
                       Ver Insumos
                     </Button>
@@ -1603,10 +1928,44 @@ const {
     }
   }}
 >
-  <DialogTitle>
-    Insumos de Venta #{selectedVenta?.venta}
+  <DialogTitle sx={{ fontWeight: '900', fontSize: '1.8rem', pb: 1 }}>
+    Detalle de Insumos de la Visita
   </DialogTitle>
   <DialogContent>
+    {/* 🔥 Encabezado tipo Access */}
+    {selectedVenta && (
+      <Box sx={{ mb: 3 }}> {/* <--- ESTA ES LA CAJA QUE FALTABA Y CAUSABA EL ERROR */}
+        {/* Renglón 1: Cliente y Servicio */}
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', mb: 1, px: 2 }}>
+          <Typography variant="body1">
+            <strong>Cliente:</strong> {selectedVenta.clienteNombre}
+          </Typography>
+          <Typography variant="body1">
+            <strong>Servicio:</strong> {selectedVenta.servDesc}
+          </Typography>
+        </Box>
+        
+        {/* Línea gruesa negra */}
+        <Divider sx={{ borderBottomWidth: 4, borderColor: 'black', mb: 1 }} />
+        
+        {/* Renglón 2: Fecha, Sucursal, Atendió */}
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', mb: 1, px: 2 }}>
+          <Typography variant="body2">
+            <strong>Fecha:</strong> {selectedVenta.fecha ? new Date(selectedVenta.fecha).toLocaleDateString() : ''}
+          </Typography>
+          <Typography variant="body2">
+            <strong>Sucursal:</strong> {selectedVenta.suc}
+          </Typography>
+          <Typography variant="body2">
+            <strong>Atendió:</strong> {selectedVenta.estilista}
+          </Typography>
+        </Box>
+        
+        {/* Línea delgada */}
+        <Divider sx={{ mb: 2 }} />
+      </Box>
+    )}
+
     {historialInsumosLoading ? (
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 4, gap: 2 }}>
         <CircularProgress size={24} />
@@ -2039,164 +2398,287 @@ const {
   </DialogContent>
 </Dialog>
 
-{/* Modal de Cobro */}
+{/* === 9. DIALOG MODAL DE COBRO (ESTILO ACCESS DE UNA SOLA VISTA SIN SCROLL) === */}
 <Dialog 
-  maxWidth="sm" 
-  fullWidth
+  maxWidth="md"  // 🌟 Cambiado de "sm" a "md" para dar total libertad horizontal
+  fullWidth 
   open={modalCobroOpen} 
   onClose={() => setModalCobroOpen(false)}
-  PaperProps={{
-    sx: {
-      m: { xs: 1, sm: 2 },
-      maxHeight: { xs: '90vh', sm: '85vh' }
-    }
-  }}
+  PaperProps={{ sx: { m: { xs: 1, sm: 2 }, backgroundColor: '#9bc2e6', borderRadius: 0, boxShadow: '0px 4px 20px rgba(0,0,0,0.3)', p: 2, width: '820px' } }}
 >
-  <DialogTitle>
-    Cobrar Venta - Total: ${totalVenta.toFixed(2)}
-  </DialogTitle>
-  <DialogContent sx={{ p: { xs: 2, sm: 3 } }}>
-    {loadingFormasPago ? (
-      <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-        <CircularProgress />
+  <DialogContent sx={{ p: 0, overflow: 'hidden' }}> {/* 🌟 Bloqueamos el scroll para forzar una sola vista */}
+    
+    {/* Encabezado Principal */}
+    <Typography variant="h4" align="center" sx={{ fontWeight: '900', color: 'black', fontFamily: 'sans-serif', mb: 1, fontSize: '1.8rem' }}>
+      Total a pagar: ${totalVenta.toFixed(2)}
+    </Typography>
+
+    {/* Barra de Crédito */}
+    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 2, mb: 1 }}>
+      <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'black' }}>Formas de pago</Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', backgroundColor: '#e2f0d9', border: '1px solid black', px: 1, height: 26 }}>
+        <Typography variant="caption" sx={{ mr: 1, color: 'black', fontWeight: 'bold' }}>Venta a Crédito</Typography>
+        <input 
+          type="checkbox" 
+          checked={isCredito} 
+          onChange={(e) => { 
+            setIsCredito(e.target.checked); 
+            if (e.target.checked) { 
+              setPagosRegistro([]); 
+              setImportePago(""); 
+              setPuntosPago(0); 
+              setPagoEfectivo(0); 
+              setTmpPagoEfectivo(0);
+              setSumaManual(0); 
+              setCuentaPuntos(""); 
+            } 
+          }} 
+          style={{ cursor: 'pointer' }} 
+        />
       </Box>
-    ) : (
-      <>
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold' }}>
-            Agregar Pago
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-            <FormControl sx={{ flex: 1, minWidth: 150 }}>
-              <InputLabel>Forma de Pago</InputLabel>
-              <Select
-                value={formaPagoSeleccionada}
-                label="Forma de Pago"
-                onChange={(e) => setFormaPagoSeleccionada(e.target.value as number)}
-              >
-                {formasPago.map((fp) => (
-                  <MenuItem key={fp.tipo} value={fp.tipo}>
-                    {fp.descripcion}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <TextField
-              label="Importe"
-              type="number"
-              value={importePago}
-              onChange={(e) => setImportePago(e.target.value)}
-              sx={{ width: 120 }}
-              inputProps={{ min: 0, step: 0.01 }}
-            />
-            <Button 
-              variant="contained" 
-              onClick={handleAgregarPago}
-              disabled={!formaPagoSeleccionada || !importePago}
-            >
-              Agregar
-            </Button>
+    </Box>
+
+    {/* Cuerpo del Cobro: Lado Izquierdo (Tablas) y Lado Derecho (Totales) */}
+    <Box sx={{ display: 'flex', flexDirection: 'row', gap: 2, mb: 1, alignItems: 'stretch' }}>
+      
+      {/* SECCIÓN IZQUIERDA: Tarjetas y Monedero */}
+      <Box sx={{ flex: 1.3, display: 'flex', flexDirection: 'column' }}>
+        
+        {/* Tabla compacta de registro Clip */}
+        <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 0, border: '1px solid black', mb: 1, backgroundColor: isCredito ? '#e0e0e0' : 'white', opacity: isCredito ? 0.7 : 1, maxHeight: '140px', overflowY: 'auto' }}>
+          <Table size="small" stickyHeader>
+            <TableHead>
+              <TableRow sx={{ '& th': { backgroundColor: '#f2f2f2', fontWeight: 'bold', color: 'black', padding: '3px 6px', fontSize: '0.75rem', borderRight: '1px solid #ccc' } }}>
+                <TableCell>Forma Pago</TableCell>
+                <TableCell>Autorización</TableCell>
+                <TableCell align="right">Importe</TableCell>
+                <TableCell align="center" sx={{ width: 30 }}></TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              <TableRow sx={{ '& td': { padding: '2px 4px', borderRight: '1px solid #ccc' } }}>
+                <TableCell sx={{ borderRight: '1px solid #ccc', p: '2px 4px' }}>
+  <Select 
+    variant="standard" 
+    size="small" 
+    fullWidth 
+    disableUnderline 
+    disabled={isCredito} 
+    value={formaPagoSeleccionada} // 🌟 Cambiado de 7 al estado dinámico para que inicie vacío
+    onChange={(e) => setFormaPagoSeleccionada(e.target.value as number | "")} // 🌟 Guarda la selección del usuario
+    sx={{ fontSize: '0.8rem', color: 'black', fontWeight: 'bold' }}
+  >
+    {/* 🌟 Opción en blanco por defecto que emula el inicio vacío de Access */}
+    <MenuItem value=""><em></em></MenuItem> 
+    <MenuItem value={7}>TC CLIP</MenuItem>
+  </Select>
+</TableCell>
+                <TableCell>
+                  <TextField variant="standard" size="small" fullWidth disabled={isCredito} placeholder="Escribir..." value={autorizacionInput} onChange={(e) => setAutorizacionInput(e.target.value)} InputProps={{ disableUnderline: true, style: { fontSize: '0.8rem', color: 'black' } }} />
+                </TableCell>
+                <TableCell>
+                  <TextField variant="standard" size="small" type="number" fullWidth disabled={isCredito} placeholder="0.00" value={importePago} onChange={(e) => setImportePago(e.target.value)} InputProps={{ disableUnderline: true, style: { fontSize: '0.8rem', textAlign: 'right', color: 'black' } }} />
+                </TableCell>
+                <TableCell align="center" sx={{ p: 0 }}>
+                  <Button size="small" disabled={isCredito} onClick={handleAgregarPago} sx={{ minWidth: 'auto', p: '2px 6px', fontWeight: 'bold', color: 'black', fontSize: '0.8rem' }}>+</Button>
+                </TableCell>
+              </TableRow>
+              {pagosRegistro.map((pago, index) => (
+                <TableRow key={index} sx={{ backgroundColor: '#fff9e6', '& td': { padding: '2px 6px', fontSize: '0.8rem', color: 'black' } }}>
+                  <TableCell sx={{ borderRight: '1px solid #ccc' }}>{pago.descripcion}</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 'bold', borderRight: '1px solid #ccc' }} colSpan={2}>${pago.importe.toFixed(2)}</TableCell>
+                  <TableCell align="center" sx={{ p: 0 }}><Button size="small" color="error" onClick={() => handleEliminarPago(index)} sx={{ minWidth: 'auto', p: 0, fontSize: '0.75rem' }}>✕</Button></TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        {/* Módulo de Monedero de alta densidad */}
+        <Box sx={{ p: 1, border: '1px dashed black', backgroundColor: '#f2f2f2', display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+          <Typography variant="caption" sx={{ fontWeight: '900', color: 'black', fontSize: '0.65rem', tracking: 1 }}>SISTEMA MONEDERO BERLLANO</Typography>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <TextField size="small" label="Cuenta Puntos (Pago)" variant="outlined" disabled={isCredito} value={cuentaPuntos} onChange={(e) => setCuentaPuntos(e.target.value)} onKeyDown={handleKeyDownCuentaPuntos} placeholder="Enter para validar" sx={{ backgroundColor: 'white', flex: 1, '& .MuiInputBase-input': { py: '4px', fontSize: '0.8rem' }, '& .MuiInputLabel-root': { transform: 'translate(14px, 6px) scale(1)', fontSize: '0.8rem' }, '& .MuiInputLabel-shrink': { transform: 'translate(14px, -6px) scale(0.75)' } }} />
+            <Typography variant="caption" sx={{ color: 'black', fontWeight: 'bold', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>Puntos Canjeados:</Typography>
           </Box>
+          <TextField size="small" label="Cuenta Recompensa (Abono)" variant="outlined" disabled={isCredito} value={cuentaRecompensa} onChange={(e) => setCuentaRecompensa(e.target.value)} sx={{ backgroundColor: 'white', '& .MuiInputBase-input': { py: '4px', fontSize: '0.8rem' }, '& .MuiInputLabel-root': { transform: 'translate(14px, 6px) scale(1)', fontSize: '0.8rem' }, '& .MuiInputLabel-shrink': { transform: 'translate(14px, -6px) scale(0.75)' } }} />
+        </Box>
+      </Box>
+
+      {/* SECCIÓN DERECHA: Entradas de Dinero e Indicadores de Arqueo */}
+      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0.5, maxWidth: '280px', marginLeft: 'auto', justifyContent: 'center' }}>
+        
+        {/* Suma Tarjetas */}
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+          <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'black', mr: 1.5, minWidth: 90, textAlign: 'right', fontSize: '0.8rem' }}>Suma:</Typography>
+          <input 
+            type="number" 
+            disabled={isCredito}
+            value={sumaManual || ""} 
+            onChange={(e) => setSumaManual(parseFloat(e.target.value) || 0)}
+            style={{ width: '110px', backgroundColor: '#d9e1f2', border: '1px solid black', padding: '2px 4px', fontWeight: 'bold', textAlign: 'right', color: 'black', fontSize: '0.85rem' }} 
+          />
         </Box>
 
-        <Divider sx={{ my: 2 }} />
-
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold' }}>
-            Pagos Registrados
-          </Typography>
-          {pagosRegistro.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">
-              No hay pagos registrados
-            </Typography>
-          ) : (
-            <TableContainer component={Paper} variant="outlined">
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Forma de Pago</TableCell>
-                    <TableCell align="right">Importe</TableCell>
-                    <TableCell align="center">Acciones</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {pagosRegistro.map((pago, index) => (
-                    <TableRow key={index}>
-                      <TableCell>{pago.descripcion}</TableCell>
-                      <TableCell align="right">${pago.importe.toFixed(2)}</TableCell>
-                      <TableCell align="center">
-                        <Button 
-                          color="error" 
-                          size="small"
-                          onClick={() => handleEliminarPago(index)}
-                        >
-                          X
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
+        {/* Pago Efectivo */}
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+          <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'black', mr: 1.5, minWidth: 90, textAlign: 'right', fontSize: '0.8rem' }}>Pago efectivo:</Typography>
+          <input 
+            type="number" 
+            disabled={isCredito}
+            value={tmpPagoEfectivo === 0 ? "" : tmpPagoEfectivo} 
+            onChange={(e) => setTmpPagoEfectivo(e.target.value)}
+            onKeyDown={handleKeyDownEfectivo}
+            placeholder="0"
+            style={{ width: '110px', backgroundColor: '#d9e1f2', border: '1px solid black', padding: '2px 4px', fontWeight: 'bold', textAlign: 'right', color: 'black', fontSize: '0.85rem' }} 
+          />
         </Box>
 
-        <Divider sx={{ my: 2 }} />
-
-        <Box sx={{ mb: 3, p: 2, backgroundColor: 'grey.100', borderRadius: 1 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-            <Typography variant="body1">Total Venta:</Typography>
-            <Typography variant="body1" fontWeight="bold">${totalVenta.toFixed(2)}</Typography>
-          </Box>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-            <Typography variant="body1">Total Pagado:</Typography>
-            <Typography variant="body1" fontWeight="bold" color={totalPagado >= totalVenta ? 'success.main' : 'text.primary'}>
-              ${totalPagado.toFixed(2)}
-            </Typography>
-          </Box>
-          {cambio > 0 && (
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-              <Typography variant="body1">Cambio:</Typography>
-              <Typography variant="body1" fontWeight="bold" color="error.main">
-                ${cambio.toFixed(2)}
-              </Typography>
-            </Box>
-          )}
-          {totalPagado < totalVenta && (
-            <Typography variant="body2" color="error" sx={{ mt: 1 }}>
-              Faltan ${(totalVenta - totalPagado).toFixed(2)} para cubrir la venta
-            </Typography>
-          )}
-          {totalPagado > totalVenta && cambio === 0 && (
-            <Typography variant="body2" color="warning.main" sx={{ mt: 1 }}>
-              Precaución: El total pagado excede el total de la venta sin efectivo
-            </Typography>
-          )}
+        {/* Canje de Puntos Monedero */}
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5 }}>
+          <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'black', mr: 1, minWidth: 90, textAlign: 'right', fontSize: '0.8rem' }}>Puntos:</Typography>
+          <Box sx={{ width: 45, backgroundColor: '#d9e1f2', border: '1px solid black', py: '2px', textAlign: 'center', color: 'black', fontSize: '0.75rem', fontWeight: 'bold' }}>{saldoPuntosCte.toFixed(0)}</Box>
+          <input 
+            type="number" 
+            disabled={isCredito || !cuentaPuntos}
+            value={tmpPuntosPago === 0 ? "" : tmpPuntosPago} 
+            onChange={(e) => setTmpPuntosPago(e.target.value)}
+            onKeyDown={handleKeyDownPuntos}
+            placeholder="0"
+            style={{ width: '110px', backgroundColor: '#d9e1f2', border: '1px solid black', padding: '2px 4px', fontWeight: 'bold', textAlign: 'right', color: 'black', fontSize: '0.85rem' }} 
+          />
         </Box>
 
-        <Box sx={{ mt: 2, display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
-          <Button 
-            variant="outlined" 
-            onClick={() => setModalCobroOpen(false)}
-          >
-            Cancelar
-          </Button>
-          <Button 
-            variant="contained" 
-            color="primary"
-            onClick={handleFinalizarVenta}
-            disabled={!puedeFinalizar || finalizandoVenta}
-          >
-            {finalizandoVenta ? 'Finalizando...' : 'Finalizar Venta'}
-          </Button>
+        <Box sx={{ width: '100%', height: '1.5px', backgroundColor: 'black', my: 0.25 }} />
+
+        {/* Total Recibido Calculado */}
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+          <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'black', mr: 1.5, minWidth: 90, textAlign: 'right', fontSize: '0.8rem' }}>Total recibido:</Typography>
+          <Box sx={{ width: 110, backgroundColor: '#d9e1f2', border: '1px solid black', px: 1, py: '2px', fontWeight: '900', textAlign: 'right', color: 'black', fontSize: '0.85rem' }}>${totalPagado.toFixed(2)}</Box>
         </Box>
-      </>
-    )}
+
+        {/* Su Cambio Entregado */}
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+          <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'black', mr: 1.5, minWidth: 90, textAlign: 'right', fontSize: '0.8rem' }}>Su cambio:</Typography>
+          <Box sx={{ width: 110, backgroundColor: '#d9e1f2', border: '1px solid black', px: 1, py: '2px', fontWeight: '900', textAlign: 'right', color: cambio > 0 ? 'red' : 'black', fontSize: '0.85rem' }}>${cambio.toFixed(2)}</Box>
+        </Box>
+
+        {/* Recompensa Calculada Neto */}
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+          <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'black', mr: 1.5, minWidth: 90, textAlign: 'right', fontSize: '0.8rem' }}>Recompensa:</Typography>
+          <Box sx={{ width: 110, backgroundColor: '#d9e1f2', border: '1px solid black', px: 1, py: '2px', textAlign: 'right', color: 'green', fontWeight: '900', fontSize: '0.85rem' }}>{puntosGanados.toFixed(2)}</Box>
+        </Box>
+      </Box>
+    </Box>
+
+    {/* Botones de Control Inferiores */}
+    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3, mt: 1.5 }}>
+      <Button variant="contained" disabled={isCredito || finalizandoVenta} onClick={() => alert('Llamando a realiza_pago_tc_banorte...')} sx={{ backgroundColor: '#4a6572', color: 'white', borderRadius: 0, fontWeight: 'bold', textTransform: 'none', minWidth: 130, height: 32, fontSize: '0.85rem', border: '1px solid #34495e', '&:hover': { backgroundColor: '#34495e' } }}>Cobro con Tarjeta</Button>
+      <Button variant="contained" onClick={handleFinalizarVenta} disabled={!puedeFinalizar || finalizandoVenta} sx={{ backgroundColor: '#4a6572', color: 'white', borderRadius: 0, fontWeight: 'bold', textTransform: 'none', minWidth: 130, height: 32, fontSize: '0.85rem', border: '1px solid #34495e', '&:hover': { backgroundColor: '#34495e' } }}>{finalizandoVenta ? 'Procesando...' : 'Registrar venta'}</Button>
+      <Button variant="contained" onClick={() => setModalCobroOpen(false)} sx={{ backgroundColor: '#4a6572', color: 'white', borderRadius: 0, fontWeight: 'bold', textTransform: 'none', minWidth: 90, height: 32, fontSize: '0.85rem', border: '1px solid #34495e', '&:hover': { backgroundColor: '#34495e' } }}>Salir</Button>
+    </Box>
   </DialogContent>
 </Dialog>
 
+{/* === MODAL INTERMEDIO: TABULADOR DE DENOMINACIONES (OPTIMIZADO EN 2 COLUMNAS) === */}
+      <Dialog 
+        open={modalTabuladorOpen} 
+        onClose={() => setModalTabuladorOpen(false)}
+        disableEscapeKeyDown
+        maxWidth="md" // Aumentamos el ancho máximo admitido para las 2 columnas
+        PaperProps={{ sx: { borderRadius: 0, border: '1px solid #000', p: 1, width: '720px' } }}
+      >
+        <DialogTitle sx={{ textAlign: 'center', pb: 0, pt: 1 }}>
+          <Typography variant="h5" sx={{ fontWeight: '900', color: 'black' }}>Pagos en Efectivo</Typography>
+          <Box sx={{ width: '100%', height: '3px', backgroundColor: 'black', mt: 0.5 }} />
+        </DialogTitle>
+
+        <DialogContent sx={{ mt: 1, pb: 1 }}>
+          {/* Contenedor principal de rejilla en dos columnas de lado a lado */}
+          <Box sx={{ display: 'flex', gap: 3, border: '1px solid #000', p: 1.5, backgroundColor: '#fcfcfc' }}>
+            
+            {/* COLUMNA IZQUIERDA: Billetes Grandes (1000 a 10) */}
+            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+              {listaDenominaciones.slice(0, 7).map((denom) => {
+                const factor = parseFloat(denom);
+                const renglonTotal = (denominaciones[denom] || 0) * factor;
+
+                return (
+                  <Box key={denom} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Typography sx={{ fontWeight: 'bold', width: '75px', textAlign: 'right', color: 'black', fontSize: '0.85rem' }}>
+                      {`$${factor.toLocaleString('es-MX')} X`}
+                    </Typography>
+                    <input
+                      type="number"
+                      value={denominaciones[denom] === 0 ? "" : denominaciones[denom]}
+                      placeholder="0"
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 0;
+                        setDenominaciones(prev => ({ ...prev, [denom]: val }));
+                      }}
+                      style={{ width: '55px', textAlign: 'center', backgroundColor: '#d9d9d9', border: 'none', padding: '1px 0', fontWeight: 'bold', fontSize: '0.85rem' }}
+                    />
+                    <Typography sx={{ fontWeight: 'bold', color: 'black', fontSize: '0.85rem' }}>=</Typography>
+                    <Box sx={{ width: '100px', backgroundColor: '#d9d9d9', pr: 1, py: '1px', textAlign: 'right', fontWeight: 'bold', color: 'black', fontSize: '0.85rem' }}>
+                      {renglonTotal.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                    </Box>
+                  </Box>
+                );
+              })}
+            </Box>
+
+            {/* Divisor estructural vertical intermedio */}
+            <Divider orientation="vertical" flexItem sx={{ borderRightWidth: 2, borderColor: 'black' }} />
+
+            {/* COLUMNA DERECHA: Monedas Chicas y Vales (5 a Vales) */}
+            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+              {listaDenominaciones.slice(7).map((denom) => {
+                const esVales = denom === "vales";
+                const factor = esVales ? 1 : parseFloat(denom);
+                const renglonTotal = (denominaciones[denom] || 0) * factor;
+
+                return (
+                  <Box key={denom} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Typography sx={{ fontWeight: 'bold', width: '75px', textAlign: 'right', color: 'black', fontSize: '0.85rem' }}>
+                      {esVales ? "VALES X" : `$${factor.toLocaleString('es-MX', { minimumFractionDigits: denom.includes('.') ? 2 : 0 })} X`}
+                    </Typography>
+                    <input
+                      type="number"
+                      value={denominaciones[denom] === 0 ? "" : denominaciones[denom]}
+                      placeholder="0"
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 0;
+                        setDenominaciones(prev => ({ ...prev, [denom]: val }));
+                      }}
+                      style={{ width: '55px', textAlign: 'center', backgroundColor: '#d9d9d9', border: 'none', padding: '1px 0', fontWeight: 'bold', fontSize: '0.85rem' }}
+                    />
+                    <Typography sx={{ fontWeight: 'bold', color: 'black', fontSize: '0.85rem' }}>=</Typography>
+                    <Box sx={{ width: '100px', backgroundColor: '#d9d9d9', pr: 1, py: '1px', textAlign: 'right', fontWeight: 'bold', color: 'black', fontSize: '0.85rem' }}>
+                      {renglonTotal.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                    </Box>
+                  </Box>
+                );
+              })}
+            </Box>
+
+          </Box>
+
+          {/* Bloque Inferior del Total de la Denominación */}
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mt: 1.5, px: 2, gap: 2 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: '900', color: 'black' }}>Total Pago:</Typography>
+            <Box sx={{ width: '150px', backgroundColor: '#d9e1f2', border: '1px solid black', pr: 1, py: '3px', textAlign: 'right', fontWeight: '900', color: 'black' }}>
+              ${totalTabulador.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </Box>
+          </Box>
+
+          {/* Botones de acción principales */}
+          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 4, mt: 2, mb: 0.5 }}>
+            <Button onClick={handleAceptarTabulador} variant="contained" sx={{ backgroundColor: '#e0e0e0', color: 'black', fontWeight: 'bold', borderRadius: 0, textTransform: 'none', px: 4, py: 0.5, border: '1px solid #7f7f7f', '&:hover': { backgroundColor: '#d4d4d4' } }}>Aceptar</Button>
+            <Button onClick={handleCancelarTabulador} variant="contained" sx={{ backgroundColor: '#e0e0e0', color: 'black', fontWeight: 'bold', borderRadius: 0, textTransform: 'none', px: 4, py: 0.5, border: '1px solid #7f7f7f', '&:hover': { backgroundColor: '#d4d4d4' } }}>Cancelar</Button>
+          </Box>
+        </DialogContent>
+      </Dialog>
+
     </>
-
-
   );
-}
+};

@@ -45,8 +45,8 @@ export default function DiasFestivos() {
 
 const fetchTabla = async () => {
       setLoading(true);
-      try {
-          const res = await consumoApi.get('/api/DiasFestivos/sp_bw_cat_dias_festivos_sel');
+      try {sp_bw
+          const res = await consumoApi.get('/api/DiasFestivos/_cat_dias_festivos_sel');
           const dataConId = (Array.isArray(res?.data) ? res.data : []).map((row, index) => ({ ...row, id: index }));
           setRows(dataConId);
       } catch (error) {

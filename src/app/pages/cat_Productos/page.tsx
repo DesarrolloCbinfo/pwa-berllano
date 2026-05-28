@@ -1650,7 +1650,7 @@ const ModalKardex = ({ open, onClose, consumoApi, setMessage, productoForm, sucu
       // Solo mostramos la alerta de "vacío" si el usuario dio clic en consultar
       if(!esCargaInicial && res.data.length === 0) {
         setMessage({ text: "No se encontraron movimientos con estos filtros.", type: 'info' });
-      }
+      } 
     } catch (error) {
       console.error(error);
       setMessage({ text: "Error al consultar el Kardex", type: 'error' });
