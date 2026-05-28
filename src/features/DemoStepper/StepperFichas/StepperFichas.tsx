@@ -399,7 +399,7 @@ export default function StepperFichas({
                     {pregunta?.nombreImagen.length > 0 && (
                       <figure style={{ maxWidth: '500px' }}>
                         <img
-                          src={`http://localhost:5001/api/Archivos/${pregunta.nombreImagen}`}
+                          src={`https://localhost:5001/api/Archivos/${pregunta.nombreImagen}`}
                           style={{
                             width: '100%',
                             height: '100%',
@@ -490,7 +490,7 @@ export default function StepperFichas({
                               <Box sx={{ display: 'flex' }}>
                                 {opcion?.nombre_imagen.length > 0 && (
                                   <img
-                                    src={`http://localhost:5001/api/Archivos/${opcion.nombre_imagen}`}
+                                    src={`https://localhost:5001/api/Archivos/${opcion.nombre_imagen}`}
                                     style={{
                                       width: '100%',
                                       height: '100%',
@@ -531,7 +531,7 @@ export default function StepperFichas({
                               <Box sx={{ display: 'flex' }}>
                                 {opcion?.nombre_imagen.length > 0 && (
                                   <img
-                                    src={`http://localhost:5001/api/Archivos/${opcion.nombre_imagen}`}
+                                    src={`https://localhost:5001/api/Archivos/${opcion.nombre_imagen}`}
                                     style={{
                                       width: '100%',
                                       height: '100%',

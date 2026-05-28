@@ -10,7 +10,6 @@ import {
   Paper,
   useTheme,
   useMediaQuery,
-  Grid,
   Divider,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
@@ -25,6 +24,8 @@ type CorteActual = {
   corte_parcial_maximo: number;
 };
 
+const denominacionesGrandes = [1000, 500, 200, 100, 50, 20];
+const denominacionesPequenas = [10, 5, 2, 1, 0.5, 0.2, 0.1];
 const denominaciones = [
   1000, 500, 200, 100, 50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1
 ];
@@ -39,6 +40,10 @@ export default function Retiros() {
   const [retiros, setRetiros] = useState<Record<number, number>>({});
   const [observaciones, setObservaciones] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [totalRetiroEditable, setTotalRetiroEditable] = useState<string>("0.00");
+  const [vales, setVales] = useState<number>(0);
+  const [retirosOriginales, setRetirosOriginales] = useState<Record<number, number> | null>(null);
+  const [intentosConfirmacion, setIntentosConfirmacion] = useState(0);
 
   // Inicializar retiros en 0
   useEffect(() => {
@@ -95,6 +100,31 @@ export default function Retiros() {
     );
   }, [retiros]);
 
+  // Sincronizar el total editable cuando cambian las denominaciones
+  useEffect(() => {
+    setTotalRetiroEditable(totalRetiro.toFixed(2));
+  }, [totalRetiro]);
+
+  const handleTotalChange = (value: string) => {
+    // Permitir solo números y punto decimal
+    const regex = /^\d*\.?\d{0,2}$/;
+    if (regex.test(value) || value === '') {
+      setTotalRetiroEditable(value);
+    }
+  };
+
+  const validarDenominacionesIguales = (): boolean => {
+    if (!retirosOriginales) return true; // Primera vez, no hay validación
+    
+    // Verificar que cada denominación sea exactamente igual
+    for (const d of denominaciones) {
+      if ((retiros[d] || 0) !== (retirosOriginales[d] || 0)) {
+        return false;
+      }
+    }
+    return true;
+  };
+
   const RegistraRetiro = async () => {
     if (!session) {
       Swal.fire({
@@ -116,7 +146,9 @@ export default function Retiros() {
       return;
     }
 
-    if (totalRetiro === 0) {
+    const totalFinal = parseFloat(totalRetiroEditable) || 0;
+    
+    if (totalFinal === 0) {
       Swal.fire({
         icon: "warning",
         title: "Atención",
@@ -124,6 +156,83 @@ export default function Retiros() {
         confirmButtonColor: "#f8bb86",
       });
       return;
+    }
+
+    // Proceso de confirmación (3 veces)
+    if (intentosConfirmacion === 0) {
+      // Primera vez - mostrar alerta y guardar denominaciones originales
+      const result = await Swal.fire({
+        icon: "question",
+        title: "Confirmar retiro (1/3)",
+        text: "Por favor, vuelva a ingresar las mismas denominaciones para confirmar el retiro",
+        confirmButtonColor: "#3085d6",
+        confirmButtonText: "Entendido"
+      });
+      
+      if (result.isConfirmed) {
+        // Guardar las denominaciones originales
+        setRetirosOriginales({...retiros});
+        setIntentosConfirmacion(1);
+        
+        // Resetear las denominaciones a 0 para que el usuario las vuelva a ingresar
+        const init: Record<number, number> = {};
+        denominaciones.forEach(d => init[d] = 0);
+        setRetiros(init);
+      }
+      return;
+    }
+
+    if (intentosConfirmacion === 1 || intentosConfirmacion === 2) {
+      // Validar que las denominaciones sean exactamente iguales
+      if (!validarDenominacionesIguales()) {
+        Swal.fire({
+          icon: "error",
+          title: "Error de validación",
+          text: "Las denominaciones ingresadas no coinciden con las originales. Debe ingresar exactamente las mismas cantidades por denominación.",
+          confirmButtonColor: "#d33",
+        });
+        // Resetear para que vuelva a intentar desde el principio
+        setIntentosConfirmacion(0);
+        setRetirosOriginales(null);
+        const init: Record<number, number> = {};
+        denominaciones.forEach(d => init[d] = 0);
+        setRetiros(init);
+        return;
+      }
+
+      // Si las denominaciones coinciden
+      if (intentosConfirmacion === 1) {
+        // Segunda confirmación exitosa - pedir tercera
+        const result = await Swal.fire({
+          icon: "question",
+          title: "Confirmar retiro (2/3)",
+          text: "Por favor, vuelva a ingresar las mismas denominaciones una vez más",
+          confirmButtonColor: "#3085d6",
+          confirmButtonText: "Entendido"
+        });
+        
+        if (result.isConfirmed) {
+          setIntentosConfirmacion(2);
+          // Resetear las denominaciones a 0 para la tercera entrada
+          const init: Record<number, number> = {};
+          denominaciones.forEach(d => init[d] = 0);
+          setRetiros(init);
+        }
+        return;
+      }
+
+      if (intentosConfirmacion === 2) {
+        // Tercera confirmación exitosa - mostrar alerta y continuar con el guardado
+        await Swal.fire({
+          icon: "success",
+          title: "Validación completada (3/3)",
+          text: "Las denominaciones han sido confirmadas correctamente. Procediendo a guardar...",
+          confirmButtonColor: "#3085d6",
+          confirmButtonText: "Continuar",
+          timer: 2000
+        });
+        // Continuar con el guardado (no hacer return aquí)
+      }
     }
 
     setLoading(true);
@@ -137,7 +246,7 @@ export default function Retiros() {
             sucursal: session.sucursal,
             corte: dataCorteActual.corte_maximo,
             corte_parcial: dataCorteActual.corte_parcial_maximo,
-            retiro: totalRetiro,
+            retiro: parseFloat(totalRetiroEditable) || 0,
             usuario: `'${session.claveEmpleado || session.id || "00001"}'`,
             observaciones: observaciones.trim() || "sin observacion registrada",
           },
@@ -161,6 +270,8 @@ export default function Retiros() {
         denominaciones.forEach(d => init[d] = 0);
         setRetiros(init);
         setObservaciones("");
+        setIntentosConfirmacion(0);
+        setRetirosOriginales(null);
         
         // Recargar corte actual
         fetchCorteActual();
@@ -193,44 +304,92 @@ export default function Retiros() {
   };
 
   return (
-    <Box sx={{ p: { xs: 2, sm: 3 }, maxWidth: 800, mx: "auto" }}>
-      <Typography variant="h4" sx={{ mb: 1, fontWeight: "bold", textAlign: "center" }}>
-        Módulo de
-      </Typography>
-      <Typography variant="h3" sx={{ mb: 3, fontWeight: "bold", textAlign: "center", color: "primary.main" }}>
-        Retiros del Corte
-      </Typography>
+    <Box sx={{ p: { xs: 2, sm: 3 }, maxWidth: 1200, mx: "auto" }}>
+      {/* Encabezado con título a la izquierda y datos a la derecha */}
+      <Paper elevation={2} sx={{ p: 2, mb: 1.5 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+          {/* Título a la izquierda */}
+          <Box>
+            <Typography variant="h5" sx={{ fontWeight: "bold" }}>
+              Módulo de
+            </Typography>
+            <Typography variant="h4" sx={{ fontWeight: "bold", color: "primary.main" }}>
+              Retiros del Corte
+            </Typography>
+          </Box>
 
-      {/* Info del corte */}
-      <Paper elevation={2} sx={{ p: 2, mb: 3 }}>
-        <Grid container spacing={2} justifyContent="center">
-          <Grid item xs={12} sm={4}>
-            <Typography align="center">
+          {/* Datos a la derecha */}
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <Typography>
               <strong>Caja:</strong> 1
             </Typography>
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <Typography align="center">
+            <Typography>
               <strong>Corte:</strong> {dataCorteActual?.corte_maximo ?? "N/A"}
             </Typography>
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <Typography align="center">
+            <Typography>
               <strong>Corte Parcial:</strong> {dataCorteActual?.corte_parcial_maximo ?? "N/A"}
             </Typography>
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
+      </Paper>
+
+      {/* Total a Retirar */}
+      <Paper 
+        elevation={3} 
+        sx={{ 
+          p: 2, 
+          mb: 1.5, 
+          bgcolor: '#f5f5f5',
+          border: '2px solid #a5a5a5ff'
+        }}
+      >
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography 
+            variant="h6" 
+            sx={{ 
+              fontWeight: 'bold',
+              color: '#4e4e4eff'
+            }}
+          >
+            TOTAL A RETIRAR:
+          </Typography>
+          <TextField
+            value={totalRetiroEditable}
+            onChange={(e) => handleTotalChange(e.target.value)}
+            InputProps={{
+              startAdornment: <Typography sx={{ mr: 0.5, fontWeight: 'bold' }}>$</Typography>,
+              sx: {
+                fontWeight: 'bold',
+                fontSize: '1.5rem',
+                color: '#5c5c5cff',
+              }
+            }}
+            sx={{ 
+              minWidth: 150,
+              '& .MuiInputBase-input': {
+                textAlign: 'right',
+                fontWeight: 'bold',
+                color: '#5c5c5cff',
+              }
+            }}
+            size="small"
+          />
+        </Box>
       </Paper>
 
       {/* Grid de denominaciones */}
-      <Card sx={{ mb: 3 }}>
+      <Card sx={{ mb: 1.5 }}>
         <CardContent>
           <Typography variant="h6" sx={{ mb: 2, fontWeight: "bold" }}>
             Desglose por Denominación
           </Typography>
           
-          {denominaciones.map((d, index) => (
-            <Box key={d}>
+          {/* Contenedor de dos columnas */}
+          <Box sx={{ display: 'flex', gap: 15 }}>
+            {/* Columna izquierda - Billetes grandes (1000-20) */}
+            <Box sx={{ flex: 1 }}>
+              {denominacionesGrandes.map((d, index) => (
+                <Box key={d}>
               <Box
                 sx={{
                   display: "flex",
@@ -240,11 +399,10 @@ export default function Retiros() {
                   gap: 2,
                 }}
               >
-                {/* Denominación */}
+                {/* Denominación sola */}
                 <Typography
                   variant="h6"
                   sx={{
-                    minWidth: 80,
                     fontWeight: "bold",
                     color: d >= 20 ? "success.main" : "warning.main",
                   }}
@@ -252,13 +410,11 @@ export default function Retiros() {
                   {formatDenominacion(d)}
                 </Typography>
 
-                {/* Operador X */}
-                <Typography variant="body1" sx={{ color: "text.secondary" }}>
-                  X
-                </Typography>
-
-                {/* Controles de cantidad */}
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                {/* Controles agrupados: X, -, campo, +, =, resultado */}
+                <Box sx={{ display: "flex", alignItems: "center", gap: 0.1 }}>
+                  <Typography variant="body1" sx={{ color: "text.secondary" }}>
+                    X
+                  </Typography>
                   <IconButton
                     size="small"
                     onClick={() => handleDecrement(d)}
@@ -298,29 +454,183 @@ export default function Retiros() {
                   >
                     <AddIcon fontSize="small" />
                   </IconButton>
+
+                  <Typography variant="body1" sx={{ color: "text.secondary", mx: 0.5 }}>
+                    =
+                  </Typography>
+
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      minWidth: 100,
+                      textAlign: "right",
+                      fontWeight: "bold",
+                      color: (retiros[d] || 0) > 0 ? "primary.main" : "text.secondary",
+                    }}
+                  >
+                    ${(d * (retiros[d] || 0)).toFixed(2)}
+                  </Typography>
                 </Box>
-
-                {/* Operador = */}
-                <Typography variant="body1" sx={{ color: "text.secondary" }}>
-                  =
-                </Typography>
-
-                {/* Resultado */}
-                <Typography
-                  variant="h6"
-                  sx={{
-                    minWidth: 100,
-                    textAlign: "right",
-                    fontWeight: "bold",
-                    color: (retiros[d] || 0) > 0 ? "primary.main" : "text.secondary",
-                  }}
-                >
-                  ${(d * (retiros[d] || 0)).toFixed(2)}
-                </Typography>
               </Box>
-              {index < denominaciones.length - 1 && <Divider />}
+                  {index < denominacionesGrandes.length - 1 && <Divider />}
+                </Box>
+              ))}
             </Box>
-          ))}
+
+            {/* Columna derecha - Denominaciones pequeñas (10-0.1) */}
+            <Box sx={{ flex: 1 }}>
+              {denominacionesPequenas.map((d, index) => (
+                <Box key={d}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      py: 1.5,
+                      gap: 2,
+                    }}
+                  >
+                    {/* Denominación sola */}
+                    <Typography
+                      variant="h6"
+                      sx={{
+                        fontWeight: "bold",
+                        color: d >= 20 ? "success.main" : "warning.main",
+                      }}
+                    >
+                      {formatDenominacion(d)}
+                    </Typography>
+
+                    {/* Controles agrupados: X, -, campo, +, =, resultado */}
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.1 }}>
+                      <Typography variant="body1" sx={{ color: "text.secondary" }}>
+                        X
+                      </Typography>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleDecrement(d)}
+                        sx={{
+                          bgcolor: "grey.100",
+                          border: "1px solid",
+                          borderColor: "grey.300",
+                          width: 32,
+                          height: 32,
+                        }}
+                      >
+                        <RemoveIcon fontSize="small" />
+                      </IconButton>
+
+                      <TextField
+                        type="number"
+                        value={retiros[d] || 0}
+                        onChange={(e) => handleCantidadChange(d, parseInt(e.target.value) || 0)}
+                        inputProps={{
+                          min: 0,
+                          style: { textAlign: "center" },
+                        }}
+                        sx={{ width: 70 }}
+                        size="small"
+                      />
+
+                      <IconButton
+                        size="small"
+                        onClick={() => handleIncrement(d)}
+                        sx={{
+                          bgcolor: "grey.100",
+                          border: "1px solid",
+                          borderColor: "grey.300",
+                          width: 32,
+                          height: 32,
+                        }}
+                      >
+                        <AddIcon fontSize="small" />
+                      </IconButton>
+
+                      <Typography variant="body1" sx={{ color: "text.secondary", mx: 0.5 }}>
+                        =
+                      </Typography>
+
+                      <Typography
+                        variant="h6"
+                        sx={{
+                          minWidth: 100,
+                          textAlign: "right",
+                          fontWeight: "bold",
+                          color: (retiros[d] || 0) > 0 ? "primary.main" : "text.secondary",
+                        }}
+                      >
+                        ${(d * (retiros[d] || 0)).toFixed(2)}
+                      </Typography>
+                    </Box>
+                  </Box>
+                  {index < denominacionesPequenas.length - 1 && <Divider />}
+                </Box>
+              ))}
+            </Box>
+          </Box>
+
+          {/* Divisor antes de vales */}
+          <Divider sx={{ my: 2 }} />
+
+          {/* Fila de Vales */}
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              py: 0.5,
+              gap: 2,
+            }}
+          >
+            {/* Etiqueta VALES */}
+            <Typography
+              variant="h6"
+              sx={{
+                minWidth: 80,
+                fontWeight: "bold",
+                color: "success.main",
+              }}
+            >
+              VALES
+            </Typography>
+
+            {/* Espacio vacío donde estaba la X */}
+            <Box sx={{ minWidth: 20 }} />
+
+            {/* Campo de vales sin botones */}
+            <TextField
+              type="number"
+              value={vales}
+              InputProps={{
+                readOnly: true,
+              }}
+              inputProps={{
+                min: 0,
+                step: 0.01,
+                style: { textAlign: "center" },
+              }}
+              sx={{ width: 70 }}
+              size="small"
+            />
+
+            {/* Operador = */}
+            <Typography variant="body1" sx={{ color: "text.secondary" }}>
+              =
+            </Typography>
+
+            {/* Resultado */}
+            <Typography
+              variant="h6"
+              sx={{
+                minWidth: 100,
+                textAlign: "right",
+                fontWeight: "bold",
+                color: vales > 0 ? "primary.main" : "text.secondary",
+              }}
+            >
+              ${vales.toFixed(2)}
+            </Typography>
+          </Box>
         </CardContent>
       </Card>
 

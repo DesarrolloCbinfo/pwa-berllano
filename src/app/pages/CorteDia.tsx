@@ -74,31 +74,32 @@ export default function CorteDia() {
     try {
       setLoading(true);
 
-      // API para cerrar corte final - es un GET
-      const res = await consumoApi.get(
-        "/api/PuntoDeVenta/sp_bw_pos_cierra_corte_final",
-        {
-          params: {
-            sucursal: session?.sucursal,
-            corte: ultimoCorte.corte_maximo,
-            corte_parcial: ultimoCorte.corte_parcial_maximo,
-            caja: 1,
-            usr: session?.id,
-          },
-        }
+      const requestBody = {
+        sucursal: session?.sucursal || 0,
+        corte: ultimoCorte.corte_maximo,
+        corteParcial: ultimoCorte.corte_parcial_maximo,
+        caja: 1,
+        monto: 0, // El SP calculará el monto internamente
+        corteFinal: true, // Corte de día es corte final
+        usr: session?.user?.id || session?.id || "",
+        cia: 1,
+        ultimoRetiro: 0
+      };
+
+      console.log("Datos enviados al cerrar corte:", requestBody);
+
+      // API para cerrar corte final - POST con body
+      const res = await consumoApi.post(
+        "/api/cortedia/cerrar",
+        requestBody
       );
 
-      const data = Array.isArray(res.data) ? res.data[0] : res.data;
+      const data = res.data;
 
-      if (data?.codigo === 0) {
+      if (data?.corteProcesado || data?.mensaje) {
         Swal.fire({
           title: "Corte de día realizado",
-          html: `
-            <p style="font-size: 18px; margin: 10px 0;"><strong>${data?.mensaje || "Corte final realizado con éxito"}</strong></p>
-            <p style="font-size: 18px; margin: 10px 0;"><strong>Total del corte:</strong> $${Number(data?.total_corte || 0).toFixed(2)}</p>
-            <p style="font-size: 18px; margin: 10px 0;"><strong>Efectivo:</strong> $${Number(data?.efectivo || 0).toFixed(2)}</p>
-            <p style="font-size: 18px; margin: 10px 0;"><strong>Tarjeta:</strong> $${Number(data?.tarjeta1 || 0).toFixed(2)}</p>
-          `,
+          text: data?.mensaje || "El corte se ha cerrado y procesado en tesorería de forma exitosa.",
           icon: "success",
           allowOutsideClick: false,
         }).then(() => {
@@ -111,9 +112,23 @@ export default function CorteDia() {
           "error"
         );
       }
-    } catch (err) {
-      console.error(err);
-      Swal.fire("Error", "Error de comunicación con el servidor", "error");
+    } catch (err: any) {
+      console.error("Error completo:", err);
+      console.error("Respuesta del servidor:", err?.response);
+      console.error("Data del error:", err?.response?.data);
+      
+      const errorMessage = err?.response?.data?.mensaje 
+        || err?.response?.data?.detalle 
+        || err?.response?.data
+        || err?.message 
+        || "Error de comunicación con el servidor";
+      
+      Swal.fire({
+        icon: "error",
+        title: "Error al cerrar el corte",
+        html: `<p>${typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage)}</p>`,
+        footer: err?.response?.status ? `Código de error: ${err.response.status}` : ''
+      });
     } finally {
       setLoading(false);
     }
@@ -290,10 +305,6 @@ export default function CorteDia() {
         variant="body2"
         sx={{ textAlign: "center", color: "text.secondary", mt: 2 }}
       >
-        <strong>
-          CORTE DE DÍA, {(session?.nombre || "ADMIN").toUpperCase()},{" "}
-          {fechaActual}, USR: {(session?.nombre || "ADMIN").toUpperCase()}
-        </strong>
       </Typography>
     </Box>
   );

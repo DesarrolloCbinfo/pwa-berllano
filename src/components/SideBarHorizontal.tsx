@@ -160,6 +160,7 @@ const SidebarHorizontal = () => {
             <MenuItem onClick={() => { setAnchorModuloComercial(null); navigate(routes.retiros); }}>Retiros</MenuItem>     
             <MenuItem onClick={() => { setAnchorModuloComercial(null); navigate(routes.corte_parcial); }}>Corte parcial</MenuItem>   
             <MenuItem onClick={() => { setAnchorModuloComercial(null); navigate(routes.corte_dia); }}>Corte Dia</MenuItem>
+            <MenuItem onClick={() => { setAnchorModuloComercial(null); navigate(routes.Validacion_Productos_Servicios); }}>Validación de Productos y Servicios</MenuItem>
             <MenuItem onClick={() => { setAnchorModuloComercial(null); navigate(routes.carteleraDigital); }}>Cartelera Digital</MenuItem>
         </Menu>
 

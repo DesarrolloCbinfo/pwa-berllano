@@ -64,6 +64,7 @@ import TurnosDobles from './pages/Cat_turnos_dobles/page';
 import CatPerfilesPermisos from './pages/cat_perfiles_permisos/page';
 import CatCategorias from './pages/cat_Categorias/page';
 import CatPermisosDeptos from './pages/cat_PermisosDeptos/page';
+import ValidacionProductosServicios from './pages/Validacion_Productos_Servicios/page';
 
 
 
@@ -137,6 +138,7 @@ function App() {
           <Route path='/cat_perfiles_permisos' element={<Layout><CatPerfilesPermisos/></Layout>} />
           <Route path='/cat_Categorias' element={<Layout><CatCategorias/></Layout>} />
            <Route path='/cat_PermisosDeptos' element={<Layout><CatPermisosDeptos/></Layout>} />
+           <Route path='/validacion_productos_servicios' element={<Layout><ValidacionProductosServicios/></Layout>} />
            <Route path='/cartelera-digital' element={<Layout><CarteleraDigital /></Layout>} />
            <Route path='/pos2' element={<Layout><POS/></Layout>} />
           

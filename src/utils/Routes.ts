@@ -61,6 +61,7 @@ export const routes = {
   cat_nomina_bajas: "/cat_nomina_bajas",
   cat_Categorias: "/cat_Categorias",
   cat_PermisosDeptos:"/cat_PermisosDeptos",
+  Validacion_Productos_Servicios: "/validacion_productos_servicios",
   pos2: "/pos2",
   carteleraDigital: "/cartelera-digital",
 };
