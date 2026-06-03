@@ -765,6 +765,7 @@ const handleAbrirCobro = () => {
   setCuentaPuntos("");
   setCuentaRecompensa("");
   setPagoEfectivo(0);
+  setTmpPagoEfectivo(0);
   setSumaManual(0);
   
   // Limpieza del motor de monedero
@@ -984,15 +985,15 @@ const verificaDatosVenta = () => {
       }
 
       // 3. Empaquetar todo el payload expandido para el Stored Procedure Web
+// 📦 BUSCA EL PAYLOAD Y DÉJALO ASÍ:
       const payload = {
         cia: 1,
         sucursal: sucursal,
         caja: 1,
-        cve_Cliente: clienteSeleccionado.No_cliente,
+        cve_cliente: clienteSeleccionado.No_cliente, // 🌟 CORREGIDO: Todo en minúsculas
         estilista: estilistaSeleccionado,
         usuario: session?.id || '',
         
-        // Banderas y datos descubiertos en VBA:
         isCredito: isCredito ? 1 : 0,
         cuentaPuntos: cuentaPuntos || "",
         cuentaRecompensa: cuentaRecompensa || "",
@@ -1027,6 +1028,7 @@ const verificaDatosVenta = () => {
         setPagosRegistro([]);
         setSumaManual(0);
         setPagoEfectivo(0);
+        setTmpPagoEfectivo(0);
         setPuntosPago(0);
         setCuentaPuntos("");
         setCuentaRecompensa("");
@@ -2416,23 +2418,29 @@ return (
       <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'black' }}>Formas de pago</Typography>
       <Box sx={{ display: 'flex', alignItems: 'center', backgroundColor: '#e2f0d9', border: '1px solid black', px: 1, height: 26 }}>
         <Typography variant="caption" sx={{ mr: 1, color: 'black', fontWeight: 'bold' }}>Venta a Crédito</Typography>
-        <input 
-          type="checkbox" 
-          checked={isCredito} 
-          onChange={(e) => { 
-            setIsCredito(e.target.checked); 
-            if (e.target.checked) { 
-              setPagosRegistro([]); 
-              setImportePago(""); 
-              setPuntosPago(0); 
-              setPagoEfectivo(0); 
-              setTmpPagoEfectivo(0);
-              setSumaManual(0); 
-              setCuentaPuntos(""); 
-            } 
-          }} 
-          style={{ cursor: 'pointer' }} 
-        />
+
+
+{/* 📑 Cambia temporalmente tu input a esto para probar: */}
+<input 
+  type="checkbox" 
+  checked={isCredito} 
+  // Dejamos únicamente el candado del cliente público general
+  disabled={clienteSeleccionado?.No_cliente === "00001"} 
+  onChange={(e) => { 
+    const checked = e.target.checked;
+    setIsCredito(checked); 
+    
+    if (checked) { 
+      setPagoEfectivo(0); 
+      setTmpPagoEfectivo(0);
+      setPuntosPago(0); 
+      setSumaManual(0); 
+      setCuentaPuntos(""); 
+      setCuentaRecompensa("");
+    } 
+  }} 
+  style={{ cursor: 'pointer' }} 
+/>
       </Box>
     </Box>
 
