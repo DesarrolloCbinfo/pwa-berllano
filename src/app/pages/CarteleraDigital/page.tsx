@@ -3,15 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import {
-  Box, Typography, TextField, Button, Select, MenuItem, FormControl,
-  InputLabel, IconButton, Card, CardContent, CircularProgress, Alert,
-  InputAdornment, Dialog, DialogTitle, DialogContent, DialogActions,
-  ToggleButtonGroup, ToggleButton, Tabs, Tab
-} from '@mui/material';
-import {
   ArrowBack, Visibility, VisibilityOff, Edit, Delete, Download,
   Image, Movie, CloudUpload, Close, Key, PhotoLibrary, Schedule, PlaylistPlay
 } from '@mui/icons-material';
+import {
+  Box, Typography, TextField, Button, Select, MenuItem, FormControl,
+  InputLabel, IconButton, Card, CardContent, CircularProgress, Alert,
+  InputAdornment, Dialog, DialogTitle, DialogContent, DialogActions,
+  ToggleButtonGroup, ToggleButton, Tabs, Tab, LinearProgress
+} from '@mui/material';
 import useConsumoApi from '../../../hooks/useConsumoApi';
 import useConsumoApiCartelera from '../../../hooks/useConsumoApiCartelera';
 import { useSessionContext } from '../../../context/SessionProvider';
@@ -113,6 +113,7 @@ export default function CarteleraDigital() {
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadPreview, setUploadPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   // --- Tab state ---
   const [tabValue, setTabValue] = useState(0);
@@ -273,6 +274,7 @@ export default function CarteleraDigital() {
       return;
     }
     setUploading(true);
+    setUploadProgress(0);
     try {
       const formData = new FormData();
       formData.append('file', uploadFile);
@@ -281,6 +283,10 @@ export default function CarteleraDigital() {
 
       const res = await apiCartelera.post('/api/upload/contenido', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 300000,
+        onUploadProgress: (e) => {
+          if (e.total) setUploadProgress(Math.round((e.loaded * 100) / e.total));
+        },
       });
 
       if (res.data.success) {
@@ -307,6 +313,7 @@ export default function CarteleraDigital() {
     setUploadPreview(null);
     setUploadNombre('');
     setUploadTipo(1);
+    setUploadProgress(0);
   };
 
   // --- Initial load ---
@@ -614,6 +621,24 @@ export default function CarteleraDigital() {
                 <Box sx={{ p: 3, textAlign: 'center', bgcolor: '#0a1929', borderRadius: 2, mb: 1 }}>
                   <Movie sx={{ fontSize: 48, color: '#ef5350' }} />
                   <Typography variant="body2" color="text.secondary">Video seleccionado</Typography>
+                </Box>
+              )}
+
+              {uploading && (
+                <Box sx={{ mb: 1 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      {uploadProgress < 100 ? 'Subiendo...' : 'Procesando...'}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
+                      {uploadProgress}%
+                    </Typography>
+                  </Box>
+                  <LinearProgress
+                    variant={uploadProgress < 100 ? 'determinate' : 'indeterminate'}
+                    value={uploadProgress}
+                    sx={{ borderRadius: 1, height: 6 }}
+                  />
                 </Box>
               )}
             </DialogContent>
