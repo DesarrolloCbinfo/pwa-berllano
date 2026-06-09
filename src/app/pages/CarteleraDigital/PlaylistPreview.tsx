@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   Box, Typography, Button, CircularProgress, Alert,
   Select, MenuItem, FormControl, InputLabel, Card, CardContent,
@@ -11,7 +11,6 @@ import {
 import useConsumoApiCartelera from '../../../hooks/useConsumoApiCartelera';
 import { ICarteleraSucursal } from './interfaces/ICarteleraSucursal';
 import { ApiResponse } from './interfaces/IApiResponse';
-import { IProgramacion } from './interfaces/IProgramacion';
 
 interface Props {
   configuraciones: ICarteleraSucursal[];
@@ -54,39 +53,21 @@ export default function PlaylistPreview({ configuraciones }: Props) {
   const countdownRef = useRef(0);
 
   const [filtroDia, setFiltroDia] = useState(0);
-  const [programaciones, setProgramaciones] = useState<IProgramacion[]>([]);
-  const [loadingProgramacion, setLoadingProgramacion] = useState(false);
 
   const selectedCfg = configuraciones.find(c => c.idSucursal === sucursalId);
   const apiKey = selectedCfg?.apiKey ?? '';
 
-  // Map idContenido → days
-  const contenidoDias = useMemo(() => {
-    const map = new Map<number, number[]>();
-    programaciones.forEach(p => {
-      const arr = map.get(p.idContenido) ?? [];
-      if (!arr.includes(p.diaSemana)) arr.push(p.diaSemana);
-      map.set(p.idContenido, arr);
-    });
-    return map;
-  }, [programaciones]);
-
-  // Filter items by selected day
-  const filteredItems = useMemo(
-    () => filtroDia === 0
-      ? items
-      : items.filter(i => contenidoDias.get(i.idContenido)?.includes(filtroDia)),
-    [items, filtroDia, contenidoDias]
-  );
-
-  const current = filteredItems[currentIndex] ?? filteredItems[0];
+  const current = items[currentIndex] ?? items[0];
 
   const fetchPlaylist = useCallback(async () => {
     if (!apiKey) return;
     try {
       setLoading(true);
       setError(null);
-      const res = await apiCartelera.get<ApiResponse<IPlaylistItem[]>>(`/api/sync/playlist?apiKey=${apiKey}`);
+      const endpoint = filtroDia === 0
+        ? `/api/sync/playlist?apiKey=${apiKey}`
+        : `/api/sync/playlist-por-dia?apiKey=${apiKey}&dia=${filtroDia}`;
+      const res = await apiCartelera.get<ApiResponse<IPlaylistItem[]>>(endpoint);
       if (res.data.success) {
         const sorted = [...res.data.data].sort((a, b) => a.orden - b.orden);
         setItems(sorted);
@@ -99,7 +80,7 @@ export default function PlaylistPreview({ configuraciones }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [apiKey]);
+  }, [apiKey, filtroDia]);
 
   useEffect(() => {
     fetchPlaylist();
@@ -127,12 +108,12 @@ export default function PlaylistPreview({ configuraciones }: Props) {
   const [videoProgress, setVideoProgress] = useState(0);
   const [videoError, setVideoError] = useState(false);
 
-  const goPrev = () => setCurrentIndex(i => (i <= 0 ? filteredItems.length - 1 : i - 1));
-  const goNext = () => setCurrentIndex(i => (i >= filteredItems.length - 1 ? 0 : i + 1));
+  const goPrev = () => setCurrentIndex(i => (i <= 0 ? items.length - 1 : i - 1));
+  const goNext = () => setCurrentIndex(i => (i >= items.length - 1 ? 0 : i + 1));
 
   // Auto-advance timer (images only; videos advance via onEnded)
   useEffect(() => {
-    if (!current || filteredItems.length === 0) return;
+    if (!current || items.length === 0) return;
     if (current.tipo === 2) {
       setCountdown(current.duracionSegundos);
       return;
@@ -151,25 +132,7 @@ export default function PlaylistPreview({ configuraciones }: Props) {
     }, 1000);
 
     return () => clearInterval(id);
-  }, [current?.idContenido, filteredItems.length]);
-
-  // Fetch programaciones for day filtering
-  useEffect(() => {
-    if (!apiKey) return;
-    (async () => {
-      try {
-        setLoadingProgramacion(true);
-        const res = await apiCartelera.get<ApiResponse<IProgramacion[]>>(`/api/Programacion?apiKey=${apiKey}`);
-        if (res.data.success) {
-          setProgramaciones(res.data.data);
-        }
-      } catch {
-        // silent
-      } finally {
-        setLoadingProgramacion(false);
-      }
-    })();
-  }, [apiKey, apiCartelera]);
+  }, [current?.idContenido, items.length]);
 
   // Reset carousel when filter changes
   useEffect(() => {
@@ -206,9 +169,9 @@ export default function PlaylistPreview({ configuraciones }: Props) {
             <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#90caf9' }}>
               {selectedCfg?.nombre}
             </Typography>
-            {filteredItems.length > 0 && current && (
+            {items.length > 0 && current && (
               <Typography variant="caption" color="text.secondary">
-                {currentIndex + 1} / {filteredItems.length}
+                {currentIndex + 1} / {items.length}
               </Typography>
             )}
           </Box>
@@ -234,7 +197,7 @@ export default function PlaylistPreview({ configuraciones }: Props) {
 
           {filtroDia !== 0 && (
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-              Mostrando {filteredItems.length} de {items.length} contenidos
+              {items.length} contenidos
             </Typography>
           )}
 
@@ -248,7 +211,7 @@ export default function PlaylistPreview({ configuraciones }: Props) {
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
               <CircularProgress size={28} />
             </Box>
-          ) : filteredItems.length === 0 || !current ? (
+          ) : items.length === 0 || !current ? (
             <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
               {filtroDia !== 0 ? 'No hay contenido para este día.' : 'No hay contenido en la playlist para esta sucursal.'}
             </Typography>
@@ -342,7 +305,7 @@ export default function PlaylistPreview({ configuraciones }: Props) {
                     }} />
                   </Box>
 
-                  {filteredItems.length > 1 && (
+                  {items.length > 1 && (
                     <>
                       <IconButton
                         onClick={goPrev}
@@ -394,9 +357,9 @@ export default function PlaylistPreview({ configuraciones }: Props) {
                 </CardContent>
               </Card>
 
-              {filteredItems.length > 1 && (
+              {items.length > 1 && (
                 <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
-                  {filteredItems.map((_, i) => (
+                  {items.map((_, i) => (
                     <Box
                       key={i}
                       onClick={() => setCurrentIndex(i)}
