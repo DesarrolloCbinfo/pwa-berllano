@@ -60,14 +60,13 @@ export default function PlaylistPreview({ configuraciones }: Props) {
   const current = items[currentIndex] ?? items[0];
 
   const fetchPlaylist = useCallback(async () => {
-    if (!apiKey) return;
+    if (!apiKey || filtroDia <= 0) return;
     try {
       setLoading(true);
       setError(null);
-      const endpoint = filtroDia === 0
-        ? `/api/sync/playlist?apiKey=${apiKey}`
-        : `/api/sync/playlist-por-dia?apiKey=${apiKey}&dia=${filtroDia}`;
-      const res = await apiCartelera.get<ApiResponse<IPlaylistItem[]>>(endpoint);
+      const res = await apiCartelera.get<ApiResponse<IPlaylistItem[]>>(
+        `/api/sync/playlist-por-dia?apiKey=${apiKey}&dia=${filtroDia}`
+      );
       if (res.data.success) {
         const sorted = [...res.data.data].sort((a, b) => a.orden - b.orden);
         setItems(sorted);
@@ -178,7 +177,7 @@ export default function PlaylistPreview({ configuraciones }: Props) {
 
           {/* Day filter */}
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2 }}>
-            {[{ value: 0, label: 'Todos' }, ...DIAS_SEMANA].map(d => (
+            {DIAS_SEMANA.map(d => (
               <Chip
                 key={d.value}
                 label={d.label}
@@ -195,7 +194,7 @@ export default function PlaylistPreview({ configuraciones }: Props) {
             ))}
           </Box>
 
-          {filtroDia !== 0 && (
+          {filtroDia > 0 && items.length > 0 && (
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
               {items.length} contenidos
             </Typography>
@@ -211,9 +210,13 @@ export default function PlaylistPreview({ configuraciones }: Props) {
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
               <CircularProgress size={28} />
             </Box>
+          ) : filtroDia === 0 ? (
+            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+              Selecciona un día para ver la playlist.
+            </Typography>
           ) : items.length === 0 || !current ? (
             <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
-              {filtroDia !== 0 ? 'No hay contenido para este día.' : 'No hay contenido en la playlist para esta sucursal.'}
+              No hay contenido para este día.
             </Typography>
           ) : (
             <>

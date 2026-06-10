@@ -3,18 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import {
-  ArrowBack, Visibility, VisibilityOff, Edit, Delete, Download,
-  Image, Movie, CloudUpload, Close, Key, PhotoLibrary, Schedule, PlaylistPlay
+  ArrowBack, Download, Delete,
+  Image, Movie, CloudUpload, Close,
+  PhotoLibrary, Schedule, PlaylistPlay
 } from '@mui/icons-material';
 import {
   Box, Typography, TextField, Button, Select, MenuItem, FormControl,
-  InputLabel, IconButton, Card, CardContent, CircularProgress, Alert,
-  InputAdornment, Dialog, DialogTitle, DialogContent, DialogActions,
+  InputLabel, IconButton, Card, CardContent, CircularProgress,
+  Dialog, DialogTitle, DialogContent, DialogActions,
   ToggleButtonGroup, ToggleButton, Tabs, Tab, LinearProgress
 } from '@mui/material';
-import useConsumoApi from '../../../hooks/useConsumoApi';
 import useConsumoApiCartelera from '../../../hooks/useConsumoApiCartelera';
-import { useSessionContext } from '../../../context/SessionProvider';
 import { ICarteleraSucursal } from './interfaces/ICarteleraSucursal';
 import { ICarteleraContenido } from './interfaces/ICarteleraContenido';
 import { ApiResponse } from './interfaces/IApiResponse';
@@ -24,11 +23,6 @@ import carteleraTheme from './carteleraTheme';
 import ProgramacionTab from './ProgramacionTab';
 import PlaylistPreview from './PlaylistPreview';
 import './cartelera-digital.css';
-
-interface SucursalMain {
-  sucursalId: number;
-  nombre: string;
-}
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -42,17 +36,57 @@ function formatDate(dateStr: string): string {
 }
 
 export default function CarteleraDigital() {
-  const { consumoApi: apiMain } = useConsumoApi();
   const { consumoApi: apiCartelera } = useConsumoApiCartelera();
-  const { session } = useSessionContext();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [configuraciones, setConfiguraciones] = useState<ICarteleraSucursal[]>([]);
+  const [contenidos, setContenidos] = useState<ICarteleraContenido[]>([]);
+  const [filtroTipo, setFiltroTipo] = useState(0);
+  const [loadingContenido, setLoadingContenido] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [uploadTipo, setUploadTipo] = useState(1);
+  const [uploadNombre, setUploadNombre] = useState('');
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadPreview, setUploadPreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [tabValue, setTabValue] = useState(0);
+
+  // --- Fetch configuraciones (for Programacion/VistaPrevia) ---
+  const fetchConfiguraciones = useCallback(async () => {
+    try {
+      const res = await apiCartelera.get<ApiResponse<ICarteleraSucursal[]>>('/api/Sucursales/0');
+      if (res.data.success) setConfiguraciones(res.data.data);
+    } catch {
+      // silent
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchConfiguraciones();
+  }, [fetchConfiguraciones]);
+
+  // --- Fetch contenido ---
+  const fetchContenidos = useCallback(async (tipo = filtroTipo) => {
+    try {
+      setLoadingContenido(true);
+      const res = await apiCartelera.get<ApiResponse<ICarteleraContenido[]>>(`/api/Contenido/0?tipo=${tipo}`);
+      if (res.data.success) setContenidos(res.data.data);
+    } catch {
+      // silent
+    } finally {
+      setLoadingContenido(false);
+    }
+  }, [filtroTipo]);
+
+  useEffect(() => {
+    fetchContenidos();
+  }, [filtroTipo, fetchContenidos]);
+
   const handleDownload = async (id: number, nombre: string) => {
     try {
-      const res = await apiCartelera.get(`/api/download/${id}`, {
-        responseType: 'blob',
-      });
+      const res = await apiCartelera.get(`/api/download/${id}`, { responseType: 'blob' });
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -85,175 +119,6 @@ export default function CarteleraDigital() {
       Swal.fire('Error', err.message || 'Error al eliminar', 'error');
     }
   };
-
-  // --- API Keys state ---
-  const [sucursalesAll, setSucursalesAll] = useState<SucursalMain[]>([]);
-  const [configuraciones, setConfiguraciones] = useState<ICarteleraSucursal[]>([]);
-  const [selectedSucId, setSelectedSucId] = useState<number | null>(null);
-  const [nombre, setNombre] = useState('');
-  const [apiKey, setApiKey] = useState('');
-  const [showKey, setShowKey] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-
-  const apiKeyConfigActual = configuraciones.find(
-    c => c.nombre.toLowerCase() === nombre.trim().toLowerCase()
-  );
-  const isEditingKey = apiKeyConfigActual !== undefined;
-
-  // --- Contenido state ---
-  const [contenidos, setContenidos] = useState<ICarteleraContenido[]>([]);
-  const [filtroTipo, setFiltroTipo] = useState(0);
-  const [loadingContenido, setLoadingContenido] = useState(false);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [uploadTipo, setUploadTipo] = useState(1);
-  const [uploadNombre, setUploadNombre] = useState('');
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [uploadPreview, setUploadPreview] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-
-  // --- Tab state ---
-  const [tabValue, setTabValue] = useState(0);
-
-  // --- API Keys logic ---
-  const fetchSucursalesMain = async () => {
-    const res = await apiMain.get<SucursalMain[]>('/api/sucursal/sucursal?sucursal=0');
-    return res.data;
-  };
-
-  const fetchConfiguraciones = async () => {
-    const res = await apiCartelera.get<ApiResponse<ICarteleraSucursal[]>>('/api/Sucursales/0');
-    if (res.data.success) return res.data.data;
-    throw new Error(res.data.message || 'Error al cargar configuraciones');
-  };
-
-  const selectSucursal = (
-    sucId: number,
-    all = sucursalesAll,
-    configs = configuraciones
-  ) => {
-    const found = all.find(s => s.sucursalId === sucId);
-    if (!found) return;
-    setSelectedSucId(sucId);
-    setNombre(found.nombre);
-    const cfg = configs.find(
-      c => c.nombre.toLowerCase() === found.nombre.toLowerCase()
-    );
-    setApiKey(cfg?.apiKey ?? '');
-    setShowKey(false);
-  };
-
-  const resetApiKeyForm = () => {
-    setSelectedSucId(null);
-    setNombre('');
-    setApiKey('');
-    setShowKey(false);
-  };
-
-  const handleSelectChange = (sucId: number) => {
-    if (sucId === 0) { resetApiKeyForm(); return; }
-    selectSucursal(sucId);
-  };
-
-  const selectByNombre = (cfg: ICarteleraSucursal) => {
-    const match = sucursalesAll.find(
-      s => s.nombre.toLowerCase() === cfg.nombre.toLowerCase()
-    );
-    if (match) {
-      selectSucursal(match.sucursalId);
-    } else {
-      setSelectedSucId(null);
-      setNombre(cfg.nombre);
-      setApiKey(cfg.apiKey);
-      setShowKey(false);
-    }
-  };
-
-  const validateApiKey = (): string | null => {
-    if (!nombre.trim()) return 'El nombre es obligatorio';
-    if (apiKey.length < 6) return 'La API Key debe tener al menos 6 caracteres';
-    return null;
-  };
-
-  const handleSaveApiKey = async () => {
-    const error = validateApiKey();
-    if (error) {
-      Swal.fire('Validación', error, 'warning');
-      return;
-    }
-    setSaving(true);
-    try {
-      if (isEditingKey) {
-        const res = await apiCartelera.put<ApiResponse<{ id: number }>>(
-          `/api/Sucursales/${apiKeyConfigActual!.idSucursal}`,
-          { idSucursal: apiKeyConfigActual!.idSucursal, nombre: nombre.trim(), apiKey }
-        );
-        if (!res.data.success) throw new Error(res.data.message || 'Error al actualizar');
-      } else {
-        const res = await apiCartelera.post<ApiResponse<ICarteleraSucursal>>(
-          '/api/Sucursales',
-          { idSucursal: 0, nombre: nombre.trim(), apiKey }
-        );
-        if (!res.data.success) throw new Error(res.data.message || 'Error al crear');
-      }
-      Swal.fire({ icon: 'success', title: isEditingKey ? 'Actualizada' : 'Creada', text: `API Key ${isEditingKey ? 'actualizada' : 'creada'} correctamente`, timer: 1500, showConfirmButton: false });
-      const configs = await fetchConfiguraciones();
-      setConfiguraciones(configs);
-    } catch (err: any) {
-      Swal.fire('Error', err.message || 'Error al guardar', 'error');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDeleteApiKey = async (cfg: ICarteleraSucursal) => {
-    const result = await Swal.fire({
-      title: '¿Eliminar?',
-      text: `Se eliminará la API Key de "${cfg.nombre}"`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Eliminar',
-      cancelButtonText: 'Cancelar',
-    });
-    if (!result.isConfirmed) return;
-    setDeleting(true);
-    try {
-      const res = await apiCartelera.delete<ApiResponse<null>>(`/api/Sucursales/${cfg.idSucursal}`);
-      if (!res.data.success) throw new Error(res.data.message || 'Error al eliminar');
-      Swal.fire({ icon: 'success', title: 'Eliminada', timer: 1500, showConfirmButton: false });
-      const configs = await fetchConfiguraciones();
-      setConfiguraciones(configs);
-      if (selectedSucId && nombre.trim().toLowerCase() === cfg.nombre.toLowerCase()) {
-        setApiKey('');
-      }
-    } catch (err: any) {
-      Swal.fire('Error', err.message || 'Error al eliminar', 'error');
-    } finally {
-      setDeleting(false);
-    }
-  };
-
-  // --- Contenido logic ---
-  const fetchContenidos = useCallback(async (tipo = filtroTipo) => {
-    try {
-      setLoadingContenido(true);
-      const res = await apiCartelera.get<ApiResponse<ICarteleraContenido[]>>(`/api/Contenido/0?tipo=${tipo}`);
-      if (res.data.success) {
-        setContenidos(res.data.data);
-      }
-    } catch {
-      // silent
-    } finally {
-      setLoadingContenido(false);
-    }
-  }, [filtroTipo]);
-
-  useEffect(() => {
-    fetchContenidos();
-  }, [filtroTipo, fetchContenidos]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -316,45 +181,6 @@ export default function CarteleraDigital() {
     setUploadProgress(0);
   };
 
-  // --- Initial load ---
-  const loadAll = useCallback(async () => {
-    try {
-      setLoading(true);
-      setFetchError(null);
-      const [sucursales, configs] = await Promise.all([
-        fetchSucursalesMain(),
-        fetchConfiguraciones()
-      ]);
-      setSucursalesAll(sucursales);
-      setConfiguraciones(configs);
-      if (session?.dSucursal) {
-        const match = sucursales.find(
-          s => s.nombre.toLowerCase() === session.dSucursal.toLowerCase()
-        );
-        if (match) selectSucursal(match.sucursalId, sucursales, configs);
-      }
-    } catch (err: any) {
-      setFetchError(err.message || 'Error de conexión con el servidor');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadAll();
-  }, [loadAll]);
-
-  if (loading) {
-    return (
-      <ThemeProvider theme={carteleraTheme}>
-        <CssBaseline />
-        <Box className="cartelera-root" sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-          <CircularProgress />
-        </Box>
-      </ThemeProvider>
-    );
-  }
-
   return (
     <ThemeProvider theme={carteleraTheme}>
       <CssBaseline />
@@ -371,12 +197,6 @@ export default function CarteleraDigital() {
         </Box>
 
         <Box sx={{ maxWidth: 900, mx: 'auto', px: 2, py: 3 }}>
-          {fetchError && (
-            <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }} action={
-              <Button size="small" onClick={loadAll}>Reintentar</Button>
-            }>{fetchError}</Alert>
-          )}
-
           <Tabs
             value={tabValue}
             onChange={(_, v) => setTabValue(v)}
@@ -387,110 +207,13 @@ export default function CarteleraDigital() {
               '& .MuiTabs-indicator': { backgroundColor: '#1976d2' },
             }}
           >
-            <Tab icon={<Key />} iconPosition="start" label="API Keys" />
             <Tab icon={<PhotoLibrary />} iconPosition="start" label="Contenido" />
             <Tab icon={<Schedule />} iconPosition="start" label="Programación" />
             <Tab icon={<PlaylistPlay />} iconPosition="start" label="Vista Previa" />
           </Tabs>
 
-          {/* ══════ TAB 0: API KEYS ══════ */}
+          {/* ══════ TAB 0: CONTENIDO DIGITAL ══════ */}
           {tabValue === 0 && (
-            <Box>
-              <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#90caf9', mb: 2 }}>
-                Config. API Keys
-              </Typography>
-
-              <FormControl fullWidth size="small" sx={{ mb: 2 }}>
-                <InputLabel>Sucursal</InputLabel>
-                <Select
-                  value={selectedSucId ?? 0}
-                  label="Sucursal"
-                  onChange={(e) => handleSelectChange(Number(e.target.value))}
-                >
-                  <MenuItem value={0}>-- Selecciona sucursal --</MenuItem>
-                  {sucursalesAll.map(s => (
-                    <MenuItem key={s.sucursalId} value={s.sucursalId}>{s.nombre}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              <Card variant="outlined" sx={{ mb: 3 }}>
-                <CardContent sx={{ p: 3 }}>
-                  <TextField
-                    fullWidth size="small" label="Nombre"
-                    value={nombre}
-                    onChange={(e) => setNombre(e.target.value)}
-                    sx={{ mb: 2 }}
-                  />
-                  <TextField
-                    fullWidth size="small" label="API Key"
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    type={showKey ? 'text' : 'password'}
-                    slotProps={{
-                      input: {
-                        endAdornment: (
-                          <InputAdornment position="end">
-                            <IconButton size="small" onClick={() => setShowKey(!showKey)} edge="end">
-                              {showKey ? <VisibilityOff /> : <Visibility />}
-                            </IconButton>
-                          </InputAdornment>
-                        )
-                      }
-                    }}
-                    sx={{ mb: 2.5 }}
-                  />
-                  <Button
-                    variant="contained" fullWidth size="large"
-                    onClick={handleSaveApiKey} disabled={saving || !nombre.trim()}
-                    sx={{ fontWeight: 'bold', py: 1.2 }}
-                  >
-                    {saving ? <CircularProgress size={22} sx={{ color: 'white' }} /> : (isEditingKey ? 'Actualizar API Key' : 'Guardar API Key')}
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Typography variant="subtitle2" sx={{ color: '#b2bac2', mb: 1.5, fontWeight: 600 }}>
-                API Keys configuradas ({configuraciones.length})
-              </Typography>
-
-              {configuraciones.length === 0 ? (
-                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2, mb: 2 }}>
-                  No hay API Keys configuradas.
-                </Typography>
-              ) : (
-                configuraciones.map(s => (
-                  <Card key={s.idSucursal} variant="outlined" sx={{
-                    mb: 1.5, cursor: 'pointer',
-                    borderColor: isEditingKey && apiKeyConfigActual!.idSucursal === s.idSucursal ? '#1976d2' : '#1e4976',
-                    bgcolor: isEditingKey && apiKeyConfigActual!.idSucursal === s.idSucursal ? 'rgba(25,118,210,0.12)' : '#132f4c',
-                    transition: 'all 0.2s',
-                    '&:hover': { borderColor: '#1976d2' }
-                  }} onClick={() => selectByNombre(s)}>
-                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 }, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <Box>
-                        <Typography variant="body1" sx={{ fontWeight: 600, color: '#ffffff' }}>{s.nombre}</Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ fontFamily: 'monospace', fontSize: 13 }}>
-                          API Key: {'●'.repeat(Math.min(s.apiKey.length, 16))}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', gap: 0.5 }}>
-                        <IconButton size="small" color="primary" onClick={(e) => { e.stopPropagation(); selectByNombre(s); }}>
-                          <Edit fontSize="small" />
-                        </IconButton>
-                        <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); handleDeleteApiKey(s); }} disabled={deleting}>
-                          <Delete fontSize="small" />
-                        </IconButton>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                ))
-              )}
-            </Box>
-          )}
-
-          {/* ══════ TAB 1: CONTENIDO DIGITAL ══════ */}
-          {tabValue === 1 && (
             <Box>
               <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#90caf9', mb: 2 }}>
                 Contenido Digital
@@ -559,17 +282,17 @@ export default function CarteleraDigital() {
             </Box>
           )}
 
-          {/* ══════ TAB 2: PROGRAMACIÓN ══════ */}
-          {tabValue === 2 && (
+          {/* ══════ TAB 1: PROGRAMACIÓN ══════ */}
+          {tabValue === 1 && (
             <ProgramacionTab configuraciones={configuraciones} contenidos={contenidos} />
           )}
 
-          {/* ══════ TAB 3: VISTA PREVIA ══════ */}
-          {tabValue === 3 && (
+          {/* ══════ TAB 2: VISTA PREVIA ══════ */}
+          {tabValue === 2 && (
             <PlaylistPreview configuraciones={configuraciones} />
           )}
 
-          {/* ══════ UPLOAD MODAL (compartido) ══════ */}
+          {/* ══════ UPLOAD MODAL ══════ */}
           <Dialog open={modalOpen} onClose={handleCloseModal} maxWidth="sm" fullWidth>
             <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               Cargar Contenido
