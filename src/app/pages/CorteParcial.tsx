@@ -22,9 +22,11 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
+import axios from "axios";
 import useConsumoApi from "../../hooks/useConsumoApi";
 import useSession from "../../hooks/useSession";
 import { routes } from "../../utils/Routes";
+import { useAuth } from "../../context/AuthContext";
 
 interface InfoCorteItem {
   descripcion: string;
@@ -40,6 +42,7 @@ export default function CorteParcial() {
   const { consumoApi } = useConsumoApi();
   const session = useSession();
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
   const [ultimoCorte, setUltimoCorte] = useState<CorteData | null>(null);
   const [infoCorte, setInfoCorte] = useState<InfoCorteItem[]>([]);
@@ -58,6 +61,9 @@ export default function CorteParcial() {
   const [retirosUltimoModal, setRetirosUltimoModal] = useState<Record<number, number>>({});
   const [observacionUltimoModal, setObservacionUltimoModal] = useState<string>("");
   const [valesUltimoModal, setValesUltimoModal] = useState<number>(0);
+  const [montoEsperadoFormularioA, setMontoEsperadoFormularioA] = useState<number>(0);
+  const [montoObligatorio, setMontoObligatorio] = useState<number>(0);
+  const [ultimoRetiroCompletado, setUltimoRetiroCompletado] = useState<boolean>(false);
   
   const denominaciones = [1000, 500, 200, 100, 50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1];
 
@@ -68,6 +74,45 @@ export default function CorteParcial() {
     setRetirosModal(init);
     setRetirosUltimoModal(init);
   }, []);
+
+  // Cargar el monto esperado del módulo anterior desde la BD
+  useEffect(() => {
+    const cargarMontoAnterior = async () => {
+      try {
+        const params = {
+          cia: 1,
+          sucursal: session?.sucursal || 0,
+          corte: ultimoCorte?.corte_maximo || 0,
+          corteParcial: ultimoCorte?.corte_parcial_maximo || 0,
+          caja: 1
+        };
+        
+        console.log("Parámetros enviados al GET:", params);
+        
+        const respuesta = await axios.get('https://localhost:5001/api/cortedia/obtener-monto-esperado', {
+          params
+        });
+        
+        console.log("Monto recuperado de BD:", respuesta.data);
+
+        if (respuesta.data) {
+          const montoDetectado = respuesta.data.montoEsperado ?? respuesta.data.monto ?? 0;
+          console.log("Monto detectado:", montoDetectado);
+          setMontoObligatorio(montoDetectado);
+          setMontoEsperadoFormularioA(montoDetectado);
+        }
+      } catch (error: any) {
+        console.error("Error al obtener el monto del módulo anterior:", error);
+        console.error("Detalles del error:", error?.response?.data);
+        setMontoObligatorio(0);
+        setMontoEsperadoFormularioA(0);
+      }
+    };
+
+    if (ultimoCorte) {
+      cargarMontoAnterior();
+    }
+  }, [ultimoCorte, session?.sucursal]);
 
   // Calcular total del retiro en el modal
   const totalRetiroModal = useMemo(() => {
@@ -112,26 +157,60 @@ export default function CorteParcial() {
       return;
     }
 
-    try {
-      setLoading(true);
-      // Aquí iría la llamada a la API para guardar el retiro de fondo
-      // Por ahora solo mostramos un mensaje de éxito
-      await Swal.fire({
-        icon: "success",
-        title: "Éxito",
-        text: "Retiro de fondo registrado correctamente",
-      });
-      cerrarModalRetiro();
-      fetchInfoCorte(); // Recargar información
-    } catch (error) {
-      console.error("Error al guardar retiro:", error);
+    if (!ultimoCorte) {
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: "No se pudo registrar el retiro",
+        text: "No se encontró información del corte",
       });
-    } finally {
+      return;
+    }
+
+    const dataParaGuardar = {
+      cia: 1,
+      sucursal: session?.sucursal || 0,
+      caja: 1,
+      corte: ultimoCorte.corte_maximo,
+      corteParcial: ultimoCorte.corte_parcial_maximo,
+      usuario: session?.user?.id || session?.id || "",
+      montoRetiro: totalRetiroModal,
+      observaciones: observacionModal || ""
+    };
+
+    try {
+      setLoading(true);
+      const res = await axios.post('https://localhost:5001/api/Cortedia/registrar-fondo', dataParaGuardar);
+      
       setLoading(false);
+      cerrarModalRetiro();
+      
+      // Pequeño delay para asegurar que el modal se cierre antes de mostrar la alerta
+      setTimeout(async () => {
+        await Swal.fire({
+          icon: "success",
+          title: "Éxito",
+          text: res.data?.mensaje || "Retiro de fondo registrado correctamente",
+        });
+        fetchInfoCorte();
+      }, 100);
+    } catch (error: any) {
+      console.error("Error al guardar retiro:", error);
+      setLoading(false);
+      cerrarModalRetiro();
+      
+      const errorMessage = error?.response?.data?.mensaje 
+        || error?.response?.data?.detalle 
+        || error?.message 
+        || "No se pudo registrar el retiro";
+      
+      // Pequeño delay para asegurar que el modal se cierre antes de mostrar la alerta
+      setTimeout(() => {
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: errorMessage,
+        });
+      }, 100);
     }
   };
 
@@ -162,26 +241,82 @@ export default function CorteParcial() {
       return;
     }
 
-    try {
-      setLoading(true);
-      // Aquí iría la llamada a la API para guardar el último retiro
-      // Por ahora solo mostramos un mensaje de éxito
-      await Swal.fire({
-        icon: "success",
-        title: "Éxito",
-        text: "Último retiro registrado correctamente",
-      });
-      cerrarModalUltimoRetiro();
-      fetchInfoCorte(); // Recargar información
-    } catch (error) {
-      console.error("Error al guardar último retiro:", error);
+    if (!ultimoCorte) {
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: "No se pudo registrar el último retiro",
+        text: "No se encontró información del corte",
       });
-    } finally {
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const requestBody = {
+        cia: 1,
+        sucursal: session?.sucursal || 0,
+        corte: ultimoCorte.corte_maximo,
+        corteParcial: ultimoCorte.corte_parcial_maximo,
+        caja: 1,
+        usuario: session?.user?.id || session?.id || "",
+        observaciones: observacionUltimoModal || "",
+        ultimoRetiroCorteParcial: totalUltimoRetiroModal,
+        
+        // 🚀 CAMBIO AQUÍ: Envía el estado que ya guardó los $110 (o lo que dicte la BD)
+        montoEsperadoFormularioA: montoEsperadoFormularioA,
+        
+        b1000: retirosUltimoModal[1000] || 0,
+        b500: retirosUltimoModal[500] || 0,
+        b200: retirosUltimoModal[200] || 0,
+        b100: retirosUltimoModal[100] || 0,
+        b50: retirosUltimoModal[50] || 0,
+        b20: retirosUltimoModal[20] || 0,
+        m10: retirosUltimoModal[10] || 0,
+        m5: retirosUltimoModal[5] || 0,
+        m2: retirosUltimoModal[2] || 0,
+        m1: retirosUltimoModal[1] || 0,
+        m05: retirosUltimoModal[0.5] || 0,
+        m02: retirosUltimoModal[0.2] || 0,
+        m01: retirosUltimoModal[0.1] || 0,
+        vales: valesUltimoModal || 0
+      };
+
+      console.log("Datos enviados para último retiro:", requestBody);
+
+      const response = await axios.post("https://localhost:5001/api/Cortedia/Guardar", requestBody);
+
       setLoading(false);
+      cerrarModalUltimoRetiro();
+      
+      // Pequeño delay para asegurar que el modal se cierre antes de mostrar la alerta
+      setTimeout(async () => {
+        await Swal.fire({
+          icon: "success",
+          title: "Éxito",
+          text: response.data?.mensaje || "Último retiro guardado correctamente.",
+        });
+        setUltimoRetiroCompletado(true);
+        fetchInfoCorte();
+      }, 100);
+    } catch (error: any) {
+      console.error("Error al guardar último retiro:", error);
+      setLoading(false);
+      cerrarModalUltimoRetiro();
+      
+      const errorMessage = error?.response?.data?.mensaje 
+        || error?.response?.data?.detalle 
+        || error?.message 
+        || "No se pudo guardar el último retiro";
+      
+      // Pequeño delay para asegurar que el modal se cierre antes de mostrar la alerta
+      setTimeout(() => {
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: errorMessage,
+        });
+      }, 100);
     }
   };
 
@@ -355,57 +490,8 @@ export default function CorteParcial() {
       allowOutsideClick: false,
     });
 
-    const efectivoReal = await pedirEfectivo();
-    if (efectivoReal === null) return;
-
-    const nuevosIntentos = intentos + 1;
-    setIntentos(nuevosIntentos);
-
-    const coincide = efectivoReal === efectivoTeorico;
-
-    // No coincide
-    if (!coincide) {
-      // Máximo de intentos
-      if (nuevosIntentos >= maxIntentos) {
-        Swal.fire({
-          title: "Corte con diferencia",
-          html: `
-            <p>Se alcanzó el número máximo de intentos.</p>
-            <p><strong>Efectivo teórico:</strong> $${efectivoTeorico.toFixed(
-              2
-            )}</p>
-            <p><strong>Efectivo capturado:</strong> $${efectivoReal.toFixed(
-              2
-            )}</p>
-          `,
-          icon: "warning",
-          confirmButtonText: "Cerrar corte",
-          allowOutsideClick: false,
-        }).then(() => {
-          cerrarCorte(efectivoReal);
-        });
-
-        return;
-      }
-
-      // Aún hay intentos
-      Swal.fire({
-        title: "No coincide el efectivo",
-        html: `
-          <p><strong>Efectivo teórico:</strong> $${efectivoTeorico.toFixed(2)}</p>
-          <p><strong>Efectivo capturado:</strong> $${efectivoReal.toFixed(2)}</p>
-          <p><strong>Intentos restantes:</strong> ${maxIntentos - nuevosIntentos}</p>
-        `,
-        icon: "error",
-        confirmButtonText: "Intentar de nuevo",
-        allowOutsideClick: false,
-      });
-
-      return;
-    }
-
-    // Coincide
-    cerrarCorte(efectivoReal);
+    // Cerrar corte directamente con el efectivo teórico
+    cerrarCorte(efectivoTeorico);
   };
 
   // Cerrar corte en la API
@@ -439,10 +525,12 @@ export default function CorteParcial() {
       if (data?.corteProcesado || data?.mensaje) {
         Swal.fire(
           "Corte realizado",
-          data?.mensaje || "Corte parcial registrado",
+          data?.mensaje || "Corte parcial registrado. La sesión se cerrará.",
           "success"
         ).then(() => {
-          window.location.reload();
+          // Cerrar sesión y redirigir al login
+          logout();
+          navigate(routes.login);
         });
       } else {
         Swal.fire(
@@ -644,7 +732,7 @@ export default function CorteParcial() {
           variant="contained"
           color="warning"
           onClick={finalizarCorte}
-          disabled={true}
+          disabled={!ultimoRetiroCompletado || loading}
           sx={{
             px: 4,
             py: 1.5,
@@ -681,10 +769,6 @@ export default function CorteParcial() {
         variant="body2"
         sx={{ textAlign: "center", color: "text.secondary", mt: 2 }}
       >
-        <strong>
-          CORTE PARCIAL, {(session?.nombre || "ADMIN").toUpperCase()},{" "}
-          {fechaActual}, USR: {(session?.nombre || "ADMIN").toUpperCase()}
-        </strong>
       </Typography>
 
       {/* Modal de Retiro de Fondo */}
@@ -693,6 +777,7 @@ export default function CorteParcial() {
         onClose={cerrarModalRetiro}
         maxWidth="md"
         fullWidth
+        sx={{ zIndex: 1300 }}
       >
         <DialogContent sx={{ p: 0 }}>
           <Box sx={{ p: 3 }}>
@@ -714,51 +799,105 @@ export default function CorteParcial() {
               <Typography><strong>Corte Parcial:</strong> {ultimoCorte?.corte_parcial_maximo ?? "N/A"}</Typography>
             </Box>
 
-            {/* Denominaciones */}
-            <Box sx={{ mb: 3 }}>
-              {denominaciones.map((d) => {
-                const cantidad = retirosModal[d] || 0;
-                const resultado = d * cantidad;
-                const esFila = [500, 100, 20, 5, 1, 0.2, 0.1].includes(d);
-                
-                return (
-                  <Box
-                    key={d}
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      py: 0.5,
-                      bgcolor: esFila ? 'grey.200' : 'transparent',
-                      px: 1
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 100 }}>
-                      <Typography sx={{ fontWeight: 'bold' }}>
-                        {formatDenominacion(d)} X
+            {/* Denominaciones en dos columnas: Billetes y Monedas */}
+            <Box sx={{ display: 'flex', gap: 3, mb: 3 }}>
+              {/* Columna izquierda - Billetes (1000-20) */}
+              <Box sx={{ flex: 1 }}>
+                {[1000, 500, 200, 100, 50, 20].map((d) => {
+                  const cantidad = retirosModal[d] || 0;
+                  const resultado = d * cantidad;
+                  const esFila = [500, 100, 20].includes(d);
+                  
+                  return (
+                    <Box
+                      key={d}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        py: 0.5,
+                        bgcolor: esFila ? 'grey.200' : 'transparent',
+                        px: 1
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 100 }}>
+                        <Typography sx={{ fontWeight: 'bold' }}>
+                          {formatDenominacion(d)} X
+                        </Typography>
+                      </Box>
+                      
+                      <TextField
+                        type="number"
+                        value={cantidad}
+                        onChange={(e) => {
+                          const valor = Math.max(0, parseInt(e.target.value) || 0);
+                          setRetirosModal(prev => ({ ...prev, [d]: valor }));
+                        }}
+                        size="small"
+                        sx={{ width: 80 }}
+                        inputProps={{ min: 0, style: { textAlign: 'center' } }}
+                      />
+                      
+                      <Typography sx={{ minWidth: 30, textAlign: 'center' }}>=</Typography>
+                      
+                      <Typography sx={{ minWidth: 80, textAlign: 'right', fontWeight: 'bold' }}>
+                        {resultado.toFixed(2)}
                       </Typography>
                     </Box>
-                    
-                    <TextField
-                      type="number"
-                      value={cantidad}
-                      onChange={(e) => {
-                        const valor = Math.max(0, parseInt(e.target.value) || 0);
-                        setRetirosModal(prev => ({ ...prev, [d]: valor }));
+                  );
+                })}
+              </Box>
+
+              {/* Columna derecha - Monedas (10-0.1) */}
+              <Box sx={{ flex: 1 }}>
+                {[10, 5, 2, 1, 0.5, 0.2, 0.1].map((d) => {
+                  const cantidad = retirosModal[d] || 0;
+                  const resultado = d * cantidad;
+                  const esFila = [5, 1, 0.2, 0.1].includes(d);
+                  
+                  return (
+                    <Box
+                      key={d}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        py: 0.5,
+                        bgcolor: esFila ? 'grey.200' : 'transparent',
+                        px: 1
                       }}
-                      size="small"
-                      sx={{ width: 80 }}
-                      inputProps={{ min: 0, style: { textAlign: 'center' } }}
-                    />
-                    
-                    <Typography sx={{ minWidth: 30, textAlign: 'center' }}>=</Typography>
-                    
-                    <Typography sx={{ minWidth: 80, textAlign: 'right', fontWeight: 'bold' }}>
-                      {resultado.toFixed(2)}
-                    </Typography>
-                  </Box>
-                );
-              })}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 100 }}>
+                        <Typography sx={{ fontWeight: 'bold' }}>
+                          {formatDenominacion(d)} X
+                        </Typography>
+                      </Box>
+                      
+                      <TextField
+                        type="number"
+                        value={cantidad}
+                        onChange={(e) => {
+                          const valor = Math.max(0, parseInt(e.target.value) || 0);
+                          setRetirosModal(prev => ({ ...prev, [d]: valor }));
+                        }}
+                        size="small"
+                        sx={{ width: 80 }}
+                        inputProps={{ min: 0, style: { textAlign: 'center' } }}
+                      />
+                      
+                      <Typography sx={{ minWidth: 30, textAlign: 'center' }}>=</Typography>
+                      
+                      <Typography sx={{ minWidth: 80, textAlign: 'right', fontWeight: 'bold' }}>
+                        {resultado.toFixed(2)}
+                      </Typography>
+                    </Box>
+                  );
+                })}
+              </Box>
+            </Box>
+
+            {/* Fila de VALES debajo de las dos columnas */}
+            <Box sx={{ mb: 3 }}>
 
               {/* Fila de VALES */}
               <Box
@@ -836,6 +975,7 @@ export default function CorteParcial() {
         onClose={cerrarModalUltimoRetiro}
         maxWidth="md"
         fullWidth
+        sx={{ zIndex: 1300 }}
       >
         <DialogContent sx={{ p: 0 }}>
           <Box sx={{ p: 3 }}>
@@ -857,51 +997,105 @@ export default function CorteParcial() {
               <Typography><strong>Corte Parcial:</strong> {ultimoCorte?.corte_parcial_maximo ?? "N/A"}</Typography>
             </Box>
 
-            {/* Denominaciones */}
-            <Box sx={{ mb: 3 }}>
-              {denominaciones.map((d) => {
-                const cantidad = retirosUltimoModal[d] || 0;
-                const resultado = d * cantidad;
-                const esFila = [500, 100, 20, 5, 1, 0.2, 0.1].includes(d);
-                
-                return (
-                  <Box
-                    key={d}
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      py: 0.5,
-                      bgcolor: esFila ? 'grey.200' : 'transparent',
-                      px: 1
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 100 }}>
-                      <Typography sx={{ fontWeight: 'bold' }}>
-                        {formatDenominacion(d)} X
+            {/* Denominaciones en dos columnas: Billetes y Monedas */}
+            <Box sx={{ display: 'flex', gap: 3, mb: 3 }}>
+              {/* Columna izquierda - Billetes (1000-20) */}
+              <Box sx={{ flex: 1 }}>
+                {[1000, 500, 200, 100, 50, 20].map((d) => {
+                  const cantidad = retirosUltimoModal[d] || 0;
+                  const resultado = d * cantidad;
+                  const esFila = [500, 100, 20].includes(d);
+                  
+                  return (
+                    <Box
+                      key={d}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        py: 0.5,
+                        bgcolor: esFila ? 'grey.200' : 'transparent',
+                        px: 1
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 100 }}>
+                        <Typography sx={{ fontWeight: 'bold' }}>
+                          {formatDenominacion(d)} X
+                        </Typography>
+                      </Box>
+                      
+                      <TextField
+                        type="number"
+                        value={cantidad}
+                        onChange={(e) => {
+                          const valor = Math.max(0, parseInt(e.target.value) || 0);
+                          setRetirosUltimoModal(prev => ({ ...prev, [d]: valor }));
+                        }}
+                        size="small"
+                        sx={{ width: 80 }}
+                        inputProps={{ min: 0, style: { textAlign: 'center' } }}
+                      />
+                      
+                      <Typography sx={{ minWidth: 30, textAlign: 'center' }}>=</Typography>
+                      
+                      <Typography sx={{ minWidth: 80, textAlign: 'right', fontWeight: 'bold' }}>
+                        {resultado.toFixed(2)}
                       </Typography>
                     </Box>
-                    
-                    <TextField
-                      type="number"
-                      value={cantidad}
-                      onChange={(e) => {
-                        const valor = Math.max(0, parseInt(e.target.value) || 0);
-                        setRetirosUltimoModal(prev => ({ ...prev, [d]: valor }));
+                  );
+                })}
+              </Box>
+
+              {/* Columna derecha - Monedas (10-0.1) */}
+              <Box sx={{ flex: 1 }}>
+                {[10, 5, 2, 1, 0.5, 0.2, 0.1].map((d) => {
+                  const cantidad = retirosUltimoModal[d] || 0;
+                  const resultado = d * cantidad;
+                  const esFila = [5, 1, 0.2, 0.1].includes(d);
+                  
+                  return (
+                    <Box
+                      key={d}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        py: 0.5,
+                        bgcolor: esFila ? 'grey.200' : 'transparent',
+                        px: 1
                       }}
-                      size="small"
-                      sx={{ width: 80 }}
-                      inputProps={{ min: 0, style: { textAlign: 'center' } }}
-                    />
-                    
-                    <Typography sx={{ minWidth: 30, textAlign: 'center' }}>=</Typography>
-                    
-                    <Typography sx={{ minWidth: 80, textAlign: 'right', fontWeight: 'bold' }}>
-                      {resultado.toFixed(2)}
-                    </Typography>
-                  </Box>
-                );
-              })}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 100 }}>
+                        <Typography sx={{ fontWeight: 'bold' }}>
+                          {formatDenominacion(d)} X
+                        </Typography>
+                      </Box>
+                      
+                      <TextField
+                        type="number"
+                        value={cantidad}
+                        onChange={(e) => {
+                          const valor = Math.max(0, parseInt(e.target.value) || 0);
+                          setRetirosUltimoModal(prev => ({ ...prev, [d]: valor }));
+                        }}
+                        size="small"
+                        sx={{ width: 80 }}
+                        inputProps={{ min: 0, style: { textAlign: 'center' } }}
+                      />
+                      
+                      <Typography sx={{ minWidth: 30, textAlign: 'center' }}>=</Typography>
+                      
+                      <Typography sx={{ minWidth: 80, textAlign: 'right', fontWeight: 'bold' }}>
+                        {resultado.toFixed(2)}
+                      </Typography>
+                    </Box>
+                  );
+                })}
+              </Box>
+            </Box>
+
+            {/* Fila de VALES debajo de las dos columnas */}
+            <Box sx={{ mb: 3 }}>
 
               {/* Fila de VALES */}
               <Box

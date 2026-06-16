@@ -311,6 +311,9 @@ const SidebarHorizontal = () => {
           <ListItemButton onClick={() => { navigate(routes.corte_dia); setDrawerOpen(false); }}>
             <ListItemText primary="Corte Día" />
           </ListItemButton>
+          <ListItemButton onClick={() => { navigate(routes.Validacion_Productos_Servicios); setDrawerOpen(false); }}>
+            <ListItemText primary="Validación Productos y Servicios" />
+          </ListItemButton>
           <ListItemButton onClick={() => { navigate(routes.carteleraDigital); setDrawerOpen(false); }}>
             <ListItemText primary="Cartelera Digital" />
           </ListItemButton>

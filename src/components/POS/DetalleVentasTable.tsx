@@ -1,6 +1,9 @@
 import { MaterialReactTable, type MRT_ColumnDef } from "material-react-table";
-import { Button, Typography, useTheme, useMediaQuery, Box, MenuItem, Select } from "@mui/material";
-import React, { useMemo } from "react";
+import { Button, Typography, useTheme, useMediaQuery, Box, MenuItem, Select, Dialog, DialogTitle, DialogContent, TextField } from "@mui/material";
+import React, { useMemo, useState } from "react";
+import useConsumoApi from "../../hooks/useConsumoApi";
+import Swal from "sweetalert2";
+import axios from "axios"; // 💡 Importamos axios directo por seguridad
 
 type Estilista = {
   clave_empleado: string;
@@ -50,6 +53,96 @@ export default function DetalleVentasTable({
 }: Props) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const consumoApi = useConsumoApi();
+
+  const [modalAutorizacionOpen, setModalAutorizacionOpen] = useState(false);
+  const [usuarioAutorizacion, setUsuarioAutorizacion] = useState("");
+  const [passwordAutorizacion, setPasswordAutorizacion] = useState("");
+  const [detalleParaDescuento, setDetalleParaDescuento] = useState<DetalleVenta | null>(null);
+  const [nuevoDescuento, setNuevoDescuento] = useState<number>(0);
+
+  const handleAutorizarDescuento = async () => {
+    if (!usuarioAutorizacion || !passwordAutorizacion) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Atención',
+        text: 'Debes ingresar usuario y contraseña',
+        confirmButtonText: 'Aceptar'
+      });
+      return;
+    }
+    
+    try {
+      // 💡 Rellenamos con ceros a la izquierda hasta tener 5 caracteres (ej: "2" -> "00002")
+      // Esto previene que falle la búsqueda exacta en la tabla cat_usuarios
+      const usuarioFormateado = usuarioAutorizacion.trim().padStart(5, '0');
+
+      // 💡 Si 'consumoApi' te da problemas, puedes usar directamente 'axios.post' 
+      // apuntando a la URL de tu entorno de desarrollo (ej. https://localhost:7119)
+      // 💡 Cambiamos el puerto 7119 por tu puerto real 5001
+      const response = await axios.post('https://localhost:5001/api/PuntoDeVenta/autorizar-supervisor', {
+        usuario: usuarioFormateado,
+        contrasena: passwordAutorizacion,
+        permiso: "autoriza_descuento"
+      });
+
+      const responseData = Array.isArray(response.data) ? response.data[0] : response.data;
+
+      if (responseData?.autorizado === true) {
+        setModalAutorizacionOpen(false);
+        setUsuarioAutorizacion("");
+        setPasswordAutorizacion("");
+        
+        const { value: descuento } = await Swal.fire({
+          title: 'Ingrese el descuento',
+          input: 'number',
+          inputLabel: 'Monto del descuento',
+          inputValue: detalleParaDescuento?.descuento || 0,
+          inputAttributes: {
+            min: '0',
+            step: '0.01'
+          },
+          showCancelButton: true,
+          confirmButtonText: 'Aplicar',
+          cancelButtonText: 'Cancelar',
+          inputValidator: (value) => {
+            if (!value || parseFloat(value) < 0) {
+              return 'Debes ingresar un descuento válido';
+            }
+          }
+        });
+
+        if (descuento !== undefined && detalleParaDescuento) {
+          onEditarRenglon(detalleParaDescuento.id, "descuento", parseFloat(descuento));
+          
+          Swal.fire({
+            icon: 'success',
+            title: 'Descuento aplicado',
+            text: `Se aplicó un descuento de $${parseFloat(descuento).toFixed(2)}`,
+            confirmButtonText: 'Aceptar'
+          });
+        }
+        
+        setDetalleParaDescuento(null);
+        setNuevoDescuento(0);
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Acceso denegado',
+          text: responseData?.mensaje || 'No tienes permisos para autorizar descuentos',
+          confirmButtonText: 'Aceptar'
+        });
+      }
+    } catch (error: any) {
+      console.error('Error al autorizar:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: error.response?.data?.mensaje || 'Error al validar las credenciales',
+        confirmButtonText: 'Aceptar'
+      });
+    }
+  };
 
   const columns = useMemo<MRT_ColumnDef<DetalleVenta>[]>(() => [
     !isMobile && {
@@ -114,13 +207,12 @@ export default function DetalleVentasTable({
         },
       }),
     },
- {
+    {
       accessorKey: "d_producto",
       header: "Descripción",
       size: 100,
       minSize: 100,
       maxSize: 150,
-      // 🔥 Quitamos el Typography y usamos un Box simple para heredar el tamaño exacto del renglón
       Cell: ({ cell }: any) => (
         <Box sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {cell.getValue()}
@@ -167,24 +259,16 @@ export default function DetalleVentasTable({
       size: 100,
       minSize: 80,
       maxSize: 120,
+      enableEditing: false,
       Cell: ({ cell }: any) => `$${Number(cell.getValue()).toFixed(2)}`,
-      muiEditTextFieldProps: ({ cell, row, table }) => ({
-        type: "number",
-        inputProps: { min: 0, step: "0.01" },
-        onBlur: (e) => {
-          onEditarRenglon(row.original.id, "precio", Math.max(0, Number(e.target.value)));
-          table.setEditingCell(null);
-        },
-      }),
     },
- {
+    {
       accessorKey: "importe",
       header: "Importe",
       size: 100,
       minSize: 80,
       maxSize: 120,
       enableEditing: false, 
-      // 🔥 Eliminamos el Typography fontWeight="medium" que hacía los números gigantes
       Cell: ({ cell }: any) => `$${Number(cell.getValue()).toFixed(2)}`,
     },
     !isMobile && {
@@ -249,6 +333,7 @@ export default function DetalleVentasTable({
   ].filter(Boolean) as MRT_ColumnDef<DetalleVenta>[], [isMobile, onEditarRenglon, estilistasLista, auxiliaresLista]);
 
   return (
+    <>
     <MaterialReactTable
       columns={columns}
       data={data}
@@ -272,7 +357,6 @@ export default function DetalleVentasTable({
       editDisplayMode="cell"
       muiTableBodyCellProps={({ cell, table }) => ({
         onClick: (event) => {
-          // 🔥 Evitamos bloquear el clic en la columna de botones
           if (cell.column.id !== 'mrt-row-actions') {
             event.stopPropagation();
           }
@@ -287,7 +371,12 @@ export default function DetalleVentasTable({
               onBuscarProducto();
             }
           } 
-          else if (cell.column.id !== "importe" && cell.column.id !== "mrt-row-actions") {
+          else if (cell.column.id === "descuento") {
+            setDetalleParaDescuento(cell.row.original);
+            setNuevoDescuento(cell.row.original.descuento);
+            setModalAutorizacionOpen(true);
+          }
+          else if (cell.column.id !== "importe" && cell.column.id !== "precio" && cell.column.id !== "mrt-row-actions") {
             table.setEditingCell(cell);
           }
         },
@@ -296,10 +385,9 @@ export default function DetalleVentasTable({
       displayColumnDefOptions={{
         "mrt-row-actions": {
           header: "Acción",
-          // 🔥 Ensanchamos la columna para que los botones entren y no se recorten
-          size: 150, 
-          minSize: 120,
-          maxSize: 200,
+          size: 300, 
+          minSize: 240,
+          maxSize: 400,
         },
       }}
       renderDetailPanel={({ row }) => {
@@ -366,7 +454,6 @@ export default function DetalleVentasTable({
               Insumos
             </Button>
           )}
-          {/* 🔥 Restauramos el botón de cancelar garantizando su visibilidad */}
           <Button
             color="error"
             variant="contained"
@@ -411,5 +498,96 @@ export default function DetalleVentasTable({
         },
       }}
     />
+    
+    {/* Diálogo de autorización de descuento al estilo Access original */}
+    <Dialog
+      open={modalAutorizacionOpen}
+      onClose={() => setModalAutorizacionOpen(false)}
+      maxWidth="xs"
+      fullWidth
+      PaperProps={{
+        sx: {
+          border: '2px solid black',
+          borderRadius: 0,
+          boxShadow: '0px 4px 10px rgba(0,0,0,0.3)'
+        }
+      }}
+    >
+      <DialogTitle sx={{ 
+        textAlign: 'center', 
+        backgroundColor: '#f0f0f0',
+        borderBottom: '2px solid black',
+        py: 1
+      }}>
+        <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+          Escriba los datos de un usuario con acceso a este módulo.
+        </Typography>
+      </DialogTitle>
+      
+      <DialogContent sx={{ p: 3, mt: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+          <Typography sx={{ minWidth: '140px', fontWeight: 'bold' }}>
+            Nombre de usuario:
+          </Typography>
+          <TextField
+            size="small"
+            fullWidth
+            value={usuarioAutorizacion}
+            onChange={(e) => setUsuarioAutorizacion(e.target.value)}
+            sx={{ backgroundColor: 'white' }}
+          />
+        </Box>
+        
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+          <Typography sx={{ minWidth: '140px', fontWeight: 'bold' }}>
+            Password:
+          </Typography>
+          <TextField
+            size="small"
+            type="password"
+            fullWidth
+            value={passwordAutorizacion}
+            onChange={(e) => setPasswordAutorizacion(e.target.value)}
+            sx={{ backgroundColor: 'white' }}
+          />
+        </Box>
+        
+        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2 }}>
+          <Button
+            variant="contained"
+            onClick={handleAutorizarDescuento}
+            sx={{ 
+              minWidth: 100,
+              backgroundColor: '#e0e0e0',
+              color: 'black',
+              border: '1px solid #999',
+              '&:hover': { backgroundColor: '#d0d0d0' }
+            }}
+          >
+            Aceptar
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => {
+              setModalAutorizacionOpen(false);
+              setUsuarioAutorizacion("");
+              setPasswordAutorizacion("");
+              setDetalleParaDescuento(null);
+              setNuevoDescuento(0);
+            }}
+            sx={{ 
+              minWidth: 100,
+              backgroundColor: '#e0e0e0',
+              color: 'black',
+              border: '1px solid #999',
+              '&:hover': { backgroundColor: '#d0d0d0' }
+            }}
+          >
+            Cancelar
+          </Button>
+        </Box>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

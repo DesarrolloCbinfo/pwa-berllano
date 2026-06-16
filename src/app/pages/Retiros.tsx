@@ -15,6 +15,7 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import Swal from "sweetalert2";
+import axios from "axios";
 import useConsumoApi from "../../hooks/useConsumoApi";
 import useSession from "../../hooks/useSession";
 
@@ -44,6 +45,7 @@ export default function Retiros() {
   const [vales, setVales] = useState<number>(0);
   const [retirosOriginales, setRetirosOriginales] = useState<Record<number, number> | null>(null);
   const [intentosConfirmacion, setIntentosConfirmacion] = useState(0);
+  const [efectivoTeorico, setEfectivoTeorico] = useState<number>(0);
 
   // Inicializar retiros en 0
   useEffect(() => {
@@ -56,6 +58,46 @@ export default function Retiros() {
   useEffect(() => {
     fetchCorteActual();
   }, [session?.sucursal]);
+
+  // Cargar efectivo teórico
+  useEffect(() => {
+    const cargarEfectivoTeorico = async () => {
+      //  Validación preventiva: Si no hay datos de sesión aún, no dispares la petición
+      const sucursal = session?.sucursal;
+      const corte = dataCorteActual?.corte_maximo;
+      const corteParcial = dataCorteActual?.corte_parcial_maximo;
+      const cia = 1;
+      const caja = 1;
+
+      if (!sucursal || !corte || !corteParcial) return;
+
+      try {
+        const response = await axios.get('https://localhost:5001/api/Cortedia/obtener-efectivo-teorico', {
+          params: {
+            cia: cia,
+            sucursal: sucursal,
+            corte: corte,
+            caja: caja,
+            corteParcial: corteParcial
+          }
+        });
+
+        //  Mapeamos exactamente al nombre que regresa tu API: response.data.totalARetirar
+        const efectivo = response.data?.totalARetirar ?? 0;
+        
+        setEfectivoTeorico(efectivo);
+        setTotalRetiroEditable(Number(efectivo).toFixed(2));
+
+      } catch (error) {
+        console.error('Error al obtener efectivo teórico:', error);
+        setEfectivoTeorico(0);
+        setTotalRetiroEditable("0.00");
+      }
+    };
+
+    cargarEfectivoTeorico();
+  //  Añadimos las dependencias para que si el usuario cambia de corte o parcial, el cálculo se actualice en automático
+  }, [session?.sucursal, dataCorteActual?.corte_maximo, dataCorteActual?.corte_parcial_maximo]);
 
   const fetchCorteActual = async () => {
     if (!session?.sucursal) return;
@@ -99,11 +141,6 @@ export default function Retiros() {
       0
     );
   }, [retiros]);
-
-  // Sincronizar el total editable cuando cambian las denominaciones
-  useEffect(() => {
-    setTotalRetiroEditable(totalRetiro.toFixed(2));
-  }, [totalRetiro]);
 
   const handleTotalChange = (value: string) => {
     // Permitir solo números y punto decimal
@@ -154,6 +191,20 @@ export default function Retiros() {
         title: "Atención",
         text: "El total del retiro debe ser mayor a 0",
         confirmButtonColor: "#f8bb86",
+      });
+      return;
+    }
+
+    // Validar que el desglose no sea mayor que el total manual ingresado
+    if (totalRetiro > totalFinal) {
+      Swal.fire({
+        icon: "error",
+        title: "Error de validación",
+        html: `
+          <p>El total del desglose de denominaciones ($${totalRetiro.toFixed(2)}) es mayor que el total a retirar ($${totalFinal.toFixed(2)}).</p>
+          <p>Por favor, ajuste las cantidades antes de continuar.</p>
+        `,
+        confirmButtonColor: "#d33",
       });
       return;
     }
@@ -305,30 +356,70 @@ export default function Retiros() {
 
   return (
     <Box sx={{ p: { xs: 2, sm: 3 }, maxWidth: 1200, mx: "auto" }}>
-      {/* Encabezado con título a la izquierda y datos a la derecha */}
+      {/* Encabezado con título, datos y botones */}
       <Paper elevation={2} sx={{ p: 2, mb: 1.5 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-          {/* Título a la izquierda */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2 }}>
+          {/* Título y datos a la izquierda */}
           <Box>
-            <Typography variant="h5" sx={{ fontWeight: "bold" }}>
-              Módulo de
-            </Typography>
-            <Typography variant="h4" sx={{ fontWeight: "bold", color: "primary.main" }}>
-              Retiros del Corte
-            </Typography>
+            {/* Título */}
+            <Box>
+              <Typography variant="h5" sx={{ fontWeight: "bold" }}>
+                Módulo de
+              </Typography>
+              <Typography variant="h4" sx={{ fontWeight: "bold", color: "primary.main" }}>
+                Retiros del Corte
+              </Typography>
+            </Box>
+
+            {/* Datos debajo del título */}
+            <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
+              <Typography>
+                <strong>Caja:</strong> 1
+              </Typography>
+              <Typography>
+                <strong>Corte:</strong> {dataCorteActual?.corte_maximo ?? "N/A"}
+              </Typography>
+              <Typography>
+                <strong>Corte Parcial:</strong> {dataCorteActual?.corte_parcial_maximo ?? "N/A"}
+              </Typography>
+            </Box>
           </Box>
 
-          {/* Datos a la derecha */}
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-            <Typography>
-              <strong>Caja:</strong> 1
-            </Typography>
-            <Typography>
-              <strong>Corte:</strong> {dataCorteActual?.corte_maximo ?? "N/A"}
-            </Typography>
-            <Typography>
-              <strong>Corte Parcial:</strong> {dataCorteActual?.corte_parcial_maximo ?? "N/A"}
-            </Typography>
+          {/* Botones a la derecha */}
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={RegistraRetiro}
+              disabled={loading || totalRetiro === 0}
+              sx={{
+                px: 4,
+                py: 1.5,
+                fontWeight: "bold",
+                borderRadius: 2,
+                textTransform: "none",
+                fontSize: "1rem",
+                minWidth: 120,
+              }}
+            >
+              {loading ? "Guardando..." : "Guardar"}
+            </Button>
+            <Button
+              variant="outlined"
+              color="secondary"
+              onClick={() => window.history.back()}
+              sx={{
+                px: 4,
+                py: 1.5,
+                fontWeight: "bold",
+                borderRadius: 2,
+                textTransform: "none",
+                fontSize: "1rem",
+                minWidth: 120,
+              }}
+            >
+              Salir
+            </Button>
           </Box>
         </Box>
       </Paper>
@@ -353,6 +444,15 @@ export default function Retiros() {
           >
             TOTAL A RETIRAR:
           </Typography>
+          <Typography
+            variant="h4"
+            sx={{
+              fontWeight: 'bold',
+              color: '#5c5c5cff',
+            }}
+          >
+            ${efectivoTeorico.toFixed(2)}
+          </Typography>
           <TextField
             value={totalRetiroEditable}
             onChange={(e) => handleTotalChange(e.target.value)}
@@ -366,6 +466,7 @@ export default function Retiros() {
             }}
             sx={{ 
               minWidth: 150,
+              display: 'none',
               '& .MuiInputBase-input': {
                 textAlign: 'right',
                 fontWeight: 'bold',
@@ -378,7 +479,7 @@ export default function Retiros() {
       </Paper>
 
       {/* Grid de denominaciones */}
-      <Card sx={{ mb: 1.5 }}>
+      <Card sx={{ mb: 0.5 }}>
         <CardContent>
           <Typography variant="h6" sx={{ mb: 2, fontWeight: "bold" }}>
             Desglose por Denominación
@@ -395,7 +496,7 @@ export default function Retiros() {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  py: 1.5,
+                  py: 0.1,
                   gap: 2,
                 }}
               >
@@ -486,7 +587,7 @@ export default function Retiros() {
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "space-between",
-                      py: 1.5,
+                      py: 0.1,
                       gap: 2,
                     }}
                   >
@@ -578,7 +679,7 @@ export default function Retiros() {
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              py: 0.5,
+              py: 0.1,
               gap: 2,
             }}
           >
@@ -634,77 +735,48 @@ export default function Retiros() {
         </CardContent>
       </Card>
 
-      {/* Total */}
-      <Paper
-        elevation={3}
-        sx={{
-          p: 2,
-          mb: 3,
-          bgcolor: "primary.main",
-          color: "primary.contrastText",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <Typography variant="h6">Total Egreso:</Typography>
-        <Typography variant="h4" fontWeight="bold">
-          ${totalRetiro.toFixed(2)}
-        </Typography>
-      </Paper>
+      {/* Observaciones, Total y Botones en la misma fila */}
+      <Box sx={{ display: 'flex', gap: 2, mb: 1.5 }}>
+        {/* Observaciones - Izquierda */}
+        <Card sx={{ flex: 1 }}>
+          <CardContent>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: "bold", minWidth: 120 }}>
+                Observación:
+              </Typography>
+              <TextField
+                fullWidth
+                value={observaciones}
+                onChange={(e) => setObservaciones(e.target.value)}
+                placeholder="Ingrese observaciones del retiro"
+                variant="outlined"
+                size={isMobile ? "medium" : "small"}
+              />
+            </Box>
+          </CardContent>
+        </Card>
 
-      {/* Observaciones */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: "bold" }}>
-            Observación:
+        {/* Total Egreso - Centro */}
+        <Paper
+          elevation={3}
+          sx={{
+            p: 2,
+            minWidth: 300,
+            bgcolor: "primary.main",
+            color: "primary.contrastText",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: 1,
+          }}
+        >
+          <Typography variant="h6">Total Egreso:</Typography>
+          <Typography variant="h4" fontWeight="bold">
+            ${totalRetiro.toFixed(2)}
           </Typography>
-          <TextField
-            fullWidth
-            value={observaciones}
-            onChange={(e) => setObservaciones(e.target.value)}
-            placeholder="Ingrese observaciones del retiro"
-            variant="outlined"
-            size={isMobile ? "medium" : "small"}
-          />
-        </CardContent>
-      </Card>
+        </Paper>
 
-      {/* Botones */}
-      <Box sx={{ display: "flex", gap: 2, justifyContent: "center" }}>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={RegistraRetiro}
-          disabled={loading || totalRetiro === 0}
-          sx={{
-            px: 4,
-            py: 1.5,
-            fontWeight: "bold",
-            borderRadius: 2,
-            textTransform: "none",
-            fontSize: "1rem",
-            minWidth: 120,
-          }}
-        >
-          {loading ? "Guardando..." : "Guardar"}
-        </Button>
-        <Button
-          variant="outlined"
-          color="secondary"
-          onClick={() => window.history.back()}
-          sx={{
-            px: 4,
-            py: 1.5,
-            fontWeight: "bold",
-            borderRadius: 2,
-            textTransform: "none",
-            fontSize: "1rem",
-            minWidth: 120,
-          }}
-        >
-          Salir
-        </Button>
       </Box>
     </Box>
   );

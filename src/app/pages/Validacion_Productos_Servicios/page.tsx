@@ -6,6 +6,7 @@ import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
 import useConsumoApi from '../../../hooks/useConsumoApi'; 
 import { useSessionContext } from '../../../context/SessionProvider';
 import Swal from 'sweetalert2';
+import DialogoValidacion from './DialogoValidacion';
 
 // --- INTERFACES ---
 interface ValidacionRow {
@@ -43,9 +44,35 @@ export default function ValidacionProductosServicios() {
   });
   const [colaboradorId, setColaboradorId] = useState<string>('');
   const [colaboradores, setColaboradores] = useState<Colaborador[]>([]);
+  
+  // Estados para el diálogo de validación
+  const [dialogoAbierto, setDialogoAbierto] = useState(false);
+  const [usuarioValidacion, setUsuarioValidacion] = useState('');
+  const [passwordValidacion, setPasswordValidacion] = useState('');
+  const [filaSeleccionada, setFilaSeleccionada] = useState<ValidacionRow | null>(null);
 
   // --- COLUMNAS DEL DATAGRID ---
   const columns: GridColDef[] = [
+    {
+      field: 'validacion',
+      headerName: 'Validación',
+      width: 120,
+      headerAlign: 'center',
+      align: 'center',
+      sortable: false,
+      filterable: false,
+      renderCell: (params) => (
+        <Button
+          variant="contained"
+          color="success"
+          size="small"
+          onClick={() => abrirDialogoValidacion(params.row)}
+          disabled={params.row.validado === 1}
+        >
+          Validar
+        </Button>
+      )
+    },
     { 
       field: 'validar_admva', 
       headerName: 'Validar Admva.', 
@@ -119,6 +146,73 @@ export default function ValidacionProductosServicios() {
       )
     }
   ];
+
+  // --- FUNCIONES DEL DIÁLOGO DE VALIDACIÓN ---
+  const abrirDialogoValidacion = (row: ValidacionRow) => {
+    setFilaSeleccionada(row);
+    setUsuarioValidacion('');
+    setPasswordValidacion('');
+    setDialogoAbierto(true);
+  };
+
+  const cerrarDialogoValidacion = () => {
+    setDialogoAbierto(false);
+    setUsuarioValidacion('');
+    setPasswordValidacion('');
+    setFilaSeleccionada(null);
+  };
+
+  const confirmarValidacion = async () => {
+    if (!usuarioValidacion || !passwordValidacion) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Campos requeridos',
+        text: 'Por favor ingrese usuario y contraseña'
+      });
+      return;
+    }
+
+    if (!filaSeleccionada) return;
+
+    cerrarDialogoValidacion();
+
+    setLoading(true);
+    try {
+      const response = await consumoApi.put('/api/CatTrabajadoresValidacion/individual', {
+        sucursal: session?.sucursal || 0,
+        claveServicio: filaSeleccionada.clave_prod,
+        venta: filaSeleccionada.no_venta
+      });
+
+      const resultado = response.data;
+
+      if (resultado.codigo === 0) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Éxito',
+          text: resultado.mensaje1 || 'Servicio validado correctamente'
+        });
+
+        // Recargar datos
+        await handleConsultar();
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: resultado.mensaje1 || 'No se pudo validar el servicio'
+        });
+      }
+    } catch (error) {
+      console.error('Error validando servicio:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'No se pudo validar el servicio'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // --- CARGAR COLABORADORES ---
   const fetchColaboradores = async () => {
@@ -342,11 +436,11 @@ export default function ValidacionProductosServicios() {
   }, []);
 
   return (
-    <Box sx={{ p: 3, height: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 }, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* ENCABEZADO */}
       <Paper sx={{ 
-        p: 3, 
-        mb: 3, 
+        p: { xs: 2, sm: 2.5, md: 3 }, 
+        mb: { xs: 2, md: 3 }, 
         borderRadius: '8px', 
         boxShadow: '0 4px 8px rgba(0,0,0,0.08)',
         background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)'
@@ -361,7 +455,8 @@ export default function ValidacionProductosServicios() {
             sx={{ 
               fontWeight: 'bold',
               color: '#000',
-              textAlign: 'center'
+              textAlign: 'center',
+              fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
             }}
           >
             Validación
@@ -371,7 +466,8 @@ export default function ValidacionProductosServicios() {
             sx={{ 
               fontWeight: 'bold',
               color: '#000',
-              textAlign: 'center'
+              textAlign: 'center',
+              fontSize: { xs: '1.25rem', sm: '1.5rem', md: '1.5rem' }
             }}
           >
             De Productos y Servicios
@@ -381,13 +477,19 @@ export default function ValidacionProductosServicios() {
         {/* FILTROS */}
         <Box sx={{ 
           display: 'flex', 
-          gap: 3, 
-          alignItems: 'center',
+          flexDirection: { xs: 'column', md: 'row' },
+          gap: { xs: 2, md: 3 }, 
+          alignItems: { xs: 'stretch', md: 'center' },
           borderBottom: '2px solid #000',
           pb: 2
         }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography sx={{ fontWeight: 600, minWidth: '140px' }}>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: { xs: 'column', sm: 'row' },
+            alignItems: { xs: 'flex-start', sm: 'center' }, 
+            gap: 1 
+          }}>
+            <Typography sx={{ fontWeight: 600, minWidth: { xs: 'auto', sm: '140px' } }}>
               Fecha de consulta:
             </Typography>
             <TextField
@@ -396,7 +498,7 @@ export default function ValidacionProductosServicios() {
               value={fechaConsulta}
               onChange={(e) => setFechaConsulta(e.target.value)}
               sx={{ 
-                width: 180,
+                width: { xs: '100%', sm: 180 },
                 '& .MuiInputBase-root': {
                   backgroundColor: '#fff'
                 }
@@ -404,8 +506,13 @@ export default function ValidacionProductosServicios() {
             />
           </Box>
 
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography sx={{ fontWeight: 600, minWidth: '100px' }}>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: { xs: 'column', sm: 'row' },
+            alignItems: { xs: 'flex-start', sm: 'center' }, 
+            gap: 1 
+          }}>
+            <Typography sx={{ fontWeight: 600, minWidth: { xs: 'auto', sm: '100px' } }}>
               Colaborador:
             </Typography>
             <TextField
@@ -414,7 +521,7 @@ export default function ValidacionProductosServicios() {
               value={colaboradorId}
               onChange={(e) => setColaboradorId(e.target.value)}
               sx={{ 
-                minWidth: 250,
+                minWidth: { xs: '100%', sm: 250 },
                 '& .MuiInputBase-root': {
                   backgroundColor: '#fff'
                 }
@@ -430,12 +537,17 @@ export default function ValidacionProductosServicios() {
           </Box>
 
           {/* BOTONES */}
-          <Box sx={{ display: 'flex', gap: 2, ml: 'auto' }}>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: { xs: 'column', sm: 'row' },
+            gap: 2, 
+            ml: { xs: 0, md: 'auto' } 
+          }}>
             <Button
               variant="contained"
               onClick={handleConsultar}
               sx={{
-                minWidth: 120,
+                minWidth: { xs: '100%', sm: 120 },
                 backgroundColor: '#c0c0c0',
                 color: '#000',
                 fontWeight: 600,
@@ -451,7 +563,7 @@ export default function ValidacionProductosServicios() {
               variant="contained"
               onClick={() => window.history.back()}
               sx={{
-                minWidth: 120,
+                minWidth: { xs: '100%', sm: 120 },
                 backgroundColor: '#c0c0c0',
                 color: '#000',
                 fontWeight: 600,
@@ -468,12 +580,15 @@ export default function ValidacionProductosServicios() {
 
       {/* TABLA DE DATOS */}
       <Paper sx={{ 
-        flex: 1, 
-        p: 3, 
+        flex: { xs: 'none', md: 1 },
+        minHeight: { xs: '500px', md: 'auto' },
+        p: { xs: 1, sm: 2, md: 3 }, 
         borderRadius: '8px', 
         boxShadow: '0 4px 8px rgba(0,0,0,0.08)',
         display: 'flex',
-        flexDirection: 'column'
+        flexDirection: 'column',
+        overflow: 'hidden',
+        mb: { xs: 2, md: 0 }
       }}>
         <Box sx={{ 
           flex: 1, 
@@ -505,34 +620,18 @@ export default function ValidacionProductosServicios() {
             pageSizeOptions={[10, 25, 50, 100]}
           />
         </Box>
-
-        {/* BOTÓN VALIDAR - Solo aparece cuando hay registros */}
-        {rows.length > 0 && (
-          <Box sx={{ 
-            display: 'flex', 
-            justifyContent: 'center', 
-            mt: 3,
-            pt: 2,
-            borderTop: '1px solid #e0e0e0'
-          }}>
-            <Button
-              variant="contained"
-              onClick={handleValidar}
-              sx={{
-                minWidth: 120,
-                backgroundColor: '#4caf50',
-                color: '#fff',
-                fontWeight: 600,
-                '&:hover': {
-                  backgroundColor: '#45a049'
-                }
-              }}
-            >
-              Validar
-            </Button>
-          </Box>
-        )}
       </Paper>
+
+      {/* Diálogo de validación con usuario y contraseña */}
+      <DialogoValidacion
+        open={dialogoAbierto}
+        onClose={cerrarDialogoValidacion}
+        onConfirmar={confirmarValidacion}
+        usuario={usuarioValidacion}
+        setUsuario={setUsuarioValidacion}
+        password={passwordValidacion}
+        setPassword={setPasswordValidacion}
+      />
     </Box>
   );
 }

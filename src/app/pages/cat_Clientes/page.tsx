@@ -144,7 +144,7 @@ const selectProps = {
   }
 };
 
-export default function CatClientes({ embedded = false, onClienteGuardado, onClose, openModal: externalOpenModal, onOpenModal }: CatClienteProps) {
+export default function CatClientes({ embedded = false, onClienteGuardado, onClose, openModal: externalOpenModal, onOpenModal, clienteToEdit }: CatClienteProps) {
   const { consumoApi } = useConsumoApi();
   const { session } = useSessionContext();
 
@@ -264,6 +264,54 @@ export default function CatClientes({ embedded = false, onClienteGuardado, onClo
     setPaginationModel(prev => ({ ...prev, page: 0 }));
     if (paginationModel.page === 0) fetchClientes();
   };
+
+// Cargar datos del cliente cuando se pasa clienteToEdit
+useEffect(() => {
+  if (clienteToEdit && clienteToEdit.No_cliente) {
+    const cargarDatosCliente = async () => {
+      try {
+        const response = await consumoApi.get('/api/CatClientes/sp_bw_cat_clientes_suc_sel', {
+          params: { No_cliente: clienteToEdit.No_cliente }
+        });
+        
+        if (response.data && response.data.length > 0) {
+          const cliente = response.data[0];
+          
+          // Buscar el ID de la sucursal por nombre
+          const sucursalEncontrada = sucursales.find(s => s.descripcion === cliente.sucursal_nombre);
+          
+          setFormData({
+            clave_cliente: cliente.No_cliente || '',
+            id_cliente: cliente.No_cliente || '',
+            nombre: cliente.nombre || '',
+            apellido_paterno: cliente.ap_paterno || '',
+            apellido_materno: cliente.ap_materno || '',
+            email: cliente.email || '',
+            telefono: cliente.telefono || '',
+            domicilio: cliente.domicilio || '',
+            ciudad: cliente.ciudad || '',
+            estado: cliente.estado || '',
+            cp: cliente.cp || '',
+            colonia: cliente.colonia || '',
+            sucursal_id: sucursalEncontrada?.id || '', // ← USAR EL ID ENCONTRADO
+            genero: cliente.genero || '',
+            clave_registro: '',
+            suspendido: cliente.suspendido || false,
+            fecha_alta: cliente.fecha_alta ? cliente.fecha_alta.split('T')[0] : '',
+            fecha_act: cliente.fecha_act ? cliente.fecha_act.split('T')[0] : '',
+          });
+          setIsEditing(true);
+          setOpenModal(true);
+        }
+      } catch (error) {
+        console.error('Error cargando datos del cliente:', error);
+      }
+    };
+    
+    cargarDatosCliente();
+  }
+}, [clienteToEdit, sucursales]); // ← AGREGAR sucursales COMO DEPENDENCIA
+
 
   useEffect(() => { fetchClientes(); }, [paginationModel]); 
   useEffect(() => { fetchSucursales(); }, []);

@@ -49,21 +49,21 @@ type Auxiliar = {
 };
 
 type HistorialItem = {
-  no_venta: number;
+  no_Venta: number;
   nombre: string;
-  cve_sucursal: number;
+  cve_Sucursal: number;
   fecha: string;
-  clave_prod: string;
-  prod_serv: string;
-  es_servicio: boolean;
-  es_producto: boolean;
-  cant_producto: number;
-  Precio: number;
+  clave_Prod: string;
+  prod_Serv: string;
+  es_Servicio: boolean;
+  es_Producto: boolean;
+  cant_Producto: number;
+  precio: number;
   estilista: string;
   descuento: number;
-  no_cliente: string;
+  no_Cliente: string;
   cliente: string;
-  forma_pago: string;
+  forma_Pago: string;
 };
 
 type InsumoItem = {
@@ -148,8 +148,12 @@ export default function POS() {
   const [searchText, setSearchText] = React.useState("");
   const [modalClienteOpen, setModalClienteOpen] = React.useState(false);
   const [modalNuevoClienteOpen, setModalNuevoClienteOpen] = React.useState(false);
+  const [modalEditarClienteOpen, setModalEditarClienteOpen] = React.useState(false);
+  const [modalReasignarClienteOpen, setModalReasignarClienteOpen] = React.useState(false);
+const [nuevoClienteReasignacion, setNuevoClienteReasignacion] = React.useState<Cliente | null>(null);
   const [modalHistorialOpen, setModalHistorialOpen] = React.useState(false);
   const [historialData, setHistorialData] = React.useState<HistorialItem[]>([]);
+  const [historialTotales, setHistorialTotales] = React.useState<any>(null);
   const [historialPage, setHistorialPage] = React.useState(1);
   const [historialLoading, setHistorialLoading] = React.useState(false);
   const [hasMoreHistorial, setHasMoreHistorial] = React.useState(true);
@@ -290,7 +294,7 @@ const totalTabulador = Object.entries(denominaciones).reduce((sum, [key, cant]) 
 }, 0);
   
 
-  // 🔥 MATEMÁTICA DE TOTALES CONTROLADOS MANUALMENTE
+  //  MATEMÁTICA DE TOTALES CONTROLADOS MANUALMENTE
   const totalVenta = detallesVenta.reduce((sum, item) => sum + item.importe, 0);
   
   // El total recibido suma la caja manual de tarjetas, el efectivo y el canje de puntos
@@ -299,7 +303,7 @@ const totalTabulador = Object.entries(denominaciones).reduce((sum, [key, cant]) 
   const puedeFinalizar = isCredito ? true : (totalPagado >= totalVenta && totalPagado > 0);
 
 
-// 🔥 CÁLCULO AUTOMÁTICO DE RECOMPENSA (PUNTOS GANADOS)
+//  CÁLCULO AUTOMÁTICO DE RECOMPENSA (PUNTOS GANADOS)
 React.useEffect(() => {
   if (!modalCobroOpen || !clienteSeleccionado) return;
 
@@ -355,11 +359,15 @@ React.useEffect(() => {
   const fetchHistorial = async (cliente: string, pagina: number) => {
     setHistorialLoading(true);
     try {
-      const response = await consumoApi.get('/api/PuntoDeVenta/sp_historial_cte_compras', {
-        params: { cliente, pagina },
+           const response = await consumoApi.get('/api/PuntoDeVenta/sp_historial_cte', {
+        params: { cliente },
         timeout: 60000
       });
-      return response.data || response || [];
+           // La API devuelve { historial: [], totales: {} }
+      console.log('📊 Datos del historial recibidos:', response.data);
+      console.log('📋 Primer registro del historial:', response.data?.historial?.[0]);
+      setHistorialTotales(response.data?.totales || null);
+      return response.data?.historial || [];
     } catch (error: any) {
       if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
         console.error('Timeout en historial de compras');
@@ -410,6 +418,10 @@ React.useEffect(() => {
         params: { cliente, suc, venta, serv, pagina },
         timeout: 60000
       });
+      console.log('📦 Datos de insumos recibidos:', response.data);
+      if (response.data && response.data.length > 0) {
+        console.log('📋 Primer insumo:', response.data[0]);
+      }
       return response.data || response || [];
     } catch (error) {
       console.error('Error fetching insumos:', error);
@@ -421,14 +433,13 @@ React.useEffect(() => {
 
  const handleOpenInsumos = async (item: HistorialItem) => {
     if (!clienteSeleccionado) return;
-    setSelectedVenta({
+        setSelectedVenta({
       cliente: clienteSeleccionado.No_cliente,
-      suc: item.cve_sucursal,
-      venta: item.no_venta,
-      serv: item.clave_prod,
-      // 🔥 Nuevos datos para pintar el encabezado tipo Access
+      suc: item.cve_Sucursal,
+      venta: item.no_Venta,
+      serv: item.clave_Prod,
       clienteNombre: `${clienteSeleccionado.nombre} ${clienteSeleccionado.ap_paterno || ''} ${clienteSeleccionado.ap_materno || ''}`.trim(),
-      servDesc: item.prod_serv,
+      servDesc: item.prod_Serv,
       fecha: item.fecha,
       estilista: item.estilista
     });
@@ -436,9 +447,9 @@ React.useEffect(() => {
     setHasMoreHistorialInsumos(true);
     const data = await fetchInsumosVenta(
       clienteSeleccionado.No_cliente,
-      item.cve_sucursal,
-      item.no_venta,
-      item.clave_prod,
+      item.cve_Sucursal,
+      item.no_Venta,
+      item.clave_Prod,
       1
     );
     setHistorialInsumosData(data);
@@ -747,6 +758,52 @@ React.useEffect(() => {
     }
   };
   
+  
+const handleReasignarCliente = async () => {
+  if (!clienteSeleccionado || !nuevoClienteReasignacion) {
+    Swal.fire('Error', 'Debes seleccionar un nuevo cliente', 'error');
+    return;
+  }
+
+  try {
+    const response = await consumoApi.put('/api/PuntoDeVenta/reasignar-cliente', {
+      cia: 1,
+      sucursal: sucursal,
+      clienteActual: clienteSeleccionado.No_cliente,
+      clienteNuevo: nuevoClienteReasignacion.No_cliente
+    });
+
+    const responseData = Array.isArray(response.data) ? response.data[0] : response.data;
+
+    if (responseData?.ok === 1) {
+      Swal.fire({
+        icon: 'success',
+        title: 'Cliente reasignado',
+        text: responseData?.mensaje || 'El cliente ha sido reasignado correctamente',
+        confirmButtonText: 'Aceptar'
+      });
+      
+      setClienteSeleccionado(nuevoClienteReasignacion);
+      setModalReasignarClienteOpen(false);
+      setNuevoClienteReasignacion(null);
+    } else {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: responseData?.mensaje || 'Error al reasignar el cliente',
+        confirmButtonText: 'Aceptar'
+      });
+    }
+  } catch (error: any) {
+    console.error('Error reasignando cliente:', error);
+    Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: error.response?.data?.mensaje || 'Error al reasignar el cliente',
+      confirmButtonText: 'Aceptar'
+    });
+  }
+};
 
 const handleAbrirCobro = () => {
   if (detallesVenta.length === 0) {
@@ -1403,14 +1460,14 @@ const {
 
 return (
     <>
-      <Box sx={{ p: 1, maxWidth: '1200px', margin: '0 auto' }}>
+      <Box sx={{ p: 1, maxWidth: '1600px', margin: '0 auto' }}>
         
         {/* === CONTENEDOR SUPERIOR DEL FORMULARIO === */}
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 1 }}>
           
           {/* Renglón 1: Cliente y Estilista */}
           <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, width: '100%', gap: 1 }}>
-            <Box sx={{ display: 'flex', flex: 2, gap: 0.5 }}>
+            <Box sx={{ display: 'flex', flex: 1.5, gap: 0.5 }}>
               <TextField
                 size="small"
                 label="Cliente"
@@ -1431,6 +1488,18 @@ return (
               >
                 Seleccionar
               </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                sx={{ minWidth: '70px' }}
+                disabled={!clienteSeleccionado}
+                onClick={() => {
+                  // TODO: Implementar edición de cliente
+                  setModalEditarClienteOpen(true);
+                }}
+              >
+                Editar
+              </Button>
               <Button 
                 size="small" 
                 variant="outlined" 
@@ -1450,7 +1519,7 @@ return (
               </IconButton>
             </Box>
 
-            <FormControl size="small" sx={{ flex: 1, minWidth: '150px' }}>
+            <FormControl size="small" sx={{ flex: 0.6, minWidth: '150px' }}>
               <InputLabel>Estilista</InputLabel>
               <Select
                 label="Estilista"
@@ -1540,13 +1609,6 @@ return (
             >
               En Proceso
             </Button>
-            <Button 
-              size="small"
-              variant="contained" 
-              sx={{ backgroundColor: '#9e9e9e', color: 'black', fontWeight: 'bold', '&:hover': { backgroundColor: '#757575' } }}
-            >
-              Cambiar Cliente
-            </Button>
           </Box>
 
         </Box>
@@ -1633,7 +1695,20 @@ return (
         fullWidth
         open={modalClienteOpen} 
         onClose={() => setModalClienteOpen(false)}
-        PaperProps={{ sx: { m: { xs: 1, sm: 2 }, height: '90vh', display: 'flex', flexDirection: 'column' } }}
+        PaperProps={{ 
+          sx: { 
+            m: { xs: 1, sm: 2 }, 
+            height: '90vh', 
+            display: 'flex', 
+            flexDirection: 'column',
+            borderRadius: '16px',
+            overflow: 'hidden',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
+            background: 'linear-gradient(135deg, #ffffffff 0%,)',
+            border: '1px solid rgba(255,255,255,0.2)',
+            backdropFilter: 'blur(10px)'
+          } 
+        }}
       >
         <DialogTitle sx={{ borderBottom: '2px solid black', mx: 3, mt: 2, p: 0, pb: 1 }}>
           <Typography variant="h5" fontWeight="900" fontStyle="italic">Buscador de Clientes</Typography>
@@ -1641,7 +1716,7 @@ return (
         
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, p: { xs: 2, sm: 3 }, overflow: 'hidden' }}>
           
-          {/* 🔥 1. BARRA DE BÚSQUEDA Y PAGINACIÓN EN LA MISMA LÍNEA */}
+          {/*  1. BARRA DE BÚSQUEDA Y PAGINACIÓN EN LA MISMA LÍNEA */}
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 0.5 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Typography fontWeight="bold">Buscar:</Typography>
@@ -1669,118 +1744,254 @@ return (
 
           {/* TABLA SUPERIOR */}
           <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-            <ClientesTable 
-              data={clients} 
-              onSelect={async (cliente) => { 
-                setClientePreview(cliente); 
-                setHistorialPage(1); 
-                setHistorialLoading(true); 
-                const data = await fetchHistorial(cliente.No_cliente, 1); 
-                setHistorialData(data || []); 
-                setHistorialLoading(false); 
-              }} 
-            />
+           <ClientesTable 
+            data={clients} 
+            onSelect={async (cliente) => { 
+              setClientePreview(null);
+              try {
+                const response = await consumoApi.get('/api/PuntoDeVenta/sp_bw_cat_clientes_suc_sel', {
+                params: { No_cliente: cliente.No_cliente }
+              });
+              if (response.data && response.data.length > 0) {
+                setClientePreview(response.data[0]);
+              }
+            } catch (error) {
+              console.error('Error cargando detalles del cliente:', error);
+              setClientePreview(cliente);
+            }
+          }} 
+          />
           </Box>
 
-          <Divider sx={{ borderBottomWidth: 3 }} />
+          <Divider sx={{ borderBottomWidth: 3, my: 2 }} />
 
-          {/* TABLA INFERIOR */}
-          <Box sx={{ flex: 1.2, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-            
-            {/* 🔥 2. TÍTULO HISTORIAL Y PAGINACIÓN EN LA MISMA LÍNEA */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', mb: 0.5 }}>
-              <Typography variant="subtitle2" fontWeight="bold">
-                Historial de Visitas {clientePreview ? `- ${clientePreview.nombre || ''}` : ''}
-              </Typography>
-              
-              {/* Botones del historial compactados a la derecha */}
-              {clientePreview && historialData.length > 0 && (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Button 
-                    size="small" 
-                    variant="outlined" 
-                    sx={{ py: 0, px: 1, minWidth: 'auto', fontSize: '0.75rem', textTransform: 'none' }}
-                    onClick={async () => {
-                      const newPage = historialPage - 1;
-                      setHistorialLoading(true);
-                      const data = await fetchHistorial(clientePreview.No_cliente, newPage);
-                      setHistorialData(data || []);
-                      setHistorialPage(newPage);
-                      setHistorialLoading(false);
-                    }} 
-                    disabled={historialPage === 1 || historialLoading}
-                  >
-                    Anterior
-                  </Button>
-                  <Typography variant="caption" fontWeight="bold">Pág. {historialPage}</Typography>
-                  <Button 
-                    size="small" 
-                    variant="outlined" 
-                    sx={{ py: 0, px: 1, minWidth: 'auto', fontSize: '0.75rem', textTransform: 'none' }}
-                    onClick={async () => {
-                      const newPage = historialPage + 1;
-                      setHistorialLoading(true);
-                      const data = await fetchHistorial(clientePreview.No_cliente, newPage);
-                      if (data && data.length > 0) {
-                        setHistorialData(data);
-                        setHistorialPage(newPage);
-                      } else {
-                        setHasMoreHistorial(false);
-                      }
-                      setHistorialLoading(false);
-                    }} 
-                    disabled={!hasMoreHistorial || historialLoading}
-                  >
-                    Siguiente
-                  </Button>
-                </Box>
-              )}
-            </Box>
+{/* PANEL DE DETALLES DEL CLIENTE */}
+<Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, px: 2, overflow: 'auto' }}>
+  {!clientePreview ? (
+    <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+      Selecciona un cliente para ver sus detalles
+    </Typography>
+  ) : (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {/* Fila 1: Clave del Cliente, Persona Física, Suspendido */}
+      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+        <TextField
+          label="Clave del Cliente"
+          value={clientePreview.No_cliente || ''}
+          size="small"
+          InputProps={{ readOnly: true }}
+          sx={{ flex: 1 }}
+        />
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography variant="body2">Persona física</Typography>
+          <input type="checkbox" checked={clientePreview.persona_fisica || false} disabled />
+        </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography variant="body2">Suspendido</Typography>
+          <input type="checkbox" checked={clientePreview.suspendido || false} disabled />
+        </Box>
+      </Box>
 
-            <TableContainer component={Paper} variant="outlined" sx={{ flex: 1, overflow: 'auto' }}>
-              <Table stickyHeader size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5 }}>Sucursal</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5 }}>Fecha</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5 }}>Producto/Servicio</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5 }}>Cant.</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5 }}>Precio</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5 }}>Estilista</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5 }}>Forma Pago</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {historialLoading ? (
-                    <TableRow><TableCell colSpan={7} align="center" sx={{ py: 3 }}><CircularProgress size={24} /></TableCell></TableRow>
-                  ) : !clientePreview ? (
-                    <TableRow><TableCell colSpan={7} align="center" sx={{ py: 3, color: 'text.secondary' }}>Selecciona un cliente arriba para cargar historial</TableCell></TableRow>
-                  ) : historialData.length === 0 ? (
-                    <TableRow><TableCell colSpan={7} align="center" sx={{ py: 3, color: 'text.secondary' }}>Este cliente no tiene historial de visitas</TableCell></TableRow>
-                  ) : (
-                    historialData.map((item, index) => (
-                      <TableRow key={index} hover>
-                        <TableCell sx={{ py: 0.25 }}>{item.cve_sucursal}</TableCell>
-                        <TableCell sx={{ py: 0.25 }}>{item.fecha ? new Date(item.fecha).toLocaleDateString() : '-'}</TableCell>
-                        <TableCell sx={{ py: 0.25 }}>{item.prod_serv}</TableCell>
-                        <TableCell sx={{ py: 0.25 }}>{item.cant_producto}</TableCell>
-                        <TableCell sx={{ py: 0.25 }}>${item.Precio?.toFixed(2) || '0.00'}</TableCell>
-                        <TableCell sx={{ py: 0.25 }}>{item.estilista}</TableCell>
-                        <TableCell sx={{ py: 0.25 }}>{item.forma_pago}</TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Box>
-        </DialogContent>
-        
+      {/* Fila 2: Nombre del Cliente y RFC */}
+      <Box sx={{ display: 'flex', gap: 2 }}>
+        <TextField
+          label="Nombre del Cliente"
+          value={clientePreview.nombre_completo || `${clientePreview.nombre || ''} ${clientePreview.ap_paterno || ''} ${clientePreview.ap_materno || ''}`.trim()}
+          size="small"
+          InputProps={{ readOnly: true }}
+          sx={{ flex: 2 }}
+        />
+        <TextField
+          label="R.F.C."
+          value={clientePreview.rfc || ''}
+          size="small"
+          InputProps={{ readOnly: true }}
+          sx={{ flex: 1 }}
+        />
+      </Box>
+
+      {/* Fila 3: Tel1 */}
+      <Box sx={{ display: 'flex', gap: 2 }}>
+        <TextField
+          label="Tel1"
+          value={clientePreview.telefono || ''}
+          size="small"
+          InputProps={{ readOnly: true }}
+          sx={{ flex: 1 }}
+        />
+      </Box>
+
+      {/* Fila 4: Calle, Número Exterior */}
+      <Box sx={{ display: 'flex', gap: 2 }}>
+        <TextField
+          label="Calle"
+          value={clientePreview.Calle || clientePreview.domicilio || ''}
+          size="small"
+          InputProps={{ readOnly: true }}
+          sx={{ flex: 2 }}
+        />
+        <TextField
+          label="Número Exterior"
+          value={clientePreview.Num_Exterior || ''}
+          size="small"
+          InputProps={{ readOnly: true }}
+          sx={{ flex: 1 }}
+        />
+      </Box>
+
+      {/* Fila 5: Número Interior, C.P., Colonia */}
+      <Box sx={{ display: 'flex', gap: 2 }}>
+        <TextField
+          label="Número Interior"
+          value={clientePreview.Num_Interior || ''}
+          size="small"
+          InputProps={{ readOnly: true }}
+          sx={{ flex: 1 }}
+        />
+        <TextField
+          label="C.P."
+          value={clientePreview.cp || ''}
+          size="small"
+          InputProps={{ readOnly: true }}
+          sx={{ flex: 1 }}
+        />
+        <TextField
+          label="Colonia"
+          value={clientePreview.colonia || ''}
+          size="small"
+          InputProps={{ readOnly: true }}
+          sx={{ flex: 2 }}
+        />
+      </Box>
+
+      {/* Fila 6: Ciudad, Estado, Contacto */}
+      <Box sx={{ display: 'flex', gap: 2 }}>
+        <TextField
+          label="Ciudad"
+          value={clientePreview.ciudad || ''}
+          size="small"
+          InputProps={{ readOnly: true }}
+          sx={{ flex: 1 }}
+        />
+        <TextField
+          label="Estado"
+          value={clientePreview.estado || ''}
+          size="small"
+          InputProps={{ readOnly: true }}
+          sx={{ flex: 1 }}
+        />
+        <TextField
+          label="Contacto"
+          value={clientePreview.contacto || ''}
+          size="small"
+          InputProps={{ readOnly: true }}
+          sx={{ flex: 1 }}
+        />
+      </Box>
+
+      {/* Fila 7: E-mail */}
+      <Box sx={{ display: 'flex', gap: 2 }}>
+        <TextField
+          label="E-mail"
+          value={clientePreview.email || ''}
+          size="small"
+          InputProps={{ readOnly: true }}
+          fullWidth
+        />
+      </Box>
+
+      {/* Fila 8: Límite de crédito, Días crédito */}
+      <Box sx={{ display: 'flex', gap: 2 }}>
+        <TextField
+          label="Límite de crédito"
+          value={clientePreview.limite_credito?.toFixed(2) || '0.00'}
+          size="small"
+          InputProps={{ readOnly: true }}
+          sx={{ flex: 1 }}
+        />
+        <TextField
+          label="Días crédito"
+          value={clientePreview.dias_credito || '0'}
+          size="small"
+          InputProps={{ readOnly: true }}
+          sx={{ flex: 1 }}
+        />
+      </Box>
+
+      {/* Fila 8.5: Lista de Precios Contado, Lista de Precios Crédito */}
+      <Box sx={{ display: 'flex', gap: 2 }}>
+        <TextField
+          label="L.Precios Contado"
+          value={clientePreview.mayoreo_lista || ''}
+          size="small"
+          InputProps={{ readOnly: true }}
+          sx={{ flex: 1 }}
+        />
+        <TextField
+          label="Lista de Precios Crédito"
+          value={clientePreview.credito || ''}
+          size="small"
+          InputProps={{ readOnly: true }}
+          sx={{ flex: 1 }}
+        />
+      </Box>
+
+      {/* Fila 9: Sucursal, Alta */}
+      <Box sx={{ display: 'flex', gap: 2 }}>
+        <TextField
+          label="Sucursal"
+          value={clientePreview.sucursal_nombre || ''}
+          size="small"
+          InputProps={{ readOnly: true }}
+          sx={{ flex: 2 }}
+        />
+        <TextField
+          label="Alta"
+          value={clientePreview.fecha_alta ? new Date(clientePreview.fecha_alta).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+          size="small"
+          InputProps={{ readOnly: true }}
+          sx={{ flex: 1 }}
+        />
+      </Box>
+    </Box>
+  )}
+</Box>
+
         {/* BOTONES INFERIORES */}
         <Box sx={{ p: 1.5, display: 'flex', justifyContent: 'center', gap: 4, borderTop: '1px solid #e0e0e0', backgroundColor: '#fafafa' }}>
-          <Button variant="contained" color="inherit" disabled={!clientePreview} onClick={() => { if (clientePreview) { setClienteSeleccionado({ No_cliente: clientePreview.No_cliente || '', nombre: clientePreview.nombre || 'PÚBLICO EN GENERAL', ap_paterno: clientePreview.ap_paterno || '', ap_materno: clientePreview.ap_materno || '' }); setModalClienteOpen(false); } }} sx={{ minWidth: 150, fontWeight: 'bold', color: 'black', backgroundColor: '#e0e0e0' }}>Aceptar</Button>
+          <Button 
+  variant="contained" 
+  color="inherit" 
+  disabled={!clientePreview} 
+    onClick={() => { 
+    if (clientePreview) { 
+      // Si estamos en modo reasignación, guardar en nuevoClienteReasignacion
+      if (modalReasignarClienteOpen) {
+        setNuevoClienteReasignacion({
+          No_cliente: clientePreview.No_cliente || '',
+          nombre: clientePreview.nombre || 'PÚBLICO EN GENERAL',
+          ap_paterno: clientePreview.ap_paterno || '',
+          ap_materno: clientePreview.ap_materno || ''
+        });
+      } else {
+        // Modo normal, guardar en clienteSeleccionado
+        setClienteSeleccionado({
+          No_cliente: clientePreview.No_cliente || '',
+          nombre: clientePreview.nombre || 'PÚBLICO EN GENERAL',
+          ap_paterno: clientePreview.ap_paterno || '',
+          ap_materno: clientePreview.ap_materno || ''
+        });
+      }
+      setModalClienteOpen(false);
+    } 
+  }} 
+  sx={{ minWidth: 150, fontWeight: 'bold', color: 'black', backgroundColor: '#e0e0e0' }}
+>
+  Aceptar
+</Button>
           <Button variant="contained" color="inherit" onClick={() => setModalClienteOpen(false)} sx={{ minWidth: 150, fontWeight: 'bold', color: 'black', backgroundColor: '#e0e0e0' }}>Cerrar</Button>
         </Box>
+      </DialogContent>
       </Dialog>
 
 {/* Dialog para crear nuevo cliente */}
@@ -1815,12 +2026,12 @@ return (
   </DialogContent>
 </Dialog>
 
-{/* Dialog Historial del Cliente */}
+{/* Dialog para editar cliente */}
 <Dialog
   maxWidth="lg"
   fullWidth
-  open={modalHistorialOpen}
-  onClose={() => setModalHistorialOpen(false)}
+  open={modalEditarClienteOpen}
+  onClose={() => setModalEditarClienteOpen(false)}
   PaperProps={{
     sx: {
       m: { xs: 1, sm: 2 },
@@ -1828,8 +2039,60 @@ return (
     }
   }}
 >
-  <DialogTitle>
-    Historial de Compras - {clienteSeleccionado ? `${clienteSeleccionado.nombre} ${clienteSeleccionado.ap_paterno || ''} ${clienteSeleccionado.ap_materno || ''}`.trim() : ''}
+  <DialogContent sx={{ p: 0 }}>
+  <CatClientes
+    embedded={true}
+    openModal={modalEditarClienteOpen}
+    onOpenModal={(open) => setModalEditarClienteOpen(open)}
+    clienteToEdit={clienteSeleccionado}
+    onClienteGuardado={(cliente) => {
+      setClienteSeleccionado({
+        No_cliente: cliente.No_cliente || cliente.nombre_completo,
+        nombre: cliente.nombre || '',
+        ap_paterno: cliente.ap_paterno || null,
+        ap_materno: cliente.ap_materno || null
+      });
+      setModalEditarClienteOpen(false);
+    }}
+  /> {/* Este cierre auto-conclusivo ahora sí tendrá sentido para el compilador */}
+</DialogContent>
+</Dialog>
+
+{/* Dialog Historial del Cliente */}
+<Dialog
+  maxWidth="lg"
+  fullWidth
+  open={modalHistorialOpen}
+  onClose={() => setModalHistorialOpen(false)}
+    PaperProps={{
+    sx: {
+      m: { xs: 1, sm: 2 },
+      maxHeight: { xs: '90vh', sm: '85vh' },
+      borderRadius: '12px',
+      overflow: 'hidden'
+    }
+  }}
+>
+    <DialogTitle sx={{ 
+    backgroundColor: '#000', 
+    color: '#fff', 
+    display: 'flex', 
+    justifyContent: 'space-between', 
+    alignItems: 'center',
+    py: 2
+  }}>
+    <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+      Historial de Visitas del Cliente - {clienteSeleccionado ? `${clienteSeleccionado.nombre} ${clienteSeleccionado.ap_paterno || ''} ${clienteSeleccionado.ap_materno || ''}`.trim() : ''}
+    </Typography>
+    <IconButton
+      onClick={() => setModalHistorialOpen(false)}
+      sx={{ 
+        color: '#fff',
+        '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' }
+      }}
+    >
+      <Typography sx={{ fontSize: '1.5rem', fontWeight: 'bold' }}>×</Typography>
+    </IconButton>
   </DialogTitle>
   <DialogContent>
     {historialLoading ? (
@@ -1848,10 +2111,10 @@ return (
             <TableHead>
               <TableRow>
                 {/* Reducimos el padding vertical (py) en los encabezados */}
+                <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5 }}>Sucursal</TableCell>
                 <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5 }}>Fecha</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5 }}>No. Venta</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5 }}>Producto</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5, textAlign: 'center' }}>Cant.</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5 }}>Servicio/Producto</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5, textAlign: 'center' }}>Cantidad</TableCell>
                 <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5 }}>Precio</TableCell>
                 <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5 }}>Estilista</TableCell>
                 <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5', py: 0.5 }}>Forma Pago</TableCell>
@@ -1859,28 +2122,27 @@ return (
               </TableRow>
             </TableHead>
             <TableBody>
-              {historialData.map((item, index) => (
-                <TableRow key={`${item.no_venta}-${item.clave_prod}-${index}`} hover>
-                  {/* Forzamos un padding vertical mínimo (py: 0.25) en cada celda para aplastar las filas */}
+                            {historialData.map((item, index) => (
+                <TableRow key={`${item.no_Venta}-${item.clave_Prod}-${index}`} hover>
+                  <TableCell sx={{ py: 0.25 }}>{item.cve_Sucursal}</TableCell>
                   <TableCell sx={{ py: 0.25 }}>{new Date(item.fecha).toLocaleDateString()}</TableCell>
-                  <TableCell sx={{ py: 0.25 }}>{item.no_venta}</TableCell>
-                  <TableCell sx={{ py: 0.25 }}>{item.prod_serv}</TableCell>
-                  <TableCell sx={{ py: 0.25, textAlign: 'center' }}>{item.cant_producto}</TableCell>
-                  <TableCell sx={{ py: 0.25 }}>${item.Precio?.toFixed(2) || '0.00'}</TableCell>
+                  <TableCell sx={{ py: 0.25 }}>{item.prod_Serv}</TableCell>
+                  <TableCell sx={{ py: 0.25, textAlign: 'center' }}>{item.cant_Producto}</TableCell>
+                  <TableCell sx={{ py: 0.25 }}>${item.precio?.toFixed(2) || '0.00'}</TableCell>
                   <TableCell sx={{ py: 0.25 }}>{item.estilista}</TableCell>
-                  <TableCell sx={{ py: 0.25 }}>{item.forma_pago}</TableCell>
+                  <TableCell sx={{ py: 0.25 }}>{item.forma_Pago}</TableCell>
                   <TableCell sx={{ py: 0.25, textAlign: 'center' }}>
                     <Button 
                       size="small" 
                       variant="outlined"
                       onClick={() => handleOpenInsumos(item)}
                       sx={{ 
-                        py: 0,             // Elimina el espacio arriba y abajo adentro del botón
-                        px: 1,             // Espacio horizontal cómodo
-                        minHeight: 0,      // Permite que el botón sea más bajo de lo normal
-                        fontSize: '0.75rem', // Letra ligeramente más pequeña tipo sistema de escritorio
-                        whiteSpace: 'nowrap', // 🚫 EVITA QUE EL TEXTO SE ROMPA EN DOS LÍNEAS
-                        textTransform: 'none' // Evita las mayúsculas toscas de Material UI
+                        py: 0,
+                        px: 1,
+                        minHeight: 0,
+                        fontSize: '0.75rem',
+                        whiteSpace: 'nowrap',
+                        textTransform: 'none'
                       }}
                     >
                       Ver Insumos
@@ -1891,30 +2153,57 @@ return (
             </TableBody>
           </Table>
         </TableContainer>
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 2, gap: 2 }}>
-          <Button
-            variant="outlined"
-            onClick={handlePrevPage}
-            disabled={historialPage === 1 || historialLoading}
-          >
-            Anterior
-          </Button>
-          <Typography variant="body2">
-            Página {historialPage}
-          </Typography>
-          <Button
-            variant="outlined"
-            onClick={handleNextPage}
-            disabled={!hasMoreHistorial || historialData.length === 0 || historialLoading}
-          >
-            Siguiente
-          </Button>
-        </Box>
+        {/* Resumen de totales */}
+        {historialTotales && (
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-around', 
+            alignItems: 'center', 
+            mt: 2, 
+            mb: 1,
+            p: 1.5,
+            backgroundColor: '#f5f5f5',
+            borderRadius: 1,
+            border: '1px solid #e0e0e0'
+          }}>
+            <Box sx={{ textAlign: 'center' }}>
+              <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block' }}>
+                Servicios:
+              </Typography>
+              <Typography variant="body2">
+                {historialTotales.noServicios || 0}
+              </Typography>
+            </Box>
+            <Box sx={{ textAlign: 'center' }}>
+              <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block' }}>
+                Visitas:
+              </Typography>
+              <Typography variant="body2">
+                {historialTotales.noVisitas || 0}
+              </Typography>
+            </Box>
+            <Box sx={{ textAlign: 'center' }}>
+              <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block' }}>
+                Ticket promedio por visita:
+              </Typography>
+              <Typography variant="body2">
+                ${historialTotales.ticketPromedio?.toFixed(2) || '0.00'}
+              </Typography>
+            </Box>
+            <Box sx={{ textAlign: 'center' }}>
+              <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block' }}>
+                Num. Productos:
+              </Typography>
+              <Typography variant="body2">
+                {historialTotales.noProductos || 0}
+              </Typography>
+            </Box>
+          </Box>
+        )}
       </>
     )}
   </DialogContent>
 </Dialog>
-
 {/* Dialog Insumos del Historial */}
 <Dialog
   maxWidth="md"
@@ -1924,12 +2213,32 @@ return (
   PaperProps={{
     sx: {
       m: { xs: 1, sm: 2 },
-      maxHeight: { xs: '90vh', sm: '85vh' }
+      maxHeight: { xs: '90vh', sm: '85vh' },
+      borderRadius: '12px',
+      overflow: 'hidden'
     }
   }}
 >
-  <DialogTitle sx={{ fontWeight: '900', fontSize: '1.8rem', pb: 1 }}>
-    Detalle de Insumos de la Visita
+  <DialogTitle sx={{ 
+    backgroundColor: '#000', 
+    color: '#fff', 
+    display: 'flex', 
+    justifyContent: 'space-between', 
+    alignItems: 'center',
+    py: 2
+  }}>
+    <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+      Detalle de Insumos de la Visita
+    </Typography>
+    <IconButton
+      onClick={() => setModalHistorialInsumosOpen(false)}
+      sx={{ 
+        color: '#fff',
+        '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' }
+      }}
+    >
+      <Typography sx={{ fontSize: '1.5rem', fontWeight: 'bold' }}>×</Typography>
+    </IconButton>
   </DialogTitle>
   <DialogContent>
     {/* 🔥 Encabezado tipo Access */}
@@ -1954,10 +2263,10 @@ return (
             <strong>Fecha:</strong> {selectedVenta.fecha ? new Date(selectedVenta.fecha).toLocaleDateString() : ''}
           </Typography>
           <Typography variant="body2">
-            <strong>Sucursal:</strong> {selectedVenta.suc}
+            <strong>Sucursal:</strong> {historialInsumosData.length > 0 ? historialInsumosData[0].sucursal : selectedVenta.suc}
           </Typography>
           <Typography variant="body2">
-            <strong>Atendió:</strong> {selectedVenta.estilista}
+            <strong>Atendió:</strong> {historialInsumosData.length > 0 ? historialInsumosData[0].estilista : selectedVenta.estilista}
           </Typography>
         </Box>
         
@@ -1983,37 +2292,25 @@ return (
               <TableRow>
                 <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Producto</TableCell>
                 <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Cantidad</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f5f5f5' }}>Observación</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {historialInsumosData.map((insumo, index) => (
                 <TableRow key={index}>
-                  <TableCell>{insumo.producto_insumo}</TableCell>
-                  <TableCell>{insumo.cantidad}</TableCell>
-                  <TableCell>{insumo.obs}</TableCell>
+                  <TableCell>{insumo.producto_Insumo}</TableCell>
+                  <TableCell>{insumo.cantidad.toFixed(3)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </TableContainer>
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 2, gap: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
           <Button
-            variant="outlined"
-            onClick={handlePrevInsumos}
-            disabled={historialInsumosPage === 1 || historialInsumosLoading}
+            variant="contained"
+            onClick={() => window.print()}
+            sx={{ backgroundColor: '#000', '&:hover': { backgroundColor: '#333' } }}
           >
-            Anterior
-          </Button>
-          <Typography variant="body2">
-            Página {historialInsumosPage}
-          </Typography>
-          <Button
-            variant="outlined"
-            onClick={handleNextInsumos}
-            disabled={!hasMoreHistorialInsumos || historialInsumosData.length === 0 || historialInsumosLoading}
-          >
-            Siguiente
+            Imprimir
           </Button>
         </Box>
       </>
@@ -2586,6 +2883,124 @@ return (
   </DialogContent>
 </Dialog>
 
+
+{/* Dialog para reasignar cliente */}
+<Dialog
+  maxWidth="sm"
+  fullWidth
+  open={modalReasignarClienteOpen}
+  onClose={() => setModalReasignarClienteOpen(false)}
+  PaperProps={{
+    sx: {
+      borderRadius: 0,
+      border: '2px solid black',
+      boxShadow: '0px 4px 20px rgba(0,0,0,0.3)'
+    }
+  }}
+>
+  <DialogTitle sx={{ 
+    textAlign: 'center', 
+    backgroundColor: '#f5f5f5', 
+    borderBottom: '2px solid black',
+    py: 1
+  }}>
+    <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+      Reasignación de
+    </Typography>
+    <Typography variant="h5" sx={{ fontWeight: 'bold', mt: 0.5 }}>
+      Cliente en Servicio
+    </Typography>
+  </DialogTitle>
+  
+  <DialogContent sx={{ p: 3, mt: 2 }}>
+    {/* Cliente Actual */}
+    <Box sx={{ mb: 3 }}>
+      <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1 }}>
+        Cliente Actual:
+      </Typography>
+      <TextField
+        fullWidth
+        size="small"
+        value={clienteSeleccionado ? `${clienteSeleccionado.nombre} ${clienteSeleccionado.ap_paterno || ''} ${clienteSeleccionado.ap_materno || ''}`.trim() : ''}
+        InputProps={{ 
+          readOnly: true,
+          sx: { backgroundColor: '#e8e8e8' }
+        }}
+      />
+    </Box>
+
+    {/* Nuevo Cliente */}
+    <Box sx={{ mb: 3 }}>
+      <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1 }}>
+        Nuevo Cliente:
+      </Typography>
+      <Box sx={{ display: 'flex', gap: 1 }}>
+        <TextField
+          fullWidth
+          size="small"
+          value={nuevoClienteReasignacion ? `${nuevoClienteReasignacion.nombre} ${nuevoClienteReasignacion.ap_paterno || ''} ${nuevoClienteReasignacion.ap_materno || ''}`.trim() : ''}
+          placeholder="Seleccionar nuevo cliente"
+          InputProps={{ 
+            readOnly: true,
+            sx: { backgroundColor: '#ffffff' }
+          }}
+        />
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={() => {
+            setSearchText("");
+            setSearch("");
+            setPage(0);
+            setModalClienteOpen(true);
+          }}
+          sx={{ minWidth: '100px' }}
+        >
+          Buscar
+        </Button>
+      </Box>
+    </Box>
+
+    {/* Botones de acción */}
+    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 3 }}>
+      <Button
+        variant="contained"
+        disabled={!nuevoClienteReasignacion}
+        onClick={handleReasignarCliente}
+        sx={{ 
+          minWidth: 120,
+          backgroundColor: '#4a6572',
+          '&:hover': { backgroundColor: '#34495e' }
+        }}
+      >
+        Cambiar Cliente
+      </Button>
+      <Button
+        variant="outlined"
+        onClick={() => {
+          setModalReasignarClienteOpen(false);
+          setNuevoClienteReasignacion(null);
+        }}
+        sx={{ minWidth: 120 }}
+      >
+        Salir
+      </Button>
+    </Box>
+
+    {/* Footer con info */}
+    <Box sx={{ 
+      mt: 3, 
+      pt: 2, 
+      borderTop: '1px solid #e0e0e0',
+      textAlign: 'center'
+    }}>
+      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+        OFICINA, {new Date().toLocaleDateString('es-MX')}, {session?.id || 'USR:ADMIN'}
+      </Typography>
+    </Box>
+  </DialogContent>
+</Dialog>
+
 {/* === MODAL INTERMEDIO: TABULADOR DE DENOMINACIONES (OPTIMIZADO EN 2 COLUMNAS) === */}
       <Dialog 
         open={modalTabuladorOpen} 
@@ -2682,9 +3097,8 @@ return (
             <Button onClick={handleAceptarTabulador} variant="contained" sx={{ backgroundColor: '#e0e0e0', color: 'black', fontWeight: 'bold', borderRadius: 0, textTransform: 'none', px: 4, py: 0.5, border: '1px solid #7f7f7f', '&:hover': { backgroundColor: '#d4d4d4' } }}>Aceptar</Button>
             <Button onClick={handleCancelarTabulador} variant="contained" sx={{ backgroundColor: '#e0e0e0', color: 'black', fontWeight: 'bold', borderRadius: 0, textTransform: 'none', px: 4, py: 0.5, border: '1px solid #7f7f7f', '&:hover': { backgroundColor: '#d4d4d4' } }}>Cancelar</Button>
           </Box>
-        </DialogContent>
+               </DialogContent>
       </Dialog>
-
     </>
   );
 }
