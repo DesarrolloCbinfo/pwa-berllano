@@ -38,11 +38,11 @@ const useConsumoApi = () => {
   };
 
 const consumoApi = axios.create({
-    baseURL: "https://api.cbinformatica.net:8079",
+    baseURL: "https://localhost:5001/",
     headers: {
       "Content-Type": "application/json",
     },
-    timeout: 10000,
+    timeout: 30000,
   });
 
   consumoApi.interceptors.request.use(

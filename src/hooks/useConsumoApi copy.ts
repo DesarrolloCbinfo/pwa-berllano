@@ -27,7 +27,7 @@ const useConsumoApi = () => {
   };
 
   const consumoApi = axios.create({
-    baseURL: "https://api.cbinformatica.net:9004/api/TREBOL",
+    baseURL: "https://localhost:5001/:9004/api/TREBOL",
     headers: {
       "Content-Type": "application/json",
     },

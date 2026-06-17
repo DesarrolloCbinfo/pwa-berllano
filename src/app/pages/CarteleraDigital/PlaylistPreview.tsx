@@ -27,7 +27,7 @@ interface IPlaylistItem {
   base64?: string;
 }
 
-const API_BASE = 'https://api.cbinformatica.net:9080';
+const API_BASE = 'https://localhost:5001/:9080';
 
 const DIAS_SEMANA = [
   { value: 1, label: 'Lunes' },

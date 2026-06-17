@@ -60,6 +60,22 @@ export default function DetalleVentasTable({
   const [passwordAutorizacion, setPasswordAutorizacion] = useState("");
   const [detalleParaDescuento, setDetalleParaDescuento] = useState<DetalleVenta | null>(null);
   const [nuevoDescuento, setNuevoDescuento] = useState<number>(0);
+  const [modalTiposDescuentoOpen, setModalTiposDescuentoOpen] = useState(false);
+  const [tipoDescuentoSeleccionado, setTipoDescuentoSeleccionado] = useState<number>(0);
+  const [tiposDescuento, setTiposDescuento] = useState<any[]>([]);
+  const [descuentoManual, setDescuentoManual] = useState<string>("");
+  const [observacionManual, setObservacionManual] = useState<string>("");
+
+  const cargarTiposDescuento = async () => {
+  try {
+    const response = await axios.get('https://localhost:5001/api/PuntoDeVenta/sp_bw_cat_tipos_descuento_sel');
+    const responseData = Array.isArray(response.data) ? response.data : [];
+    setTiposDescuento(responseData);
+  } catch (error) {
+    console.error('Error al cargar tipos de descuento:', error);
+    setTiposDescuento([]);
+  }
+};
 
   const handleAutorizarDescuento = async () => {
     if (!usuarioAutorizacion || !passwordAutorizacion) {
@@ -93,38 +109,9 @@ export default function DetalleVentasTable({
         setUsuarioAutorizacion("");
         setPasswordAutorizacion("");
         
-        const { value: descuento } = await Swal.fire({
-          title: 'Ingrese el descuento',
-          input: 'number',
-          inputLabel: 'Monto del descuento',
-          inputValue: detalleParaDescuento?.descuento || 0,
-          inputAttributes: {
-            min: '0',
-            step: '0.01'
-          },
-          showCancelButton: true,
-          confirmButtonText: 'Aplicar',
-          cancelButtonText: 'Cancelar',
-          inputValidator: (value) => {
-            if (!value || parseFloat(value) < 0) {
-              return 'Debes ingresar un descuento válido';
-            }
-          }
-        });
-
-        if (descuento !== undefined && detalleParaDescuento) {
-          onEditarRenglon(detalleParaDescuento.id, "descuento", parseFloat(descuento));
-          
-          Swal.fire({
-            icon: 'success',
-            title: 'Descuento aplicado',
-            text: `Se aplicó un descuento de $${parseFloat(descuento).toFixed(2)}`,
-            confirmButtonText: 'Aceptar'
-          });
-        }
-        
-        setDetalleParaDescuento(null);
-        setNuevoDescuento(0);
+      // Cargar tipos de descuento y abrir modal de selección
+await cargarTiposDescuento();
+setModalTiposDescuentoOpen(true);
       } else {
         Swal.fire({
           icon: 'error',
@@ -143,6 +130,53 @@ export default function DetalleVentasTable({
       });
     }
   };
+
+
+const handleAplicarDescuento = () => {
+  const opcionElegida = tiposDescuento.find(d => d.tipo_descuento === tipoDescuentoSeleccionado);
+  const porcentajeDescuento = descuentoManual ? parseFloat(descuentoManual) : 0;
+  
+  if (opcionElegida && porcentajeDescuento > 0) {
+    const descuentoDecimal = porcentajeDescuento / 100;
+
+    if (descuentoDecimal < opcionElegida.min_descto || descuentoDecimal > opcionElegida.max_descto) {
+      Swal.fire(
+        "Rango Inválido", 
+        `El porcentaje permitido está entre ${(opcionElegida.min_descto * 100).toFixed(0)}% y ${(opcionElegida.max_descto * 100).toFixed(0)}%`, 
+        "error"
+      );
+      return;
+    }
+
+    if (detalleParaDescuento) {
+      const importeBase = detalleParaDescuento.precio * detalleParaDescuento.Cant;
+      const descuentoEnDinero = importeBase * descuentoDecimal;
+
+      onEditarRenglon(detalleParaDescuento.id, "descuento", descuentoEnDinero);
+      onEditarRenglon(detalleParaDescuento.id, "tipo_descuento", opcionElegida.tipo_descuento);
+      onEditarRenglon(detalleParaDescuento.id, "observacion_descuento", observacionManual.trim());
+    
+      Swal.fire({
+        icon: 'success',
+        title: 'Descuento aplicado',
+        text: `Se aplicó un descuento de $${descuentoEnDinero.toFixed(2)}`,
+        confirmButtonText: 'Aceptar'
+      });
+    }
+  } else {
+    if (detalleParaDescuento) {
+      onEditarRenglon(detalleParaDescuento.id, "descuento", 0);
+      onEditarRenglon(detalleParaDescuento.id, "tipo_descuento", 0);
+      onEditarRenglon(detalleParaDescuento.id, "observacion_descuento", "");
+    }
+  }
+
+  setModalTiposDescuentoOpen(false);
+  setTipoDescuentoSeleccionado(0);
+  setDescuentoManual("");
+  setObservacionManual("");
+  setDetalleParaDescuento(null);
+};
 
   const columns = useMemo<MRT_ColumnDef<DetalleVenta>[]>(() => [
     !isMobile && {
@@ -588,6 +622,172 @@ export default function DetalleVentasTable({
         </Box>
       </DialogContent>
     </Dialog>
+
+    {/* Diálogo de selección de tipos de descuento */}
+<Dialog
+  open={modalTiposDescuentoOpen}
+  onClose={() => {
+  setModalTiposDescuentoOpen(false);
+  setTipoDescuentoSeleccionado(0);
+  setDescuentoManual("");
+  setObservacionManual("");
+  setDetalleParaDescuento(null);
+}}
+  maxWidth="md"
+  fullWidth
+  PaperProps={{
+    sx: {
+      borderRadius: '12px',
+      border: '2px solid black',
+    }
+  }}
+>
+  <DialogTitle sx={{ 
+    backgroundColor: 'black',
+    color: 'white',
+    py: 2,
+    textAlign: 'center'
+  }}>
+    <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+      Seleccione Tipo de Descuento
+    </Typography>
+  </DialogTitle>
+  
+  <DialogContent sx={{ p: 3 }}>
+    <Box sx={{ 
+      maxHeight: 400, 
+      overflowY: 'auto',
+      border: '1px solid #ccc',
+      borderRadius: '4px'
+    }}>
+    <Box sx={{ 
+  display: 'flex', 
+  backgroundColor: '#f5f5f5',
+  borderBottom: '2px solid black',
+  fontWeight: 'bold',
+  py: 1,
+  px: 2
+}}>
+  <Box sx={{ flex: 2 }}>Descripción</Box>
+  <Box sx={{ flex: 1 }}>Descuento</Box>
+  <Box sx={{ flex: 1 }}>Observación</Box>
+  <Box sx={{ flex: 1, textAlign: 'right' }}>Min</Box>
+  <Box sx={{ flex: 1, textAlign: 'right' }}>Max</Box>
+</Box>
+
+{tiposDescuento.map((tipo) => (
+  <Box
+    key={tipo.tipo_descuento}
+    onClick={() => {
+      setTipoDescuentoSeleccionado(tipo.tipo_descuento);
+      setDescuentoManual((tipo.max_descto * 100).toFixed(2));
+      setObservacionManual("");
+    }}
+    sx={{
+      display: 'flex',
+      py: 1,
+      px: 2,
+      cursor: 'pointer',
+      backgroundColor: tipoDescuentoSeleccionado === tipo.tipo_descuento ? '#e3f2fd' : 'white',
+      borderBottom: '1px solid #e0e0e0',
+      '&:hover': { backgroundColor: '#f5f5f5' }
+    }}
+  >
+    <Box sx={{ flex: 2 }}>{tipo.descripcion}</Box>
+<TextField
+  size="small"
+  type="number"
+  inputProps={{ 
+    min: 0,
+    step: 0.01,
+    max: tipoDescuentoSeleccionado === tipo.tipo_descuento ? (tipo.max_descto * 100) : 100
+  }}
+  value={tipoDescuentoSeleccionado === tipo.tipo_descuento ? descuentoManual : '0.00'}
+  onChange={(e) => {
+    const value = e.target.value;
+    // Solo permitir números
+    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+      // Validar rango si hay un tipo seleccionado
+      if (tipoDescuentoSeleccionado === tipo.tipo_descuento) {
+        const numValue = parseFloat(value);
+        const min = tipo.min_descto * 100;
+        const max = tipo.max_descto * 100;
+        if (numValue >= min && numValue <= max) {
+          setDescuentoManual(value);
+        }
+      } else {
+        setDescuentoManual(value);
+      }
+    }
+  }}
+  onClick={(e) => {
+    e.stopPropagation();
+    // Seleccionar la fila al hacer clic en el TextField
+    if (tipoDescuentoSeleccionado !== tipo.tipo_descuento) {
+      setTipoDescuentoSeleccionado(tipo.tipo_descuento);
+      setDescuentoManual((tipo.max_descto * 100).toFixed(2));
+      setObservacionManual("");
+    }
+  }}
+  onFocus={(e) => {
+    // Seleccionar la fila al recibir foco
+    if (tipoDescuentoSeleccionado !== tipo.tipo_descuento) {
+      setTipoDescuentoSeleccionado(tipo.tipo_descuento);
+      setDescuentoManual((tipo.max_descto * 100).toFixed(2));
+      setObservacionManual("");
+    }
+  }}
+  sx={{ flex: 1, mx: 0.5 }}
+  InputProps={{
+    endAdornment: <span>%</span>
+  }}
+/>
+<TextField
+  size="small"
+  value={tipoDescuentoSeleccionado === tipo.tipo_descuento ? observacionManual : ''}
+  onChange={(e) => setObservacionManual(e.target.value)}
+  onClick={(e) => e.stopPropagation()}
+  sx={{ flex: 1, mx: 0.5 }}
+/>
+<Box sx={{ flex: 1, textAlign: 'right' }}>{(tipo.min_descto * 100).toFixed(0)}%</Box>
+<Box sx={{ flex: 1, textAlign: 'right' }}>{(tipo.max_descto * 100).toFixed(0)}%</Box>
+  </Box>
+))}
+</Box>
+    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 3 }}>
+      <Button
+        variant="contained"
+        onClick={handleAplicarDescuento}
+        sx={{ 
+          minWidth: 120,
+          backgroundColor: '#808080',
+          color: 'white',
+          '&:hover': { backgroundColor: '#666666' }
+        }}
+      >
+        Aceptar
+      </Button>
+      <Button
+        variant="contained"
+       onClick={() => {
+          setModalTiposDescuentoOpen(false);
+          setTipoDescuentoSeleccionado(0);
+          setDescuentoManual("");
+          setObservacionManual("");
+          setDetalleParaDescuento(null);
+        }}
+        sx={{ 
+          minWidth: 120,
+          backgroundColor: '#808080',
+          color: 'white',
+          '&:hover': { backgroundColor: '#666666' }
+        }}
+      >
+        Cancelar
+      </Button>
+    </Box>
+  </DialogContent>
+</Dialog>
     </>
   );
 }

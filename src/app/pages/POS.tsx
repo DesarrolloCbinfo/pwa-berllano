@@ -1,17 +1,17 @@
 import React, { useEffect } from "react";
-import TextField from "@mui/material/TextField";
+//import TextField from "@mui/material/TextField";
 import useConsumoApi from "../../hooks/useConsumoApi";
 import { useServerTable } from "../../hooks/useServerTable";
 import useSession from "../../hooks/useSession";
 import ClientesTable from "../../components/POS/ClientesTable";
 import PaginationControls from "../../components/POS/PaginationControl";
 import Swal from "sweetalert2";
-import { Box, Button, Dialog, DialogContent, DialogTitle, Divider, FormControl, InputLabel, MenuItem, Select, useTheme, useMediaQuery, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, CircularProgress, IconButton } from "@mui/material";
+import { Box, Button, Dialog, DialogContent, DialogTitle, Divider, FormControl, InputLabel, MenuItem, Select, useTheme, useMediaQuery, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, CircularProgress, IconButton, TextField } from "@mui/material";
 import ProductosTable from "../../components/POS/ProductosTable";
 import DetalleVentasTable from "../../components/POS/DetalleVentasTable";
 import useCantidadesProducto from "../../hooks/useCantidadesProducto";
 import CatClientes from "./cat_Clientes/page";
-import { History } from "@mui/icons-material";
+import { History, Delete } from "@mui/icons-material";
 
 
 type Cliente = {
@@ -184,10 +184,13 @@ const [nuevoClienteReasignacion, setNuevoClienteReasignacion] = React.useState<C
   const [modalProductoOpen, setModalProductoOpen] = React.useState(false);
   const [modalInsumosOpen, setModalInsumosOpen] = React.useState(false);
   const [productoPrincipal, setProductoPrincipal] = React.useState<Producto | null>(null);
-  const [insumosSeleccionados, setInsumosSeleccionados] = React.useState<Array<{producto: Producto, cantidad: number}>>([]);
+  const [insumosSeleccionados, setInsumosSeleccionados] = React.useState<Array<{producto: Producto, cantidad: number, validado: boolean, observacion: string}>>([]);
   const [insumoSeleccionadoParaCantidades, setInsumoSeleccionadoParaCantidades] = React.useState<string | null>(null);
   const [cantidadesCache, setCantidadesCache] = React.useState<Record<string, number[]>>({});
   const [insumoCargandoCantidades, setInsumoCargandoCantidades] = React.useState<string | null>(null);
+  const [totalAPagarModal, setTotalAPagarModal] = React.useState(0);
+  const [subtotalVenta, setSubtotalVenta] = React.useState(0);
+  const [descuentoVenta, setDescuentoVenta] = React.useState(0);
  
   
   // Hook para obtener cantidades disponibles del insumo seleccionado
@@ -805,33 +808,57 @@ const handleReasignarCliente = async () => {
   }
 };
 
-const handleAbrirCobro = () => {
+const handleCobrarClick = () => {
+  // 1. RECALCULAR LA SUMA DE LA VENTA
+  let subtotal = 0;
+  let totalDescuentosEnDinero = 0;
+
+  detallesVenta.forEach((item) => {
+    // Extraemos la cantidad forzando que use 'Cant' con C mayúscula como viene en tu objeto
+    const cantidad = Number(item.Cant !== undefined ? item.Cant : (item.cantidad || 0));
+    const precio = Number(item.precio || 0);
+    
+    // Calculamos el importe bruto real del renglón
+    const importeItem = cantidad * precio;
+    subtotal += importeItem;
+
+    // Extraemos el descuento asegurando que se procese como un valor numérico puro
+    const valorDescuento = Number(item.descuento || 0);
+    totalDescuentosEnDinero += valorDescuento;
+  });
+
+  // Calculamos el total neto restando el descuento acumulado
+  const totalNetoA_Pagar = subtotal - totalDescuentosEnDinero;
+
+  // 2. VERIFICACIÓN DE DATOS INICIALES
   if (detallesVenta.length === 0) {
-    alert('No hay productos para cobrar');
+    Swal.fire("Atención", "No hay artículos o servicios en la venta actual.", "warning");
     return;
   }
 
-  // 🧹 LIMPIEZA TOTAL DE ESTADOS (Emula el Form_Open de Access)
+  // 3. PASAR LOS VALORES CORRECTOS A LOS ESTADOS
+  setTotalAPagarModal(totalNetoA_Pagar);
+  setSubtotalVenta(subtotal);
+  setDescuentoVenta(totalDescuentosEnDinero);
+
+  // 🧹 LIMPIEZA TOTAL DE ESTADOS (El resto de tu código se queda exactamente igual)
   setPagosRegistro([]);
   setFormaPagoSeleccionada("");
   setImportePago("");
   setAutorizacionInput("");
   setIsCredito(false);
   
-  // Limpieza de cajas de texto e inputs
   setCuentaPuntos("");
   setCuentaRecompensa("");
   setPagoEfectivo(0);
   setTmpPagoEfectivo(0);
   setSumaManual(0);
   
-  // Limpieza del motor de monedero
   setSaldoPuntosCte(0);
-  setPuntosPago(0);    // Puntos reales aplicados
-  setTmpPuntosPago(""); // Buffer temporal para la caja de texto
+  setPuntosPago(0);
+  setTmpPuntosPago("");
   setPuntosGanados(0);
 
-  // Cargar formas de pago de la API y desplegar modal
   fetchFormasPago();
   setModalCobroOpen(true);
 };
@@ -1122,7 +1149,7 @@ const verificaDatosVenta = () => {
       setInsumosSeleccionados(prev => prev.filter(item => item.producto.clave_prod !== insumo.clave_prod));
     } else {
       // Agregar a la selección con cantidad 1
-      setInsumosSeleccionados(prev => [...prev, { producto: insumo, cantidad: 1 }]);
+      setInsumosSeleccionados(prev => [...prev, { producto: insumo, cantidad: 1, validado: false, observacion: '' }]);
       // Establecer el insumo seleccionado para cargar sus cantidades disponibles
       setInsumoSeleccionadoParaCantidades(insumo.clave_prod);
     }
@@ -1133,6 +1160,26 @@ const verificaDatosVenta = () => {
       prev.map(item => 
         item.producto.clave_prod === clave_prod 
           ? { ...item, cantidad: Math.max(0.001, cantidad) }
+          : item
+      )
+    );
+  };
+
+  const handleValidarInsumo = (clave_prod: string) => {
+    setInsumosSeleccionados(prev =>
+      prev.map(item =>
+        item.producto.clave_prod === clave_prod
+          ? { ...item, validado: !item.validado }
+          : item
+      )
+    );
+  };
+
+  const handleObservacionInsumo = (clave_prod: string, observacion: string) => {
+    setInsumosSeleccionados(prev =>
+      prev.map(item =>
+        item.producto.clave_prod === clave_prod
+          ? { ...item, observacion }
           : item
       )
     );
@@ -1447,16 +1494,23 @@ const {
   setSearch: setSearchInsumos,
 } = useServerTable<Producto>(fetchInsumos, 10);
 
-  const handleEditarRenglon = React.useCallback((id: string, campo: string, nuevoValor: any) => {
+   const handleEditarRenglon = async (id: string, campo: string, nuevoValor: any) => {
+    let itemActualizado: DetalleVenta | undefined;
+
     setDetallesVenta(prev => prev.map(item => {
       if (item.id === id) {
-        const itemActualizado = { ...item, [campo]: nuevoValor };
-        itemActualizado.importe = itemActualizado.Cant * itemActualizado.precio;
-        return itemActualizado;
+        const actualizado = { ...item, [campo]: nuevoValor };
+        actualizado.importe = (actualizado.Cant * actualizado.precio) - (actualizado.descuento || 0);
+        itemActualizado = actualizado;
+        return actualizado;
       }
       return item;
     }));
-  }, []);
+
+    if (itemActualizado && ['descuento', 'tipo_descuento', 'observacion_descuento'].includes(campo)) {
+      await guardarProductoIndividual(itemActualizado);
+    }
+  };
 
 return (
     <>
@@ -1594,7 +1648,7 @@ return (
               size="small"
               variant="contained" 
               sx={{ backgroundColor: '#9e9e9e', color: 'black', fontWeight: 'bold', '&:hover': { backgroundColor: '#757575' } }}
-              onClick={handleAbrirCobro}
+              onClick={handleCobrarClick}
             >
               Cobrar
             </Button>
@@ -1618,7 +1672,7 @@ return (
 
         {/* === TABLA DE VENTAS === */}
         <Box sx={{ 
-          height: 'calc(100vh - 265px)',
+          height: 'calc(100vh - 320px)',
           mb: 1,
           border: '1px solid #e0e0e0',
           borderRadius: 1,
@@ -2494,15 +2548,30 @@ return (
     setProductoPrincipal(null);
     setInsumosSeleccionados([]);
   }}
-  PaperProps={{
+      PaperProps={{
     sx: {
       m: { xs: 1, sm: 2 },
-      maxHeight: { xs: '90vh', sm: '85vh' }
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden',
+      borderRadius: '12px'
     }
   }}
 >
-  <DialogTitle>
-    Seleccionar Insumos para: {productoPrincipal?.descripcion}
+    <DialogTitle sx={{ backgroundColor: '#000', color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 1.5 }}>
+    <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+      Seleccionar Insumos para: {productoPrincipal?.descripcion}
+    </Typography>
+    <IconButton
+      onClick={() => {
+        setModalInsumosOpen(false);
+        setProductoPrincipal(null);
+        setInsumosSeleccionados([]);
+      }}
+      sx={{ color: '#fff', '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)' } }}
+    >
+      <Typography sx={{ fontSize: '1.5rem', fontWeight: 'bold' }}>×</Typography>
+    </IconButton>
   </DialogTitle>
   <DialogContent sx={{ p: { xs: 2, sm: 3 } }}>
     <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
@@ -2539,60 +2608,100 @@ return (
       onChange={setPageInsumos}
     />
 
-    {/* Lista de insumos seleccionados */}
+        {/* Lista de insumos seleccionados */}
     {insumosSeleccionados.length > 0 && (
-      <Box sx={{ mt: 2, p: 2, backgroundColor: 'grey.50', borderRadius: 1 }}>
-        <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 'bold' }}>
+      <Box sx={{ mt: 2, p: 1, backgroundColor: 'grey.50', borderRadius: 1, maxHeight: 200, overflow: 'auto' }}>
+        <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
           Insumos Seleccionados:
         </Typography>
-        {insumosSeleccionados.map((item, index) => (
-          <Box key={item.producto.clave_prod} sx={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center',
-            py: 1,
-            px: 2,
-            borderBottom: index < insumosSeleccionados.length - 1 ? '1px solid #e0e0e0' : 'none'
-          }}>
-            <Typography variant="body2" sx={{ flex: 1 }}>
-              {item.producto.clave_prod} - {item.producto.descripcion}
-            </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <FormControl size="small" sx={{ width: 100 }}>
-                <InputLabel id={`cantidad-label-${item.producto.clave_prod}`}>Cant</InputLabel>
-                <Select
-                  labelId={`cantidad-label-${item.producto.clave_prod}`}
-                  value={item.cantidad}
-                  label="Cant"
-                  onChange={(e) => handleCantidadInsumo(item.producto.clave_prod, Number(e.target.value))}
-                  sx={{ 
-                    '& .MuiInputBase-root': {
-                      height: 32,
-                    }
-                  }}
-                >
-                  {insumoCargandoCantidades === item.producto.clave_prod && loadingCantidades ? (
-                    <MenuItem disabled>Cargando...</MenuItem>
-                  ) : (
-                    (cantidadesCache[item.producto.clave_prod] || [1]).map((cantidad) => (
-                      <MenuItem key={cantidad} value={cantidad}>
-                        {cantidad}
-                      </MenuItem>
-                    ))
-                  )}
-                </Select>
-              </FormControl>
-              <Button
-                size="small"
-                color="error"
-                variant="outlined"
-                onClick={() => handleSeleccionarInsumo(item.producto)}
-              >
-                X
-              </Button>
-            </Box>
-          </Box>
-        ))}
+               <Table size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
+          <TableHead>
+            <TableRow sx={{ backgroundColor: '#e0e0e0' }}>
+              <TableCell sx={{ width: 40, p: '4px 4px' }}></TableCell>
+              <TableCell sx={{ p: '4px 4px', fontSize: '0.7rem', fontWeight: 'bold' }}>Producto</TableCell>
+              <TableCell align="center" sx={{ width: 60, p: '4px 4px', fontSize: '0.7rem', fontWeight: 'bold' }}>Cant</TableCell>
+              <TableCell align="center" sx={{ width: 55, p: '4px 4px', fontSize: '0.7rem', fontWeight: 'bold' }}>Validado</TableCell>
+              <TableCell align="center" sx={{ width: 90, p: '4px 4px', fontSize: '0.7rem', fontWeight: 'bold' }}>Validar</TableCell>
+              <TableCell align="center" sx={{ width: 150, p: '4px 4px', fontSize: '0.7rem', fontWeight: 'bold' }}>Observación</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {insumosSeleccionados.map((item) => (
+              <TableRow key={item.producto.clave_prod} sx={{ '& td': { p: '4px 4px', borderBottom: '1px solid #e0e0e0' } }}>
+                <TableCell sx={{ width: 40 }}>
+                  <IconButton
+                    size="small"
+                    color="error"
+                    onClick={() => handleSeleccionarInsumo(item.producto)}
+                    sx={{ width: 24, height: 24, p: 0 }}
+                  >
+                    <Delete fontSize="small" sx={{ fontSize: '1rem' }} />
+                  </IconButton>
+                </TableCell>
+                <TableCell>
+                  <Typography variant="body2" noWrap sx={{ fontSize: '0.7rem' }}>
+                    {item.producto.clave_prod} - {item.producto.descripcion}
+                  </Typography>
+                </TableCell>
+                <TableCell align="center">
+                  <FormControl size="small" sx={{ width: 55 }}>
+                    <Select
+                      value={item.cantidad}
+                      onChange={(e) => handleCantidadInsumo(item.producto.clave_prod, Number(e.target.value))}
+                      sx={{
+                        '& .MuiInputBase-root': {
+                          height: 22,
+                          fontSize: '0.7rem'
+                        }
+                      }}
+                    >
+                      {insumoCargandoCantidades === item.producto.clave_prod && loadingCantidades ? (
+                        <MenuItem disabled sx={{ fontSize: '0.7rem' }}>Cargando...</MenuItem>
+                      ) : (
+                        (cantidadesCache[item.producto.clave_prod] || [1]).map((cantidad) => (
+                          <MenuItem key={cantidad} value={cantidad} sx={{ fontSize: '0.7rem', py: 0.25, minHeight: '22px' }}>
+                            {cantidad}
+                          </MenuItem>
+                        ))
+                      )}
+                    </Select>
+                  </FormControl>
+                </TableCell>
+                <TableCell align="center">
+                  <Typography variant="caption" sx={{ fontSize: '0.7rem', color: item.validado ? 'green' : 'text.secondary', fontWeight: item.validado ? 'bold' : 'normal' }}>
+                    {item.validado ? 'Sí' : 'No'}
+                  </Typography>
+                </TableCell>
+                <TableCell align="center">
+                  <Button
+                    size="small"
+                    variant={item.validado ? "contained" : "outlined"}
+                    color={item.validado ? "success" : "primary"}
+                    onClick={() => handleValidarInsumo(item.producto.clave_prod)}
+                    sx={{ minWidth: 50, py: 0, fontSize: '0.65rem', height: 22 }}
+                  >
+                    Validar
+                  </Button>
+                </TableCell>
+                <TableCell align="center">
+                  <TextField
+                    size="small"
+                    value={item.observacion}
+                    onChange={(e) => handleObservacionInsumo(item.producto.clave_prod, e.target.value)}
+                    placeholder="Obs..."
+                    sx={{
+                      width: 155,
+                      '& .MuiInputBase-root': {
+                        height: 22,
+                        fontSize: '0.7rem'
+                      }
+                    }}
+                  />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
         
         <Typography variant="subtitle1" sx={{ mt: 2, fontWeight: 'bold' }}>
           Total Insumos: ${insumosSeleccionados.reduce((sum, item) => sum + (item.producto.Precio || 0) * item.cantidad, 0).toFixed(2)}
@@ -2717,7 +2826,7 @@ return (
         <Typography variant="caption" sx={{ mr: 1, color: 'black', fontWeight: 'bold' }}>Venta a Crédito</Typography>
 
 
-{/* 📑 Cambia temporalmente tu input a esto para probar: */}
+{/*  Cambia temporalmente tu input a esto para probar: */}
 <input 
   type="checkbox" 
   checked={isCredito} 
@@ -2771,7 +2880,7 @@ return (
     onChange={(e) => setFormaPagoSeleccionada(e.target.value as number | "")} // 🌟 Guarda la selección del usuario
     sx={{ fontSize: '0.8rem', color: 'black', fontWeight: 'bold' }}
   >
-    {/* 🌟 Opción en blanco por defecto que emula el inicio vacío de Access */}
+    {/*  Opción en blanco por defecto que emula el inicio vacío de Access */}
     <MenuItem value=""><em></em></MenuItem> 
     <MenuItem value={7}>TC CLIP</MenuItem>
   </Select>

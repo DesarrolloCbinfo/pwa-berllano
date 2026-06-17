@@ -36,10 +36,10 @@ export default function ProductosTable({ data, onSelect }: Props) {
         <Table size={isMobile ? "small" : "medium"}>
           <TableHead>
             <TableRow>
-              <TableCell sx={{ minWidth: { xs: 80, sm: 100 } }}>Clave</TableCell>
-              <TableCell sx={{ minWidth: { xs: 150, sm: 250 } }}>Descripcion</TableCell>
-              <TableCell sx={{ minWidth: { xs: 80, sm: 100 } }}>Precio</TableCell>
-              <TableCell sx={{ minWidth: { xs: 100, sm: 120 } }} align="center">
+              <TableCell sx={{ minWidth: { xs: 80, sm: 100 }, py: 0.25 }}>Clave</TableCell>
+              <TableCell sx={{ minWidth: { xs: 150, sm: 250 }, py: 0.25 }}>Descripcion</TableCell>
+              <TableCell sx={{ minWidth: { xs: 80, sm: 100 }, py: 0.25 }}>Precio</TableCell>
+              <TableCell sx={{ minWidth: { xs: 100, sm: 120 }, py: 0.25 }} align="center">
                 Acción
               </TableCell>
             </TableRow>
@@ -47,7 +47,7 @@ export default function ProductosTable({ data, onSelect }: Props) {
 
           <TableBody>
             {data.map((c) => (
-              <TableRow key={c.clave_prod} hover>
+              <TableRow key={c.clave_prod} hover sx={{ '& td': { py: 0.25 } }}>
                 <TableCell>{c.clave_prod}</TableCell>
                 <TableCell>
                   <Typography variant="body2" noWrap>
@@ -61,10 +61,10 @@ export default function ProductosTable({ data, onSelect }: Props) {
                 </TableCell>
                 <TableCell align="center">
                   <Button
-                    size={isMobile ? "small" : "medium"}
+                    size="small"
                     variant="contained"
                     onClick={() => onSelect(c)}
-                    sx={{ minWidth: { xs: 60, sm: 80 } }}
+                    sx={{ minWidth: { xs: 60, sm: 80 }, py: 0.25 }}
                   >
                     {isMobile ? "✓" : "Seleccionar"}
                   </Button>
