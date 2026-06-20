@@ -371,6 +371,7 @@ const handleAplicarDescuento = () => {
     <MaterialReactTable
       columns={columns}
       data={data}
+      layoutMode="grid"
       autoResetPageIndex={false}
       autoResetExpanded={false}
       enablePagination={true}
@@ -475,15 +476,15 @@ const handleAplicarDescuento = () => {
           </Box>
         );
       }}
-      renderRowActions={({ row }) => (
-        <Box sx={{ display: 'flex', gap: 1 }}>
+           renderRowActions={({ row }) => (
+        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'nowrap' }}>
           {onAgregarInsumos && (
             <Button
               color="primary"
               variant="outlined"
               size="small"
               onClick={() => onAgregarInsumos(row.original)}
-              sx={{ whiteSpace: 'nowrap' }}
+              sx={{ whiteSpace: 'nowrap', minWidth: 'auto', px: 0.75, py: 0.25, fontSize: '0.68rem' }}
             >
               Insumos
             </Button>
@@ -493,7 +494,7 @@ const handleAplicarDescuento = () => {
             variant="contained"
             size="small"
             onClick={() => onSelect(row.original)}
-            sx={{ whiteSpace: 'nowrap' }}
+            sx={{ whiteSpace: 'nowrap', minWidth: 'auto', px: 0.75, py: 0.25, fontSize: '0.68rem' }}
           >
             Cancelar
           </Button>
@@ -502,7 +503,7 @@ const handleAplicarDescuento = () => {
       localization={{
         noRecordsToDisplay: "Sin resultados",
       }}
-      muiTablePaperProps={{
+            muiTablePaperProps={{
         variant: "outlined",
         sx: {
           width: '100% !important',
@@ -511,7 +512,13 @@ const handleAplicarDescuento = () => {
           marginRight: '0 !important',
           '& .MuiTable-root': {
             width: '100% !important',
-            minWidth: { xs: 600, sm: 'auto' },
+            tableLayout: 'fixed',      // ← FUERZA AJUSTE
+          },
+          '& .MuiTableCell-root': {     // ← REDUCE PADDING GLOBAL
+            padding: '4px 6px !important',
+          },
+          '& .MuiTableCell-head': {
+            padding: '4px 6px !important',
           }
         }
       }}

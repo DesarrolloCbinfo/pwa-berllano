@@ -6,7 +6,7 @@ import useSession from "../../hooks/useSession";
 import ClientesTable from "../../components/POS/ClientesTable";
 import PaginationControls from "../../components/POS/PaginationControl";
 import Swal from "sweetalert2";
-import { Box, Button, Dialog, DialogContent, DialogTitle, Divider, FormControl, InputLabel, MenuItem, Select, useTheme, useMediaQuery, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, CircularProgress, IconButton, TextField } from "@mui/material";
+import { Box, Button, Dialog, DialogContent, DialogTitle, Divider, FormControl, InputLabel, MenuItem, Select, useTheme, useMediaQuery, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, CircularProgress, IconButton, TextField, Autocomplete } from "@mui/material";
 import ProductosTable from "../../components/POS/ProductosTable";
 import DetalleVentasTable from "../../components/POS/DetalleVentasTable";
 import useCantidadesProducto from "../../hooks/useCantidadesProducto";
@@ -46,6 +46,23 @@ type Producto = {
 type Auxiliar = {
   clave_empleado: string;
   nombre: string;
+};
+
+type ClienteServicioTC = {
+  cve_cliente: string;
+  nombre: string;
+  importe: number;
+  seleccion: boolean;
+};
+
+type ClienteHistorialResumen = {
+  Sucursal: number;
+  Fecha: string;
+  Descripcion: string;
+  CantProducto: number;
+  Precio: number;
+  NombreEstilista: string;
+  FormaPago: string;
 };
 
 type HistorialItem = {
@@ -157,6 +174,8 @@ const [nuevoClienteReasignacion, setNuevoClienteReasignacion] = React.useState<C
   const [historialPage, setHistorialPage] = React.useState(1);
   const [historialLoading, setHistorialLoading] = React.useState(false);
   const [hasMoreHistorial, setHasMoreHistorial] = React.useState(true);
+  const [clienteHistorialResumen, setClienteHistorialResumen] = React.useState<ClienteHistorialResumen[]>([]);
+  const [clienteHistorialLoading, setClienteHistorialLoading] = React.useState(false);
   const [modalHistorialInsumosOpen, setModalHistorialInsumosOpen] = React.useState(false);
   const [historialInsumosData, setHistorialInsumosData] = React.useState<InsumoItem[]>([]);
   const [historialInsumosLoading, setHistorialInsumosLoading] = React.useState(false);
@@ -239,6 +258,15 @@ const [nuevoClienteReasignacion, setNuevoClienteReasignacion] = React.useState<C
     }
   }, [insumoSeleccionadoParaCantidades, cantidades]);
 
+
+  // Auto-guardar insumos en proceso cuando cambian y el modal está abierto
+  React.useEffect(() => {
+    if (!modalInsumosOpen || insumosSeleccionados.length === 0) return;
+    const timer = setTimeout(() => {
+      guardarInsumosEnProceso(insumosSeleccionados);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [insumosSeleccionados, modalInsumosOpen]);
   
 
   const [clienteSeleccionado, setClienteSeleccionado] = React.useState<
@@ -259,6 +287,17 @@ const sucursal = session?.sucursal || 1;
 const [ventasEnProceso, setVentasEnProceso] = React.useState<VentaEnProceso[]>([]);
 const [modalVentasEnProcesoOpen, setModalVentasEnProcesoOpen] = React.useState(false);
 const [loadingVentasEnProceso, setLoadingVentasEnProceso] = React.useState(false);
+const [modalCobrosMultipleTCOpen, setModalCobrosMultipleTCOpen] = React.useState(false);
+const [selectedClientesTC, setSelectedClientesTC] = React.useState<Set<string>>(new Set());
+const [clientesServicioTC, setClientesServicioTC] = React.useState<ClienteServicioTC[]>([]);
+const [loadingClientesServicioTC, setLoadingClientesServicioTC] = React.useState(false);
+const [modalCambiarClienteOpen, setModalCambiarClienteOpen] = React.useState(false);
+const [clienteActualCambio, setClienteActualCambio] = React.useState('');
+const [nuevoClienteCambio, setNuevoClienteCambio] = React.useState('');
+const [busquedaNuevoCliente, setBusquedaNuevoCliente] = React.useState('');
+const [todosLosClientes, setTodosLosClientes] = React.useState<Cliente[]>([]);
+const [loadingTodosClientes, setLoadingTodosClientes] = React.useState(false);
+const [recompensaTC, setRecompensaTC] = React.useState('');
 
 // Estados para el modal de cobro
 const [modalCobroOpen, setModalCobroOpen] = React.useState(false);
@@ -359,16 +398,31 @@ React.useEffect(() => {
     }
   };
 
+  const fetchClienteHistorialResumen = async (noCliente: string): Promise<ClienteHistorialResumen[]> => {
+    setClienteHistorialLoading(true);
+    try {
+      const response = await consumoApi.get(`/api/PuntoDeVenta/clientes/${noCliente}/historial`, {
+        timeout: 60000
+      });
+      return response.data || [];
+    } catch (error) {
+      console.error('Error fetching historial resumen:', error);
+      return [];
+    } finally {
+      setClienteHistorialLoading(false);
+    }
+  };
+
   const fetchHistorial = async (cliente: string, pagina: number) => {
     setHistorialLoading(true);
     try {
-           const response = await consumoApi.get('/api/PuntoDeVenta/sp_historial_cte', {
-        params: { cliente },
+           const response = await consumoApi.get('/api/PuntoDeVenta/sp_historial_cte_compras', {
+        params: { cliente, pagina },
         timeout: 60000
       });
            // La API devuelve { historial: [], totales: {} }
-      console.log('📊 Datos del historial recibidos:', response.data);
-      console.log('📋 Primer registro del historial:', response.data?.historial?.[0]);
+      console.log(' Datos del historial recibidos:', response.data);
+      console.log(' Primer registro del historial:', response.data?.historial?.[0]);
       setHistorialTotales(response.data?.totales || null);
       return response.data?.historial || [];
     } catch (error: any) {
@@ -382,6 +436,17 @@ React.useEffect(() => {
       setHistorialLoading(false);
     }
   };
+
+  React.useEffect(() => {
+    if (clientePreview?.No_cliente) {
+      setClienteHistorialResumen([]);
+      fetchClienteHistorialResumen(clientePreview.No_cliente).then(data => {
+        setClienteHistorialResumen(data);
+      });
+    } else {
+      setClienteHistorialResumen([]);
+    }
+  }, [clientePreview?.No_cliente]);
 
   const handleOpenHistorial = async () => {
     if (!clienteSeleccionado) return;
@@ -421,9 +486,9 @@ React.useEffect(() => {
         params: { cliente, suc, venta, serv, pagina },
         timeout: 60000
       });
-      console.log('📦 Datos de insumos recibidos:', response.data);
+      console.log('Datos de insumos recibidos:', response.data);
       if (response.data && response.data.length > 0) {
-        console.log('📋 Primer insumo:', response.data[0]);
+        console.log('Primer insumo:', response.data[0]);
       }
       return response.data || response || [];
     } catch (error) {
@@ -721,7 +786,7 @@ React.useEffect(() => {
         sucursal: sucursal.toString(),
         cve_cliente: clienteSeleccionado.No_cliente,
         clave_prod: detalle.clave_prod,
-        hora: 'xx',
+        hora: detalle.hora,
         estilista: detalle.estilista,
         auxiliar: detalle.auxiliar || '0'
       });
@@ -769,7 +834,7 @@ const handleReasignarCliente = async () => {
   }
 
   try {
-    const response = await consumoApi.put('/api/PuntoDeVenta/reasignar-cliente', {
+    const response = await consumoApi.post('/api/PuntoDeVenta/reasignar-cliente', {
       cia: 1,
       sucursal: sucursal,
       clienteActual: clienteSeleccionado.No_cliente,
@@ -1185,6 +1250,36 @@ const verificaDatosVenta = () => {
     );
   };
 
+    const guardarInsumosEnProceso = async (listaInsumos: typeof insumosSeleccionados) => {
+    if (!clienteSeleccionado) return;
+    try {
+      const bodyPayload = {
+        cia: 1,
+        sucursal: sucursal,
+        cve_cliente: clienteSeleccionado.No_cliente,
+        d_cliente: `${clienteSeleccionado.nombre} ${clienteSeleccionado.ap_paterno || ''} ${clienteSeleccionado.ap_materno || ''}`.trim(),
+        totalVenta: listaInsumos.reduce((sum, item) => sum + (item.producto.Precio || 0) * item.cantidad, 0),
+        insumos: listaInsumos.map(item => ({
+          clave_prod: item.producto.clave_prod,
+          descripcion: item.producto.descripcion,
+          cantidad: item.cantidad,
+          precio: item.producto.Precio || 0,
+          validado: item.validado,
+          observacion: item.observacion
+        }))
+      };
+
+      const response = await consumoApi.post('/api/PuntoDeVenta/sp_bw_pos_guardar_venta_proceso', bodyPayload);
+      if (response.data?.status === 1 || response.data?.[0]?.status === 1) {
+        console.log('Auto-guardado exitoso en proceso');
+      } else {
+        console.error('Respuesta del servidor:', response.data?.message || response.data);
+      }
+    } catch (error) {
+      console.error('Error en el auto-guardado de insumos:', error);
+    }
+  };
+
   const handleConfirmarInsumos = async () => {
     if (!productoPrincipal || insumosSeleccionados.length === 0) {
       alert('Por favor selecciona al menos un insumo');
@@ -1371,6 +1466,53 @@ const fetchInsumos = async ({ page, pageSize, search }: any) => {
     data,
     total: data[0]?.total_registros ?? 0,
   };
+};
+
+const fetchTodosLosClientes = async (busqueda: string) => {
+  setLoadingTodosClientes(true);
+  try {
+    const res = await consumoApi.get(
+      `/api/PuntoDeVenta/sp_cat_clientes_suc_paginado?pagina=1&registros=50&Busqueda=${encodeURIComponent(busqueda)}`
+    );
+    setTodosLosClientes(res.data ?? []);
+  } catch (error) {
+    console.error('Error al cargar clientes:', error);
+    setTodosLosClientes([]);
+  } finally {
+    setLoadingTodosClientes(false);
+  }
+};
+
+const handleCambiarCliente = async () => {
+  if (!clienteActualCambio || !nuevoClienteCambio) return;
+  try {
+    await consumoApi.post('/api/PuntoDeVenta/reasignar-cliente', {
+      cliente1: clienteActualCambio,
+      cliente2: nuevoClienteCambio,
+      sucursal: sucursal,
+    });
+    setModalCambiarClienteOpen(false);
+    setClienteActualCambio('');
+    setNuevoClienteCambio('');
+    fetchClientesServicioTC();
+  } catch (error) {
+    console.error('Error al reasignar cliente:', error);
+  }
+};
+
+const fetchClientesServicioTC = async () => {
+  setLoadingClientesServicioTC(true);
+  try {
+    const res = await consumoApi.get(
+      `/api/PuntoDeVenta/sucursales/${sucursal}/clientes-en-servicio-tc`
+    );
+    setClientesServicioTC(res.data ?? []);
+  } catch (error) {
+    console.error('Error al cargar clientes en servicio TC:', error);
+    setClientesServicioTC([]);
+  } finally {
+    setLoadingClientesServicioTC(false);
+  }
 };
 
 const fetchVentasEnProceso = async () => {
@@ -1646,6 +1788,54 @@ return (
           <Box sx={{ display: "flex", gap: 1, mt: 0.5, mb: 0.5 }}>
             <Button
               size="small"
+              variant="contained"
+              sx={{ backgroundColor: '#9e9e9e', color: 'black', fontWeight: 'bold', '&:hover': { backgroundColor: '#757575' } }}
+              onClick={handleCobrarClick}
+            >
+              Cobrar
+            </Button>
+            <Button
+              size="small"
+              variant="contained"
+              sx={{ backgroundColor: '#9e9e9e', color: 'black', fontWeight: 'bold', '&:hover': { backgroundColor: '#757575' } }}
+              onClick={() => {
+                fetchVentasEnProceso();
+                setModalVentasEnProcesoOpen(true);
+              }}
+            >
+              En Proceso
+            </Button>
+            <Button
+              size="small"
+              variant="contained"
+              sx={{ backgroundColor: '#9e9e9e', color: 'black', fontWeight: 'bold', '&:hover': { backgroundColor: '#757575' } }}
+              onClick={() => {
+                fetchVentasEnProceso();
+                fetchClientesServicioTC();
+                setModalCobrosMultipleTCOpen(true);
+              }}
+            >
+              Cobrar varios Ctes TC
+            </Button>
+            <Button
+              size="small"
+              variant="contained"
+              sx={{ backgroundColor: '#9e9e9e', color: 'black', fontWeight: 'bold', '&:hover': { backgroundColor: '#757575' } }}
+              onClick={() => {
+                if (!clienteSeleccionado) return;
+                setTodosLosClientes([]);
+                setBusquedaNuevoCliente('');
+                setClienteActualCambio(clienteSeleccionado?.No_cliente ?? '');
+                setNuevoClienteCambio('');
+                setModalCambiarClienteOpen(true);
+              }}
+            >
+              Cambiar Cliente
+            </Button>
+          </Box>
+          {/*
+            <Button
+              size="small"
               variant="contained" 
               sx={{ backgroundColor: '#9e9e9e', color: 'black', fontWeight: 'bold', '&:hover': { backgroundColor: '#757575' } }}
               onClick={handleCobrarClick}
@@ -1663,8 +1853,41 @@ return (
             >
               En Proceso
             </Button>
+            <Button
+              size="small"
+              variant="contained"
+              sx={{ backgroundColor: '#bdbfc2ff', color: 'white', fontWeight: 'bold', '&:hover': { backgroundColor: '#9b9b9bff' } }}
+              onClick={() => {
+                fetchVentasEnProceso();
+                fetchClientesServicioTC();
+                setModalCobrosMultipleTCOpen(true);
+              }}
+            >
+              Cobrar varios Ctes TC
+            </Button>
+            <Button
+              size="small"
+              variant="contained"
+              sx={{ backgroundColor: '#9e9e9e', color: 'black', fontWeight: 'bold', '&:hover': { backgroundColor: '#757575' } }}
+              onClick={() => {
+                if (!clienteSeleccionado) return;
+                setTodosLosClientes([]);
+                setBusquedaNuevoCliente('');
+                setClienteActualCambio(clienteSeleccionado?.No_cliente ?? '');
+                setNuevoClienteCambio('');
+                setModalCambiarClienteOpen(true);
+              }}
+            >
+              Cambiar Cliente
+              }}
+            >
+              En Proceso
+            </Button>
           </Box>
 
+        </Box>
+
+        */}
         </Box>
 
         {/* Separador entre el formulario y la tabla */}
@@ -1724,7 +1947,7 @@ return (
             onAgregarInsumos={handleAbrirAgregarInsumos}
             onEditarRenglon={handleEditarRenglon} 
             onBuscarProducto={() => {
-              // 🔥 Dispara la apertura del buscador al hacer doble clic
+              //  Dispara la apertura del buscador al hacer doble clic
               setPageProductos(0);
               setSearchProductos("");
               setEsInsumo(false);
@@ -1819,8 +2042,55 @@ return (
 
           <Divider sx={{ borderBottomWidth: 3, my: 2 }} />
 
-{/* PANEL DE DETALLES DEL CLIENTE */}
-<Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, px: 2, overflow: 'auto' }}>
+{/* HISTORIAL DE VISITAS */}
+          <Box sx={{ flex: 1.5, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+              <Typography variant="subtitle2" fontWeight="bold" sx={{ flexGrow: 1 }}>
+                {`Historial de Visitas${clientePreview ? ` - ${(clientePreview.nombre || '')} ${(clientePreview.ap_paterno || '')}`.trim() : ''}`}
+              </Typography>
+              {clienteHistorialLoading && <CircularProgress size={16} sx={{ mr: 1 }} />}
+            </Box>
+            <TableContainer component={Paper} variant="outlined" sx={{ flex: 1, overflow: 'auto' }}>
+              <Table size="small" stickyHeader>
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 'bold', fontSize: '0.72rem', py: 0.4, backgroundColor: '#f0f0f0' }}>Sucursal</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', fontSize: '0.72rem', py: 0.4, backgroundColor: '#f0f0f0' }}>Fecha</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', fontSize: '0.72rem', py: 0.4, backgroundColor: '#f0f0f0' }}>Producto/Servicio</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', fontSize: '0.72rem', py: 0.4, backgroundColor: '#f0f0f0', textAlign: 'center' }}>Cant.</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', fontSize: '0.72rem', py: 0.4, backgroundColor: '#f0f0f0', textAlign: 'right' }}>Precio</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', fontSize: '0.72rem', py: 0.4, backgroundColor: '#f0f0f0' }}>Estilista</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', fontSize: '0.72rem', py: 0.4, backgroundColor: '#f0f0f0' }}>FormaPago</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {clienteHistorialResumen.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          {clientePreview ? (clienteHistorialLoading ? 'Cargando...' : 'Sin historial de compras') : 'Selecciona un cliente para ver su historial'}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    clienteHistorialResumen.map((item, idx) => (
+                      <TableRow key={idx} hover sx={{ '&:nth-of-type(odd)': { backgroundColor: '#fafafa' } }}>
+                        <TableCell sx={{ fontSize: '0.72rem', py: 0.3 }}>{item.Sucursal}</TableCell>
+                        <TableCell sx={{ fontSize: '0.72rem', py: 0.3 }}>{item.Fecha ? new Date(item.Fecha).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-'}</TableCell>
+                        <TableCell sx={{ fontSize: '0.72rem', py: 0.3 }}>{item.Descripcion}</TableCell>
+                        <TableCell sx={{ fontSize: '0.72rem', py: 0.3, textAlign: 'center' }}>{item.CantProducto}</TableCell>
+                        <TableCell sx={{ fontSize: '0.72rem', py: 0.3, textAlign: 'right' }}>{Number(item.Precio).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</TableCell>
+                        <TableCell sx={{ fontSize: '0.72rem', py: 0.3 }}>{item.NombreEstilista}</TableCell>
+                        <TableCell sx={{ fontSize: '0.72rem', py: 0.3 }}>{item.FormaPago}</TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
+{/* OLD PANEL - HIDDEN */}
+<Box sx={{ display: 'none' }}>
   {!clientePreview ? (
     <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
       Selecciona un cliente para ver sus detalles
@@ -2804,9 +3074,205 @@ return (
   </DialogContent>
 </Dialog>
 
+{/* === DIALOG REASIGNACION CLIENTE === */}
+<Dialog
+  maxWidth="xs"
+  fullWidth
+  open={modalCambiarClienteOpen}
+  onClose={() => { setModalCambiarClienteOpen(false); setClienteActualCambio(''); setNuevoClienteCambio(''); }}
+  PaperProps={{ sx: { m: { xs: 1, sm: 2 } } }}
+>
+  <DialogTitle sx={{ pb: 0 }}>
+    <Typography variant="subtitle1" color="text.secondary" sx={{ fontStyle: 'italic' }}>Reasignación de</Typography>
+    <Typography variant="h5" fontWeight="bold">Cliente en Servicio</Typography>
+    <Box sx={{ borderBottom: '4px solid black', mt: 1 }} />
+  </DialogTitle>
+  <DialogContent sx={{ pt: 2 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, my: 1 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <Typography sx={{ minWidth: 115, fontWeight: 'bold' }}>Cliente Actual:</Typography>
+        <Select
+          size="small"
+          fullWidth
+          value={clienteActualCambio}
+          inputProps={{ readOnly: true }}
+          displayEmpty
+        >
+          <MenuItem value=""><em></em></MenuItem>
+          {clienteSeleccionado && (<MenuItem value={clienteSeleccionado.No_cliente}>{[clienteSeleccionado.nombre, clienteSeleccionado.ap_paterno, clienteSeleccionado.ap_materno].filter(Boolean).join(' ')}</MenuItem>)}
+          {clientesServicioTC.map((c) => (
+            <MenuItem key={c.cve_cliente} value={c.cve_cliente}>{c.nombre}</MenuItem>
+          ))}
+        </Select>
+      </Box>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <Typography sx={{ minWidth: 115, fontWeight: 'bold' }}>Nuevo Cliente:</Typography>
+        <TextField
+          size="small"
+          value={busquedaNuevoCliente}
+          style={{ display: 'none' }}
+          onChange={(e) => setBusquedaNuevoCliente(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter' && busquedaNuevoCliente.trim()) fetchTodosLosClientes(busquedaNuevoCliente.trim()); }}
+          placeholder="Buscar cliente..."
+          sx={{ flex: 1 }}
+        />
+        <Autocomplete
+          sx={{ flex: 1 }}
+          size="small"
+          options={todosLosClientes}
+          getOptionLabel={(option) => [option.nombre, option.ap_paterno, option.ap_materno].filter(Boolean).join(' ')}
+          loading={loadingTodosClientes}
+          value={todosLosClientes.find(c => c.No_cliente === nuevoClienteCambio) ?? null}
+          onChange={(_e, newVal) => setNuevoClienteCambio(newVal?.No_cliente ?? '')}
+          onInputChange={(_e, val) => { setBusquedaNuevoCliente(val); if (val.trim().length >= 2) fetchTodosLosClientes(val.trim()); else setTodosLosClientes([]); }}
+          inputValue={busquedaNuevoCliente}
+          noOptionsText="Sin resultados"
+          renderInput={(params) => <TextField {...params} placeholder="Buscar cliente..." />}
+        />
+        {false && loadingTodosClientes ? (
+          <CircularProgress size={20} />
+        ) : (
+          <Select
+            size="small"
+            fullWidth
+            value={nuevoClienteCambio}
+            sx={{ display: 'none' }}
+            onChange={(e) => setNuevoClienteCambio(e.target.value)}
+            displayEmpty
+          >
+            <MenuItem value=""><em></em></MenuItem>
+            {todosLosClientes.map((c) => (
+              <MenuItem key={c.No_cliente} value={c.No_cliente}>{c.nombre}</MenuItem>
+            ))}
+          </Select>
+        )}
+      </Box>
+    </Box>
+    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3, mb: 1 }}>
+      <Button
+        variant="outlined"
+        size="small"
+        disabled={!clienteActualCambio || !nuevoClienteCambio}
+        onClick={handleCambiarCliente}
+      >
+        Cambiar Cliente
+      </Button>
+      <Button
+        variant="outlined"
+        size="small"
+        onClick={() => { setModalCambiarClienteOpen(false); setClienteActualCambio(''); setNuevoClienteCambio(''); }}
+      >
+        Salir
+      </Button>
+    </Box>
+    <Typography variant="caption" display="block" align="center" sx={{ borderTop: '1px solid #ccc', pt: 0.5 }}>
+      , OFICINA, {new Date().toLocaleDateString('es-MX')}, USR:{session?.id || 'ADMIN'}
+    </Typography>
+  </DialogContent>
+</Dialog>
+
+{/* === DIALOG COBROS MULTIPLES TC === */}
+<Dialog
+  maxWidth="md"
+  fullWidth
+  open={modalCobrosMultipleTCOpen}
+  onClose={() => { setModalCobrosMultipleTCOpen(false); setSelectedClientesTC(new Set()); setRecompensaTC(''); }}
+  PaperProps={{ sx: { m: { xs: 1, sm: 2 }, maxHeight: '90vh' } }}
+>
+  <DialogTitle sx={{ pb: 0 }}>
+    <Typography variant="subtitle1" color="text.secondary" sx={{ fontStyle: 'italic' }}>Clientes en</Typography>
+    <Typography variant="h5" fontWeight="bold">Servicio - Cobros Multiples TC</Typography>
+  </DialogTitle>
+  <DialogContent sx={{ p: 0 }}>
+    <Box sx={{ borderTop: '4px solid black', borderBottom: '4px solid black', mb: 1 }}>
+      <Table size="small">
+        <TableHead>
+          <TableRow sx={{ backgroundColor: '#000' }}>
+            <TableCell sx={{ color: 'white', fontWeight: 'bold', textAlign: 'center' }}>CLIENTE</TableCell>
+            <TableCell sx={{ color: 'white', fontWeight: 'bold', textAlign: 'center' }}>IMPORTE</TableCell>
+            <TableCell sx={{ color: 'white', fontWeight: 'bold', textAlign: 'center' }}>SELECCIONAR</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {loadingClientesServicioTC ? (
+            <TableRow><TableCell colSpan={3} align="center"><CircularProgress size={20} sx={{ my: 1 }} /></TableCell></TableRow>
+          ) : clientesServicioTC.length === 0 ? (
+            <TableRow><TableCell colSpan={3} align="center">Sin clientes en servicio</TableCell></TableRow>
+          ) : clientesServicioTC.map((venta, idx) => (
+            <TableRow key={idx} hover sx={{ '&:nth-of-type(odd)': { backgroundColor: '#f5f5f5' } }}>
+              <TableCell
+                sx={{ fontWeight: selectedClientesTC.has(venta.cve_cliente) ? 'bold' : 'normal',
+                  backgroundColor: selectedClientesTC.has(venta.cve_cliente) ? '#000' : 'inherit',
+                  color: selectedClientesTC.has(venta.cve_cliente) ? 'white' : 'inherit' }}
+              >
+                {venta.nombre}
+              </TableCell>
+              <TableCell align="center">{venta.importe.toFixed(2)}</TableCell>
+              <TableCell align="center">
+                <input
+                  type="checkbox"
+                  checked={selectedClientesTC.has(venta.cve_cliente)}
+                  onChange={(e) => {
+                    const next = new Set(selectedClientesTC);
+                    if (e.target.checked) next.add(venta.cve_cliente); else next.delete(venta.cve_cliente);
+                    setSelectedClientesTC(next);
+                  }}
+                />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </Box>
+    <Box sx={{ px: 3, pb: 1 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+        <Typography fontWeight="bold">TOTAL</Typography>
+        <Typography fontWeight="bold" sx={{ minWidth: 80, textAlign: 'right' }}>
+          {clientesServicioTC
+          
+            .filter(v => selectedClientesTC.has(v.cve_cliente))
+            .reduce((sum, v) => sum + v.importe, 0)
+            .toFixed(2)}
+        </Typography>
+        <Typography fontWeight="bold" sx={{ ml: 3 }}>Recompensa:</Typography>
+        <input
+          type="text"
+          value={recompensaTC}
+          onChange={e => setRecompensaTC(e.target.value)}
+          style={{ width: 80, border: '1px solid #ccc', padding: '2px 4px' }}
+        />
+        <Typography color="error" fontWeight="bold">*</Typography>
+      </Box>
+      <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3, mb: 1 }}>
+        <Button
+          variant="outlined"
+          size="small"
+          disabled={selectedClientesTC.size === 0}
+          onClick={() => {
+            const seleccionados = clientesServicioTC.filter(v => selectedClientesTC.has(v.cve_cliente));
+            console.log('Cobro Multiple TC:', seleccionados, 'Recompensa:', recompensaTC);
+          }}
+        >
+          Cobro Multiple TC
+        </Button>
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={() => { setModalCobrosMultipleTCOpen(false); setSelectedClientesTC(new Set()); setRecompensaTC(''); }}
+        >
+          Salir
+        </Button>
+      </Box>
+      <Typography variant="caption" display="block" align="center" sx={{ borderTop: '1px solid #ccc', pt: 0.5 }}>
+        CLIENTES EN SERVICIO - COBROS MULTIPLES TC, SUCURSAL {sucursal}, {new Date().toLocaleDateString('es-MX')}, USR:{session?.id || 'ADMIN'}
+      </Typography>
+    </Box>
+  </DialogContent>
+</Dialog>
+
 {/* === 9. DIALOG MODAL DE COBRO (ESTILO ACCESS DE UNA SOLA VISTA SIN SCROLL) === */}
 <Dialog 
-  maxWidth="md"  // 🌟 Cambiado de "sm" a "md" para dar total libertad horizontal
+  maxWidth="md"  //  Cambiado de "sm" a "md" para dar total libertad horizontal
   fullWidth 
   open={modalCobroOpen} 
   onClose={() => setModalCobroOpen(false)}
