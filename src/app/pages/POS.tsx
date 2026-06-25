@@ -31,6 +31,7 @@ type Producto = {
   clave_prod: string;
   descripcion: string;
   Precio?:number;
+  precio?:number;
   costo_unitario?: number;
   tasa_iva?: number;
   inventariable?: boolean;
@@ -307,6 +308,9 @@ const [pagosRegistro, setPagosRegistro] = React.useState<PagoRegistro[]>([]);
 const [formaPagoSeleccionada, setFormaPagoSeleccionada] = React.useState<number | "">("");
 const [importePago, setImportePago] = React.useState(""); 
   const [autorizacionInput, setAutorizacionInput] = React.useState(""); // 🔥 Estado para la caja de autorización editable
+  const [modalConfirmAutorizacionOpen, setModalConfirmAutorizacionOpen] = React.useState(false);
+  const [confirmAutorizacionInput, setConfirmAutorizacionInput] = React.useState("");
+  const [confirmAutorizacionError, setConfirmAutorizacionError] = React.useState("");
   const [isCredito, setIsCredito] = React.useState(false); 
   const [cuentaPuntos, setCuentaPuntos] = React.useState("");      
   const [puntosPago, setPuntosPago] = React.useState<number>(0);     // 🔥 Ahora es una cantidad editable manual
@@ -394,7 +398,7 @@ React.useEffect(() => {
       setDetallesVenta(datos);
     } catch (error) {
       console.error('Error cargando datos:', error);
-      alert('Error al cargar los datos');
+      Swal.fire({ icon: 'error', title: 'Error', text: 'Error al cargar los datos', confirmButtonColor: '#333333' });
     }
   };
 
@@ -637,7 +641,7 @@ React.useEffect(() => {
   const handleRegistrar = () => {
     // Validar que se hayan seleccionado los datos necesarios
     if (!estilistaSeleccionado || !productoSeleccionado) {
-      alert('Por favor selecciona un estilista y un producto');
+      Swal.fire({ icon: 'warning', title: 'Atención', text: 'Por favor selecciona un estilista y un producto', confirmButtonColor: '#333333' });
       return;
     }
 
@@ -655,7 +659,7 @@ React.useEffect(() => {
 
   const guardarProductoIndividual = async (detalle: DetalleVenta) => {
     if (!clienteSeleccionado) {
-      alert('Por favor selecciona un cliente');
+      Swal.fire({ icon: 'warning', title: 'Atención', text: 'Por favor selecciona un cliente', confirmButtonColor: '#333333' });
       return false;
     }
 
@@ -687,12 +691,12 @@ React.useEffect(() => {
       if (res.data?.ok === 1) {
         return true;
       } else {
-        alert(res.data?.mensaje || 'Error al guardar el producto');
+        Swal.fire({ icon: 'error', title: 'Error', text: res.data?.mensaje || 'Error al guardar el producto', confirmButtonColor: '#333333' });
         return false;
       }
     } catch (error: any) {
       console.error('Error guardando producto:', error);
-      alert(error.response?.data?.mensaje || 'Error al guardar el producto');
+      Swal.fire({ icon: 'error', title: 'Error', text: error.response?.data?.mensaje || 'Error al guardar el producto', confirmButtonColor: '#333333' });
       return false;
     }
   };
@@ -700,7 +704,7 @@ React.useEffect(() => {
   const registrarProducto = async (producto: Producto, esInsumoAdicional = false) => {
     // Validar que haya cliente seleccionado
     if (!clienteSeleccionado) {
-      alert('Por favor selecciona un cliente primero');
+      Swal.fire({ icon: 'warning', title: 'Atención', text: 'Por favor selecciona un cliente primero', confirmButtonColor: '#333333' });
       return;
     }
 
@@ -719,8 +723,8 @@ React.useEffect(() => {
       d_producto: producto.descripcion,
       tiempo: producto.tiempo || '00:00', // Usar tiempo del producto o por defecto
       Cant: 1,
-      precio: producto.Precio || 0,
-      importe: producto.Precio || 0,
+      precio: producto.precio || producto.Precio || 0,
+      importe: producto.precio || producto.Precio || 0,
       descuento: 0,
       auxiliar: auxiliarSeleccionado || '',
       d_auxiliar: auxiliarNombre,
@@ -756,7 +760,7 @@ React.useEffect(() => {
       setFormasPago(res.data || []);
     } catch (error) {
       console.error('Error cargando formas de pago:', error);
-      alert('Error al cargar las formas de pago');
+      Swal.fire({ icon: 'error', title: 'Error', text: 'Error al cargar las formas de pago', confirmButtonColor: '#333333' });
     } finally {
       setLoadingFormasPago(false);
     }
@@ -764,7 +768,7 @@ React.useEffect(() => {
 
   const handleCancelarRenglon = async (detalle: DetalleVenta) => {
     if (!clienteSeleccionado) {
-      alert('No hay cliente seleccionado');
+      Swal.fire({ icon: 'warning', title: 'Atención', text: 'No hay cliente seleccionado', confirmButtonColor: '#333333' });
       return;
     }
 
@@ -928,10 +932,24 @@ const handleCobrarClick = () => {
   setModalCobroOpen(true);
 };
 
+const handleConfirmarAutorizacion = () => {
+  if (confirmAutorizacionInput.trim() !== autorizacionInput.trim()) {
+    setModalConfirmAutorizacionOpen(false);
+    setConfirmAutorizacionError('Los números de autorización no coinciden. Ingréselos nuevamente.');
+    setModalConfirmAutorizacionOpen(true);
+    setConfirmAutorizacionInput('');
+    return;
+  }
+  setModalConfirmAutorizacionOpen(false);
+  setConfirmAutorizacionInput('');
+  setConfirmAutorizacionError('');
+  handleAgregarPago();
+};
+
 const handleAgregarPago = () => {
     const importe = parseFloat(importePago);
     if (isNaN(importe) || importe <= 0) {
-      alert('Ingresa un importe válido');
+      Swal.fire({ icon: 'warning', title: 'Atención', text: 'Ingresa un importe válido', confirmButtonColor: '#333333' });
       return;
     }
 
@@ -1077,7 +1095,7 @@ const verificaDatosVenta = () => {
     // 1. Validaciones previas de Access
     if (!verificaDatosVenta()) return; 
     if (!clienteSeleccionado || !estilistaSeleccionado) {
-      alert('Faltan datos para finalizar la venta');
+      Swal.fire({ icon: 'warning', title: 'Atención', text: 'Faltan datos para finalizar la venta', confirmButtonColor: '#333333' });
       return;
     }
 
@@ -1165,6 +1183,7 @@ const verificaDatosVenta = () => {
           icon: 'success',
           title: 'Venta finalizada',
           text: `${res.data?.mensaje} - Folio: ${res.data?.folio}`,
+          didOpen: () => setModalCobroOpen(false),
           confirmButtonText: 'Aceptar'
         });
         
@@ -1258,12 +1277,12 @@ const verificaDatosVenta = () => {
         sucursal: sucursal,
         cve_cliente: clienteSeleccionado.No_cliente,
         d_cliente: `${clienteSeleccionado.nombre} ${clienteSeleccionado.ap_paterno || ''} ${clienteSeleccionado.ap_materno || ''}`.trim(),
-        totalVenta: listaInsumos.reduce((sum, item) => sum + (item.producto.Precio || 0) * item.cantidad, 0),
+        totalVenta: listaInsumos.reduce((sum, item) => sum + (item.producto.precio || item.producto.Precio || 0) * item.cantidad, 0),
         insumos: listaInsumos.map(item => ({
           clave_prod: item.producto.clave_prod,
           descripcion: item.producto.descripcion,
           cantidad: item.cantidad,
-          precio: item.producto.Precio || 0,
+          precio: item.producto.precio || item.producto.Precio || 0,
           validado: item.validado,
           observacion: item.observacion
         }))
@@ -1282,7 +1301,7 @@ const verificaDatosVenta = () => {
 
   const handleConfirmarInsumos = async () => {
     if (!productoPrincipal || insumosSeleccionados.length === 0) {
-      alert('Por favor selecciona al menos un insumo');
+      Swal.fire({ icon: 'warning', title: 'Atención', text: 'Por favor selecciona al menos un insumo', confirmButtonColor: '#333333' });
       return;
     }
 
@@ -1301,8 +1320,8 @@ const verificaDatosVenta = () => {
         d_producto: productoPrincipal.descripcion,
         tiempo: productoPrincipal.tiempo || '00:00',
         Cant: 1,
-        precio: productoPrincipal.Precio || 0,
-        importe: productoPrincipal.Precio || 0,
+        precio: productoPrincipal.precio || productoPrincipal.Precio || 0,
+        importe: productoPrincipal.precio || productoPrincipal.Precio || 0,
         descuento: 0,
         auxiliar: auxiliarSeleccionado || '',
         d_auxiliar: auxiliarSeleccionado ? 
@@ -1316,8 +1335,8 @@ const verificaDatosVenta = () => {
           d_producto: item.producto.descripcion,
           tiempo: item.producto.tiempo || '00:00',
           Cant: item.cantidad,
-          precio: item.producto.Precio || 0,
-          importe: (item.producto.Precio || 0) * item.cantidad,
+          precio: item.producto.precio || item.producto.Precio || 0,
+          importe: (item.producto.precio || item.producto.Precio || 0) * item.cantidad,
           descuento: 0,
           auxiliar: auxiliarSeleccionado || '',
           d_auxiliar: auxiliarSeleccionado ? 
@@ -1363,8 +1382,8 @@ const verificaDatosVenta = () => {
             d_producto: item.producto.descripcion,
             tiempo: item.producto.tiempo || '00:00',
             Cant: item.cantidad,
-            precio: item.producto.Precio || 0,
-            importe: (item.producto.Precio || 0) * item.cantidad,
+            precio: item.producto.precio || item.producto.Precio || 0,
+            importe: (item.producto.precio || item.producto.Precio || 0) * item.cantidad,
             descuento: 0,
             auxiliar: auxiliarSeleccionado || '',
             d_auxiliar: auxiliarSeleccionado ? 
@@ -3352,13 +3371,12 @@ return (
   </Select>
 </TableCell>
                 <TableCell>
-                  <TextField variant="standard" size="small" fullWidth disabled={isCredito} placeholder="Escribir..." value={autorizacionInput} onChange={(e) => setAutorizacionInput(e.target.value)} InputProps={{ disableUnderline: true, style: { fontSize: '0.8rem', color: 'black' } }} />
+                  <TextField variant="standard" size="small" fullWidth disabled={isCredito} placeholder="Escribir..." value={autorizacionInput} onChange={(e) => setAutorizacionInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && formaPagoSeleccionada === 7 && autorizacionInput.trim()) { setConfirmAutorizacionInput(''); setModalConfirmAutorizacionOpen(true); } }} InputProps={{ disableUnderline: true, style: { fontSize: '0.8rem', color: 'black' } }} />
                 </TableCell>
                 <TableCell>
                   <TextField variant="standard" size="small" type="number" fullWidth disabled={isCredito} placeholder="0.00" value={importePago} onChange={(e) => setImportePago(e.target.value)} InputProps={{ disableUnderline: true, style: { fontSize: '0.8rem', textAlign: 'right', color: 'black' } }} />
                 </TableCell>
                 <TableCell align="center" sx={{ p: 0 }}>
-                  <Button size="small" disabled={isCredito} onClick={handleAgregarPago} sx={{ minWidth: 'auto', p: '2px 6px', fontWeight: 'bold', color: 'black', fontSize: '0.8rem' }}>+</Button>
                 </TableCell>
               </TableRow>
               {pagosRegistro.map((pago, index) => (
@@ -3451,12 +3469,34 @@ return (
 
     {/* Botones de Control Inferiores */}
     <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3, mt: 1.5 }}>
-      <Button variant="contained" disabled={isCredito || finalizandoVenta} onClick={() => alert('Llamando a realiza_pago_tc_banorte...')} sx={{ backgroundColor: '#4a6572', color: 'white', borderRadius: 0, fontWeight: 'bold', textTransform: 'none', minWidth: 130, height: 32, fontSize: '0.85rem', border: '1px solid #34495e', '&:hover': { backgroundColor: '#34495e' } }}>Cobro con Tarjeta</Button>
+      <Button variant="contained" disabled={isCredito || finalizandoVenta} onClick={() => Swal.fire({ icon: 'info', title: 'Cobro con Tarjeta', text: 'Llamando a realiza_pago_tc_banorte...', confirmButtonColor: '#333333' })} sx={{ backgroundColor: '#4a6572', color: 'white', borderRadius: 0, fontWeight: 'bold', textTransform: 'none', minWidth: 130, height: 32, fontSize: '0.85rem', border: '1px solid #34495e', '&:hover': { backgroundColor: '#34495e' } }}>Cobro con Tarjeta</Button>
       <Button variant="contained" onClick={handleFinalizarVenta} disabled={!puedeFinalizar || finalizandoVenta} sx={{ backgroundColor: '#4a6572', color: 'white', borderRadius: 0, fontWeight: 'bold', textTransform: 'none', minWidth: 130, height: 32, fontSize: '0.85rem', border: '1px solid #34495e', '&:hover': { backgroundColor: '#34495e' } }}>{finalizandoVenta ? 'Procesando...' : 'Registrar venta'}</Button>
       <Button variant="contained" onClick={() => setModalCobroOpen(false)} sx={{ backgroundColor: '#4a6572', color: 'white', borderRadius: 0, fontWeight: 'bold', textTransform: 'none', minWidth: 90, height: 32, fontSize: '0.85rem', border: '1px solid #34495e', '&:hover': { backgroundColor: '#34495e' } }}>Salir</Button>
     </Box>
   </DialogContent>
 </Dialog>
+
+
+{/* Dialog confirmación número de autorización TC CLIP */}
+      <Dialog open={modalConfirmAutorizacionOpen} maxWidth="xs" fullWidth onClose={() => { setModalConfirmAutorizacionOpen(false); setConfirmAutorizacionInput(''); }}>
+        <DialogTitle sx={{ pb: 1, fontWeight: 'bold', fontSize: '0.95rem', borderBottom: '1px solid #ccc' }}>Otros medios de pago</DialogTitle>
+        <DialogContent sx={{ pt: 2 }}>
+          <Typography variant="body2" sx={{ mb: 1.5 }}>Escriba nuevamente el número de autorización</Typography>
+          <TextField
+            autoFocus
+            fullWidth
+            size="small"
+            value={confirmAutorizacionInput}
+            onChange={(e) => { setConfirmAutorizacionInput(e.target.value); setConfirmAutorizacionError(''); }}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleConfirmarAutorizacion(); }}
+          />
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 2 }}>
+            {confirmAutorizacionError && <Typography variant="caption" color="error" sx={{ display: 'block', width: '100%', mb: 1, textAlign: 'center' }}>{confirmAutorizacionError}</Typography>}
+            <Button variant="contained" size="small" onClick={handleConfirmarAutorizacion} sx={{ backgroundColor: '#555', '&:hover': { backgroundColor: '#333' } }}>Aceptar</Button>
+            <Button variant="outlined" size="small" onClick={() => { setModalConfirmAutorizacionOpen(false); setConfirmAutorizacionInput(''); }}>Cancelar</Button>
+          </Box>
+        </DialogContent>
+      </Dialog>
 
 
 {/* Dialog para reasignar cliente */}

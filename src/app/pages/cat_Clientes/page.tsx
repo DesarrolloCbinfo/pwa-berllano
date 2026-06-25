@@ -310,7 +310,7 @@ useEffect(() => {
     
     cargarDatosCliente();
   }
-}, [clienteToEdit, sucursales]); // ← AGREGAR sucursales COMO DEPENDENCIA
+}, [clienteToEdit?.No_cliente, sucursales]); // ← solo reacciona al cambio de No_cliente, no a cambios de referencia
 
 
   useEffect(() => { fetchClientes(); }, [paginationModel]); 
@@ -429,7 +429,7 @@ const handleSave = async () => {
         };
         
         await consumoApi.put('/api/CatClientesSuc/sp_bw_cat_clientes_upd', updateParams);
-        Swal.fire({ title: '¡Éxito!', text: 'Cliente actualizado correctamente', icon: 'success', confirmButtonColor: '#333333' });
+        await Swal.fire({ title: '¡Éxito!', text: 'Cliente actualizado correctamente', icon: 'success', confirmButtonColor: '#333333' });
         
         if (embedded && onClienteGuardado) {
           const clienteActualizado: ClienteRow = {
