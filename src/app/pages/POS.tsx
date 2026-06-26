@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { flushSync } from 'react-dom';
 //import TextField from "@mui/material/TextField";
 import useConsumoApi from "../../hooks/useConsumoApi";
 import { useServerTable } from "../../hooks/useServerTable";
@@ -195,12 +196,14 @@ const [nuevoClienteReasignacion, setNuevoClienteReasignacion] = React.useState<C
   } | null>(null);
   const [modalAgregarInsumosOpen, setModalAgregarInsumosOpen] = React.useState(false);
   const [detalleSeleccionadoInsumos, setDetalleSeleccionadoInsumos] = React.useState<DetalleVenta | null>(null);
+  const [detalleInsumosModal, setDetalleInsumosModal] = React.useState<DetalleVenta | null>(null);
   const [busquedaInsumo, setBusquedaInsumo] = React.useState("");
   const [resultadosInsumos, setResultadosInsumos] = React.useState<Producto[]>([]);
   const [insumosAgregar, setInsumosAgregar] = React.useState<Array<{clave_prod: string, cantidad: number, d_producto: string}>>([]);
   const [loadingBusquedaInsumo, setLoadingBusquedaInsumo] = React.useState(false);
 
   const [productoSeleccionado, setProductoSeleccionado] = React.useState<Producto | null>(null);
+  const [detalleParaEditarProducto, setDetalleParaEditarProducto] = React.useState<any | null>(null);
   const [modalProductoOpen, setModalProductoOpen] = React.useState(false);
   const [modalInsumosOpen, setModalInsumosOpen] = React.useState(false);
   const [productoPrincipal, setProductoPrincipal] = React.useState<Producto | null>(null);
@@ -262,7 +265,7 @@ const [nuevoClienteReasignacion, setNuevoClienteReasignacion] = React.useState<C
 
   // Auto-guardar insumos en proceso cuando cambian y el modal está abierto
   React.useEffect(() => {
-    if (!modalInsumosOpen || insumosSeleccionados.length === 0) return;
+    if (!modalInsumosOpen) return;
     const timer = setTimeout(() => {
       guardarInsumosEnProceso(insumosSeleccionados);
     }, 1000);
@@ -287,6 +290,12 @@ const sucursal = session?.sucursal || 1;
 
 const [ventasEnProceso, setVentasEnProceso] = React.useState<VentaEnProceso[]>([]);
 const [modalVentasEnProcesoOpen, setModalVentasEnProcesoOpen] = React.useState(false);
+const [isVentaEnProceso, setIsVentaEnProceso] = React.useState(false);
+const [modalAuthCobrarOpen, setModalAuthCobrarOpen] = React.useState(false);
+const [authCobrarUsuario, setAuthCobrarUsuario] = React.useState('');
+const [authCobrarPassword, setAuthCobrarPassword] = React.useState('');
+const [authCobrarLoading, setAuthCobrarLoading] = React.useState(false);
+const [authCobrarError, setAuthCobrarError] = React.useState('');
 const [loadingVentasEnProceso, setLoadingVentasEnProceso] = React.useState(false);
 const [modalCobrosMultipleTCOpen, setModalCobrosMultipleTCOpen] = React.useState(false);
 const [selectedClientesTC, setSelectedClientesTC] = React.useState<Set<string>>(new Set());
@@ -559,6 +568,7 @@ React.useEffect(() => {
       controlado: true,
     };
     setProductoPrincipal(productoParaInsumos);
+    setDetalleInsumosModal(detalle);
     setInsumosSeleccionados([]);
     setModalInsumosOpen(true);
   };
@@ -877,6 +887,32 @@ const handleReasignarCliente = async () => {
   }
 };
 
+const handleValidarAutorizacionCobrar = async () => {
+  if (!authCobrarUsuario.trim() || !authCobrarPassword.trim()) {
+    setAuthCobrarError('Ingrese usuario y contraseña.');
+    return;
+  }
+  setAuthCobrarLoading(true);
+  setAuthCobrarError('');
+  try {
+    const res = await consumoApi.post('/api/PuntoDeVenta/validar-autorizacion', {
+      usuarioSupervisor: authCobrarUsuario,
+      passwordSupervisor: authCobrarPassword,
+      formulario: 'CierreVentaInsumosPendientes'
+    });
+    if (res.data?.ok === true) {
+      setModalAuthCobrarOpen(false);
+      setModalCobroOpen(true);
+    } else {
+      setAuthCobrarError(res.data?.mensaje || 'Autorización denegada.');
+    }
+  } catch (error: any) {
+    setAuthCobrarError(error.response?.data?.mensaje || 'Error al validar autorización.');
+  } finally {
+    setAuthCobrarLoading(false);
+  }
+};
+
 const handleCobrarClick = () => {
   // 1. RECALCULAR LA SUMA DE LA VENTA
   let subtotal = 0;
@@ -929,6 +965,13 @@ const handleCobrarClick = () => {
   setPuntosGanados(0);
 
   fetchFormasPago();
+  if (isVentaEnProceso) {
+    setAuthCobrarUsuario('');
+    setAuthCobrarPassword('');
+    setAuthCobrarError('');
+    setModalAuthCobrarOpen(true);
+    return;
+  }
   setModalCobroOpen(true);
 };
 
@@ -996,10 +1039,11 @@ const handleAgregarPago = () => {
       if (!cuentaPuntos) return;
 
       try {
-        const res = await consumoApi.get('/api/PuntoDeVenta/obtiene_puntos_cliente', {
+        const res = await consumoApi.get(`/api/PuntoDeVenta/consultar-tarjeta/${cuentaPuntos}`, {
           params: { cuenta: cuentaPuntos }
         });
-        setSaldoPuntosCte(res.data.puntosDisponibles || 0);
+        if (!res.data?.ok) { Swal.fire("Error", "Tarjeta no encontrada o inválida.", "error"); setSaldoPuntosCte(0); return; }
+        setSaldoPuntosCte(res.data.puntos || 0);
         setTmpPuntosPago(0); 
         setPuntosPago(0);     
       } catch (error) {
@@ -1063,26 +1107,26 @@ const handleCancelarTabulador = () => {
 // 🔥 FUNCIÓN DE VALIDACIÓN RESTAURADA
 const verificaDatosVenta = () => {
   if (detallesVenta.length === 0) {
-    Swal.fire("Atención", "No hay productos o servicios para cobrar.", "warning");
+    Swal.fire({ icon: 'warning', title: 'Atención', text: 'No hay productos o servicios para cobrar.', willOpen: () => { flushSync(() => { setModalCobroOpen(false); }); } });
     return false;
   }
   
   // Evitar Cantidades o Precios en Cero
   const tieneCeros = detallesVenta.some(d => d.Cant <= 0 || d.precio <= 0);
   if (tieneCeros) {
-    Swal.fire("Error", "Hay productos o servicios con cantidad o precio en Cero. Verifique.", "error");
+    Swal.fire({ icon: 'error', title: 'Error', text: 'Hay productos o servicios con cantidad o precio en Cero. Verifique.', willOpen: () => { flushSync(() => { setModalCobroOpen(false); }); } });
     return false;
   }
   
   // Evitar crédito a Público en General
   if (isCredito && clienteSeleccionado?.No_cliente === "00001") {
-    Swal.fire("Atención", "Seleccione un cliente válido para el crédito. No aplica a Público en General.", "warning");
+    Swal.fire({ icon: 'warning', title: 'Atención', text: 'Seleccione un cliente válido para el crédito. No aplica a Público en General.', willOpen: () => { flushSync(() => { setModalCobroOpen(false); }); } });
     return false;
   }
 
   // Validar saldo de puntos
   if (puntosPago > saldoPuntosCte) {
-    Swal.fire("Atención", "El saldo del cliente es insuficiente para pagar con los puntos indicados.", "warning");
+    Swal.fire({ icon: 'warning', title: 'Atención', text: 'El saldo del cliente es insuficiente para pagar con los puntos indicados.', willOpen: () => { flushSync(() => { setModalCobroOpen(false); }); } });
     return false;
   }
 
@@ -1095,13 +1139,13 @@ const verificaDatosVenta = () => {
     // 1. Validaciones previas de Access
     if (!verificaDatosVenta()) return; 
     if (!clienteSeleccionado || !estilistaSeleccionado) {
-      Swal.fire({ icon: 'warning', title: 'Atención', text: 'Faltan datos para finalizar la venta', confirmButtonColor: '#333333' });
+      Swal.fire({ icon: 'warning', title: 'Atención', text: 'Faltan datos para finalizar la venta', willOpen: () => { flushSync(() => { setModalCobroOpen(false); }); } });
       return;
     }
 
     // Regla Access: Validar que no pague con más puntos de los que tiene
     if (puntosPago > saldoPuntosCte) {
-      Swal.fire("Atención", "El saldo del cliente es insuficiente para pagar con los puntos indicados. Verifique.", "warning");
+      Swal.fire({ icon: 'warning', title: 'Atención', text: 'El saldo del cliente es insuficiente para pagar con los puntos indicados. Verifique.', willOpen: () => { flushSync(() => { setModalCobroOpen(false); }); } });
       setPuntosPago(0);
       return;
     }
@@ -1183,7 +1227,7 @@ const verificaDatosVenta = () => {
           icon: 'success',
           title: 'Venta finalizada',
           text: `${res.data?.mensaje} - Folio: ${res.data?.folio}`,
-          didOpen: () => setModalCobroOpen(false),
+          willOpen: () => { flushSync(() => { setModalCobroOpen(false); }); },
           confirmButtonText: 'Aceptar'
         });
         
@@ -1203,10 +1247,12 @@ const verificaDatosVenta = () => {
         setNc(0);
         setBonificacion(0);
         setFolioDev("");
+        setIsVentaEnProceso(false);
       } else {
         Swal.fire({
           icon: 'error',
           title: 'Error',
+          willOpen: () => { flushSync(() => { setModalCobroOpen(false); }); },
           text: res.data?.mensaje || 'Error al finalizar la venta',
           confirmButtonText: 'Aceptar'
         });
@@ -1216,6 +1262,7 @@ const verificaDatosVenta = () => {
       Swal.fire({
         icon: 'error',
         title: 'Error',
+        willOpen: () => { flushSync(() => { setModalCobroOpen(false); }); },
         text: error.response?.data?.mensaje || 'Error al finalizar la venta',
         confirmButtonText: 'Aceptar'
       });
@@ -1269,6 +1316,15 @@ const verificaDatosVenta = () => {
     );
   };
 
+  React.useEffect(() => {
+    if (modalInsumosOpen && detalleInsumosModal?.insumos && detalleInsumosModal.insumos.length > 0) {
+      setInsumosSeleccionados(detalleInsumosModal.insumos.map(insumo => ({
+        producto: { clave_prod: insumo.clave_prod, descripcion: insumo.d_producto, precio: insumo.precio, Precio: insumo.precio },
+        cantidad: insumo.Cant, validado: false, observacion: ''
+      })));
+    }
+  }, [modalInsumosOpen]);
+
     const guardarInsumosEnProceso = async (listaInsumos: typeof insumosSeleccionados) => {
     if (!clienteSeleccionado) return;
     try {
@@ -1300,7 +1356,7 @@ const verificaDatosVenta = () => {
   };
 
   const handleConfirmarInsumos = async () => {
-    if (!productoPrincipal || insumosSeleccionados.length === 0) {
+    if (!productoPrincipal) {
       Swal.fire({ icon: 'warning', title: 'Atención', text: 'Por favor selecciona al menos un insumo', confirmButtonColor: '#333333' });
       return;
     }
@@ -1392,7 +1448,7 @@ const verificaDatosVenta = () => {
           
         return {
           ...detalle,
-          insumos: [...(detalle.insumos || []), ...nuevosInsumos]
+          insumos: nuevosInsumos
         };
       }
       return detalle;
@@ -1612,6 +1668,7 @@ const fetchDetalleVenta = async (cliente: string, estilista: string) => {
       ap_materno: null
     });
     setEstilistaSeleccionado(venta.user);
+    setIsVentaEnProceso(true);
     
     setModalVentasEnProcesoOpen(false);
   } catch (error) {
@@ -1625,7 +1682,7 @@ const fetchDetalleVenta = async (cliente: string, estilista: string) => {
  useEffect(() => {
   fetchEstilistas();
   fetchAuxiliares();
- }, []);
+ }, [session?.sucursal]);
 
   const {
     data: clients,
@@ -1654,6 +1711,22 @@ const {
   setPage: setPageInsumos,
   setSearch: setSearchInsumos,
 } = useServerTable<Producto>(fetchInsumos, 10);
+
+  const handleEditarProductoEnRenglon = (detalleId: string, producto: any) => {
+    const precioProducto = producto.precio || producto.Precio || 0;
+    setDetallesVenta(prev => prev.map(item => {
+      if (item.id === detalleId) {
+        return {
+          ...item,
+          clave_prod: producto.clave_prod,
+          d_producto: producto.descripcion,
+          precio: precioProducto,
+          importe: item.Cant * precioProducto - (item.descuento || 0)
+        };
+      }
+      return item;
+    }));
+  };
 
    const handleEditarRenglon = async (id: string, campo: string, nuevoValor: any) => {
     let itemActualizado: DetalleVenta | undefined;
@@ -1846,6 +1919,7 @@ return (
                 setBusquedaNuevoCliente('');
                 setClienteActualCambio(clienteSeleccionado?.No_cliente ?? '');
                 setNuevoClienteCambio('');
+                setIsVentaEnProceso(false);
                 setModalCambiarClienteOpen(true);
               }}
             >
@@ -1894,6 +1968,7 @@ return (
                 setBusquedaNuevoCliente('');
                 setClienteActualCambio(clienteSeleccionado?.No_cliente ?? '');
                 setNuevoClienteCambio('');
+                setIsVentaEnProceso(false);
                 setModalCambiarClienteOpen(true);
               }}
             >
@@ -1965,8 +2040,9 @@ return (
             onSelect={handleCancelarRenglon}
             onAgregarInsumos={handleAbrirAgregarInsumos}
             onEditarRenglon={handleEditarRenglon} 
-            onBuscarProducto={() => {
+            onBuscarProducto={(detalle) => {
               //  Dispara la apertura del buscador al hacer doble clic
+              setDetalleParaEditarProducto(detalle);
               setPageProductos(0);
               setSearchProductos("");
               setEsInsumo(false);
@@ -2318,6 +2394,7 @@ return (
         });
       } else {
         // Modo normal, guardar en clienteSeleccionado
+        setIsVentaEnProceso(false);
         setClienteSeleccionado({
           No_cliente: clientePreview.No_cliente || '',
           nombre: clientePreview.nombre || 'PÚBLICO EN GENERAL',
@@ -2783,7 +2860,7 @@ return (
   maxWidth={isMobile ? "sm" : "lg"} 
   fullWidth
   open={modalProductoOpen} 
-  onClose={() => setModalProductoOpen(false)}
+  onClose={() => { setModalProductoOpen(false); setDetalleParaEditarProducto(null); }}
   PaperProps={{
     sx: {
       m: { xs: 1, sm: 2 },
@@ -2813,7 +2890,12 @@ return (
       <ProductosTable
         data={productos}
         onSelect={(producto) => {
-          setProductoSeleccionado(producto);
+          if (detalleParaEditarProducto) {
+            handleEditarProductoEnRenglon(detalleParaEditarProducto.id, producto);
+            setDetalleParaEditarProducto(null);
+          } else {
+            setProductoSeleccionado(producto);
+          }
           setModalProductoOpen(false);
         }}
       />
@@ -3004,7 +3086,14 @@ return (
         color="secondary"
         onClick={() => {
           if (productoPrincipal) {
-            registrarProducto(productoPrincipal);
+            const yaRegistrado = detallesVenta.some(d => d.clave_prod === productoPrincipal.clave_prod);
+            if (yaRegistrado) {
+              setDetallesVenta(prev => prev.map(d =>
+                d.clave_prod === productoPrincipal.clave_prod ? { ...d, insumos: [] } : d
+              ));
+            } else {
+              registrarProducto(productoPrincipal);
+            }
           }
           setModalInsumosOpen(false);
           setProductoPrincipal(null);
@@ -3476,6 +3565,28 @@ return (
   </DialogContent>
 </Dialog>
 
+
+{/* Dialog autorización supervisor para cobrar venta en proceso */}
+      <Dialog open={modalAuthCobrarOpen} maxWidth="xs" fullWidth onClose={() => { if (!authCobrarLoading) { setModalAuthCobrarOpen(false); } }}>
+        <DialogTitle sx={{ backgroundColor: '#333', color: 'white', textAlign: 'center', fontWeight: 'bold', fontSize: '0.95rem' }}>Escriba los datos de un usuario con acceso a este módulo.</DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Typography variant="body2" sx={{ fontWeight: 'bold', minWidth: 110 }}>Nombre de usuario:</Typography>
+              <TextField size="small" fullWidth autoFocus value={authCobrarUsuario} onChange={(e) => { setAuthCobrarUsuario(e.target.value); setAuthCobrarError(''); }} disabled={authCobrarLoading} />
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Typography variant="body2" sx={{ fontWeight: 'bold', minWidth: 110 }}>Password:</Typography>
+              <TextField size="small" fullWidth type="password" value={authCobrarPassword} onChange={(e) => { setAuthCobrarPassword(e.target.value); setAuthCobrarError(''); }} onKeyDown={(e) => { if (e.key === 'Enter') handleValidarAutorizacionCobrar(); }} disabled={authCobrarLoading} />
+            </Box>
+            {authCobrarError && <Typography color="error" variant="caption" sx={{ textAlign: 'center' }}>{authCobrarError}</Typography>}
+          </Box>
+          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3, mt: 3 }}>
+            <Button variant="contained" onClick={handleValidarAutorizacionCobrar} disabled={authCobrarLoading} sx={{ backgroundColor: '#555', minWidth: 100, '&:hover': { backgroundColor: '#333' } }}>{authCobrarLoading ? 'Validando...' : 'ACEPTAR'}</Button>
+            <Button variant="outlined" onClick={() => { setModalAuthCobrarOpen(false); setAuthCobrarUsuario(''); setAuthCobrarPassword(''); setAuthCobrarError(''); }} disabled={authCobrarLoading} sx={{ minWidth: 100 }}>CANCELAR</Button>
+          </Box>
+        </DialogContent>
+      </Dialog>
 
 {/* Dialog confirmación número de autorización TC CLIP */}
       <Dialog open={modalConfirmAutorizacionOpen} maxWidth="xs" fullWidth onClose={() => { setModalConfirmAutorizacionOpen(false); setConfirmAutorizacionInput(''); }}>

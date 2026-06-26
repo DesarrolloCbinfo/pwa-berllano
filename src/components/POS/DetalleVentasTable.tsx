@@ -39,7 +39,7 @@ type Props = {
   onSelect: (detalle: DetalleVenta) => void;
   onAgregarInsumos?: (detalle: DetalleVenta) => void;
   onEditarRenglon: (id: string, campo: string, nuevoValor: any) => void;
-  onBuscarProducto?: () => void; 
+  onBuscarProducto?: (detalle: DetalleVenta) => void;
 };
 
 export default function DetalleVentasTable({ 
@@ -403,7 +403,7 @@ const handleAplicarDescuento = () => {
           
           if (cell.column.id === "clave_prod" || cell.column.id === "d_producto") {
             if (onBuscarProducto) {
-              onBuscarProducto();
+              onBuscarProducto(cell.row.original);
             }
           } 
           else if (cell.column.id === "descuento") {
