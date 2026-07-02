@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Box, CircularProgress, Alert, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, Checkbox, Grid } from '@mui/material'
+import { Box, CircularProgress, Alert, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, Checkbox, Grid, Select, MenuItem, FormControl, InputLabel } from '@mui/material'
 import { DataGrid, GridColDef } from '@mui/x-data-grid'
 import EditIcon from '@mui/icons-material/Edit'
 import CloseIcon from '@mui/icons-material/Close';
@@ -31,6 +31,7 @@ const commonProps = {
 interface MedioPago {
   id: number
   sucursal: number
+  nombre_sucursal: string
   tipo: number
   descripcion: string
   tarjeta: boolean
@@ -57,6 +58,17 @@ export default function CatMediosPago() {
   const [openAdd, setOpenAdd] = useState(false)
   const [openEdit, setOpenEdit] = useState(false)
   const [selectedRow, setSelectedRow] = useState<MedioPago | null>(null)
+
+  const [sucursales, setSucursales] = useState<{ cveSucursal: number; nombre: string }[]>([])
+
+  const fetchSucursales = async () => {
+    try {
+      const res = await consumoApi.get('/api/CatFormasPagos/sp_bw_cat_sucursales_sel/0')
+      setSucursales(res.data || [])
+    } catch (err) {
+      console.error('Error al cargar sucursales:', err)
+    }
+  }
 
   const [formData, setFormData] = useState({
     sucursal: 0,
@@ -89,7 +101,7 @@ export default function CatMediosPago() {
         </IconButton>
       ),
     },
-    { field: 'sucursal', headerName: 'Suc', width: 50, type: 'number' },
+    { field: 'nombre_sucursal', headerName: 'Nombre Sucursal', width: 130, type: 'string' },
     { field: 'tipo', headerName: 'Tipo', width: 70, type: 'number' },
     { field: 'descripcion', headerName: 'Descripción', width: 110, type: 'string' },
     {
@@ -125,6 +137,7 @@ export default function CatMediosPago() {
       const data = res.data.map((item: any, index: number) => ({
         id: index,
         sucursal: item.sucursal,
+        nombre_sucursal: item.nombre_sucursal ?? '',
         tipo: item.tipo,
         descripcion: item.descripcion,
         tarjeta: item.tarjeta,
@@ -153,6 +166,7 @@ export default function CatMediosPago() {
 
   useEffect(() => {
     fetchMediosPago()
+    fetchSucursales()
   }, [])
 
   const handleAddOpen = () => {
@@ -500,13 +514,19 @@ return (
               </Typography>
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={3}>
-                  <TextField 
-                    {...commonProps} label="Sucursal *" type="number" value={formData.sucursal}
-                    onChange={(e) => {
-                      const numValue = parseInt(e.target.value) || 0;
-                      setFormData({ ...formData, sucursal: numValue < 0 ? 0 : numValue });
-                    }} 
-                  />
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Sucursal *</InputLabel>
+                    <Select
+                      label="Sucursal *"
+                      value={formData.sucursal}
+                      onChange={(e) => setFormData({ ...formData, sucursal: Number(e.target.value) })}
+                      sx={{ borderRadius: '8px', height: '50px' }}
+                    >
+                      {sucursales.filter(s => s.cveSucursal !== 0).map(s => (
+                        <MenuItem key={s.cveSucursal} value={s.cveSucursal}>{s.nombre}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 </Grid>
                 <Grid item xs={12} sm={3}>
                   <TextField 
@@ -673,13 +693,19 @@ return (
               </Typography>
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={3}>
-                  <TextField 
-                    {...commonProps} label="Sucursal *" type="number" value={formData.sucursal}
-                    onChange={(e) => {
-                      const numValue = parseInt(e.target.value) || 0;
-                      setFormData({ ...formData, sucursal: numValue < 0 ? 0 : numValue });
-                    }} 
-                  />
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Sucursal *</InputLabel>
+                    <Select
+                      label="Sucursal *"
+                      value={formData.sucursal}
+                      onChange={(e) => setFormData({ ...formData, sucursal: Number(e.target.value) })}
+                      sx={{ borderRadius: '8px', height: '50px' }}
+                    >
+                      {sucursales.filter(s => s.cveSucursal !== 0).map(s => (
+                        <MenuItem key={s.cveSucursal} value={s.cveSucursal}>{s.nombre}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 </Grid>
                 <Grid item xs={12} sm={3}>
                   <TextField 

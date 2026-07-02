@@ -85,6 +85,14 @@ type HistorialItem = {
   forma_Pago: string;
 };
 
+type InsumoBackend = {
+  id: number;
+  clave_producto_insumo: string;
+  clave_producto_venta: string;
+  cantidad: number;
+  observaciones: string;
+};
+
 type InsumoItem = {
   cia: number;
   cliente: string;
@@ -211,6 +219,9 @@ const [nuevoClienteReasignacion, setNuevoClienteReasignacion] = React.useState<C
   const [insumoSeleccionadoParaCantidades, setInsumoSeleccionadoParaCantidades] = React.useState<string | null>(null);
   const [cantidadesCache, setCantidadesCache] = React.useState<Record<string, number[]>>({});
   const [insumoCargandoCantidades, setInsumoCargandoCantidades] = React.useState<string | null>(null);
+  const [insumosBackend, setInsumosBackend] = React.useState<InsumoBackend[]>([]);
+  const [loadingInsumosBackend, setLoadingInsumosBackend] = React.useState(false);
+
   const [totalAPagarModal, setTotalAPagarModal] = React.useState(0);
   const [subtotalVenta, setSubtotalVenta] = React.useState(0);
   const [descuentoVenta, setDescuentoVenta] = React.useState(0);
@@ -313,18 +324,19 @@ const [recompensaTC, setRecompensaTC] = React.useState('');
 const [modalCobroOpen, setModalCobroOpen] = React.useState(false);
 const [formasPago, setFormasPago] = React.useState<FormaPago[]>([]);
 const [loadingFormasPago, setLoadingFormasPago] = React.useState(false);
+const [tiposCardFormasPago, setTiposCardFormasPago] = React.useState<string[]>([]);
 const [pagosRegistro, setPagosRegistro] = React.useState<PagoRegistro[]>([]);
 const [formaPagoSeleccionada, setFormaPagoSeleccionada] = React.useState<number | "">("");
 const [importePago, setImportePago] = React.useState(""); 
-  const [autorizacionInput, setAutorizacionInput] = React.useState(""); // 🔥 Estado para la caja de autorización editable
+  const [autorizacionInput, setAutorizacionInput] = React.useState(""); //  Estado para la caja de autorización editable
   const [modalConfirmAutorizacionOpen, setModalConfirmAutorizacionOpen] = React.useState(false);
   const [confirmAutorizacionInput, setConfirmAutorizacionInput] = React.useState("");
   const [confirmAutorizacionError, setConfirmAutorizacionError] = React.useState("");
   const [isCredito, setIsCredito] = React.useState(false); 
   const [cuentaPuntos, setCuentaPuntos] = React.useState("");      
-  const [puntosPago, setPuntosPago] = React.useState<number>(0);     // 🔥 Ahora es una cantidad editable manual
-  const [pagoEfectivo, setPagoEfectivo] = React.useState<number>(0); // 🔥 Ahora es una cantidad editable manual
-  const [sumaManual, setSumaManual] = React.useState<number>(0);     // 🔥 Ahora es una cantidad editable manual
+  const [puntosPago, setPuntosPago] = React.useState<number>(0);     //  Ahora es una cantidad editable manual
+  const [pagoEfectivo, setPagoEfectivo] = React.useState<number>(0); //  Ahora es una cantidad editable manual
+  const [sumaManual, setSumaManual] = React.useState<number>(0);     //  Ahora es una cantidad editable manual
   const [saldoPuntosCte, setSaldoPuntosCte] = React.useState<number>(0); 
   const [cuentaRecompensa, setCuentaRecompensa] = React.useState(""); 
   const [puntosGanados, setPuntosGanados] = React.useState<number>(0); 
@@ -559,6 +571,42 @@ React.useEffect(() => {
     }
   };
 
+  const fetchInsumosBackend = async (cveCliente: string, claveProdVenta: string) => {
+    setLoadingInsumosBackend(true);
+    try {
+      const res = await consumoApi.post('/api/PuntoDeVenta/sp_EliminarYConsultarInsumo', {
+        idInsumo: 0, sucursal, cveCliente, claveProdVenta
+      });
+      setInsumosBackend(res.data || []);
+    } catch {
+      setInsumosBackend([]);
+    } finally {
+      setLoadingInsumosBackend(false);
+    }
+  };
+
+  const handleEliminarInsumo = async (idInsumo: number) => {
+    if (!clienteSeleccionado || !productoPrincipal) return;
+    const confirmResult = await Swal.fire({
+      title: '¿Eliminar insumo?', text: 'Esta acción no se puede deshacer',
+      icon: 'warning', showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#d32f2f'
+    });
+    if (!confirmResult.isConfirmed) return;
+    try {
+      const res = await consumoApi.post('/api/PuntoDeVenta/sp_EliminarYConsultarInsumo', {
+        idInsumo, sucursal,
+        cveCliente: clienteSeleccionado.No_cliente,
+        claveProdVenta: productoPrincipal.clave_prod
+      });
+      setInsumosBackend(res.data || []);
+      Swal.fire({ icon: 'success', title: 'Insumo eliminado', timer: 1200, showConfirmButton: false });
+    } catch {
+      Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo eliminar el insumo' });
+    }
+  };
+
   const handleAbrirAgregarInsumos = (detalle: DetalleVenta) => {
     // Convertir el detalle a un producto para el modal de insumos
     const productoParaInsumos: Producto = {
@@ -569,6 +617,10 @@ React.useEffect(() => {
     };
     setProductoPrincipal(productoParaInsumos);
     setDetalleInsumosModal(detalle);
+    if (clienteSeleccionado) {
+      fetchInsumosBackend(clienteSeleccionado.No_cliente, detalle.clave_prod);
+    }
+    setInsumosBackend([]);
     setInsumosSeleccionados([]);
     setModalInsumosOpen(true);
   };
@@ -765,9 +817,10 @@ React.useEffect(() => {
     setLoadingFormasPago(true);
     try {
       const res = await consumoApi.get(
-        `/api/PuntoDeVenta/sp_fw_pos_formas_pago_get?sucursal=${sucursal}`
+        `/api/PuntoDeVenta/sp_bw_cat_tipos_formas_pago/${sucursal}`
       );
-      setFormasPago(res.data || []);
+      setFormasPago((res.data || []).map((f: any) => ({ tipo: f.id_forma_pago, descripcion: f.descripcion })));
+      setTiposCardFormasPago((res.data || []).map((f: any) => f.descripcion));
     } catch (error) {
       console.error('Error cargando formas de pago:', error);
       Swal.fire({ icon: 'error', title: 'Error', text: 'Error al cargar las formas de pago', confirmButtonColor: '#333333' });
@@ -866,6 +919,7 @@ const handleReasignarCliente = async () => {
       });
       
       setClienteSeleccionado(nuevoClienteReasignacion);
+      setClientePreview(nuevoClienteReasignacion);
       setModalReasignarClienteOpen(false);
       setNuevoClienteReasignacion(null);
     } else {
@@ -946,7 +1000,7 @@ const handleCobrarClick = () => {
   setSubtotalVenta(subtotal);
   setDescuentoVenta(totalDescuentosEnDinero);
 
-  // 🧹 LIMPIEZA TOTAL DE ESTADOS (El resto de tu código se queda exactamente igual)
+  //  LIMPIEZA TOTAL DE ESTADOS (El resto de tu código se queda exactamente igual)
   setPagosRegistro([]);
   setFormaPagoSeleccionada("");
   setImportePago("");
@@ -976,6 +1030,7 @@ const handleCobrarClick = () => {
 };
 
 const handleConfirmarAutorizacion = () => {
+  if (!autorizacionInput.trim()) { setAutorizacionInput(confirmAutorizacionInput.trim()); setModalConfirmAutorizacionOpen(false); setConfirmAutorizacionInput(''); setConfirmAutorizacionError(''); return; }
   if (confirmAutorizacionInput.trim() !== autorizacionInput.trim()) {
     setModalConfirmAutorizacionOpen(false);
     setConfirmAutorizacionError('Los números de autorización no coinciden. Ingréselos nuevamente.');
@@ -997,15 +1052,16 @@ const handleAgregarPago = () => {
     }
 
     // Access rule: Al presionar "+", empaqueta el nombre y el número de autorización tipeado
-    const descConAutorizacion = autorizacionInput ? `TC CLIP - AUT: ${autorizacionInput}` : "TC CLIP";
+    const formaDesc = formasPago.find(f => f.tipo === formaPagoSeleccionada)?.descripcion || `Pago tipo ${formaPagoSeleccionada}`;
+    const descConAutorizacion = autorizacionInput ? `${formaDesc} - AUT: ${autorizacionInput}` : formaDesc;
 
     setPagosRegistro(prev => [...prev, {
-      tipo: 7, // Código de tipo para tarjetas
+      tipo: typeof formaPagoSeleccionada === 'number' ? formaPagoSeleccionada : 7,
       descripcion: descConAutorizacion,
       importe
     }]);
 
-    // 🔥 Acumula automáticamente el valor en el campo de "Suma" al vuelo
+    //  Acumula automáticamente el valor en el campo de "Suma" al vuelo
     setSumaManual(prev => prev + importe);
     setImportePago("");
     setAutorizacionInput(""); // Limpia la caja
@@ -1017,7 +1073,7 @@ const handleAgregarPago = () => {
 
 // ... aquí termina tu función handleEliminarPago ...
 
-  // 🔴 ASEGÚRATE DE QUE ESTAS TRES QUEDEN AQUÍ ADENTRO:
+  // ASEGÚRATE DE QUE ESTAS TRES QUEDEN AQUÍ ADENTRO:
   const handleKeyDownPuntos = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -1166,7 +1222,7 @@ const verificaDatosVenta = () => {
         // A. Agregar Tarjetas CLIP (Tipo 7)
         pagosRegistro.forEach(p => {
           pagosFinales.push({
-            tipo_pago: 7, 
+            tipo_pago: p.tipo,
             referencia: p.descripcion || "TC CLIP",
             importe: p.importe
           });
@@ -1344,7 +1400,8 @@ const verificaDatosVenta = () => {
         }))
       };
 
-      const response = await consumoApi.post('/api/PuntoDeVenta/sp_bw_pos_guardar_venta_proceso', bodyPayload);
+      // Endpoint no disponible en backend - deshabilitado
+      const response = { data: { status: 0 } }; // await consumoApi.post('/api/PuntoDeVenta/sp_bw_pos_guardar_venta_proceso', bodyPayload);
       if (response.data?.status === 1 || response.data?.[0]?.status === 1) {
         console.log('Auto-guardado exitoso en proceso');
       } else {
@@ -1419,8 +1476,8 @@ const verificaDatosVenta = () => {
           cantidad: item.cantidad
         }));
         await consumoApi.post(
-          `/api/PuntoDeVenta/sp_fw_pos_agregar_insumos_venta?cia=1&sucursal=${sucursal}&no_venta=0&cve_cliente=${clienteSeleccionado?.No_cliente || ''}&clave_producto_venta=${productoPrincipal.clave_prod}&estilista=${estilistaSeleccionado}`,
-          payloadInsumos
+          `/api/PuntoDeVenta/sp_fw_pos_agregar_insumos_venta`,
+          { cia: 1, sucursal, noVenta: 0, cveCliente: clienteSeleccionado?.No_cliente || '', claveProductoVenta: productoPrincipal.clave_prod, estilista: estilistaSeleccionado, insumos: payloadInsumos.map((i: any) => ({ claveProd: i.clave_prod, cantidad: i.cantidad })) }
         );
       } catch (error) {
         console.error('Error guardando insumos en API:', error);
@@ -1461,8 +1518,8 @@ const verificaDatosVenta = () => {
         cantidad: item.cantidad
       }));
       await consumoApi.post(
-        `/api/PuntoDeVenta/sp_fw_pos_agregar_insumos_venta?cia=1&sucursal=${sucursal}&no_venta=0&cve_cliente=${clienteSeleccionado?.No_cliente || ''}&clave_producto_venta=${productoPrincipal.clave_prod}&estilista=${estilistaSeleccionado}`,
-        payloadInsumos
+        `/api/PuntoDeVenta/sp_fw_pos_agregar_insumos_venta`,
+        { cia: 1, sucursal, noVenta: 0, cveCliente: clienteSeleccionado?.No_cliente || '', claveProductoVenta: productoPrincipal.clave_prod, estilista: estilistaSeleccionado, insumos: payloadInsumos.map((i: any) => ({ claveProd: i.clave_prod, cantidad: i.cantidad })) }
       );
     } catch (error) {
       console.error('Error guardando insumos en API:', error);
@@ -1750,6 +1807,7 @@ return (
     <>
       <Box sx={{ p: 1, maxWidth: '1600px', margin: '0 auto' }}>
         
+        <style>{`.swal2-container { z-index: 99999 !important; }`}</style>
         {/* === CONTENEDOR SUPERIOR DEL FORMULARIO === */}
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 1 }}>
           
@@ -2393,7 +2451,7 @@ return (
           ap_materno: clientePreview.ap_materno || ''
         });
       } else {
-        // Modo normal, guardar en clienteSeleccionado
+        setDetallesVenta([]); setEstilistaSeleccionado(''); setAuxiliarSeleccionado(''); // Reset tabla al seleccionar nuevo cliente
         setIsVentaEnProceso(false);
         setClienteSeleccionado({
           No_cliente: clientePreview.No_cliente || '',
@@ -2979,6 +3037,63 @@ return (
       onChange={setPageInsumos}
     />
 
+    {/* Insumos guardados en sistema (con botón eliminar backend) */}
+    {detalleInsumosModal && (
+      <Box sx={{ mt: 2, p: 1, backgroundColor: '#fff8f8', border: '1px solid #ffcccc', borderRadius: 1, maxHeight: 250, overflow: 'auto' }}>
+        <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold', color: '#c62828' }}>
+          Insumos en sistema:
+        </Typography>
+        {loadingInsumosBackend ? (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1 }}>
+            <CircularProgress size={16} />
+            <Typography variant="caption">Cargando...</Typography>
+          </Box>
+        ) : insumosBackend.length === 0 ? (
+          <Typography variant="caption" color="text.secondary">Sin insumos guardados</Typography>
+        ) : (
+          <Table size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
+            <TableHead>
+              <TableRow sx={{ backgroundColor: '#ffebee' }}>
+                <TableCell sx={{ width: 40, p: '4px 4px' }}></TableCell>
+                <TableCell sx={{ p: '4px 4px', fontSize: '0.7rem', fontWeight: 'bold' }}>Producto</TableCell>
+                <TableCell align="center" sx={{ width: 60, p: '4px 4px', fontSize: '0.7rem', fontWeight: 'bold' }}>Cant</TableCell>
+                <TableCell sx={{ p: '4px 4px', fontSize: '0.7rem', fontWeight: 'bold' }}>Observaciones</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {insumosBackend.map((insumo) => (
+                <TableRow key={insumo.id} sx={{ '& td': { p: '4px 4px', borderBottom: '1px solid #ffcccc' } }}>
+                  <TableCell sx={{ width: 40 }}>
+                    <IconButton
+                      size="small"
+                      color="error"
+                      onClick={() => handleEliminarInsumo(insumo.id)}
+                      sx={{ width: 24, height: 24, p: 0 }}
+                    >
+                      <Delete fontSize="small" sx={{ fontSize: '1rem' }} />
+                    </IconButton>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" noWrap sx={{ fontSize: '0.7rem' }}>
+                      {insumo.clave_producto_insumo}
+                    </Typography>
+                  </TableCell>
+                  <TableCell align="center">
+                    <Typography variant="body2" sx={{ fontSize: '0.7rem' }}>{insumo.cantidad}</Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" noWrap sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
+                      {insumo.observaciones}
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </Box>
+    )}
+
         {/* Lista de insumos seleccionados */}
     {insumosSeleccionados.length > 0 && (
       <Box sx={{ mt: 2, p: 1, backgroundColor: 'grey.50', borderRadius: 1, maxHeight: 200, overflow: 'auto' }}>
@@ -3451,19 +3566,19 @@ return (
     disableUnderline 
     disabled={isCredito} 
     value={formaPagoSeleccionada} // 🌟 Cambiado de 7 al estado dinámico para que inicie vacío
-    onChange={(e) => setFormaPagoSeleccionada(e.target.value as number | "")} // 🌟 Guarda la selección del usuario
+    onChange={(e) => { const val = e.target.value as number | ""; setFormaPagoSeleccionada(val); if (val === 4) { setAutorizacionInput(''); setConfirmAutorizacionInput(''); setConfirmAutorizacionError(''); setModalConfirmAutorizacionOpen(true); } }}
     sx={{ fontSize: '0.8rem', color: 'black', fontWeight: 'bold' }}
   >
     {/*  Opción en blanco por defecto que emula el inicio vacío de Access */}
     <MenuItem value=""><em></em></MenuItem> 
-    <MenuItem value={7}>TC CLIP</MenuItem>
+    {formasPago.length > 0 ? formasPago.filter(f => tiposCardFormasPago.length === 0 || tiposCardFormasPago.includes(f.descripcion)).map(f => <MenuItem key={f.tipo} value={f.tipo}>{f.descripcion}</MenuItem>) : <MenuItem value={7}>TC CLIP</MenuItem>}
   </Select>
 </TableCell>
                 <TableCell>
-                  <TextField variant="standard" size="small" fullWidth disabled={isCredito} placeholder="Escribir..." value={autorizacionInput} onChange={(e) => setAutorizacionInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && formaPagoSeleccionada === 7 && autorizacionInput.trim()) { setConfirmAutorizacionInput(''); setModalConfirmAutorizacionOpen(true); } }} InputProps={{ disableUnderline: true, style: { fontSize: '0.8rem', color: 'black' } }} />
+                  <TextField variant="standard" size="small" fullWidth disabled={isCredito} placeholder="Escribir..." value={autorizacionInput} onChange={(e) => setAutorizacionInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && formaPagoSeleccionada === 4 && autorizacionInput.trim()) { setConfirmAutorizacionInput(''); setModalConfirmAutorizacionOpen(true); } }} InputProps={{ disableUnderline: true, style: { fontSize: '0.8rem', color: 'black' } }} />
                 </TableCell>
                 <TableCell>
-                  <TextField variant="standard" size="small" type="number" fullWidth disabled={isCredito} placeholder="0.00" value={importePago} onChange={(e) => setImportePago(e.target.value)} InputProps={{ disableUnderline: true, style: { fontSize: '0.8rem', textAlign: 'right', color: 'black' } }} />
+                  <TextField variant="standard" size="small" type="number" fullWidth disabled={isCredito} placeholder="0.00" value={importePago} onChange={(e) => setImportePago(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && formaPagoSeleccionada !== 4 && importePago) { e.preventDefault(); handleAgregarPago(); } }} InputProps={{ disableUnderline: true, style: { fontSize: '0.8rem', textAlign: 'right', color: 'black' } }} />
                 </TableCell>
                 <TableCell align="center" sx={{ p: 0 }}>
                 </TableCell>
