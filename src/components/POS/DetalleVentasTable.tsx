@@ -40,6 +40,7 @@ type Props = {
   onAgregarInsumos?: (detalle: DetalleVenta) => void;
   onEditarRenglon: (id: string, campo: string, nuevoValor: any) => void;
   onBuscarProducto?: (detalle: DetalleVenta) => void;
+  onAplicarDescuento?: (id: string, descuento: number, tipoDescuento: number, observacion: string) => void;
 };
 
 export default function DetalleVentasTable({ 
@@ -49,7 +50,8 @@ export default function DetalleVentasTable({
   onSelect, 
   onAgregarInsumos, 
   onEditarRenglon,
-  onBuscarProducto 
+  onBuscarProducto,
+  onAplicarDescuento
 }: Props) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -152,22 +154,29 @@ const handleAplicarDescuento = () => {
       const importeBase = detalleParaDescuento.precio * detalleParaDescuento.Cant;
       const descuentoEnDinero = importeBase * descuentoDecimal;
 
-      onEditarRenglon(detalleParaDescuento.id, "descuento", descuentoEnDinero);
-      onEditarRenglon(detalleParaDescuento.id, "tipo_descuento", opcionElegida.tipo_descuento);
-      onEditarRenglon(detalleParaDescuento.id, "observacion_descuento", observacionManual.trim());
-    
-      Swal.fire({
-        icon: 'success',
-        title: 'Descuento aplicado',
-        text: `Se aplicó un descuento de $${descuentoEnDinero.toFixed(2)}`,
-        confirmButtonText: 'Aceptar'
-      });
+      if (onAplicarDescuento) {
+        onAplicarDescuento(detalleParaDescuento.id, descuentoEnDinero, opcionElegida.tipo_descuento, observacionManual.trim());
+      } else {
+        onEditarRenglon(detalleParaDescuento.id, "descuento", descuentoEnDinero);
+        onEditarRenglon(detalleParaDescuento.id, "tipo_descuento", opcionElegida.tipo_descuento);
+        onEditarRenglon(detalleParaDescuento.id, "observacion_descuento", observacionManual.trim());
+        Swal.fire({
+          icon: 'success',
+          title: 'Descuento aplicado',
+          text: `Se aplicó un descuento de $${descuentoEnDinero.toFixed(2)}`,
+          confirmButtonText: 'Aceptar'
+        });
+      }
     }
   } else {
     if (detalleParaDescuento) {
-      onEditarRenglon(detalleParaDescuento.id, "descuento", 0);
-      onEditarRenglon(detalleParaDescuento.id, "tipo_descuento", 0);
-      onEditarRenglon(detalleParaDescuento.id, "observacion_descuento", "");
+      if (onAplicarDescuento) {
+        onAplicarDescuento(detalleParaDescuento.id, 0, 0, "");
+      } else {
+        onEditarRenglon(detalleParaDescuento.id, "descuento", 0);
+        onEditarRenglon(detalleParaDescuento.id, "tipo_descuento", 0);
+        onEditarRenglon(detalleParaDescuento.id, "observacion_descuento", "");
+      }
     }
   }
 
@@ -235,10 +244,11 @@ const handleAplicarDescuento = () => {
       minSize: 60,
       maxSize: 100,
       muiEditTextFieldProps: ({ cell, row, table }) => ({
-        onBlur: (e) => {
-          onEditarRenglon(row.original.id, "clave_prod", e.target.value);
+        onFocus: () => {
           table.setEditingCell(null);
+          if (onBuscarProducto) onBuscarProducto(row.original);
         },
+        inputProps: { readOnly: true, style: { cursor: 'pointer' } },
       }),
     },
     {
@@ -285,6 +295,12 @@ const handleAplicarDescuento = () => {
           onEditarRenglon(row.original.id, "Cant", Math.max(0.001, Number(e.target.value)));
           table.setEditingCell(null);
         },
+        onKeyDown: (e) => {
+          if (e.key === 'Enter') {
+            onEditarRenglon(row.original.id, "Cant", Math.max(0.001, Number((e.target as HTMLInputElement).value)));
+            table.setEditingCell(null);
+          }
+        },
       }),
     },
     {
@@ -311,15 +327,8 @@ const handleAplicarDescuento = () => {
       size: 100,
       minSize: 80,
       maxSize: 120,
+      enableEditing: false,
       Cell: ({ cell }: any) => `$${Number(cell.getValue()).toFixed(2)}`,
-      muiEditTextFieldProps: ({ cell, row, table }) => ({
-        type: "number",
-        inputProps: { min: 0, step: "0.01" },
-        onBlur: (e) => {
-          onEditarRenglon(row.original.id, "descuento", Math.max(0, Number(e.target.value)));
-          table.setEditingCell(null);
-        },
-      }),
     },
     !isMobile && {
       accessorKey: "d_auxiliar",

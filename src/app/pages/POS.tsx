@@ -145,12 +145,16 @@ type DetalleVenta = {
   d_estilista: string;
   hora: string;
   clave_prod: string;
+  clave_prod_original?: string;
+  estilista_original?: string;
   d_producto: string;
   tiempo: string;
   Cant: number;
   precio: number;
   importe: number;
   descuento: number;
+  tipo_descuento?: number;
+  observacion_descuento?: string;
   auxiliar: string;
   d_auxiliar: string;
   insumos?: DetalleVenta[];
@@ -215,7 +219,7 @@ const [nuevoClienteReasignacion, setNuevoClienteReasignacion] = React.useState<C
   const [modalProductoOpen, setModalProductoOpen] = React.useState(false);
   const [modalInsumosOpen, setModalInsumosOpen] = React.useState(false);
   const [productoPrincipal, setProductoPrincipal] = React.useState<Producto | null>(null);
-  const [insumosSeleccionados, setInsumosSeleccionados] = React.useState<Array<{producto: Producto, cantidad: number, validado: boolean, observacion: string}>>([]);
+  const [insumosSeleccionados, setInsumosSeleccionados] = React.useState<Array<{producto: Producto, cantidad: number, validado: boolean, observacion: string, idSql?: number, enBaseDatos?: boolean}>>([]);
   const [insumoSeleccionadoParaCantidades, setInsumoSeleccionadoParaCantidades] = React.useState<string | null>(null);
   const [cantidadesCache, setCantidadesCache] = React.useState<Record<string, number[]>>({});
   const [insumoCargandoCantidades, setInsumoCargandoCantidades] = React.useState<string | null>(null);
@@ -295,6 +299,8 @@ const [auxiliarSeleccionado,setAuxiliarSeleccionado] = React.useState<string>(""
 const [esInsumo, setEsInsumo] = React.useState(false);
 
 const [detallesVenta, setDetallesVenta] = React.useState<DetalleVenta[]>([]);
+const detallesVentaRef = React.useRef<DetalleVenta[]>([]);
+React.useEffect(() => { detallesVentaRef.current = detallesVenta; }, [detallesVenta]);
 
 const session = useSession();
 const sucursal = session?.sucursal || 1;
@@ -315,6 +321,7 @@ const [loadingClientesServicioTC, setLoadingClientesServicioTC] = React.useState
 const [modalCambiarClienteOpen, setModalCambiarClienteOpen] = React.useState(false);
 const [clienteActualCambio, setClienteActualCambio] = React.useState('');
 const [nuevoClienteCambio, setNuevoClienteCambio] = React.useState('');
+const [nuevoClienteObjeto, setNuevoClienteObjeto] = React.useState<Cliente | null>(null);
 const [busquedaNuevoCliente, setBusquedaNuevoCliente] = React.useState('');
 const [todosLosClientes, setTodosLosClientes] = React.useState<Cliente[]>([]);
 const [loadingTodosClientes, setLoadingTodosClientes] = React.useState(false);
@@ -607,8 +614,7 @@ React.useEffect(() => {
     }
   };
 
-  const handleAbrirAgregarInsumos = (detalle: DetalleVenta) => {
-    // Convertir el detalle a un producto para el modal de insumos
+  const handleAbrirAgregarInsumos = async (detalle: DetalleVenta) => {
     const productoParaInsumos: Producto = {
       clave_prod: detalle.clave_prod,
       descripcion: detalle.d_producto,
@@ -617,12 +623,31 @@ React.useEffect(() => {
     };
     setProductoPrincipal(productoParaInsumos);
     setDetalleInsumosModal(detalle);
-    if (clienteSeleccionado) {
-      fetchInsumosBackend(clienteSeleccionado.No_cliente, detalle.clave_prod);
-    }
     setInsumosBackend([]);
     setInsumosSeleccionados([]);
     setModalInsumosOpen(true);
+    try {
+      const res = await consumoApi.post('/api/PuntoDeVenta/sp_EliminarYConsultarInsumo', {
+        idInsumo: 0,
+        sucursal,
+        cveCliente: clienteSeleccionado?.No_cliente || '',
+        claveProdVenta: detalle.clave_prod
+      });
+      const insumosExistentes = (res.data || []).map((item: any) => ({
+        producto: {
+          clave_prod: item.clave_producto_insumo,
+          descripcion: item.d_insumo || insumos.find((p: Producto) => p.clave_prod === item.clave_producto_insumo)?.descripcion || `Agregado por estilista: ${estilistaSeleccionado}`,
+        } as Producto,
+        cantidad: item.cantidad,
+        validado: item.validado === true || item.validado === 1,
+        observacion: item.observaciones || '',
+        idSql: item.id,
+        enBaseDatos: true,
+      }));
+      setInsumosSeleccionados(insumosExistentes);
+    } catch (error) {
+      console.error('Error al cargar insumos existentes:', error);
+    }
   };
 
   const buscarInsumos = async (busqueda: string) => {
@@ -1030,11 +1055,8 @@ const handleCobrarClick = () => {
 };
 
 const handleConfirmarAutorizacion = () => {
-  if (!autorizacionInput.trim()) { setAutorizacionInput(confirmAutorizacionInput.trim()); setModalConfirmAutorizacionOpen(false); setConfirmAutorizacionInput(''); setConfirmAutorizacionError(''); return; }
   if (confirmAutorizacionInput.trim() !== autorizacionInput.trim()) {
-    setModalConfirmAutorizacionOpen(false);
-    setConfirmAutorizacionError('Los números de autorización no coinciden. Ingréselos nuevamente.');
-    setModalConfirmAutorizacionOpen(true);
+    setConfirmAutorizacionError('Los números de autorización no coinciden. Ingréselo nuevamente.');
     setConfirmAutorizacionInput('');
     return;
   }
@@ -1159,6 +1181,7 @@ const handleCancelarTabulador = () => {
   setTmpPagoEfectivo(0);
   setPagoEfectivo(0);
 };
+
 
 // 🔥 FUNCIÓN DE VALIDACIÓN RESTAURADA
 const verificaDatosVenta = () => {
@@ -1327,6 +1350,24 @@ const verificaDatosVenta = () => {
     }
   };
 
+  const handleEliminarInsumoUnico = async (insumo: {producto: Producto, cantidad: number, validado: boolean, observacion: string, idSql?: number, enBaseDatos?: boolean}) => {
+    if (insumo.enBaseDatos) {
+      try {
+        await consumoApi.post('/api/PuntoDeVenta/sp_EliminarYConsultarInsumo', {
+          idInsumo: insumo.idSql,
+          sucursal,
+          cveCliente: clienteSeleccionado?.No_cliente || '',
+          claveProdVenta: productoPrincipal?.clave_prod || ''
+        });
+      } catch (error) {
+        console.error('Error al eliminar insumo de la base de datos:', error);
+        Swal.fire('Error', 'No se pudo eliminar el insumo de la base de datos', 'error');
+        return;
+      }
+    }
+    setInsumosSeleccionados(prev => prev.filter(i => i.producto.clave_prod !== insumo.producto.clave_prod));
+  };
+
   const handleSeleccionarInsumo = (insumo: Producto) => {
     // Verificar si el insumo ya está seleccionado
     const existe = insumosSeleccionados.some(item => item.producto.clave_prod === insumo.clave_prod);
@@ -1352,14 +1393,16 @@ const verificaDatosVenta = () => {
     );
   };
 
-  const handleValidarInsumo = (clave_prod: string) => {
+  const handleValidarInsumo = async (clave_prod: string) => {
+    const current = insumosSeleccionados.find(i => i.producto.clave_prod === clave_prod);
+    if (!current) return;
+    const updatedItem = { ...current, validado: !current.validado };
     setInsumosSeleccionados(prev =>
-      prev.map(item =>
-        item.producto.clave_prod === clave_prod
-          ? { ...item, validado: !item.validado }
-          : item
-      )
+      prev.map(item => item.producto.clave_prod === clave_prod ? updatedItem : item)
     );
+    if (updatedItem.enBaseDatos) {
+      await handleGuardarInsumoUnico(updatedItem);
+    }
   };
 
   const handleObservacionInsumo = (clave_prod: string, observacion: string) => {
@@ -1370,6 +1413,21 @@ const verificaDatosVenta = () => {
           : item
       )
     );
+  };
+
+  const handleGuardarInsumoUnico = async (item: typeof insumosSeleccionados[0]) => {
+    if (!item.enBaseDatos || !item.idSql) return;
+    try {
+      await consumoApi.post('/api/PuntoDeVenta/sp_fw_pos_actualizar_observacion_insumo', {
+        id: item.idSql,
+        cantidad: item.cantidad,
+        observaciones: item.observacion,
+        validado: item.validado,
+        estilista: estilistaSeleccionado
+      });
+    } catch (error) {
+      console.error('Error al actualizar insumo:', error);
+    }
   };
 
   React.useEffect(() => {
@@ -1419,7 +1477,7 @@ const verificaDatosVenta = () => {
     }
 
     // Primero registrar el producto principal si no está ya registrado
-    const productoYaRegistrado = detallesVenta.some(d => d.clave_prod === productoPrincipal.clave_prod);
+    const productoYaRegistrado = detallesVentaRef.current.some(d => d.clave_prod === productoPrincipal.clave_prod);
     
     let productoActualizado: DetalleVenta;
     if (!productoYaRegistrado) {
@@ -1471,14 +1529,17 @@ const verificaDatosVenta = () => {
 
       // Enviar insumos a la API
       try {
-        const payloadInsumos = insumosSeleccionados.map(item => ({
-          clave_prod: item.producto.clave_prod,
-          cantidad: item.cantidad
-        }));
-        await consumoApi.post(
-          `/api/PuntoDeVenta/sp_fw_pos_agregar_insumos_venta`,
-          { cia: 1, sucursal, noVenta: 0, cveCliente: clienteSeleccionado?.No_cliente || '', claveProductoVenta: productoPrincipal.clave_prod, estilista: estilistaSeleccionado, insumos: payloadInsumos.map((i: any) => ({ claveProd: i.clave_prod, cantidad: i.cantidad })) }
-        );
+        const nuevosInsumos = insumosSeleccionados.filter(i => !i.enBaseDatos);
+        if (nuevosInsumos.length > 0) {
+          const payloadInsumos = nuevosInsumos.map(item => ({
+            clave_prod: item.producto.clave_prod,
+            cantidad: item.cantidad
+          }));
+          await consumoApi.post(
+            `/api/PuntoDeVenta/sp_fw_pos_agregar_insumos_venta`,
+            { cia: 1, sucursal, noVenta: 0, cveCliente: clienteSeleccionado?.No_cliente || '', claveProductoVenta: productoPrincipal.clave_prod, estilista: estilistaSeleccionado, insumos: payloadInsumos.map((i: any) => ({ claveProd: i.clave_prod, cantidad: i.cantidad })) }
+          );
+        }
       } catch (error) {
         console.error('Error guardando insumos en API:', error);
       }
@@ -1513,14 +1574,17 @@ const verificaDatosVenta = () => {
 
     // Enviar insumos a la API para productos existentes
     try {
-      const payloadInsumos = insumosSeleccionados.map(item => ({
-        clave_prod: item.producto.clave_prod,
-        cantidad: item.cantidad
-      }));
-      await consumoApi.post(
-        `/api/PuntoDeVenta/sp_fw_pos_agregar_insumos_venta`,
-        { cia: 1, sucursal, noVenta: 0, cveCliente: clienteSeleccionado?.No_cliente || '', claveProductoVenta: productoPrincipal.clave_prod, estilista: estilistaSeleccionado, insumos: payloadInsumos.map((i: any) => ({ claveProd: i.clave_prod, cantidad: i.cantidad })) }
-      );
+      const nuevosInsumos = insumosSeleccionados.filter(i => !i.enBaseDatos);
+      if (nuevosInsumos.length > 0) {
+        const payloadInsumos = nuevosInsumos.map(item => ({
+          clave_prod: item.producto.clave_prod,
+          cantidad: item.cantidad
+        }));
+        await consumoApi.post(
+          `/api/PuntoDeVenta/sp_fw_pos_agregar_insumos_venta`,
+          { cia: 1, sucursal, noVenta: 0, cveCliente: clienteSeleccionado?.No_cliente || '', claveProductoVenta: productoPrincipal.clave_prod, estilista: estilistaSeleccionado, insumos: payloadInsumos.map((i: any) => ({ claveProd: i.clave_prod, cantidad: i.cantidad })) }
+        );
+      }
     } catch (error) {
       console.error('Error guardando insumos en API:', error);
     }
@@ -1623,9 +1687,15 @@ const handleCambiarCliente = async () => {
       cliente2: nuevoClienteCambio,
       sucursal: sucursal,
     });
+    const nuevoCliente = nuevoClienteObjeto ?? todosLosClientes.find(c => c.No_cliente === nuevoClienteCambio) ?? null;
+    if (nuevoCliente) {
+      setClienteSeleccionado(nuevoCliente);
+      setClientePreview(nuevoCliente);
+    }
     setModalCambiarClienteOpen(false);
     setClienteActualCambio('');
     setNuevoClienteCambio('');
+    setNuevoClienteObjeto(null);
     fetchClientesServicioTC();
   } catch (error) {
     console.error('Error al reasignar cliente:', error);
@@ -1685,9 +1755,11 @@ const fetchDetalleVenta = async (cliente: string, estilista: string) => {
       const productoDetalle: DetalleVenta = {
         id: `${producto.clave_prod}-${Date.now()}-${Math.random()}`,
         estilista: producto.id_estilista,
+        estilista_original: producto.id_estilista,
         d_estilista: producto.d_estilista,
         hora: horaLimpia, // Usa la hora recortada HH:MM
         clave_prod: producto.clave_prod,
+        clave_prod_original: producto.clave_prod,
         d_producto: producto.d_producto,
         tiempo: producto.tiempo || '00:00',
         Cant: producto.cantidad,
@@ -1771,11 +1843,13 @@ const {
 
   const handleEditarProductoEnRenglon = (detalleId: string, producto: any) => {
     const precioProducto = producto.precio || producto.Precio || 0;
+    const itemAntes = detallesVentaRef.current.find(item => item.id === detalleId);
     setDetallesVenta(prev => prev.map(item => {
       if (item.id === detalleId) {
         return {
           ...item,
           clave_prod: producto.clave_prod,
+          clave_prod_original: producto.clave_prod,
           d_producto: producto.descripcion,
           precio: precioProducto,
           importe: item.Cant * precioProducto - (item.descuento || 0)
@@ -1783,22 +1857,70 @@ const {
       }
       return item;
     }));
+    if (itemAntes) {
+      actualizarServicioProceso(itemAntes, 'clave_prod', producto.clave_prod);
+    }
+  };
+
+  const actualizarServicioProceso = async (item: DetalleVenta, campoModificado: string, nuevoValor: any) => {
+    if (!clienteSeleccionado) return;
+    const claveProdOriginal = item.clave_prod_original || item.clave_prod;
+    const estilistaOriginal = item.estilista_original || item.estilista;
+    const payload = {
+      sucursal: sucursal,
+      cveCliente: clienteSeleccionado.No_cliente,
+      claveProdOriginal,
+      estilistaOriginal,
+      claveProdNueva: campoModificado === 'clave_prod' ? nuevoValor : item.clave_prod,
+      estilistaNuevo: campoModificado === 'estilista' ? nuevoValor : item.estilista,
+      auxiliar: campoModificado === 'auxiliar' ? nuevoValor : (item.auxiliar || ''),
+      cantidad: campoModificado === 'Cant' ? nuevoValor : item.Cant,
+      precio: campoModificado === 'precio' ? nuevoValor : item.precio,
+      descuento: campoModificado === 'descuento' ? nuevoValor : (item.descuento || 0),
+    };
+    try {
+      await consumoApi.post('/api/PuntoDeVenta/sp_fw_pos_actualizar_servicio_proceso', payload);
+    } catch (error) {
+      console.error('Error al actualizar servicio en proceso:', error);
+      Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo actualizar el servicio', confirmButtonColor: '#333' });
+    }
+  };
+
+  const handleAplicarDescuentoRenglon = async (id: string, descuento: number, tipoDescuento: number, observacion: string) => {
+    const itemAntes = detallesVentaRef.current.find(item => item.id === id);
+    if (!itemAntes) return;
+    const itemActualizado: DetalleVenta = {
+      ...itemAntes,
+      descuento,
+      tipo_descuento: tipoDescuento,
+      observacion_descuento: observacion,
+    };
+    itemActualizado.importe = (itemActualizado.Cant * itemActualizado.precio) - descuento;
+    setDetallesVenta(prev => prev.map(item => item.id === id ? itemActualizado : item));
+    await actualizarServicioProceso(itemAntes, 'descuento', descuento);
+    Swal.fire({ icon: 'success', title: 'Descuento aplicado', text: `Descuento de $${descuento.toFixed(2)} registrado`, timer: 1500, showConfirmButton: false });
   };
 
    const handleEditarRenglon = async (id: string, campo: string, nuevoValor: any) => {
-    let itemActualizado: DetalleVenta | undefined;
+    const itemAntes = detallesVentaRef.current.find(item => item.id === id);
+    if (!itemAntes) return;
 
-    setDetallesVenta(prev => prev.map(item => {
-      if (item.id === id) {
-        const actualizado = { ...item, [campo]: nuevoValor };
-        actualizado.importe = (actualizado.Cant * actualizado.precio) - (actualizado.descuento || 0);
-        itemActualizado = actualizado;
-        return actualizado;
+    const itemActualizado: DetalleVenta = { ...itemAntes, [campo]: nuevoValor };
+    itemActualizado.importe = (itemActualizado.Cant * itemActualizado.precio) - (itemActualizado.descuento || 0);
+
+    setDetallesVenta(prev => prev.map(item => item.id === id ? itemActualizado : item));
+
+    const camposServicio = ['estilista', 'clave_prod', 'auxiliar', 'Cant', 'precio'];
+    if (camposServicio.includes(campo)) {
+      await actualizarServicioProceso(itemAntes, campo, nuevoValor);
+      if (campo === 'clave_prod' || campo === 'estilista') {
+        setDetallesVenta(prev => prev.map(item =>
+          item.id === id
+            ? { ...item, clave_prod_original: itemActualizado.clave_prod, estilista_original: itemActualizado.estilista }
+            : item
+        ));
       }
-      return item;
-    }));
-
-    if (itemActualizado && ['descuento', 'tipo_descuento', 'observacion_descuento'].includes(campo)) {
+    } else if (['descuento', 'tipo_descuento', 'observacion_descuento'].includes(campo)) {
       await guardarProductoIndividual(itemActualizado);
     }
   };
@@ -2097,7 +2219,8 @@ return (
             auxiliaresLista={estilistaAuxiliar}   // 🔥 Le pasamos el array de auxiliares que ya descargaste
             onSelect={handleCancelarRenglon}
             onAgregarInsumos={handleAbrirAgregarInsumos}
-            onEditarRenglon={handleEditarRenglon} 
+            onEditarRenglon={handleEditarRenglon}
+            onAplicarDescuento={handleAplicarDescuentoRenglon}
             onBuscarProducto={(detalle) => {
               //  Dispara la apertura del buscador al hacer doble clic
               setDetalleParaEditarProducto(detalle);
@@ -3037,64 +3160,7 @@ return (
       onChange={setPageInsumos}
     />
 
-    {/* Insumos guardados en sistema (con botón eliminar backend) */}
-    {detalleInsumosModal && (
-      <Box sx={{ mt: 2, p: 1, backgroundColor: '#fff8f8', border: '1px solid #ffcccc', borderRadius: 1, maxHeight: 250, overflow: 'auto' }}>
-        <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold', color: '#c62828' }}>
-          Insumos en sistema:
-        </Typography>
-        {loadingInsumosBackend ? (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1 }}>
-            <CircularProgress size={16} />
-            <Typography variant="caption">Cargando...</Typography>
-          </Box>
-        ) : insumosBackend.length === 0 ? (
-          <Typography variant="caption" color="text.secondary">Sin insumos guardados</Typography>
-        ) : (
-          <Table size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
-            <TableHead>
-              <TableRow sx={{ backgroundColor: '#ffebee' }}>
-                <TableCell sx={{ width: 40, p: '4px 4px' }}></TableCell>
-                <TableCell sx={{ p: '4px 4px', fontSize: '0.7rem', fontWeight: 'bold' }}>Producto</TableCell>
-                <TableCell align="center" sx={{ width: 60, p: '4px 4px', fontSize: '0.7rem', fontWeight: 'bold' }}>Cant</TableCell>
-                <TableCell sx={{ p: '4px 4px', fontSize: '0.7rem', fontWeight: 'bold' }}>Observaciones</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {insumosBackend.map((insumo) => (
-                <TableRow key={insumo.id} sx={{ '& td': { p: '4px 4px', borderBottom: '1px solid #ffcccc' } }}>
-                  <TableCell sx={{ width: 40 }}>
-                    <IconButton
-                      size="small"
-                      color="error"
-                      onClick={() => handleEliminarInsumo(insumo.id)}
-                      sx={{ width: 24, height: 24, p: 0 }}
-                    >
-                      <Delete fontSize="small" sx={{ fontSize: '1rem' }} />
-                    </IconButton>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" noWrap sx={{ fontSize: '0.7rem' }}>
-                      {insumo.clave_producto_insumo}
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="center">
-                    <Typography variant="body2" sx={{ fontSize: '0.7rem' }}>{insumo.cantidad}</Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" noWrap sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
-                      {insumo.observaciones}
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </Box>
-    )}
-
-        {/* Lista de insumos seleccionados */}
+    {/* Lista de insumos seleccionados */}
     {insumosSeleccionados.length > 0 && (
       <Box sx={{ mt: 2, p: 1, backgroundColor: 'grey.50', borderRadius: 1, maxHeight: 200, overflow: 'auto' }}>
         <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
@@ -3105,7 +3171,7 @@ return (
             <TableRow sx={{ backgroundColor: '#e0e0e0' }}>
               <TableCell sx={{ width: 40, p: '4px 4px' }}></TableCell>
               <TableCell sx={{ p: '4px 4px', fontSize: '0.7rem', fontWeight: 'bold' }}>Producto</TableCell>
-              <TableCell align="center" sx={{ width: 60, p: '4px 4px', fontSize: '0.7rem', fontWeight: 'bold' }}>Cant</TableCell>
+              <TableCell align="center" sx={{ width: 90, p: '4px 4px', fontSize: '0.7rem', fontWeight: 'bold' }}>Cant</TableCell>
               <TableCell align="center" sx={{ width: 55, p: '4px 4px', fontSize: '0.7rem', fontWeight: 'bold' }}>Validado</TableCell>
               <TableCell align="center" sx={{ width: 90, p: '4px 4px', fontSize: '0.7rem', fontWeight: 'bold' }}>Validar</TableCell>
               <TableCell align="center" sx={{ width: 150, p: '4px 4px', fontSize: '0.7rem', fontWeight: 'bold' }}>Observación</TableCell>
@@ -3118,7 +3184,7 @@ return (
                   <IconButton
                     size="small"
                     color="error"
-                    onClick={() => handleSeleccionarInsumo(item.producto)}
+                    onClick={() => handleEliminarInsumoUnico(item)}
                     sx={{ width: 24, height: 24, p: 0 }}
                   >
                     <Delete fontSize="small" sx={{ fontSize: '1rem' }} />
@@ -3130,14 +3196,23 @@ return (
                   </Typography>
                 </TableCell>
                 <TableCell align="center">
-                  <FormControl size="small" sx={{ width: 55 }}>
+                  <FormControl size="small" sx={{ width: 90 }}>
                     <Select
                       value={item.cantidad}
-                      onChange={(e) => handleCantidadInsumo(item.producto.clave_prod, Number(e.target.value))}
+                      onChange={(e) => {
+                        handleCantidadInsumo(item.producto.clave_prod, Number(e.target.value));
+                        if (item.enBaseDatos) {
+                          const updated = { ...item, cantidad: Number(e.target.value) };
+                          handleGuardarInsumoUnico(updated);
+                        }
+                      }}
                       sx={{
-                        '& .MuiInputBase-root': {
-                          height: 22,
-                          fontSize: '0.7rem'
+                        height: 22,
+                        fontSize: '0.7rem',
+                        '& .MuiSelect-select': {
+                          padding: '0 24px 0 6px !important',
+                          fontSize: '0.7rem',
+                          lineHeight: '22px'
                         }
                       }}
                     >
@@ -3174,6 +3249,7 @@ return (
                     size="small"
                     value={item.observacion}
                     onChange={(e) => handleObservacionInsumo(item.producto.clave_prod, e.target.value)}
+                    onBlur={() => item.enBaseDatos && handleGuardarInsumoUnico(item)}
                     placeholder="Obs..."
                     sx={{
                       width: 155,
@@ -3201,7 +3277,7 @@ return (
         color="secondary"
         onClick={() => {
           if (productoPrincipal) {
-            const yaRegistrado = detallesVenta.some(d => d.clave_prod === productoPrincipal.clave_prod);
+            const yaRegistrado = detallesVentaRef.current.some(d => d.clave_prod === productoPrincipal.clave_prod);
             if (yaRegistrado) {
               setDetallesVenta(prev => prev.map(d =>
                 d.clave_prod === productoPrincipal.clave_prod ? { ...d, insumos: [] } : d
@@ -3302,7 +3378,7 @@ return (
   maxWidth="xs"
   fullWidth
   open={modalCambiarClienteOpen}
-  onClose={() => { setModalCambiarClienteOpen(false); setClienteActualCambio(''); setNuevoClienteCambio(''); }}
+  onClose={() => { setModalCambiarClienteOpen(false); setClienteActualCambio(''); setNuevoClienteCambio(''); setNuevoClienteObjeto(null); }}
   PaperProps={{ sx: { m: { xs: 1, sm: 2 } } }}
 >
   <DialogTitle sx={{ pb: 0 }}>
@@ -3346,7 +3422,7 @@ return (
           getOptionLabel={(option) => [option.nombre, option.ap_paterno, option.ap_materno].filter(Boolean).join(' ')}
           loading={loadingTodosClientes}
           value={todosLosClientes.find(c => c.No_cliente === nuevoClienteCambio) ?? null}
-          onChange={(_e, newVal) => setNuevoClienteCambio(newVal?.No_cliente ?? '')}
+          onChange={(_e, newVal) => { setNuevoClienteCambio(newVal?.No_cliente ?? ''); setNuevoClienteObjeto(newVal); }}
           onInputChange={(_e, val) => { setBusquedaNuevoCliente(val); if (val.trim().length >= 2) fetchTodosLosClientes(val.trim()); else setTodosLosClientes([]); }}
           inputValue={busquedaNuevoCliente}
           noOptionsText="Sin resultados"
@@ -3383,7 +3459,7 @@ return (
       <Button
         variant="outlined"
         size="small"
-        onClick={() => { setModalCambiarClienteOpen(false); setClienteActualCambio(''); setNuevoClienteCambio(''); }}
+        onClick={() => { setModalCambiarClienteOpen(false); setClienteActualCambio(''); setNuevoClienteCambio(''); setNuevoClienteObjeto(null); }}
       >
         Salir
       </Button>
@@ -3566,7 +3642,7 @@ return (
     disableUnderline 
     disabled={isCredito} 
     value={formaPagoSeleccionada} // 🌟 Cambiado de 7 al estado dinámico para que inicie vacío
-    onChange={(e) => { const val = e.target.value as number | ""; setFormaPagoSeleccionada(val); if (val === 4) { setAutorizacionInput(''); setConfirmAutorizacionInput(''); setConfirmAutorizacionError(''); setModalConfirmAutorizacionOpen(true); } }}
+    onChange={(e) => { const val = e.target.value as number | ""; setFormaPagoSeleccionada(val); setAutorizacionInput(''); }}
     sx={{ fontSize: '0.8rem', color: 'black', fontWeight: 'bold' }}
   >
     {/*  Opción en blanco por defecto que emula el inicio vacío de Access */}
@@ -3575,10 +3651,10 @@ return (
   </Select>
 </TableCell>
                 <TableCell>
-                  <TextField variant="standard" size="small" fullWidth disabled={isCredito} placeholder="Escribir..." value={autorizacionInput} onChange={(e) => setAutorizacionInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && formaPagoSeleccionada === 4 && autorizacionInput.trim()) { setConfirmAutorizacionInput(''); setModalConfirmAutorizacionOpen(true); } }} InputProps={{ disableUnderline: true, style: { fontSize: '0.8rem', color: 'black' } }} />
+                  <TextField variant="standard" size="small" fullWidth disabled={isCredito} placeholder="Escribir..." value={autorizacionInput} onChange={(e) => setAutorizacionInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && formaPagoSeleccionada !== '' && autorizacionInput.trim()) { setConfirmAutorizacionInput(''); setConfirmAutorizacionError(''); setModalConfirmAutorizacionOpen(true); } }} InputProps={{ disableUnderline: true, style: { fontSize: '0.8rem', color: 'black' } }} />
                 </TableCell>
                 <TableCell>
-                  <TextField variant="standard" size="small" type="number" fullWidth disabled={isCredito} placeholder="0.00" value={importePago} onChange={(e) => setImportePago(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && formaPagoSeleccionada !== 4 && importePago) { e.preventDefault(); handleAgregarPago(); } }} InputProps={{ disableUnderline: true, style: { fontSize: '0.8rem', textAlign: 'right', color: 'black' } }} />
+                  <TextField variant="standard" size="small" type="number" fullWidth disabled={isCredito} placeholder="0.00" value={importePago} onChange={(e) => setImportePago(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && formaPagoSeleccionada !== '' && importePago) { e.preventDefault(); if (autorizacionInput.trim()) { setConfirmAutorizacionInput(''); setConfirmAutorizacionError(''); setModalConfirmAutorizacionOpen(true); } else { handleAgregarPago(); } } }} InputProps={{ disableUnderline: true, style: { fontSize: '0.8rem', textAlign: 'right', color: 'black' } }} />
                 </TableCell>
                 <TableCell align="center" sx={{ p: 0 }}>
                 </TableCell>
