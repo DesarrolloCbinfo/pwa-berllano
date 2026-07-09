@@ -4,6 +4,10 @@
   font-family: 'Poppins', sans-serif, Helvetica;
 }
 
+.swal2-container {
+  z-index: 9999 !important;
+}
+
 h1 {
     font-family: 'Poppins', sans-serif;
     font-size: 30px; /* Opcional: Ajusta el tamaño de la fuente */

@@ -290,7 +290,7 @@ const [nuevoClienteReasignacion, setNuevoClienteReasignacion] = React.useState<C
 
   const [clienteSeleccionado, setClienteSeleccionado] = React.useState<
   Cliente | null
->(null);
+>({ No_cliente: '00001', nombre: 'PÚBLICO EN GENERAL', ap_paterno: null, ap_materno: null });
 
 const [estilistas, setEstilistas] = React.useState<Estilista[]>([]);
 const [estilistaSeleccionado, setEstilistaSeleccionado] = React.useState("");
@@ -299,6 +299,7 @@ const [auxiliarSeleccionado,setAuxiliarSeleccionado] = React.useState<string>(""
 const [esInsumo, setEsInsumo] = React.useState(false);
 
 const [detallesVenta, setDetallesVenta] = React.useState<DetalleVenta[]>([]);
+const [registrando, setRegistrando] = React.useState(false);
 const detallesVentaRef = React.useRef<DetalleVenta[]>([]);
 React.useEffect(() => { detallesVentaRef.current = detallesVenta; }, [detallesVenta]);
 
@@ -725,7 +726,8 @@ React.useEffect(() => {
     }
   };
 
-  const handleRegistrar = () => {
+  const handleRegistrar = async () => {
+    if (registrando) return;
     // Validar que se hayan seleccionado los datos necesarios
     if (!estilistaSeleccionado || !productoSeleccionado) {
       Swal.fire({ icon: 'warning', title: 'Atención', text: 'Por favor selecciona un estilista y un producto', confirmButtonColor: '#333333' });
@@ -741,7 +743,12 @@ React.useEffect(() => {
     }
 
     // Si no es controlado, proceder normalmente
-    registrarProducto(productoSeleccionado);
+    setRegistrando(true);
+    try {
+      await registrarProducto(productoSeleccionado);
+    } finally {
+      setRegistrando(false);
+    }
   };
 
   const guardarProductoIndividual = async (detalle: DetalleVenta) => {
@@ -1313,7 +1320,7 @@ const verificaDatosVenta = () => {
         // Limpieza de pantalla (Emula inicializa_pantalla() de Access)
         setModalCobroOpen(false);
         setDetallesVenta([]);
-        setClienteSeleccionado(null);
+        setClienteSeleccionado({ No_cliente: '00001', nombre: 'PÚBLICO EN GENERAL', ap_paterno: null, ap_materno: null });
         setEstilistaSeleccionado('');
         setAuxiliarSeleccionado('');
         setPagosRegistro([]);
@@ -2050,8 +2057,9 @@ return (
                 color="primary"
                 sx={{ minWidth: '100px' }}
                 onClick={handleRegistrar}
+                disabled={registrando}
               >
-                Registrar
+                {registrando ? 'Registrando...' : 'Registrar'}
               </Button>
             </Box>
           </Box>
