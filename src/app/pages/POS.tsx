@@ -7,7 +7,7 @@ import useSession from "../../hooks/useSession";
 import ClientesTable from "../../components/POS/ClientesTable";
 import PaginationControls from "../../components/POS/PaginationControl";
 import Swal from "sweetalert2";
-import { Box, Button, Dialog, DialogContent, DialogTitle, Divider, FormControl, InputLabel, MenuItem, Select, useTheme, useMediaQuery, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, CircularProgress, IconButton, TextField, Autocomplete } from "@mui/material";
+import { Box, Button, Checkbox, Dialog, DialogContent, DialogTitle, Divider, FormControl, FormControlLabel, InputLabel, MenuItem, Select, useTheme, useMediaQuery, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, CircularProgress, IconButton, TextField, Autocomplete } from "@mui/material";
 import ProductosTable from "../../components/POS/ProductosTable";
 import DetalleVentasTable from "../../components/POS/DetalleVentasTable";
 import useCantidadesProducto from "../../hooks/useCantidadesProducto";
@@ -20,6 +20,7 @@ type Cliente = {
   nombre: string;
   ap_paterno?: string | null;
   ap_materno?: string | null;
+  tarjeta?: string | null;
   total_registros?: number;
 };
 
@@ -135,6 +136,7 @@ type VentaEnProceso = {
   d_estilista: string;
   importe: number;
   sucursal: number;
+  tarjeta?: string | null;
   productos: ProductoVenta[];
 };
 
@@ -297,11 +299,35 @@ const [estilistaSeleccionado, setEstilistaSeleccionado] = React.useState("");
 const [estilistaAuxiliar,setEstilistaAuxiliar] = React.useState<Auxiliar[]>([]);
 const [auxiliarSeleccionado,setAuxiliarSeleccionado] = React.useState<string>("");
 const [esInsumo, setEsInsumo] = React.useState(false);
+const [mostrarTodosEstilistas, setMostrarTodosEstilistas] = React.useState(false);
+const [puntosAcumulados, setPuntosAcumulados] = React.useState(0);
 
 const [detallesVenta, setDetallesVenta] = React.useState<DetalleVenta[]>([]);
 const [registrando, setRegistrando] = React.useState(false);
 const detallesVentaRef = React.useRef<DetalleVenta[]>([]);
 React.useEffect(() => { detallesVentaRef.current = detallesVenta; }, [detallesVenta]);
+const clienteSeleccionadoRef = React.useRef<Cliente | null>(null);
+React.useEffect(() => { clienteSeleccionadoRef.current = clienteSeleccionado; }, [clienteSeleccionado]);
+
+React.useEffect(() => {
+  const obtenerPuntosMonedero = async () => {
+    if (!clienteSeleccionado || !clienteSeleccionado.tarjeta) {
+      setPuntosAcumulados(0);
+      return;
+    }
+    try {
+      const res = await consumoApi.get(`/api/PuntoDeVenta/consultar-tarjeta/${clienteSeleccionado.tarjeta}`);
+      if (res.data && res.data.ok) {
+        setPuntosAcumulados(res.data.puntos);
+      } else {
+        setPuntosAcumulados(0);
+      }
+    } catch {
+      setPuntosAcumulados(0);
+    }
+  };
+  obtenerPuntosMonedero();
+}, [clienteSeleccionado]);
 
 const session = useSession();
 const sucursal = session?.sucursal || 1;
@@ -482,10 +508,11 @@ React.useEffect(() => {
   }, [clientePreview?.No_cliente]);
 
   const handleOpenHistorial = async () => {
-    if (!clienteSeleccionado) return;
+    const cliente = clienteSeleccionadoRef.current;
+    if (!cliente) return;
     setHistorialPage(1);
     setHasMoreHistorial(true);
-    const data = await fetchHistorial(clienteSeleccionado.No_cliente, 1);
+    const data = await fetchHistorial(cliente.No_cliente, 1);
     setHistorialData(data);
     setModalHistorialOpen(true);
   };
@@ -1282,12 +1309,12 @@ const verificaDatosVenta = () => {
       }
 
       // 3. Empaquetar todo el payload expandido para el Stored Procedure Web
-// 📦 BUSCA EL PAYLOAD Y DÉJALO ASÍ:
+// BUSCA EL PAYLOAD Y DÉJALO ASÍ:
       const payload = {
         cia: 1,
         sucursal: sucursal,
         caja: 1,
-        cve_cliente: clienteSeleccionado.No_cliente, // 🌟 CORREGIDO: Todo en minúsculas
+        cve_cliente: clienteSeleccionado.No_cliente, 
         estilista: estilistaSeleccionado,
         usuario: session?.id || '',
         
@@ -1635,8 +1662,9 @@ const verificaDatosVenta = () => {
   };
 
 
- const fetchEstilistas = async () => {
-  const res = await consumoApi.get(`/api/PuntoDeVenta/sp_pos_estilistas_listado?sucursal=${sucursal}`);
+ const fetchEstilistas = async (todos = false) => {
+  const suc = todos ? 0 : sucursal;
+  const res = await consumoApi.get(`/api/PuntoDeVenta/sp_pos_estilistas_listado?sucursal=${suc}`);
   setEstilistas(res.data ?? []);
  };
 
@@ -1739,7 +1767,7 @@ const fetchVentasEnProceso = async () => {
   }
 };
 
-const fetchDetalleVenta = async (cliente: string, estilista: string) => {
+const fetchDetalleVenta = async (cliente: string, estilista: string, ventaOrigen?: VentaEnProceso) => {
   setLoadingVentasEnProceso(true);
   try {
     const res = await consumoApi.get(
@@ -1796,12 +1824,13 @@ const fetchDetalleVenta = async (cliente: string, estilista: string) => {
     
     setDetallesVenta(detalles);
     
-    // También configurar el cliente y estilista seleccionados
+    // Configurar cliente con nombre completo y tarjeta del SP de detalle (o fallback a ventaOrigen)
     setClienteSeleccionado({
       No_cliente: venta.cve_cliente,
-      nombre: venta.d_cliente,
+      nombre: venta.d_cliente || ventaOrigen?.d_cliente || '',
       ap_paterno: null,
-      ap_materno: null
+      ap_materno: null,
+      tarjeta: (venta as any).tarjeta || ventaOrigen?.tarjeta || null
     });
     setEstilistaSeleccionado(venta.user);
     setIsVentaEnProceso(true);
@@ -1992,6 +2021,13 @@ return (
               >
                 <History fontSize="small"/>
               </IconButton>
+              <TextField
+                size="small"
+                label="Puntos"
+                value={puntosAcumulados}
+                InputProps={{ readOnly: true }}
+                sx={{ minWidth: '90px', maxWidth: '90px', '& .MuiInputBase-input': { textAlign: 'right', fontWeight: 'bold', color: puntosAcumulados > 0 ? 'black' : 'inherit' } }}
+              />
             </Box>
 
             <FormControl size="small" sx={{ flex: 0.6, minWidth: '150px' }}>
@@ -2008,6 +2044,20 @@ return (
                 ))}
               </Select>
             </FormControl>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  size="small"
+                  checked={mostrarTodosEstilistas}
+                  onChange={(e) => {
+                    setMostrarTodosEstilistas(e.target.checked);
+                    fetchEstilistas(e.target.checked);
+                  }}
+                />
+              }
+              label={<Typography variant="caption" sx={{ fontSize: '0.72rem' }}>Mostrar todos los estilistas</Typography>}
+              sx={{ ml: 0.5, mr: 0, whiteSpace: 'nowrap' }}
+            />
           </Box>
 
           {/* Renglón 2: Producto, Auxiliar y Registrar */}
@@ -2314,7 +2364,7 @@ return (
                 params: { No_cliente: cliente.No_cliente }
               });
               if (response.data && response.data.length > 0) {
-                setClientePreview(response.data[0]);
+                setClientePreview({ ...response.data[0], tarjeta: response.data[0].tarjeta ?? cliente.tarjeta ?? null });
               }
             } catch (error) {
               console.error('Error cargando detalles del cliente:', error);
@@ -2588,7 +2638,8 @@ return (
           No_cliente: clientePreview.No_cliente || '',
           nombre: clientePreview.nombre || 'PÚBLICO EN GENERAL',
           ap_paterno: clientePreview.ap_paterno || '',
-          ap_materno: clientePreview.ap_materno || ''
+          ap_materno: clientePreview.ap_materno || '',
+          tarjeta: clientePreview.tarjeta || null
         });
       }
       setModalClienteOpen(false);
@@ -3367,7 +3418,7 @@ return (
                   <Button 
                     variant="contained" 
                     size="small"
-                    onClick={() => fetchDetalleVenta(venta.cve_cliente, venta.user)}
+                    onClick={() => fetchDetalleVenta(venta.cve_cliente, venta.user, venta)}
                   >
                     Cargar
                   </Button>
@@ -3679,13 +3730,13 @@ return (
         </TableContainer>
 
         {/* Módulo de Monedero de alta densidad */}
-        <Box sx={{ p: 1, border: '1px dashed black', backgroundColor: '#f2f2f2', display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-          <Typography variant="caption" sx={{ fontWeight: '900', color: 'black', fontSize: '0.65rem', tracking: 1 }}>SISTEMA MONEDERO BERLLANO</Typography>
+        <Box sx={{ p: 1, border: '1px dashed black', backgroundColor: '#f2f2f2', display: 'flex', flexDirection: 'column', flex: 1 }}>
+          <Typography variant="caption" sx={{ fontWeight: '900', color: 'black', fontSize: '0.65rem', tracking: 1, mb: 0.5 }}>SISTEMA MONEDERO BERLLANO</Typography>
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
             <TextField size="small" label="Cuenta Puntos (Pago)" variant="outlined" disabled={isCredito} value={cuentaPuntos} onChange={(e) => setCuentaPuntos(e.target.value)} onKeyDown={handleKeyDownCuentaPuntos} placeholder="Enter para validar" sx={{ backgroundColor: 'white', flex: 1, '& .MuiInputBase-input': { py: '4px', fontSize: '0.8rem' }, '& .MuiInputLabel-root': { transform: 'translate(14px, 6px) scale(1)', fontSize: '0.8rem' }, '& .MuiInputLabel-shrink': { transform: 'translate(14px, -6px) scale(0.75)' } }} />
             <Typography variant="caption" sx={{ color: 'black', fontWeight: 'bold', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>Puntos Canjeados:</Typography>
           </Box>
-          <TextField size="small" label="Cuenta Recompensa (Abono)" variant="outlined" disabled={isCredito} value={cuentaRecompensa} onChange={(e) => setCuentaRecompensa(e.target.value)} sx={{ backgroundColor: 'white', '& .MuiInputBase-input': { py: '4px', fontSize: '0.8rem' }, '& .MuiInputLabel-root': { transform: 'translate(14px, 6px) scale(1)', fontSize: '0.8rem' }, '& .MuiInputLabel-shrink': { transform: 'translate(14px, -6px) scale(0.75)' } }} />
+          <TextField size="small" label="Cuenta Recompensa (Abono)" variant="outlined" disabled={isCredito} value={cuentaRecompensa} onChange={(e) => setCuentaRecompensa(e.target.value)} sx={{ backgroundColor: 'white', mt: 'auto', '& .MuiInputBase-input': { py: '4px', fontSize: '0.8rem' }, '& .MuiInputLabel-root': { transform: 'translate(14px, 6px) scale(1)', fontSize: '0.8rem' }, '& .MuiInputLabel-shrink': { transform: 'translate(14px, -6px) scale(0.75)' } }} />
         </Box>
       </Box>
 

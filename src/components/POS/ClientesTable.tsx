@@ -19,8 +19,12 @@ type Cliente = {
   validado?: string | boolean | null;
   fecha_ultima_visita?: string | null;
   no_visitas?: number | null;
+  visitas?: number | null;
+  num_visitas?: number | null;
+  cant_visitas?: number | null;
   tarjeta?: string | null;
   fecha_asignacion?: string | null;
+  [key: string]: any;
 };
 
 type Props = {
@@ -75,10 +79,14 @@ export default function ClientesTable({ data, onSelect }: Props) {
                     {c.fecha_ultima_visita ? new Date(c.fecha_ultima_visita).toLocaleDateString() : '-'}
                   </TableCell>
                   <TableCell align="center">
-                    {c.no_visitas || 0}
+                    {c.no_visitas ?? c.visitas ?? c.num_visitas ?? c.cant_visitas ?? 0}
                   </TableCell>
                   <TableCell>
-                    {c.tarjeta || '-'}
+                    {c.tarjeta
+                      ? c.tarjeta.length > 4
+                        ? `${'*'.repeat(c.tarjeta.length - 4)}${c.tarjeta.slice(-4)}`
+                        : c.tarjeta
+                      : '-'}
                   </TableCell>
                   <TableCell>
                     {c.fecha_asignacion ? new Date(c.fecha_asignacion).toLocaleDateString() : '-'}
