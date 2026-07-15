@@ -12,7 +12,7 @@ import ProductosTable from "../../components/POS/ProductosTable";
 import DetalleVentasTable from "../../components/POS/DetalleVentasTable";
 import useCantidadesProducto from "../../hooks/useCantidadesProducto";
 import CatClientes from "./cat_Clientes/page";
-import { History, Delete } from "@mui/icons-material";
+import { History, Delete, Close } from "@mui/icons-material";
 
 
 type Cliente = {
@@ -340,6 +340,12 @@ const [authCobrarUsuario, setAuthCobrarUsuario] = React.useState('');
 const [authCobrarPassword, setAuthCobrarPassword] = React.useState('');
 const [authCobrarLoading, setAuthCobrarLoading] = React.useState(false);
 const [authCobrarError, setAuthCobrarError] = React.useState('');
+const [modalAuthInsumoOpen, setModalAuthInsumoOpen] = React.useState(false);
+const [authInsumoClaveProd, setAuthInsumoClaveProd] = React.useState<string | null>(null);
+const [authInsumoUsuario, setAuthInsumoUsuario] = React.useState('');
+const [authInsumoPassword, setAuthInsumoPassword] = React.useState('');
+const [authInsumoLoading, setAuthInsumoLoading] = React.useState(false);
+const [authInsumoError, setAuthInsumoError] = React.useState('');
 const [loadingVentasEnProceso, setLoadingVentasEnProceso] = React.useState(false);
 const [modalCobrosMultipleTCOpen, setModalCobrosMultipleTCOpen] = React.useState(false);
 const [selectedClientesTC, setSelectedClientesTC] = React.useState<Set<string>>(new Set());
@@ -763,9 +769,24 @@ React.useEffect(() => {
 
     // Verificar si el producto es controlado y es servicio
     if (productoSeleccionado.controlado && productoSeleccionado.es_servicio) {
-      // Guardar el producto principal y abrir modal de insumos
-      setProductoPrincipal(productoSeleccionado);
-      setModalInsumosOpen(true);
+      const result = await Swal.fire({
+        icon: 'info',
+        title: 'Atención',
+        text: 'Recuerde descargar los insumos',
+        confirmButtonText: 'Aceptar',
+        confirmButtonColor: '#333333',
+        allowOutsideClick: false
+      });
+
+      if (result.isConfirmed) {
+        // Guardar el producto principal y abrir modal de insumos
+        setDetalleInsumosModal(null);
+        setInsumosSeleccionados([]);
+        setInsumosBackend([]);
+        setInsumoSeleccionadoParaCantidades(null);
+        setProductoPrincipal(productoSeleccionado);
+        setModalInsumosOpen(true);
+      }
       return;
     }
 
@@ -1427,15 +1448,52 @@ const verificaDatosVenta = () => {
     );
   };
 
-  const handleValidarInsumo = async (clave_prod: string) => {
-    const current = insumosSeleccionados.find(i => i.producto.clave_prod === clave_prod);
-    if (!current) return;
-    const updatedItem = { ...current, validado: !current.validado };
-    setInsumosSeleccionados(prev =>
-      prev.map(item => item.producto.clave_prod === clave_prod ? updatedItem : item)
-    );
-    if (updatedItem.enBaseDatos) {
-      await handleGuardarInsumoUnico(updatedItem);
+  const handleValidarInsumo = (clave_prod: string) => {
+    setAuthInsumoClaveProd(clave_prod);
+    setAuthInsumoUsuario('');
+    setAuthInsumoPassword('');
+    setAuthInsumoError('');
+    setModalAuthInsumoOpen(true);
+  };
+
+  const handleValidarAutorizacionInsumo = async () => {
+    if (!authInsumoUsuario.trim() || !authInsumoPassword.trim()) {
+      setAuthInsumoError('Ingrese usuario y contraseña.');
+      return;
+    }
+    if (!authInsumoClaveProd) return;
+    setAuthInsumoLoading(true);
+    setAuthInsumoError('');
+    try {
+      const res = await consumoApi.post('/api/PuntoDeVenta/validar-autorizacion', {
+        usuarioSupervisor: authInsumoUsuario,
+        passwordSupervisor: authInsumoPassword,
+        formulario: 'CierreVentaInsumosPendientes'
+      });
+      if (res.data?.ok === true) {
+        const clave_prod = authInsumoClaveProd;
+        const current = insumosSeleccionados.find(i => i.producto.clave_prod === clave_prod);
+        if (current) {
+          const updatedItem = { ...current, validado: !current.validado };
+          setInsumosSeleccionados(prev =>
+            prev.map(item => item.producto.clave_prod === clave_prod ? updatedItem : item)
+          );
+          if (updatedItem.enBaseDatos) {
+            await handleGuardarInsumoUnico(updatedItem);
+          }
+        }
+        setModalAuthInsumoOpen(false);
+        setAuthInsumoClaveProd(null);
+        setAuthInsumoUsuario('');
+        setAuthInsumoPassword('');
+        setAuthInsumoError('');
+      } else {
+        setAuthInsumoError(res.data?.mensaje || 'Autorización denegada.');
+      }
+    } catch (error: any) {
+      setAuthInsumoError(error.response?.data?.mensaje || 'Error al validar autorización.');
+    } finally {
+      setAuthInsumoLoading(false);
     }
   };
 
@@ -3383,11 +3441,23 @@ return (
   PaperProps={{
     sx: {
       m: { xs: 1, sm: 2 },
-      maxHeight: { xs: '90vh', sm: '85vh' }
+      maxHeight: { xs: '90vh', sm: '85vh' },
+      borderRadius: '12px',
+      overflow: 'hidden'
     }
   }}
 >
-  <DialogTitle>Ventas en Proceso - Sucursal {sucursal}</DialogTitle>
+  <DialogTitle sx={{ backgroundColor: '#000', color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 1.5 }}>
+    <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+      Ventas en Proceso - Sucursal {sucursal}
+    </Typography>
+    <IconButton
+      onClick={() => setModalVentasEnProcesoOpen(false)}
+      sx={{ color: '#fff', '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)' } }}
+    >
+      <Close />
+    </IconButton>
+  </DialogTitle>
   <DialogContent sx={{ p: { xs: 2, sm: 3 } }}>
     {loadingVentasEnProceso ? (
       <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
@@ -3834,6 +3904,28 @@ return (
           <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3, mt: 3 }}>
             <Button variant="contained" onClick={handleValidarAutorizacionCobrar} disabled={authCobrarLoading} sx={{ backgroundColor: '#555', minWidth: 100, '&:hover': { backgroundColor: '#333' } }}>{authCobrarLoading ? 'Validando...' : 'ACEPTAR'}</Button>
             <Button variant="outlined" onClick={() => { setModalAuthCobrarOpen(false); setAuthCobrarUsuario(''); setAuthCobrarPassword(''); setAuthCobrarError(''); }} disabled={authCobrarLoading} sx={{ minWidth: 100 }}>CANCELAR</Button>
+          </Box>
+        </DialogContent>
+      </Dialog>
+
+{/* Dialog autorización para validar insumo */}
+      <Dialog open={modalAuthInsumoOpen} maxWidth="xs" fullWidth onClose={() => { if (!authInsumoLoading) { setModalAuthInsumoOpen(false); } }}>
+        <DialogTitle sx={{ backgroundColor: '#333', color: 'white', textAlign: 'center', fontWeight: 'bold', fontSize: '0.95rem' }}>Escriba los datos de un usuario con acceso a este módulo.</DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Typography variant="body2" sx={{ fontWeight: 'bold', minWidth: 110 }}>Nombre de usuario:</Typography>
+              <TextField size="small" fullWidth autoFocus value={authInsumoUsuario} onChange={(e) => { setAuthInsumoUsuario(e.target.value); setAuthInsumoError(''); }} disabled={authInsumoLoading} />
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Typography variant="body2" sx={{ fontWeight: 'bold', minWidth: 110 }}>Password:</Typography>
+              <TextField size="small" fullWidth type="password" value={authInsumoPassword} onChange={(e) => { setAuthInsumoPassword(e.target.value); setAuthInsumoError(''); }} onKeyDown={(e) => { if (e.key === 'Enter') handleValidarAutorizacionInsumo(); }} disabled={authInsumoLoading} />
+            </Box>
+            {authInsumoError && <Typography color="error" variant="caption" sx={{ textAlign: 'center' }}>{authInsumoError}</Typography>}
+          </Box>
+          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3, mt: 3 }}>
+            <Button variant="contained" onClick={handleValidarAutorizacionInsumo} disabled={authInsumoLoading} sx={{ backgroundColor: '#555', minWidth: 100, '&:hover': { backgroundColor: '#333' } }}>{authInsumoLoading ? 'Validando...' : 'ACEPTAR'}</Button>
+            <Button variant="outlined" onClick={() => { setModalAuthInsumoOpen(false); setAuthInsumoUsuario(''); setAuthInsumoPassword(''); setAuthInsumoError(''); }} disabled={authInsumoLoading} sx={{ minWidth: 100 }}>CANCELAR</Button>
           </Box>
         </DialogContent>
       </Dialog>
