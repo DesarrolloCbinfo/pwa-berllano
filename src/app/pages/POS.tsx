@@ -281,12 +281,22 @@ const [nuevoClienteReasignacion, setNuevoClienteReasignacion] = React.useState<C
 
 
   // Auto-guardar insumos en proceso cuando cambian y el modal está abierto
+  const anteriorInsumosRef = React.useRef(insumosSeleccionados);
+
   React.useEffect(() => {
     if (!modalInsumosOpen) return;
-    const timer = setTimeout(() => {
-      guardarInsumosEnProceso(insumosSeleccionados);
-    }, 1000);
-    return () => clearTimeout(timer);
+
+    // Solo auto-guardar si el número de insumos cambió (se agregó o quitó uno)
+    // o si el contenido real varió, evitando dispararse por la carga inicial de cantidades cache
+    const lengthCambio = anteriorInsumosRef.current.length !== insumosSeleccionados.length;
+
+    if (lengthCambio) {
+      const timer = setTimeout(() => {
+        guardarInsumosEnProceso(insumosSeleccionados);
+        anteriorInsumosRef.current = insumosSeleccionados;
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
   }, [insumosSeleccionados, modalInsumosOpen]);
   
 
@@ -762,8 +772,16 @@ React.useEffect(() => {
   const handleRegistrar = async () => {
     if (registrando) return;
     // Validar que se hayan seleccionado los datos necesarios
-    if (!estilistaSeleccionado || !productoSeleccionado) {
+    if (!estilistaSeleccionado && !productoSeleccionado) {
       Swal.fire({ icon: 'warning', title: 'Atención', text: 'Por favor selecciona un estilista y un producto', confirmButtonColor: '#333333' });
+      return;
+    }
+    if (!estilistaSeleccionado) {
+      Swal.fire({ icon: 'warning', title: 'Atención', text: 'Por favor selecciona un estilista', confirmButtonColor: '#333333' });
+      return;
+    }
+    if (!productoSeleccionado) {
+      Swal.fire({ icon: 'warning', title: 'Atención', text: 'Por favor selecciona un producto', confirmButtonColor: '#333333' });
       return;
     }
 
@@ -3166,7 +3184,16 @@ return (
     }
   }}
 >
-  <DialogTitle>Seleccionar {esInsumo ? "Insumo" : "Producto"}</DialogTitle>
+  <DialogTitle sx={{ backgroundColor: 'black', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    Seleccionar {esInsumo ? "Insumo" : "Producto"}
+    <IconButton
+      onClick={() => { setModalProductoOpen(false); setDetalleParaEditarProducto(null); }}
+      sx={{ color: 'white' }}
+      aria-label="Cerrar"
+    >
+      <Close />
+    </IconButton>
+  </DialogTitle>
   <DialogContent sx={{ p: { xs: 2, sm: 3 } }}>
     <TextField
       size={isMobile ? "medium" : "small"}
@@ -3208,25 +3235,27 @@ return (
 </Dialog>
 
 {/* Modal de selección de insumos para productos controlados */}
-<Dialog 
-  maxWidth={isMobile ? "md" : "lg"} 
-  fullWidth
-  open={modalInsumosOpen} 
-  onClose={() => {
-    setModalInsumosOpen(false);
-    setProductoPrincipal(null);
-    setInsumosSeleccionados([]);
-  }}
-      PaperProps={{
-    sx: {
-      m: { xs: 1, sm: 2 },
-      display: 'flex',
-      flexDirection: 'column',
-      overflow: 'hidden',
-      borderRadius: '12px'
-    }
-  }}
->
+{modalInsumosOpen && (
+  <Dialog 
+    maxWidth={isMobile ? "md" : "lg"} 
+    fullWidth
+    open={modalInsumosOpen} 
+    onClose={() => {
+      setModalInsumosOpen(false); 
+      setProductoPrincipal(null);
+      setInsumosSeleccionados([]);
+    }}
+    PaperProps={{
+      sx: {
+        m: { xs: 1, sm: 2 },
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        borderRadius: '12px'
+      }
+    }}
+  >
+
     <DialogTitle sx={{ backgroundColor: '#000', color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 1.5 }}>
     <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
       Seleccionar Insumos para: {productoPrincipal?.descripcion}
@@ -3431,6 +3460,7 @@ return (
     </Box>
   </DialogContent>
 </Dialog>
+)}
 
 {/* Modal de Ventas en Proceso */}
 <Dialog 
@@ -4099,10 +4129,14 @@ return (
                     </Typography>
                     <input
                       type="number"
+                      min="0"
                       value={denominaciones[denom] === 0 ? "" : denominaciones[denom]}
                       placeholder="0"
+                      onKeyDown={(e) => {
+                        if (e.key === '-') e.preventDefault();
+                      }}
                       onChange={(e) => {
-                        const val = parseInt(e.target.value) || 0;
+                        const val = Math.max(0, parseInt(e.target.value) || 0);
                         setDenominaciones(prev => ({ ...prev, [denom]: val }));
                       }}
                       style={{ width: '55px', textAlign: 'center', backgroundColor: '#d9d9d9', border: 'none', padding: '1px 0', fontWeight: 'bold', fontSize: '0.85rem' }}
@@ -4133,10 +4167,14 @@ return (
                     </Typography>
                     <input
                       type="number"
+                      min="0"
                       value={denominaciones[denom] === 0 ? "" : denominaciones[denom]}
                       placeholder="0"
+                      onKeyDown={(e) => {
+                        if (e.key === '-') e.preventDefault();
+                      }}
                       onChange={(e) => {
-                        const val = parseInt(e.target.value) || 0;
+                        const val = Math.max(0, parseInt(e.target.value) || 0);
                         setDenominaciones(prev => ({ ...prev, [denom]: val }));
                       }}
                       style={{ width: '55px', textAlign: 'center', backgroundColor: '#d9d9d9', border: 'none', padding: '1px 0', fontWeight: 'bold', fontSize: '0.85rem' }}
