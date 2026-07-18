@@ -39,6 +39,7 @@ import AccesosAlternos from './pages/cat_accesosalternos/page';
 import ConceptosAjustes from './pages/cat_conceptos_ajustes/page';
 import TiposMovimientos from './pages/cat_tipos_movimientos/page';
 import CarteleraDigital from './pages/CarteleraDigital/page';
+import Facturacion from './pages/Facturacion/page';
 
 import PlasticosAutorizados from './pages/Cat_Plasticos_Autorizados/pages';
 import MediosPagos from './pages/cat_Medios_Pago/page';
@@ -140,6 +141,7 @@ function App() {
            <Route path='/cat_PermisosDeptos' element={<Layout><CatPermisosDeptos/></Layout>} />
            <Route path='/validacion_productos_servicios' element={<Layout><ValidacionProductosServicios/></Layout>} />
            <Route path='/cartelera-digital' element={<Layout><CarteleraDigital /></Layout>} />
+           <Route path='/facturacion' element={<Layout><Facturacion /></Layout>} />
            <Route path='/pos2' element={<Layout><POS/></Layout>} />
           
           

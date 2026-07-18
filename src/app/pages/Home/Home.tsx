@@ -14,6 +14,7 @@ import {
   Inventory,
   Assessment,
   Slideshow,
+  Receipt,
 } from '@mui/icons-material';
 import { routes } from '../../../utils/Routes';
 
@@ -55,6 +56,14 @@ const Home: React.FC = () => {
       icon: Slideshow, 
       color: '#e83e8c', 
       path: routes.carteleraDigital 
+    },
+    { 
+      id: 'facturacion', 
+      title: 'Facturación', 
+      description: 'Facturación electrónica CFDI 4.0', 
+      icon: Receipt, 
+      color: '#20c997', 
+      path: routes.facturacion 
     },
     { 
       id: 'comercial', 

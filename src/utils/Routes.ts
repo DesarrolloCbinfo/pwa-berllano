@@ -64,5 +64,6 @@ export const routes = {
   Validacion_Productos_Servicios: "/validacion_productos_servicios",
   pos2: "/pos2",
   carteleraDigital: "/cartelera-digital",
+  facturacion: "/facturacion",
 };
 
