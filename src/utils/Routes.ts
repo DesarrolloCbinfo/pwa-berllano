@@ -65,5 +65,7 @@ export const routes = {
   pos2: "/pos2",
   carteleraDigital: "/cartelera-digital",
   facturacion: "/facturacion",
+  inventario: "/inventario",
+  traspasoMercancia: "/traspaso-mercancia",
 };
 

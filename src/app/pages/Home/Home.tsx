@@ -15,6 +15,7 @@ import {
   Assessment,
   Slideshow,
   Receipt,
+  Warehouse,
 } from '@mui/icons-material';
 import { routes } from '../../../utils/Routes';
 
@@ -64,6 +65,14 @@ const Home: React.FC = () => {
       icon: Receipt, 
       color: '#20c997', 
       path: routes.facturacion 
+    },
+    { 
+      id: 'inventario', 
+      title: 'Inventario', 
+      description: 'Control de inventarios', 
+      icon: Warehouse, 
+      color: '#ff9800', 
+      path: routes.inventario 
     },
     { 
       id: 'comercial', 

@@ -66,6 +66,8 @@ import CatPerfilesPermisos from './pages/cat_perfiles_permisos/page';
 import CatCategorias from './pages/cat_Categorias/page';
 import CatPermisosDeptos from './pages/cat_PermisosDeptos/page';
 import ValidacionProductosServicios from './pages/Validacion_Productos_Servicios/page';
+import Inventario from './pages/Inventario/page';
+import TraspasoMercancia from './pages/TraspasoMercancia/page';
 
 
 
@@ -142,7 +144,8 @@ function App() {
            <Route path='/validacion_productos_servicios' element={<Layout><ValidacionProductosServicios/></Layout>} />
            <Route path='/cartelera-digital' element={<Layout><CarteleraDigital /></Layout>} />
            <Route path='/facturacion' element={<Layout><Facturacion /></Layout>} />
-           <Route path='/pos2' element={<Layout><POS/></Layout>} />
+           <Route path='/inventario' element={<Layout><Inventario /></Layout>} />
+           <Route path='/traspaso-mercancia' element={<Layout><TraspasoMercancia /></Layout>} />
           
           
 
