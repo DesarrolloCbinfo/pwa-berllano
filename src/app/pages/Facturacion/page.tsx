@@ -8,11 +8,11 @@ import {
 } from '@mui/material';
 import {
   Receipt, Description, PictureAsPdf, Email, Send, Cancel,
-  CheckCircle, RadioButtonUnchecked, Search
+  CheckCircle, RadioButtonUnchecked, Search, NavigateBefore, NavigateNext
 } from '@mui/icons-material';
+import type { IClienteFiscal } from './interfaces/IFactura';
 import { MaterialReactTable, type MRT_ColumnDef } from 'material-react-table';
 import useConsumoApiFacturacion from '../../../hooks/useConsumoApiFacturacion';
-import useConsumoApi from '../../../hooks/useConsumoApi';
 import useSession from '../../../hooks/useSession';
 import Swal from 'sweetalert2';
 import jsPDF from 'jspdf';
@@ -354,7 +354,6 @@ async function sendFacturaEmail(xmlContent: string, recipientEmail: string, seri
 export default function FacturacionPage() {
   const session = useSession();
   const { consumoApi: apiFacturacion } = useConsumoApiFacturacion();
-  const { consumoApi } = useConsumoApi();
 
   const [tabValue, setTabValue] = useState(0);
 
@@ -379,7 +378,13 @@ export default function FacturacionPage() {
   const [selectedIdC, setSelectedIdC] = useState('');
 
   const [modalCliente, setModalCliente] = useState(false);
-  const [clientes, setClientes] = useState<any[]>([]);
+  const [clientesFiscales, setClientesFiscales] = useState<IClienteFiscal[]>([]);
+  const [clienteSearchTerm, setClienteSearchTerm] = useState('');
+  const [clientePageNumber, setClientePageNumber] = useState(1);
+  const [clienteTotalRecords, setClienteTotalRecords] = useState(0);
+  const [loadingClientes, setLoadingClientes] = useState(false);
+  const clientePageSize = 10;
+  const [clienteSeleccionado, setClienteSeleccionado] = useState<IClienteFiscal | null>(null);
 
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [modalPreview, setModalPreview] = useState(false);
@@ -413,7 +418,6 @@ export default function FacturacionPage() {
       }
     };
     fetchOptions();
-    consumoApi.get('/Cliente?id=0').then(r => setClientes(r.data)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -657,14 +661,46 @@ export default function FacturacionPage() {
     setSelectedName('');
     setSelectedIdC('');
     setSelectedRow(null);
+    setClienteSeleccionado(null);
   };
 
   const getDesc = (options: any[], clave: string) => options.find(o => o.clave === clave)?.descripcion || clave;
 
-  const handleModalSelectCliente = (id: number, name: string) => {
-    setSelectedIdC(String(id));
-    setSelectedName(name);
+  const handleModalSelectCliente = (cliente: IClienteFiscal) => {
+    setSelectedIdC(String(cliente.id));
+    setSelectedName(cliente.nombreFiscal);
+    setClienteSeleccionado(cliente);
+    setFormData(p => ({ ...p, usoCfdi: cliente.usoCFDI }));
     setModalCliente(false);
+  };
+
+  const fetchClientesFiscales = async (searchTerm: string, pageNumber: number) => {
+    setLoadingClientes(true);
+    try {
+      const res = await apiFacturacion.get('clientes-fiscales', {
+        params: { pageNumber, pageSize: clientePageSize, searchTerm },
+      });
+      const data = res.data;
+      setClientesFiscales(data.clientes || []);
+      setClienteTotalRecords(data.totalRecords || 0);
+      setClientePageNumber(data.pageNumber || pageNumber);
+    } catch {
+      setClientesFiscales([]);
+      setClienteTotalRecords(0);
+    } finally {
+      setLoadingClientes(false);
+    }
+  };
+
+  const handleOpenModalCliente = () => {
+    setModalCliente(true);
+    setClienteSearchTerm('');
+    fetchClientesFiscales('', 1);
+  };
+
+  const handleClienteSearchChange = (term: string) => {
+    setClienteSearchTerm(term);
+    fetchClientesFiscales(term, 1);
   };
 
   const fetchFacturas = useCallback(async () => {
@@ -803,12 +839,12 @@ export default function FacturacionPage() {
         <Button size="small" variant="contained" color="success" onClick={() => handleFacturar(row, false)}>Facturar</Button>
       ),
     },
-    {
-      id: 'estado', header: 'Estado', size: 100,
-      Cell: ({ row }) => row.original.habilitada
-        ? <Chip icon={<CheckCircle />} label="Timbrada" color="success" size="small" variant="outlined" />
-        : <Chip icon={<RadioButtonUnchecked />} label="Pendiente" size="small" variant="outlined" />,
-    },
+    // {
+    //   id: 'estado', header: 'Estado', size: 100,
+    //   Cell: ({ row }) => row.original.habilitada
+    //     ? <Chip icon={<CheckCircle />} label="Timbrada" color="success" size="small" variant="outlined" />
+    //     : <Chip icon={<RadioButtonUnchecked />} label="Pendiente" size="small" variant="outlined" />,
+    // },
   ];
 
   const columnsFacturas: MRT_ColumnDef<any>[] = [
@@ -961,8 +997,20 @@ export default function FacturacionPage() {
 
           <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
             <TextField size="small" label="Cliente" value={selectedName} fullWidth slotProps={{ input: { readOnly: true } }} />
-            <Button variant="outlined" onClick={() => setModalCliente(true)} sx={{ minWidth: 120 }}>Seleccionar</Button>
+            <Button variant="outlined" onClick={handleOpenModalCliente} sx={{ minWidth: 120 }}>Seleccionar</Button>
           </Box>
+
+          {clienteSeleccionado && (
+            <Box sx={{ mb: 2, p: 1.5, bgcolor: 'action.hover', borderRadius: 1 }}>
+              <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 0.5 }}>Información Fiscal del Cliente</Typography>
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+                <Typography variant="body2"><strong>RFC:</strong> {clienteSeleccionado.rfc}</Typography>
+                <Typography variant="body2"><strong>Régimen Fiscal:</strong> {getRegimenFiscalDesc(clienteSeleccionado.regimenFiscal)}</Typography>
+                <Typography variant="body2"><strong>CP Fiscal:</strong> {clienteSeleccionado.cpFiscal}</Typography>
+                <Typography variant="body2"><strong>Correo:</strong> {clienteSeleccionado.correoFiscal}</Typography>
+              </Box>
+            </Box>
+          )}
 
           <FormControl fullWidth size="small" sx={{ mb: 2 }}>
             <InputLabel>UUID Relacionado</InputLabel>
@@ -992,23 +1040,79 @@ export default function FacturacionPage() {
         </DialogActions>
       </Dialog>
 
-      {/* ═════ Cliente selector modal ═════ */}
+      {/* ═════ Cliente fiscal selector modal (paginated search) ═════ */}
       <Dialog open={modalCliente} onClose={() => setModalCliente(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Seleccionar Cliente</DialogTitle>
+        <DialogTitle>Seleccionar Cliente Fiscal</DialogTitle>
         <DialogContent>
-          <MaterialReactTable
-            columns={[
-              { header: 'Acciones', size: 120, Cell: ({ row }) => (
-                <Button size="small" variant="outlined" onClick={() => handleModalSelectCliente(row.original.id_cliente, row.original.nombre)}>Seleccionar</Button>
-              )},
-              { accessorKey: 'nombre', header: 'Nombre' },
-            ]}
-            data={clientes}
-            enableGlobalFilter
-            initialState={{ density: 'compact', showGlobalFilter: true }}
-            muiSearchTextFieldProps={{ placeholder: 'Buscar cliente...', sx: { minWidth: 250 } }}
-            muiTableContainerProps={{ sx: { maxHeight: '60vh' } }}
-          />
+          <Box sx={{ mb: 2, mt: 1 }}>
+            <TextField
+              fullWidth
+              size="small"
+              label="Buscar cliente fiscal..."
+              value={clienteSearchTerm}
+              onChange={e => handleClienteSearchChange(e.target.value)}
+              slotProps={{ input: { endAdornment: loadingClientes ? <CircularProgress size={20} /> : <Search /> } }}
+            />
+          </Box>
+          <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: '50vh' }}>
+            <Table size="small" stickyHeader>
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 600 }}>Nombre Fiscal</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>RFC</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>Régimen Fiscal</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }} align="center">Acción</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {clientesFiscales.length === 0 && !loadingClientes ? (
+                  <TableRow>
+                    <TableCell colSpan={4} align="center" sx={{ py: 3 }}>
+                      <Typography color="text.secondary">Sin resultados</Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  clientesFiscales.map(cliente => (
+                    <TableRow key={cliente.id} hover>
+                      <TableCell>{cliente.nombreFiscal}</TableCell>
+                      <TableCell>{cliente.rfc}</TableCell>
+                      <TableCell>{getRegimenFiscalDesc(cliente.regimenFiscal)}</TableCell>
+                      <TableCell align="center">
+                        <Button size="small" variant="contained" onClick={() => handleModalSelectCliente(cliente)}>
+                          Seleccionar
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          {clienteTotalRecords > 0 && (
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
+              <Typography variant="body2" color="text.secondary">
+                Página {clientePageNumber} de {Math.ceil(clienteTotalRecords / clientePageSize)} ({clienteTotalRecords} registros)
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button
+                  size="small"
+                  startIcon={<NavigateBefore />}
+                  disabled={clientePageNumber <= 1}
+                  onClick={() => fetchClientesFiscales(clienteSearchTerm, clientePageNumber - 1)}
+                >
+                  Anterior
+                </Button>
+                <Button
+                  size="small"
+                  endIcon={<NavigateNext />}
+                  disabled={clientePageNumber * clientePageSize >= clienteTotalRecords}
+                  onClick={() => fetchClientesFiscales(clienteSearchTerm, clientePageNumber + 1)}
+                >
+                  Siguiente
+                </Button>
+              </Box>
+            </Box>
+          )}
         </DialogContent>
         <DialogActions><Button onClick={() => setModalCliente(false)} color="inherit">Cancelar</Button></DialogActions>
       </Dialog>
@@ -1025,13 +1129,14 @@ export default function FacturacionPage() {
                   <Typography variant="body2"><strong>Nombre:</strong> {previewData[0].receptorNombre}</Typography>
                   <Typography variant="body2"><strong>RFC:</strong> {previewData[0].receptorRfc}</Typography>
                   <Typography variant="body2"><strong>Uso CFDI:</strong> {getDesc(usoCfdiOptions, previewData[0].receptorUsoCFDI)}</Typography>
+                  <Typography variant="body2"><strong>Régimen Fiscal:</strong> {getRegimenFiscalDesc(previewData[0].receptorRegimenFiscal)}</Typography>
                   <Typography variant="body2"><strong>CP:</strong> {previewData[0].receptorDomicilioFiscal}</Typography>
                 </Card>
                 <Card variant="outlined" sx={{ flex: 1, minWidth: 200, p: 1.5 }}>
                   <Typography variant="subtitle2" fontWeight={600}>Emisor</Typography>
                   <Typography variant="body2"><strong>Nombre:</strong> {previewData[0].emisorNombre}</Typography>
                   <Typography variant="body2"><strong>RFC:</strong> {previewData[0].emisorRfc}</Typography>
-                  <Typography variant="body2"><strong>Régimen Fiscal:</strong> {getDesc(REGIMEN_FISCAL_DESCRIPTIONS, previewData[0].emisorRegimenFiscal)}</Typography>
+                  <Typography variant="body2"><strong>Régimen Fiscal:</strong> {getRegimenFiscalDesc(previewData[0].emisorRegimenFiscal)}</Typography>
                   <Typography variant="body2"><strong>CP:</strong> {previewData[0].lugarExpedicion}</Typography>
                 </Card>
                 <Card variant="outlined" sx={{ flex: 1, minWidth: 200, p: 1.5 }}>

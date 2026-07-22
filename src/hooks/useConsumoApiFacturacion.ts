@@ -31,7 +31,7 @@ const useConsumoApiFacturacion = () => {
 
   const consumoApi = useMemo(() => {
     const api = axios.create({
-      baseURL: "https://api.cbinformatica.net:9004/api/BERLLANOWEB/",
+      baseURL: "http://localhost:9004/api/BERLLANOWEB/",
       headers: {
         "Content-Type": "application/json",
       },

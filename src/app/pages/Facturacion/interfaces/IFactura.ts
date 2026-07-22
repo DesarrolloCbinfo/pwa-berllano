@@ -39,3 +39,20 @@ export interface IVentaNoTimbrada {
   id_cliente_venta: number;
   habilitada?: boolean;
 }
+
+export interface IClienteFiscal {
+  id: number;
+  rfc: string;
+  nombreFiscal: string;
+  cpFiscal: string;
+  regimenFiscal: string;
+  usoCFDI: string;
+  correoFiscal: string;
+}
+
+export interface IClientesFiscalesResponse {
+  clientes: IClienteFiscal[];
+  totalRecords: number;
+  pageNumber: number;
+  pageSize: number;
+}
