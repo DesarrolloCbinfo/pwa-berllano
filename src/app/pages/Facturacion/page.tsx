@@ -4,11 +4,11 @@ import {
   InputLabel, Card, CardContent, CircularProgress, Alert,
   Dialog, DialogTitle, DialogContent, DialogActions,
   Tabs, Tab, Chip, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, Paper
+  TableHead, TableRow, Paper, Menu, IconButton, ListItemIcon
 } from '@mui/material';
 import {
   Receipt, Description, PictureAsPdf, Email, Send, Cancel,
-  CheckCircle, RadioButtonUnchecked, Search, NavigateBefore, NavigateNext
+  CheckCircle, RadioButtonUnchecked, Search, NavigateBefore, NavigateNext, Visibility, Download, MoreVert
 } from '@mui/icons-material';
 import type { IClienteFiscal } from './interfaces/IFactura';
 import { MaterialReactTable, type MRT_ColumnDef } from 'material-react-table';
@@ -18,7 +18,7 @@ import Swal from 'sweetalert2';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import QRCode from 'qrcode';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import logoImage from '../../../assets/imgs/berllanoLogo.png';
 
 const REGIMEN_FISCAL_DESCRIPTIONS: Record<string, string> = {
@@ -158,19 +158,8 @@ async function generatePdfBlob(xmlContent: string): Promise<Blob> {
   const iva = (parseFloat(comprobante.getAttribute('Total') || '0') - parseFloat(subtotal));
 
   const conceptos = xmlDoc.getElementsByTagName('cfdi:Concepto');
-  let conceptosHtml = '';
-  for (let i = 0; i < conceptos.length; i++) {
-    const c = conceptos[i];
-    conceptosHtml += `
-      <tr>
-        <td style="font-size:14px; padding:4px; border-bottom:1px solid #ddd; text-align:center;">${c.getAttribute('Cantidad')}</td>
-        <td style="font-size:14px; padding:4px; border-bottom:1px solid #ddd;">${c.getAttribute('Descripcion')}</td>
-        <td style="font-size:14px; padding:4px; border-bottom:1px solid #ddd;">${c.getAttribute('ClaveProdServ')}</td>
-        <td style="font-size:14px; padding:4px; border-bottom:1px solid #ddd;">${c.getAttribute('ClaveUnidad')}</td>
-        <td style="font-size:14px; padding:4px; border-bottom:1px solid #ddd; text-align:right;">${formatCurrency(parseFloat(c.getAttribute('ValorUnitario') || '0'))}</td>
-        <td style="font-size:14px; padding:4px; border-bottom:1px solid #ddd; text-align:right;">${formatCurrency(parseFloat(c.getAttribute('Importe') || '0'))}</td>
-      </tr>`;
-  }
+  const formaPago = comprobante.getAttribute('FormaPago') || '';
+  const metodoPago = comprobante.getAttribute('MetodoPago') || '';
 
   const infoGlobal = comprobante.getElementsByTagName('cfdi:InformacionGlobal')[0];
   const infoGlobalHtml = infoGlobal ? `
@@ -183,134 +172,203 @@ async function generatePdfBlob(xmlContent: string): Promise<Blob> {
       </p>
     </div>` : '';
 
-  const logoBase64 = logoImage;
+  async function htmlToImage(html: string, width = 794): Promise<string> {
+    const div = document.createElement('div');
+    div.style.position = 'absolute';
+    div.style.left = '-9999px';
+    div.style.top = '0';
+    div.style.width = width + 'px';
+    div.innerHTML = html;
+    document.body.appendChild(div);
+    try {
+      const canvas = await html2canvas(div, { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' });
+      return canvas.toDataURL('image/png');
+    } finally {
+      document.body.removeChild(div);
+    }
+  }
 
-  const htmlContent = `
-    <div style="font-family: helvetica, sans-serif; font-size: 16px; padding: 10px; color: black; width: 800px; background: white;">
-      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
-        <div style="flex: 0 0 auto;">
-          <img src="${logoBase64}" alt="Logo" style="height: 55px; max-width: 100%;">
+  const headerHtml = `
+    <div style="font-family:helvetica,sans-serif;font-size:16px;padding:10px;color:black;background:white;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div style="flex:0 0 auto;">
+          <img src="${logoImage}" alt="Logo" style="height:55px;">
+          <p style="font-size:12px;margin:2px 0;">CFDI: ${serie}${folio}</p>
         </div>
-        <div style="flex: 1; text-align: center; padding: 0 15px;">
-          <p style="font-size: 20px; font-weight: bold; margin: 0;">${emisor.getAttribute('Nombre')}</p>
-          <p style="font-size: 16px; margin: 2px 0;">RFC: ${rfcEmisor}</p>
-          <p style="font-size: 16px; margin: 2px 0;">${getRegimenFiscalDesc(regimenFiscalEmisor)}</p>
+        <div style="flex:1;text-align:center;padding:0 15px;">
+          <p style="font-size:20px;font-weight:bold;margin:0;">LLANOBER</p>
+          <p style="font-size:16px;margin:2px 0;">RFC: ${rfcEmisor}</p>
+          <p style="font-size:14px;margin:2px 0;">${getRegimenFiscalDesc(regimenFiscalEmisor)}</p>
         </div>
-        <div style="flex: 0 0 auto; text-align: right;">
-          <p style="font-size: 18px; margin: 2px 0;"><strong>Fecha:</strong> ${comprobante.getAttribute('Fecha')}</p>
-          <p style="font-size: 18px; margin: 2px 0;"><strong>Serie:</strong> ${serie}</p>
-          <p style="font-size: 18px; margin: 2px 0;"><strong>Folio:</strong> ${folio}</p>
-        </div>
-      </div>
-      <hr style="border: none; border-top: 1px solid #ccc; margin: 5px 0;">
-      <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-        <p style="font-size: 16px; margin: 0;"><strong>Lugar de expedición:</strong> ${comprobante.getAttribute('LugarExpedicion')}</p>
-        <p style="font-size: 16px; margin: 0;"><strong>Tipo de Comprobante:</strong> ${comprobante.getAttribute('TipoDeComprobante')}</p>
-      </div>
-      <div style="background-color: #f5f5f5; padding: 8px; border-radius: 3px; margin: 5px 0;">
-        <div style="display: flex; align-items: center; margin-bottom: 5px;">
-          <p style="flex: 0 1 auto; margin: 0; padding: 0; font-size: 18px; font-weight: bold;">Cliente</p>
-          <hr style="flex: 1; margin: 0 0 0 10px; padding: 0; border: none; border-top: 1px solid #ccc;">
-        </div>
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px;">
-          <p style="font-size: 14px; margin: 2px 0;"><strong>Nombre:</strong> ${receptor.getAttribute('Nombre')}</p>
-          <p style="font-size: 14px; margin: 2px 0;"><strong>RFC:</strong> ${rfcReceptor}</p>
-          <p style="font-size: 14px; margin: 2px 0;"><strong>Uso CFDI:</strong> ${receptor.getAttribute('UsoCFDI')}</p>
-          <p style="font-size: 14px; margin: 2px 0;"><strong>Régimen Fiscal:</strong> ${getRegimenFiscalDesc(regimenFiscalReceptor)}</p>
-          <p style="font-size: 14px; margin: 2px 0;"><strong>Método de pago:</strong> ${comprobante.getAttribute('MetodoPago')}</p>
-          <p style="font-size: 14px; margin: 2px 0;"><strong>Forma de Pago:</strong> ${comprobante.getAttribute('FormaPago')}</p>
+        <div style="flex:0 0 auto;text-align:right;position:relative;">
+          <span style="position:absolute;top:-8px;right:-8px;font-size:13px;color:#880000;font-weight:bold;">V. 4.0</span>
+          <p style="font-size:16px;margin:2px 0;"><strong>Fecha:</strong> ${comprobante.getAttribute('Fecha')}</p>
+          <p style="font-size:16px;margin:2px 0;"><strong>Serie:</strong> ${serie}</p>
+          <p style="font-size:16px;margin:2px 0;"><strong>Folio:</strong> ${folio}</p>
         </div>
       </div>
-      <table style="width:100%; border-collapse:collapse; margin-top:10px;">
-        <thead>
-          <tr style="background-color:#f5f5f5;">
-            <th style="text-align:center; padding:4px; font-size:14px; border:1px solid #ddd;">Cantidad</th>
-            <th style="text-align:left; padding:4px; font-size:14px; border:1px solid #ddd;">Descripción</th>
-            <th style="text-align:left; padding:4px; font-size:14px; border:1px solid #ddd;">ClaveProdServ</th>
-            <th style="text-align:left; padding:4px; font-size:14px; border:1px solid #ddd;">ClaveUnidad</th>
-            <th style="text-align:right; padding:4px; font-size:14px; border:1px solid #ddd;">Valor Unitario</th>
-            <th style="text-align:right; padding:4px; font-size:14px; border:1px solid #ddd;">Importe</th>
-          </tr>
-        </thead>
-        <tbody>${conceptosHtml}</tbody>
-      </table>
-      <div style="display: flex; justify-content: space-between; margin-top: 15px;">
-        <div style="flex: 1; padding-right: 15px;">
-          <div style="margin-bottom: 8px;">
-            <p style="font-size:14px; margin: 2px 0;"><strong>Cantidad Con letra:</strong></p>
-            <p style="font-size:14px; margin: 2px 0; font-style: italic;">${totalLetra}</p>
-          </div>
-          <div style="margin-bottom: 8px;">
-            <p style="font-size:14px; margin: 2px 0;"><strong>Serie:</strong> ${serie} <strong>Folio:</strong> ${folio}</p>
-            <p style="font-size:14px; margin: 2px 0;"><strong>Folio Fiscal:</strong> ${uuid}</p>
-            <p style="font-size:14px; margin: 2px 0;"><strong>Fecha de Certificación:</strong> ${fechaTimbrado}</p>
-          </div>
-          ${infoGlobalHtml}
-        </div>
-        <div style="flex: 0 0 auto; width: 180px;">
-          <table style="width: 100%; border-collapse: collapse; border: 1px solid #ddd;">
-            <tr style="background-color: #f5f5f5;">
-              <td style="text-align: left; padding: 4px; font-size:14px; font-weight: bold; border-bottom: 1px solid #ddd;">Subtotal 16%:</td>
-              <td style="text-align: right; padding: 4px; font-size:14px; border-bottom: 1px solid #ddd;">${formatCurrency(parseFloat(subtotal))}</td>
-            </tr>
-            <tr>
-              <td style="text-align: left; padding: 4px; font-size:14px; font-weight: bold; border-bottom: 1px solid #ddd;">IVA 16%:</td>
-              <td style="text-align: right; padding: 4px; font-size:14px; border-bottom: 1px solid #ddd;">${formatCurrency(iva)}</td>
-            </tr>
-            <tr style="background-color: #f5f5f5;">
-              <td style="text-align: left; padding: 4px; font-size: 14px; font-weight: bold;">Total:</td>
-              <td style="text-align: right; padding: 4px; font-size: 14px; font-weight: bold;">${formatCurrency(parseFloat(total))}</td>
-            </tr>
-          </table>
-        </div>
+      <hr style="border:none;border-top:1px solid #ccc;margin:5px 0;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
+        <p style="font-size:16px;margin:0;"><strong>Lugar de expedición:</strong> ${comprobante.getAttribute('LugarExpedicion')}</p>
+        <p style="font-size:16px;margin:0;"><strong>Tipo de Comprobante:</strong> ${comprobante.getAttribute('TipoDeComprobante')}</p>
       </div>
-      <div style="display: flex; justify-content: space-between; margin-top: 15px; border-top: 1px solid #ccc; padding-top: 10px;">
-        <div style="font-size: 10px; color: #666;">
-          <p style="margin: 0;"><strong>CADENA ORIGINAL:</strong></p>
-          <p style="margin: 2px 0; word-break: break-all;">${version}|${uuid}|${fechaTimbrado}|${rfcProvCertif}|${selloCFD}|${noCertificadoSAT}|${selloSAT}</p>
-          <p style="margin: 5px 0 0 0;"><strong>Sello Digital CFDI:</strong></p>
-          <p style="margin: 2px 0; word-break: break-all; font-size: 9px;">${selloCFD}</p>
-          <p style="margin: 5px 0 0 0;"><strong>Sello SAT:</strong></p>
-          <p style="margin: 2px 0; word-break: break-all; font-size: 9px;">${selloSAT}</p>
+      <div style="background-color:#f5f5f5;padding:8px;border-radius:3px;margin:5px 0;">
+        <div style="display:flex;align-items:center;margin-bottom:5px;">
+          <p style="flex:0 1 auto;margin:0;font-size:18px;font-weight:bold;">Cliente</p>
+          <hr style="flex:1;margin:0 0 0 10px;border:none;border-top:1px solid #ccc;">
         </div>
-        <div style="flex: 0 0 auto; text-align: center;">
-          <img src="${qrDataUrl}" alt="QR" style="width: 120px; height: 120px;">
-          <p style="font-size: 10px; margin: 2px 0;">Este documento es una representación impresa de un CFDI</p>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;">
+          <p style="font-size:14px;margin:2px 0;"><strong>Nombre:</strong> ${receptor.getAttribute('Nombre')}</p>
+          <p style="font-size:14px;margin:2px 0;"><strong>RFC:</strong> ${rfcReceptor}</p>
+          <p style="font-size:14px;margin:2px 0;"><strong>Uso CFDI:</strong> ${receptor.getAttribute('UsoCFDI')}</p>
+          <p style="font-size:14px;margin:2px 0;"><strong>Régimen Fiscal:</strong> ${getRegimenFiscalDesc(regimenFiscalReceptor)}</p>
+          <p style="font-size:14px;margin:2px 0;"><strong>Método de pago:</strong> ${metodoPago}</p>
+          <p style="font-size:14px;margin:2px 0;"><strong>Forma de Pago:</strong> ${formaPago}</p>
         </div>
       </div>
     </div>`;
 
-  const container = document.createElement('div');
-  container.style.position = 'absolute';
-  container.style.left = '-9999px';
-  container.style.top = '0';
-  container.innerHTML = htmlContent;
-  document.body.appendChild(container);
+  const headerImg = await htmlToImage(headerHtml);
 
-  try {
-    const canvas = await html2canvas(container, { scale: 2, useCORS: true, logging: false });
-    const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDF('p', 'mm', 'letter');
-    const imgWidth = 210;
-    const pageHeight = 297;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-    let heightLeft = imgHeight;
-    let position = 0;
+  const pdf = new jsPDF('p', 'mm', 'letter');
+  const pageWidth = 210;
+  const pageHeight = 297;
+  const marginX = 8;
+  const contentWidth = pageWidth - marginX * 2;
 
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
+  const imgProps = pdf.getImageProperties(headerImg);
+  const headerH = (imgProps.height * contentWidth) / imgProps.width;
+  pdf.addImage(headerImg, 'PNG', marginX, 5, contentWidth, headerH);
 
-    while (heightLeft > 0) {
-      position = heightLeft - imgHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-    }
-
-    return pdf.output('blob');
-  } finally {
-    document.body.removeChild(container);
+  const tableRows: any[][] = [];
+  for (let i = 0; i < conceptos.length; i++) {
+    const c = conceptos[i];
+    const impuestos = c.getElementsByTagName('cfdi:Traslado')[0] || c.getElementsByTagName('Traslado')[0];
+    const tasaIVA = impuestos ? impuestos.getAttribute('TasaOCuota') || impuestos.getAttribute('tasaocuota') || '0.16' : '0.16';
+    const importeConIva = parseFloat(c.getAttribute('Importe') || '0');
+    const impuestoIva = Math.round(importeConIva - (importeConIva / (1 + parseFloat(tasaIVA)))) / 100;
+    const subText = `${c.getAttribute('ClaveUnidad')}\n${c.getAttribute('ClaveProdServ')}\nIVA ${formatCurrency(impuestoIva)}\n0.00  ${tasaIVA}`;
+    tableRows.push([
+      c.getAttribute('Cantidad'),
+      c.getAttribute('Descripcion'),
+      subText,
+      tasaIVA,
+      formatCurrency(importeConIva),
+      formatCurrency(parseFloat(c.getAttribute('ValorUnitario') || '0')),
+    ]);
   }
+
+  let pageNum = 1;
+  const totalPages = { current: 1 };
+
+  autoTable(pdf, {
+    startY: headerH + 5,
+    head: [['Cant.', 'Descripción', 'Claves', 'T.F.', 'Importe', 'P. Unit.']],
+    body: tableRows,
+    theme: 'grid',
+    margin: { left: marginX, right: marginX },
+    styles: { fontSize: 7, cellPadding: 0.6, lineWidth: 0.1, lineColor: [180, 180, 180], textColor: [0, 0, 0] },
+    headStyles: { fillColor: [245, 245, 245], textColor: [0, 0, 0], fontStyle: 'bold', fontSize: 7 },
+    columnStyles: {
+      0: { halign: 'center', cellWidth: 12 },
+      1: { halign: 'left', cellWidth: 'auto' },
+      2: { halign: 'left', cellWidth: 40, fontSize: 6.5, textColor: [136, 136, 136], cellPadding: { top: 0, right: 1, bottom: 0.5, left: 1 } },
+      3: { halign: 'center', cellWidth: 12 },
+      4: { halign: 'right', cellWidth: 24 },
+      5: { halign: 'right', cellWidth: 24 },
+    },
+    didDrawPage: () => {
+      pdf.setFontSize(8);
+      pdf.setTextColor(100);
+      pdf.text(`Página ${pageNum++}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
+    },
+  });
+
+  totalPages.current = pageNum - 1;
+
+  const footerHtml = `
+    <div style="font-family:helvetica,sans-serif;font-size:14px;padding:10px;color:black;background:white;width:794px;">
+      <div style="display:flex;justify-content:space-between;">
+        <div style="flex:1;padding-right:15px;">
+          <p style="font-size:14px;margin:2px 0;"><strong>Cantidad con letra:</strong></p>
+          <p style="font-size:14px;margin:2px 0;font-style:italic;">${totalLetra}</p>
+          <div style="margin:8px 0;">
+            <p style="font-size:14px;margin:2px 0;"><strong>Serie:</strong> ${serie} <strong>Folio:</strong> ${folio}</p>
+            <p style="font-size:14px;margin:2px 0;"><strong>Folio Fiscal:</strong> ${uuid}</p>
+            <p style="font-size:14px;margin:2px 0;"><strong>Fecha de Certificación:</strong> ${fechaTimbrado}</p>
+            <p style="font-size:14px;margin:2px 0;"><strong>Num. de serie del certificado del SAT:</strong> ${noCertificadoSAT}</p>
+          </div>
+          ${infoGlobalHtml}
+          <p style="font-size:14px;margin:2px 0;"><strong>Forma de Pago:</strong> ${formaPago}</p>
+          <p style="font-size:14px;margin:2px 0;"><strong>Fecha de Pago:</strong> </p>
+        </div>
+        <div style="flex:0 0 auto;min-width:170px;">
+          <table style="width:100%;border-collapse:collapse;border:1px solid #ddd;">
+            <tr style="background-color:#f5f5f5;">
+              <td style="text-align:left;padding:4px;font-size:14px;font-weight:bold;border-bottom:1px solid #ddd;">SUBTOTAL:</td>
+              <td style="text-align:right;padding:4px;font-size:14px;border-bottom:1px solid #ddd;">${formatCurrency(parseFloat(subtotal))}</td>
+            </tr>
+            <tr>
+              <td style="text-align:left;padding:4px;font-size:14px;font-weight:bold;border-bottom:1px solid #ddd;">IVA:</td>
+              <td style="text-align:right;padding:4px;font-size:14px;border-bottom:1px solid #ddd;">${formatCurrency(iva)}</td>
+            </tr>
+            <tr style="background-color:#f5f5f5;">
+              <td style="text-align:left;padding:4px;font-size:14px;font-weight:bold;">Total:</td>
+              <td style="text-align:right;padding:4px;font-size:14px;font-weight:bold;">${formatCurrency(parseFloat(total))}</td>
+            </tr>
+          </table>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:15px;border-top:1px solid #ccc;padding-top:10px;">
+        <div style="font-size:10px;color:#666;flex:1;">
+          <p style="margin:0;"><strong>Cadena original del complemento de certificación digital del SAT:</strong></p>
+          <p style="margin:2px 0;word-break:break-all;">||${version}|${uuid}|${fechaTimbrado}|${rfcProvCertif}|${selloCFD}|${noCertificadoSAT}|${selloSAT}||</p>
+          <p style="margin:8px 0 0 0;"><strong>Sello digital del CFDI:</strong></p>
+          <p style="margin:2px 0;word-break:break-all;font-size:9px;">${selloCFD}</p>
+          <p style="margin:8px 0 0 0;"><strong>Sello digital del SAT:</strong></p>
+          <p style="margin:2px 0;word-break:break-all;font-size:9px;">${selloSAT}</p>
+        </div>
+        <div style="flex:0 0 auto;text-align:center;padding-left:20px;">
+          <img src="${qrDataUrl}" alt="QR" style="width:120px;height:120px;">
+          <p style="font-size:10px;margin:2px 0;">Este documento es una representación impresa de un CFDI</p>
+        </div>
+      </div>
+      <div style="margin-top:10px;padding-top:8px;border-top:1px solid #ccc;font-size:12px;color:#444;">
+        <p style="margin:2px 0;text-align:center;">Si tiene alguna duda con su factura envíe un correo a berllanofacturacion2019@gmail.com o llame al tel. 01.22.88.12.19.89</p>
+        <p style="margin:2px 0;text-align:center;">La posesión de este documento no implica su liquidación</p>
+        <p style="margin:2px 0;text-align:center;">Operador : ADMIN - Administrador SISTEMAS</p>
+      </div>
+      <div style="margin-top:12px;font-size:11px;color:#444;display:flex;justify-content:space-between;">
+        <span>Fecha de impresión ${new Date().toLocaleString('es-MX')}</span>
+      </div>
+    </div>`;
+
+  // Page numbering tracking
+  let pageCounter = 0;
+
+  (pdf as any).internal.events.subscribe('addPage', () => { pageCounter++; });
+
+  const finalTableY = (pdf as any).lastAutoTable?.finalY || 200;
+  const footerImg = await htmlToImage(footerHtml);
+  const footerProps = pdf.getImageProperties(footerImg);
+  const footerH = (footerProps.height * contentWidth) / footerProps.width;
+
+  if (finalTableY + footerH + 5 > pageHeight) {
+    pdf.addPage();
+    pdf.addImage(footerImg, 'PNG', marginX, 10, contentWidth, footerH);
+  } else {
+    pdf.addImage(footerImg, 'PNG', marginX, finalTableY + 5, contentWidth, footerH);
+  }
+
+  const totalP = pdf.internal.pages.length - 1;
+  for (let i = 1; i <= totalP; i++) {
+    pdf.setPage(i);
+    pdf.setFontSize(8);
+    pdf.setTextColor(100);
+    pdf.text(`Página ${i} de ${totalP}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
+  }
+
+  return pdf.output('blob');
 }
 
 async function sendFacturaEmail(xmlContent: string, recipientEmail: string, serie: string, folio: string): Promise<boolean> {
@@ -338,7 +396,7 @@ async function sendFacturaEmail(xmlContent: string, recipientEmail: string, seri
       ],
     };
 
-    const response = await fetch('https://api.cbinformatica.net:9004/api/Email/send', {
+    const response = await fetch('https://api.cbinformatica.net:9004/api/Email/send-soporte', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(emailData),
@@ -399,6 +457,11 @@ export default function FacturacionPage() {
   const [motivoCancelacion, setMotivoCancelacion] = useState('02');
   const [uuidSustituto, setUuidSustituto] = useState('');
   const [cancelandoSAT, setCancelandoSAT] = useState(false);
+  const [menuAnchor, setMenuAnchor] = useState<{ el: HTMLElement | null; factura: any | null }>({ el: null, factura: null });
+
+  const [modalPdfPreview, setModalPdfPreview] = useState(false);
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState('');
+  const [loadingPdfPreview, setLoadingPdfPreview] = useState(false);
 
   const fetchedUuidKey = useRef('');
 
@@ -621,6 +684,7 @@ export default function FacturacionPage() {
       }
     } catch (err: any) {
       Swal.close();
+      setModalCFDI(false);
       const errMsg = err.response?.data?.errMsg || err.response?.data?.message || err.message || 'Error de conexión';
       Swal.fire({ icon: 'error', title: 'Error', text: errMsg });
     } finally {
@@ -650,6 +714,7 @@ export default function FacturacionPage() {
       setPreviewData(res.data ?? []);
       setModalPreview(true);
     } catch {
+      setModalCFDI(false);
       Swal.fire('Error', 'No se pudo obtener la vista previa.', 'error');
     } finally {
       setLoadingPreview(false);
@@ -746,6 +811,31 @@ export default function FacturacionPage() {
     } catch (e: any) {
       Swal.fire('Error', e.message, 'error');
     }
+  };
+
+  const handlePdfPreview = async (factura: any) => {
+    setLoadingPdfPreview(true);
+    setModalPdfPreview(true);
+    try {
+      const blob = await generatePdfBlob(factura.xml);
+      const url = URL.createObjectURL(blob);
+      setPdfPreviewUrl(url);
+    } catch {
+      setModalPdfPreview(false);
+      Swal.fire('Error', 'No se pudo generar la vista previa del PDF.', 'error');
+    } finally {
+      setLoadingPdfPreview(false);
+    }
+  };
+
+  const handlePdfDownload = async (factura: any) => {
+    const blob = await generatePdfBlob(factura.xml);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${factura.serie}-${factura.folio}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const cancelaFacturaSistema = async (factura: any) => {
@@ -849,23 +939,21 @@ export default function FacturacionPage() {
 
   const columnsFacturas: MRT_ColumnDef<any>[] = [
     {
-      id: 'acciones', header: 'Acciones', size: 260,
+      id: 'acciones', header: 'Acciones', size: 170,
       Cell: ({ row }) => (
-        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-          <Button size="small" variant="outlined" startIcon={<Description />}
-            onClick={() => downloadXML(row.original.xml, `${row.original.serie}-${row.original.folio}`)}>XML</Button>
-          <Button size="small" variant="outlined" startIcon={<PictureAsPdf />}
-            onClick={async () => { const blob = await generatePdfBlob(row.original.xml); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `${row.original.serie}-${row.original.folio}.pdf`; a.click(); URL.revokeObjectURL(url); }}>PDF</Button>
-          <Button size="small" variant="outlined" color="warning" startIcon={<Send />}
-            onClick={() => handleSendEmail(row.original)}>Email</Button>
-          {row.original.habilitada === false && (
-            <Button size="small" variant="outlined" color="info"
-              onClick={() => handleEnableInvoice(row.original)}>Habilitar</Button>
-          )}
-          <Button size="small" variant="outlined" color="error" startIcon={<Cancel />}
-            onClick={() => cancelaFacturaSistema(row.original)}>Canc. Sistema</Button>
-          <Button size="small" variant="outlined" color="error"
-            onClick={() => abrirCancelarSAT(row.original)}>Canc. SAT</Button>
+        <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+          <IconButton size="small" title="Vista previa PDF" onClick={() => handlePdfPreview(row.original)}>
+            <Visibility fontSize="small" />
+          </IconButton>
+          <IconButton size="small" title="Descargar XML" onClick={() => downloadXML(row.original.xml, `${row.original.serie}-${row.original.folio}`)}>
+            <Description fontSize="small" />
+          </IconButton>
+          <IconButton size="small" title="Cancelar en SAT" onClick={() => abrirCancelarSAT(row.original)}>
+            <Cancel fontSize="small" color="error" />
+          </IconButton>
+          <IconButton size="small" onClick={(e) => setMenuAnchor({ el: e.currentTarget, factura: row.original })}>
+            <MoreVert fontSize="small" />
+          </IconButton>
         </Box>
       ),
     },
@@ -969,14 +1057,31 @@ export default function FacturacionPage() {
       )}
 
       {/* ═════ CFDI Configuration Modal ═════ */}
-      <Dialog open={modalCFDI} onClose={() => { if (!loadingFacturar) setModalCFDI(false); }} maxWidth="sm" fullWidth>
+      <Dialog open={modalCFDI} onClose={() => { if (!loadingFacturar) { resetForm(); setModalCFDI(false); } }} maxWidth="sm" fullWidth>
         <DialogTitle>
           {selectedRows.length > 0
             ? `Facturar múltiples ventas: ${selectedRows.map((r: any) => r.original.noVenta).join(', ')}`
             : `Facturar venta: ${selectedRow?.original?.noVenta}`}
         </DialogTitle>
         <DialogContent>
-          <FormControl fullWidth size="small" sx={{ mb: 2, mt: 1 }}>
+          <Box sx={{ display: 'flex', gap: 1, mb: 2, mt: 1 }}>
+            <TextField size="small" label="Cliente" value={selectedName} fullWidth slotProps={{ input: { readOnly: true } }} />
+            <Button variant="outlined" onClick={handleOpenModalCliente} sx={{ minWidth: 120 }}>Seleccionar</Button>
+          </Box>
+
+          {clienteSeleccionado && (
+            <Box sx={{ mb: 2, p: 1.5, bgcolor: 'action.hover', borderRadius: 1 }}>
+              <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 0.5 }}>Información Fiscal del Cliente</Typography>
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+                <Typography variant="body2"><strong>RFC:</strong> {clienteSeleccionado.rfc}</Typography>
+                <Typography variant="body2"><strong>Régimen Fiscal:</strong> {getRegimenFiscalDesc(clienteSeleccionado.regimenFiscal)}</Typography>
+                <Typography variant="body2"><strong>CP Fiscal:</strong> {clienteSeleccionado.cpFiscal}</Typography>
+                <Typography variant="body2"><strong>Correo:</strong> {clienteSeleccionado.correoFiscal}</Typography>
+              </Box>
+            </Box>
+          )}
+
+          <FormControl fullWidth size="small" sx={{ mb: 2 }}>
             <InputLabel>Uso de CFDI</InputLabel>
             <Select value={formData.usoCfdi} label="Uso de CFDI" onChange={e => setFormData(p => ({ ...p, usoCfdi: e.target.value }))}>
               {usoCfdiOptions.map(o => <MenuItem key={o.clave} value={o.clave}>{o.descripcion}</MenuItem>)}
@@ -994,23 +1099,6 @@ export default function FacturacionPage() {
               {metodoPagoOptions.map(o => <MenuItem key={o.clave} value={o.clave}>{o.descripcion}</MenuItem>)}
             </Select>
           </FormControl>
-
-          <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-            <TextField size="small" label="Cliente" value={selectedName} fullWidth slotProps={{ input: { readOnly: true } }} />
-            <Button variant="outlined" onClick={handleOpenModalCliente} sx={{ minWidth: 120 }}>Seleccionar</Button>
-          </Box>
-
-          {clienteSeleccionado && (
-            <Box sx={{ mb: 2, p: 1.5, bgcolor: 'action.hover', borderRadius: 1 }}>
-              <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 0.5 }}>Información Fiscal del Cliente</Typography>
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
-                <Typography variant="body2"><strong>RFC:</strong> {clienteSeleccionado.rfc}</Typography>
-                <Typography variant="body2"><strong>Régimen Fiscal:</strong> {getRegimenFiscalDesc(clienteSeleccionado.regimenFiscal)}</Typography>
-                <Typography variant="body2"><strong>CP Fiscal:</strong> {clienteSeleccionado.cpFiscal}</Typography>
-                <Typography variant="body2"><strong>Correo:</strong> {clienteSeleccionado.correoFiscal}</Typography>
-              </Box>
-            </Box>
-          )}
 
           <FormControl fullWidth size="small" sx={{ mb: 2 }}>
             <InputLabel>UUID Relacionado</InputLabel>
@@ -1036,7 +1124,7 @@ export default function FacturacionPage() {
           <Button onClick={handleTimbrarFactura} variant="contained" color="success" disabled={loadingFacturar}>
             {loadingFacturar ? <CircularProgress size={20} /> : 'Facturar'}
           </Button>
-          <Button onClick={() => setModalCFDI(false)} color="inherit" disabled={loadingFacturar}>Cancelar</Button>
+          <Button onClick={() => { resetForm(); setModalCFDI(false); }} color="inherit" disabled={loadingFacturar}>Cancelar</Button>
         </DialogActions>
       </Dialog>
 
@@ -1217,6 +1305,48 @@ export default function FacturacionPage() {
             {cancelandoSAT ? <CircularProgress size={20} /> : 'Cancelar en SAT'}
           </Button>
         </DialogActions>
+      </Dialog>
+
+      {/* ═════ Acciones dropdown ═════ */}
+      <Menu
+        anchorEl={menuAnchor.el}
+        open={Boolean(menuAnchor.el)}
+        onClose={() => setMenuAnchor({ el: null, factura: null })}
+      >
+        <MenuItem onClick={() => { handleSendEmail(menuAnchor.factura); setMenuAnchor({ el: null, factura: null }); }}>
+          <ListItemIcon><Send fontSize="small" /></ListItemIcon> Enviar Email
+        </MenuItem>
+        {menuAnchor.factura?.habilitada === false && (
+          <MenuItem onClick={() => { handleEnableInvoice(menuAnchor.factura); setMenuAnchor({ el: null, factura: null }); }}>
+            <ListItemIcon><CheckCircle fontSize="small" /></ListItemIcon> Habilitar
+          </MenuItem>
+        )}
+        <MenuItem onClick={() => { cancelaFacturaSistema(menuAnchor.factura); setMenuAnchor({ el: null, factura: null }); }}>
+          <ListItemIcon><Cancel fontSize="small" color="error" /></ListItemIcon> Cancelar Sistema
+        </MenuItem>
+      </Menu>
+
+      {/* ═════ PDF Preview Modal ═════ */}
+      <Dialog open={modalPdfPreview} onClose={() => { URL.revokeObjectURL(pdfPreviewUrl); setModalPdfPreview(false); }} maxWidth="lg" fullWidth>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          Vista previa del PDF
+          <Button variant="outlined" size="small" startIcon={<Download />}
+            onClick={() => {
+              const a = document.createElement('a');
+              a.href = pdfPreviewUrl;
+              a.download = 'factura.pdf';
+              a.click();
+            }} disabled={loadingPdfPreview || !pdfPreviewUrl}>Descargar</Button>
+        </DialogTitle>
+        <DialogContent sx={{ height: '80vh', p: 0 }}>
+          {loadingPdfPreview ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+              <CircularProgress />
+            </Box>
+          ) : pdfPreviewUrl ? (
+            <iframe src={pdfPreviewUrl} style={{ width: '100%', height: '100%', border: 'none' }} title="PDF Preview" />
+          ) : null}
+        </DialogContent>
       </Dialog>
     </Box>
   );
