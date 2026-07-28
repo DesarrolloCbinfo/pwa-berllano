@@ -68,10 +68,22 @@ type ClienteHistorialResumen = {
   FormaPago: string;
 };
 
+const obtenerIdSucursalPorNombre = (nombre: string | number | undefined): number => {
+  if (nombre === undefined || nombre === null) return 0;
+  if (typeof nombre === 'number') return nombre;
+  const numerico = Number(nombre);
+  if (!isNaN(numerico) && String(numerico) === String(nombre).trim()) return numerico;
+  const match = CATALOGO_SUCURSALES.find(
+    s => s.nombre.trim().toLowerCase() === String(nombre).trim().toLowerCase()
+  );
+  return match ? match.id_sucursal : 0;
+};
+
 type HistorialItem = {
-  no_Venta: number;
+  no_Venta: string;
   nombre: string;
-  cve_Sucursal: number;
+  cve_Sucursal: string;
+  sucursalId: number;
   fecha: string;
   clave_Prod: string;
   prod_Serv: string;
@@ -97,11 +109,11 @@ type InsumoBackend = {
 type InsumoItem = {
   cia: number;
   cliente: string;
-  producto_venta: string;
+  producto_Venta: string;
   fecha: string;
   sucursal: string;
   estilista: string;
-  producto_insumo: string;
+  producto_Insumo: string;
   cantidad: number;
   obs: string;
 };
@@ -201,7 +213,7 @@ const [nuevoClienteReasignacion, setNuevoClienteReasignacion] = React.useState<C
  const [selectedVenta, setSelectedVenta] = React.useState<{
     cliente: string, 
     suc: number, 
-    venta: number, 
+    venta: string, 
     serv: string,
     clienteNombre?: string,
     servDesc?: string,
@@ -286,8 +298,7 @@ const [nuevoClienteReasignacion, setNuevoClienteReasignacion] = React.useState<C
   React.useEffect(() => {
     if (!modalInsumosOpen) return;
 
-    // Solo auto-guardar si el número de insumos cambió (se agregó o quitó uno)
-    // o si el contenido real varió, evitando dispararse por la carga inicial de cantidades cache
+   
     const lengthCambio = anteriorInsumosRef.current.length !== insumosSeleccionados.length;
 
     if (lengthCambio) {
@@ -491,15 +502,60 @@ React.useEffect(() => {
   const fetchHistorial = async (cliente: string, pagina: number) => {
     setHistorialLoading(true);
     try {
-           const response = await consumoApi.get('/api/PuntoDeVenta/sp_historial_cte_compras', {
-        params: { cliente, pagina },
-        timeout: 60000
+      const clienteHistorial = String(cliente).padStart(5, '0');
+      console.log('Consultando historial para cliente:', cliente, '->', clienteHistorial);
+      const response = await consumoApi.get(`/api/PuntoDeVenta/clientes/${clienteHistorial}/historial`, {
+        timeout: 60000,
+        responseType: 'text',
+        headers: { Accept: 'application/octet-stream' }
       });
-           // La API devuelve { historial: [], totales: {} }
-      console.log(' Datos del historial recibidos:', response.data);
-      console.log(' Primer registro del historial:', response.data?.historial?.[0]);
-      setHistorialTotales(response.data?.totales || null);
-      return response.data?.historial || [];
+      let rawData: any = response.data;
+      if (typeof rawData === 'string') {
+        try {
+          rawData = JSON.parse(rawData);
+        } catch (e) {
+          // se deja como string
+        }
+      }
+      console.log('Datos del historial recibidos:', rawData);
+
+      const data = Array.isArray(rawData) ? rawData : (rawData?.data || []);
+      const getVal = (item: any, ...keys: string[]) => {
+        const key = keys.find(k => item[k] !== undefined && item[k] !== null && item[k] !== '');
+        return key ? item[key] : undefined;
+      };
+      const historial: HistorialItem[] = data.map((item: any) => {
+        const rawVenta = getVal(item, 'NoVenta','No_venta','no_Venta','No_Venta','NO_VENTA','no_venta','folio','Folio','FOLIO','venta','Venta','noVenta','numeroVenta','num_venta','idVenta','id','Id','ID');
+        const rawSucursal = getVal(item, 'Sucursal','sucursal','nombreSucursal','d_sucursal','sucursalDesc');
+        const rawSucursalId = getVal(item, 'CveSucursal','cveSucursal','cve_Sucursal','Cve_Sucursal','idSucursal','suc','Suc','SUC','noSuc','no_suc');
+        const rawClaveProd = getVal(item, 'ClaveProd','Clave_prod','clave_Prod','Clave_Prod','claveProd','clave_producto','clave_prod','cve_prod','Cve_Prod','producto_venta','Producto_Venta','servicio','Servicio');
+        const rawDesc = getVal(item, 'Descripcion','descripcion','d_producto','d_product','prod_Serv','prod_serv','producto','Producto');
+        return {
+          no_Venta: rawVenta ? String(rawVenta) : '',
+          nombre: cliente,
+          cve_Sucursal: String(rawSucursal || (rawSucursalId ? rawSucursalId : '')),
+          sucursalId: Number(rawSucursalId) || obtenerIdSucursalPorNombre(rawSucursal) || 0,
+          fecha: getVal(item, 'Fecha','fecha') ?? '',
+          clave_Prod: rawClaveProd ? String(rawClaveProd) : '',
+          prod_Serv: String(rawDesc || ''),
+          es_Servicio: false,
+          es_Producto: false,
+          cant_Producto: Number(getVal(item, 'CantProducto','cant_Producto','cantidad','Cantidad')) || 0,
+          precio: Number(getVal(item, 'Precio','precio')) || 0,
+          estilista: String(getVal(item, 'NombreEstilista','estilista','d_estilista','Estilista') || ''),
+          descuento: 0,
+          no_Cliente: cliente,
+          cliente,
+          forma_Pago: String(getVal(item, 'FormaPago','forma_Pago','formaPago') || '')
+        };
+      });
+
+      console.log('Primer registro del historial:', historial[0]);
+      if (data.length && data[0]) {
+        console.log('Raw keys:', Object.keys(data[0]));
+      }
+      setHistorialTotales(null);
+      return historial;
     } catch (error: any) {
       if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
         console.error('Timeout en historial de compras');
@@ -555,18 +611,30 @@ React.useEffect(() => {
     }
   };
 
-  const fetchInsumosVenta = async (cliente: string, suc: number, venta: number, serv: string, pagina: number) => {
+  const fetchInsumosVenta = async (cliente: string, suc: number, venta: string, serv: string, pagina: number) => {
     setHistorialInsumosLoading(true);
     try {
+      const clienteInsumos = String(cliente).padStart(5, '0');
       const response = await consumoApi.get('/api/PuntoDeVenta/sp_historial_cte_insumos', {
-        params: { cliente, suc, venta, serv, pagina },
-        timeout: 60000
+        params: { cliente: clienteInsumos, suc, venta, serv },
+        timeout: 60000,
+        responseType: 'text',
+        headers: { Accept: 'application/octet-stream' }
       });
-      console.log('Datos de insumos recibidos:', response.data);
-      if (response.data && response.data.length > 0) {
-        console.log('Primer insumo:', response.data[0]);
+      let rawData: any = response.data;
+      if (typeof rawData === 'string') {
+        try {
+          rawData = JSON.parse(rawData);
+        } catch (e) {
+          // se deja como string
+        }
       }
-      return response.data || response || [];
+      console.log('Datos de insumos recibidos:', rawData);
+      const data = Array.isArray(rawData) ? rawData : (rawData?.data || []);
+      if (data.length > 0) {
+        console.log('Primer insumo:', data[0]);
+      }
+      return data;
     } catch (error) {
       console.error('Error fetching insumos:', error);
       return [];
@@ -579,7 +647,7 @@ React.useEffect(() => {
     if (!clienteSeleccionado) return;
         setSelectedVenta({
       cliente: clienteSeleccionado.No_cliente,
-      suc: item.cve_Sucursal,
+      suc: item.sucursalId,
       venta: item.no_Venta,
       serv: item.clave_Prod,
       clienteNombre: `${clienteSeleccionado.nombre} ${clienteSeleccionado.ap_paterno || ''} ${clienteSeleccionado.ap_materno || ''}`.trim(),
@@ -591,7 +659,7 @@ React.useEffect(() => {
     setHasMoreHistorialInsumos(true);
     const data = await fetchInsumosVenta(
       clienteSeleccionado.No_cliente,
-      item.cve_Sucursal,
+      item.sucursalId,
       item.no_Venta,
       item.clave_Prod,
       1
