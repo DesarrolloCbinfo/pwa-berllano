@@ -262,9 +262,9 @@ const [nuevoClienteReasignacion, setNuevoClienteReasignacion] = React.useState<C
   // Efecto para cargar cantidades cuando se selecciona un insumo nuevo (no está en cache)
   React.useEffect(() => {
     if (insumosSeleccionados.length > 0) {
-      // Buscar el último insumo que no tenga cantidades en cache
+      // Buscar el último insumo recién agregado que no tenga cantidades en cache (excluir los de BD)
       const insumoSinCache = [...insumosSeleccionados].reverse().find(
-        item => !cantidadesCache[item.producto.clave_prod]
+        item => !item.enBaseDatos && !cantidadesCache[item.producto.clave_prod]
       );
       if (insumoSinCache) {
         setInsumoCargandoCantidades(insumoSinCache.producto.clave_prod);
@@ -280,6 +280,8 @@ const [nuevoClienteReasignacion, setNuevoClienteReasignacion] = React.useState<C
       setInsumosSeleccionados(prev => 
         prev.map(item => {
           if (item.producto.clave_prod === insumoSeleccionadoParaCantidades) {
+            // No sobrescribir cantidad de insumos que ya vienen de la base de datos
+            if (item.enBaseDatos) return item;
             // Si la cantidad actual no está en las nuevas cantidades, usar la primera disponible
             if (!cantidades.includes(item.cantidad)) {
               return { ...item, cantidad: cantidades[0] };
@@ -292,23 +294,6 @@ const [nuevoClienteReasignacion, setNuevoClienteReasignacion] = React.useState<C
   }, [insumoSeleccionadoParaCantidades, cantidades]);
 
 
-  // Auto-guardar insumos en proceso cuando cambian y el modal está abierto
-  const anteriorInsumosRef = React.useRef(insumosSeleccionados);
-
-  React.useEffect(() => {
-    if (!modalInsumosOpen) return;
-
-   
-    const lengthCambio = anteriorInsumosRef.current.length !== insumosSeleccionados.length;
-
-    if (lengthCambio) {
-      const timer = setTimeout(() => {
-        guardarInsumosEnProceso(insumosSeleccionados);
-        anteriorInsumosRef.current = insumosSeleccionados;
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [insumosSeleccionados, modalInsumosOpen]);
   
 
   const [clienteSeleccionado, setClienteSeleccionado] = React.useState<
@@ -751,7 +736,7 @@ React.useEffect(() => {
           descripcion: item.d_insumo || insumos.find((p: Producto) => p.clave_prod === item.clave_producto_insumo)?.descripcion || `Agregado por estilista: ${estilistaSeleccionado}`,
         } as Producto,
         cantidad: item.cantidad,
-        validado: item.validado === true || item.validado === 1,
+        validado: false,
         observacion: item.observaciones || '',
         idSql: item.id,
         enBaseDatos: true,
@@ -1617,36 +1602,6 @@ const verificaDatosVenta = () => {
     }
   }, [modalInsumosOpen]);
 
-    const guardarInsumosEnProceso = async (listaInsumos: typeof insumosSeleccionados) => {
-    if (!clienteSeleccionado) return;
-    try {
-      const bodyPayload = {
-        cia: 1,
-        sucursal: sucursal,
-        cve_cliente: clienteSeleccionado.No_cliente,
-        d_cliente: `${clienteSeleccionado.nombre} ${clienteSeleccionado.ap_paterno || ''} ${clienteSeleccionado.ap_materno || ''}`.trim(),
-        totalVenta: listaInsumos.reduce((sum, item) => sum + (item.producto.precio || item.producto.Precio || 0) * item.cantidad, 0),
-        insumos: listaInsumos.map(item => ({
-          clave_prod: item.producto.clave_prod,
-          descripcion: item.producto.descripcion,
-          cantidad: item.cantidad,
-          precio: item.producto.precio || item.producto.Precio || 0,
-          validado: item.validado,
-          observacion: item.observacion
-        }))
-      };
-
-      // Endpoint no disponible en backend - deshabilitado
-      const response = { data: { status: 0 } }; // await consumoApi.post('/api/PuntoDeVenta/sp_bw_pos_guardar_venta_proceso', bodyPayload);
-      if (response.data?.status === 1 || response.data?.[0]?.status === 1) {
-        console.log('Auto-guardado exitoso en proceso');
-      } else {
-        console.error('Respuesta del servidor:', response.data?.message || response.data);
-      }
-    } catch (error) {
-      console.error('Error en el auto-guardado de insumos:', error);
-    }
-  };
 
   const handleConfirmarInsumos = async () => {
     if (!productoPrincipal) {
@@ -1654,127 +1609,47 @@ const verificaDatosVenta = () => {
       return;
     }
 
-    // Primero registrar el producto principal si no está ya registrado
-    const productoYaRegistrado = detallesVentaRef.current.some(d => d.clave_prod === productoPrincipal.clave_prod);
-    
-    let productoActualizado: DetalleVenta;
-    if (!productoYaRegistrado) {
-      // Crear el producto principal con los insumos seleccionados
-      productoActualizado = {
-        id: Date.now().toString(),
-        estilista: estilistaSeleccionado,
-        d_estilista: estilistas.find((e: Estilista) => e.clave_empleado === estilistaSeleccionado)?.nombre || '',
-        hora: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
-        clave_prod: productoPrincipal.clave_prod,
-        d_producto: productoPrincipal.descripcion,
-        tiempo: productoPrincipal.tiempo || '00:00',
-        Cant: 1,
-        precio: productoPrincipal.precio || productoPrincipal.Precio || 0,
-        importe: productoPrincipal.precio || productoPrincipal.Precio || 0,
-        descuento: 0,
-        auxiliar: auxiliarSeleccionado || '',
-        d_auxiliar: auxiliarSeleccionado ? 
-          estilistaAuxiliar?.find((e: Auxiliar) => e.clave_empleado === auxiliarSeleccionado)?.nombre || '' : '',
-        insumos: insumosSeleccionados.map(item => ({
-          id: Date.now().toString() + Math.random(),
-          estilista: estilistaSeleccionado,
-          d_estilista: estilistas.find((e: Estilista) => e.clave_empleado === estilistaSeleccionado)?.nombre || '',
-          hora: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
-          clave_prod: item.producto.clave_prod,
-          d_producto: item.producto.descripcion,
-          tiempo: item.producto.tiempo || '00:00',
-          Cant: item.cantidad,
-          precio: item.producto.precio || item.producto.Precio || 0,
-          importe: (item.producto.precio || item.producto.Precio || 0) * item.cantidad,
-          descuento: 0,
-          auxiliar: auxiliarSeleccionado || '',
-          d_auxiliar: auxiliarSeleccionado ? 
-            estilistaAuxiliar?.find((e: Auxiliar) => e.clave_empleado === auxiliarSeleccionado)?.nombre || '' : '',
-        }))
-      };
-      
-      // Agregar el producto principal a la lista
-      setDetallesVenta(prev => [...prev, productoActualizado]);
-
-      // Guardar en la base de datos
-      const guardoExito = await guardarProductoIndividual(productoActualizado);
-      
-      if (!guardoExito) {
-        // Si hubo error, quitamos el detalle de la lista
-        setDetallesVenta(prev => prev.filter(d => d.id !== productoActualizado.id));
-        return;
-      }
-
-      // Enviar insumos a la API
-      try {
-        const nuevosInsumos = insumosSeleccionados.filter(i => !i.enBaseDatos);
-        if (nuevosInsumos.length > 0) {
-          const payloadInsumos = nuevosInsumos.map(item => ({
-            clave_prod: item.producto.clave_prod,
-            cantidad: item.cantidad
-          }));
-          await consumoApi.post(
-            `/api/PuntoDeVenta/sp_fw_pos_agregar_insumos_venta`,
-            { cia: 1, sucursal, noVenta: 0, cveCliente: clienteSeleccionado?.No_cliente || '', claveProductoVenta: productoPrincipal.clave_prod, estilista: estilistaSeleccionado, insumos: payloadInsumos.map((i: any) => ({ claveProd: i.clave_prod, cantidad: i.cantidad })) }
-          );
-        }
-      } catch (error) {
-        console.error('Error guardando insumos en API:', error);
-      }
-    } else {
-      // Encontrar el producto principal existente y agregarle los insumos
-      setDetallesVenta(prev => prev.map(detalle => {
-        if (detalle.clave_prod === productoPrincipal.clave_prod) {
-          const nuevosInsumos = insumosSeleccionados.map(item => ({
-            id: Date.now().toString() + Math.random(),
-            estilista: estilistaSeleccionado,
-            d_estilista: estilistas.find((e: Estilista) => e.clave_empleado === estilistaSeleccionado)?.nombre || '',
-            hora: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
-            clave_prod: item.producto.clave_prod,
-            d_producto: item.producto.descripcion,
-            tiempo: item.producto.tiempo || '00:00',
-            Cant: item.cantidad,
-            precio: item.producto.precio || item.producto.Precio || 0,
-            importe: (item.producto.precio || item.producto.Precio || 0) * item.cantidad,
-            descuento: 0,
-            auxiliar: auxiliarSeleccionado || '',
-            d_auxiliar: auxiliarSeleccionado ? 
-              estilistaAuxiliar?.find((e: Auxiliar) => e.clave_empleado === auxiliarSeleccionado)?.nombre || '' : '',
-          }));
-          
-        return {
-          ...detalle,
-          insumos: nuevosInsumos
-        };
-      }
-      return detalle;
-    }));
-
-    // Enviar insumos a la API para productos existentes
-    try {
-      const nuevosInsumos = insumosSeleccionados.filter(i => !i.enBaseDatos);
-      if (nuevosInsumos.length > 0) {
-        const payloadInsumos = nuevosInsumos.map(item => ({
-          clave_prod: item.producto.clave_prod,
-          cantidad: item.cantidad
-        }));
-        await consumoApi.post(
-          `/api/PuntoDeVenta/sp_fw_pos_agregar_insumos_venta`,
-          { cia: 1, sucursal, noVenta: 0, cveCliente: clienteSeleccionado?.No_cliente || '', claveProductoVenta: productoPrincipal.clave_prod, estilista: estilistaSeleccionado, insumos: payloadInsumos.map((i: any) => ({ claveProd: i.clave_prod, cantidad: i.cantidad })) }
-        );
-      }
-    } catch (error) {
-      console.error('Error guardando insumos en API:', error);
+    if (insumosSeleccionados.length === 0) {
+      Swal.fire({ icon: 'warning', title: 'Atención', text: 'No hay insumos seleccionados', confirmButtonColor: '#333333' });
+      return;
     }
-  }
-    
-    // Limpiar selección de producto
-    setProductoSeleccionado(null);
-    
-    // Cerrar el modal y limpiar estados
-    setModalInsumosOpen(false);
-    setProductoPrincipal(null);
-    setInsumosSeleccionados([]);
+
+    setLoadingInsumosBackend(true);
+
+    try {
+      for (const item of insumosSeleccionados) {
+        const payload = {
+          cia: 1,
+          sucursal: sucursal,
+          cveCliente: clienteSeleccionado?.No_cliente || '',
+          claveProductoVenta: productoPrincipal.clave_prod,
+          claveProductoInsumo: item.producto.clave_prod,
+          cantidad: item.cantidad,
+          observaciones: item.observacion || '',
+          usuario: session?.id || ''
+        };
+
+        console.log('Payload inserta insumo:', payload);
+        const response = await consumoApi.post('/api/PuntoDeVenta/sp_inserta_insumo', payload);
+
+        if (response.status !== 200) {
+          throw new Error(`Error al guardar el insumo: ${item.producto.descripcion}`);
+        }
+      }
+
+      Swal.fire({ icon: 'success', title: 'Insumos confirmados', text: 'Insumos guardados correctamente', timer: 1500, showConfirmButton: false });
+
+      // Cerrar el modal y limpiar estados
+      setModalInsumosOpen(false);
+      setProductoPrincipal(null);
+      setInsumosSeleccionados([]);
+      setProductoSeleccionado(null);
+
+    } catch (error: any) {
+      Swal.fire({ icon: 'error', title: 'Error', text: error.message || 'No se pudieron guardar los insumos' });
+    } finally {
+      setLoadingInsumosBackend(false);
+    }
   };
 
   const fetchClientes = async ({ page, pageSize, search }: any) => {
@@ -3433,11 +3308,15 @@ return (
                       {insumoCargandoCantidades === item.producto.clave_prod && loadingCantidades ? (
                         <MenuItem disabled sx={{ fontSize: '0.7rem' }}>Cargando...</MenuItem>
                       ) : (
-                        (cantidadesCache[item.producto.clave_prod] || [1]).map((cantidad) => (
-                          <MenuItem key={cantidad} value={cantidad} sx={{ fontSize: '0.7rem', py: 0.25, minHeight: '22px' }}>
-                            {cantidad}
-                          </MenuItem>
-                        ))
+                        (() => {
+                          const opciones = cantidadesCache[item.producto.clave_prod] || [1];
+                          const opcionesConActual = opciones.includes(item.cantidad) ? opciones : [item.cantidad, ...opciones];
+                          return opcionesConActual.map((cantidad) => (
+                            <MenuItem key={cantidad} value={cantidad} sx={{ fontSize: '0.7rem', py: 0.25, minHeight: '22px' }}>
+                              {cantidad}
+                            </MenuItem>
+                          ));
+                        })()
                       )}
                     </Select>
                   </FormControl>
