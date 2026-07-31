@@ -223,6 +223,7 @@ const [nuevoClienteReasignacion, setNuevoClienteReasignacion] = React.useState<C
   const [modalAgregarInsumosOpen, setModalAgregarInsumosOpen] = React.useState(false);
   const [detalleSeleccionadoInsumos, setDetalleSeleccionadoInsumos] = React.useState<DetalleVenta | null>(null);
   const [detalleInsumosModal, setDetalleInsumosModal] = React.useState<DetalleVenta | null>(null);
+  const [insumosNuevoProducto, setInsumosNuevoProducto] = React.useState(false);
   const [busquedaInsumo, setBusquedaInsumo] = React.useState("");
   const [resultadosInsumos, setResultadosInsumos] = React.useState<Producto[]>([]);
   const [insumosAgregar, setInsumosAgregar] = React.useState<Array<{clave_prod: string, cantidad: number, d_producto: string}>>([]);
@@ -720,6 +721,8 @@ React.useEffect(() => {
     };
     setProductoPrincipal(productoParaInsumos);
     setDetalleInsumosModal(detalle);
+    setInsumosNuevoProducto(false);
+    setDetalleSeleccionadoInsumos(detalle);
     setInsumosBackend([]);
     setInsumosSeleccionados([]);
     setModalInsumosOpen(true);
@@ -851,7 +854,9 @@ React.useEffect(() => {
 
       if (result.isConfirmed) {
         // Guardar el producto principal y abrir modal de insumos
+        setInsumosNuevoProducto(true);
         setDetalleInsumosModal(null);
+        setDetalleSeleccionadoInsumos(null);
         setInsumosSeleccionados([]);
         setInsumosBackend([]);
         setInsumoSeleccionadoParaCantidades(null);
@@ -1602,6 +1607,13 @@ const verificaDatosVenta = () => {
     }
   }, [modalInsumosOpen]);
 
+
+  const handleConfirmarInsumosNuevo = async () => {
+    await handleConfirmarInsumos();
+    if (productoPrincipal) {
+      await registrarProducto(productoPrincipal);
+    }
+  };
 
   const handleConfirmarInsumos = async () => {
     if (!productoPrincipal) {
@@ -3399,7 +3411,7 @@ return (
       <Button 
         variant="contained" 
         color="primary"
-        onClick={handleConfirmarInsumos}
+        onClick={insumosNuevoProducto ? handleConfirmarInsumosNuevo : handleConfirmarInsumos}
         disabled={insumosSeleccionados.length === 0}
       >
         Confirmar Insumos ({insumosSeleccionados.length})
