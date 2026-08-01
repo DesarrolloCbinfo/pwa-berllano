@@ -19,7 +19,12 @@ import {
   IconButton,
   CircularProgress,
   Autocomplete,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { useNavigate } from "react-router-dom";
@@ -40,6 +45,7 @@ type TraspasoRow = {
   esFraccion: boolean;
   recuperado: boolean;
   cantidadAnterior: number;
+  usuario: string;
 };
 
 type Sucursal = {
@@ -52,9 +58,34 @@ type ProductoSelector = {
   Descripcion: string;
 };
 
+type TraspasoBusqueda = {
+  exis: number;
+  clave: string;
+  descripcion: string;
+  cantidad: number;
+  costoProm: number;
+  importe: number;
+  obs: string;
+  usuario?: string;
+  sucOrigen?: number | string;
+  sucDestino?: number | string;
+};
+
 function formatoMoneda(valor: number) {
   return `$${valor.toFixed(2)}`;
 }
+
+const obtenerValor = (obj: any, ...nombres: string[]) => {
+  if (!obj || typeof obj !== "object") return undefined;
+  const keys = Object.keys(obj);
+  for (const nombre of nombres) {
+    const key = keys.find((k) => k.toLowerCase() === nombre.toLowerCase());
+    if (key !== undefined && obj[key] != null && obj[key] !== "") {
+      return obj[key];
+    }
+  }
+  return undefined;
+};
 
 const validarCantidad = async (nuevaCantidad: number, producto: any) => {
   if (
@@ -126,7 +157,21 @@ export default function TraspasoMercancia() {
   const navigate = useNavigate();
   const { consumoApi } = useConsumoApi();
   const { token } = useAuth();
+  const usuarioSesion =
+    token?.usuario ||
+    (typeof window !== "undefined" ? localStorage.getItem("usuario") || "" : "") ||
+    "";
+
+  const esMismoUsuario = (rowUsuario?: string) => {
+    const r = (rowUsuario || "").trim().toLowerCase();
+    const s = (usuarioSesion || "").trim().toLowerCase();
+    if (!r) return true; // renglón nuevo, permite editar
+    if (!s) return false; // sesión desconocida, no permite editar renglones ajenos
+    return r === s;
+  };
+
   const cantidadAnteriorRef = useRef<Record<number, number>>({});
+  const obsAnteriorRef = useRef<Record<number, string>>({});
 
   const [sucursales, setSucursales] = useState<Sucursal[]>([]);
   const [productosSelector, setProductosSelector] = useState<ProductoSelector[]>([]);
@@ -156,16 +201,11 @@ export default function TraspasoMercancia() {
     fetchSucursales();
   }, []);
 
+  const hoy = new Date();
+  const fechaHoy = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-${String(hoy.getDate()).padStart(2, "0")}`;
+
   const [folio, setFolio] = useState<number>(1278);
-  const [fecha, setFecha] = useState<string>(
-    new Date().toLocaleString("es-MX", {
-      day: "2-digit",
-      month: "short",
-      year: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
-  );
+  const [fecha, setFecha] = useState<string>(fechaHoy);
   const [sucOrigen, setSucOrigen] = useState<number | "">("");
   const [sucDestino, setSucDestino] = useState<number | "">("");
 
@@ -182,13 +222,24 @@ export default function TraspasoMercancia() {
     esFraccion: false,
     recuperado: false,
     cantidadAnterior: 0,
+    usuario: usuarioSesion,
   };
 
   const [rows, setRows] = useState<TraspasoRow[]>([emptyRow]);
   const [selectedRowId, setSelectedRowId] = useState<number | null>(emptyRow.id);
+
   const [validandoClaveId, setValidandoClaveId] = useState<number | null>(null);
   const [cargandoProductos, setCargandoProductos] = useState(false);
   const [verNoValidados, setVerNoValidados] = useState(false);
+  const [traspasoGuardado, setTraspasoGuardado] = useState(false);
+  const [dialogoBuscarAbierto, setDialogoBuscarAbierto] = useState(false);
+  const [unidad, setUnidad] = useState<string>("");
+  const [guardando, setGuardando] = useState(false);
+  const [cancelando, setCancelando] = useState(false);
+  const [fecha1, setFecha1] = useState<string>(fechaHoy);
+  const [fecha2, setFecha2] = useState<string>(fechaHoy);
+  const [resultadosBusqueda, setResultadosBusqueda] = useState<TraspasoBusqueda[]>([]);
+  const [cargandoBusqueda, setCargandoBusqueda] = useState(false);
 
   useEffect(() => {
     const fetchProductosSelector = async () => {
@@ -266,6 +317,7 @@ export default function TraspasoMercancia() {
           sucursalOrigen: sucOrigen,
           sucursalDestino: sucDestino,
           validarExistenciaEstricta: true,
+          usuario: token?.usuario || "",
         }
       );
 
@@ -331,6 +383,12 @@ export default function TraspasoMercancia() {
                     r.cantidadAnterior
                   )
                 ) || 0;
+              const usuarioVal = String(
+                buscarCampo(
+                  ["usuario", "Usuario", "usuarioRegistro"],
+                  r.usuario || usuarioSesion
+                ) || ""
+              );
 
               return {
                 ...r,
@@ -343,6 +401,7 @@ export default function TraspasoMercancia() {
                 esFraccion: esFraccionVal,
                 recuperado: recuperadoVal,
                 cantidadAnterior: cantidadAnteriorVal,
+                usuario: usuarioVal,
               };
             })
           );
@@ -369,30 +428,63 @@ export default function TraspasoMercancia() {
 
   const handleNuevo = () => {
     setFolio((prev) => prev + 1);
-    setFecha(
-      new Date().toLocaleString("es-MX", {
-        day: "2-digit",
-        month: "short",
-        year: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    );
-    setSucOrigen("");
+    setFecha(fechaHoy);
     setSucDestino("");
+    setUnidad("");
     const newRow = { ...emptyRow, id: Date.now() };
     setRows([newRow]);
     setSelectedRowId(newRow.id);
     setVerNoValidados(false);
+    setTraspasoGuardado(false);
   };
 
-  const handleGuardar = () => {
-    Swal.fire({
-      icon: "success",
-      title: "Traspaso guardado",
-      text: `Traspaso folio ${folio} guardado con ${rows.length} renglones.`,
-      confirmButtonColor: "#000000",
-    });
+  const handleGuardar = async () => {
+    if (!sucDestino) {
+      Swal.fire({
+        icon: "warning",
+        title: "Atención",
+        text: "Indique la sucursal destino.",
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
+
+    const payload = {
+      sucOrigen: Number(sucOrigen),
+      sucDestino: Number(sucDestino),
+      usuario: token?.usuario || localStorage.getItem("usuario") || "",
+      unidad: unidad || null,
+    };
+
+    try {
+      setGuardando(true);
+      const response = await consumoApi.post("/api/guardar-traspaso", payload);
+
+      const folioGenerado = response.data?.folio || response.data?.Folio;
+      const mensaje = response.data?.mensaje || response.data?.message || "Traspaso guardado";
+
+      setFolio(folioGenerado);
+      setTraspasoGuardado(true);
+
+      Swal.fire({
+        icon: "success",
+        title: "Éxito",
+        text: `${mensaje} Folio asignado: ${folioGenerado}`,
+        confirmButtonColor: "#000000",
+      });
+    } catch (error: any) {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text:
+          error.response?.data?.mensaje ||
+          error.response?.data?.message ||
+          "Ocurrió un error al procesar el traspaso.",
+        confirmButtonColor: "#000000",
+      });
+    } finally {
+      setGuardando(false);
+    }
   };
 
   const handleValidar = () => {
@@ -410,26 +502,180 @@ export default function TraspasoMercancia() {
     );
   };
 
-  const handleCancelarTraspaso = () => {
-    const newRow = { ...emptyRow, id: Date.now() };
-    setRows([newRow]);
-    setSelectedRowId(newRow.id);
-    setVerNoValidados(false);
+  const handleCancelarTraspaso = async () => {
+    const confirmar = await Swal.fire({
+      icon: "warning",
+      title: "ATENCIÓN!",
+      text: `Realmente Deseas CANCELAR este Traspaso >${folio}<\ntenga en cuenta que si se envió la tienda no lo podrá recibir.`,
+      showCancelButton: true,
+      confirmButtonColor: "#d9534f",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Sí, cancelar",
+      cancelButtonText: "No",
+    });
+
+    if (!confirmar.isConfirmed) return;
+
+    try {
+      setCancelando(true);
+      const response = await consumoApi.post(
+        "/api/CatTraspasoSalida/sp_cancelar_traspaso_sucursal",
+        null,
+        {
+          params: {
+            folio,
+            sucursal: Number(sucOrigen),
+            usuarioCancelacion:
+              token?.usuario || localStorage.getItem("usuario") || "",
+          },
+        }
+      );
+
+      Swal.fire({
+        icon: "success",
+        title: "Éxito",
+        text:
+          response.data?.mensaje ||
+          `El Traspaso >${folio}< se Canceló correctamente.`,
+        confirmButtonColor: "#000000",
+      });
+
+      const newRow = { ...emptyRow, id: Date.now() };
+      setRows([newRow]);
+      setSelectedRowId(newRow.id);
+      setVerNoValidados(false);
+      setTraspasoGuardado(false);
+      setSucDestino("");
+      setUnidad("");
+    } catch (error: any) {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text:
+          error.response?.data?.mensaje ||
+          "Error al procesar la cancelación.",
+        confirmButtonColor: "#000000",
+      });
+    } finally {
+      setCancelando(false);
+    }
   };
 
-  const handleEliminarFila = (id: number) => {
+  const handleEliminarFila = async (row: TraspasoRow) => {
+    if (row.clave) {
+      try {
+        await consumoApi.delete(
+          "/api/CatTraspasoSalida/sp_bw_eliminar_producto_traspaso",
+          {
+            params: {
+              folio,
+              sucursal: Number(sucOrigen),
+              claveProd: row.clave,
+              usuario: token?.usuario || "",
+            },
+          }
+        );
+        await Swal.fire({
+          icon: "success",
+          title: "Eliminado",
+          text: "Producto eliminado exitosamente.",
+          confirmButtonColor: "#000000",
+          timer: 1500,
+        });
+      } catch (err: any) {
+        await Swal.fire({
+          icon: "error",
+          title: "Error",
+          text:
+            err.response?.data?.mensaje || "No se pudo eliminar el producto.",
+          confirmButtonColor: "#000000",
+        });
+        return;
+      }
+    }
+
     setRows((prev) => {
-      const filtradas = prev.filter((r) => r.id !== id);
+      const filtradas = prev.filter((r) => r.id !== row.id);
       if (filtradas.length === 0) {
         const nuevaFila = { ...emptyRow, id: Date.now() };
         setSelectedRowId(nuevaFila.id);
         return [nuevaFila];
       }
-      if (selectedRowId === id) {
+      if (selectedRowId === row.id) {
         setSelectedRowId(filtradas[0].id);
       }
       return filtradas;
     });
+  };
+
+  const handleEditarCantidad = async (
+    claveProd: string,
+    nuevaCantidad: number,
+    nuevaObs: string
+  ) => {
+    if (!claveProd) return;
+
+    if (!folio || folio === 0) {
+      setRows((prev) =>
+        prev.map((item) =>
+          item.clave === claveProd
+            ? {
+                ...item,
+                cantidad: Number(nuevaCantidad) || 0,
+                importe:
+                  (Number(nuevaCantidad) || 0) *
+                  (Number(item.costoProm) || 0),
+                obs: nuevaObs,
+              }
+            : item
+        )
+      );
+      return;
+    }
+
+    try {
+      const response = await consumoApi.put(
+        "/api/CatTraspasoSalida/sp_bw_actualizar_traspaso_upd",
+        {
+          folio,
+          sucursal: Number(sucOrigen),
+          claveProd,
+          cantidad: Number(nuevaCantidad),
+          observaciones: nuevaObs,
+          usuario: token?.usuario || "",
+        }
+      );
+
+      const data = Array.isArray(response.data) ? response.data[0] : response.data;
+      setRows((prev) =>
+        prev.map((item) => {
+          if (item.clave !== claveProd) return item;
+          const cantidadResp =
+            data?.cantidad != null ? Number(data.cantidad) : Number(nuevaCantidad);
+          const obsResp =
+            data?.observaciones ?? data?.obs ?? nuevaObs ?? item.obs;
+          const costoResp =
+            data?.costoProm != null ? Number(data.costoProm) : item.costoProm;
+          return {
+            ...item,
+            ...data,
+            cantidad: cantidadResp,
+            obs: obsResp,
+            usuario: data?.usuario ?? item.usuario,
+            costoProm: costoResp,
+            importe: cantidadResp * costoResp,
+          };
+        })
+      );
+    } catch (err: any) {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text:
+          err.response?.data?.mensaje || "No se pudo actualizar",
+        confirmButtonColor: "#000000",
+      });
+    }
   };
 
   const handleBuscar = () => {
@@ -439,6 +685,137 @@ export default function TraspasoMercancia() {
       text: "Aquí se abriría el diálogo de búsqueda de traspasos.",
       confirmButtonColor: "#000000",
     });
+  };
+
+  const handleAbrirBusquedaPorFecha = () => {
+    setDialogoBuscarAbierto(true);
+  };
+
+  const handleCerrarBusquedaPorFecha = () => {
+    setDialogoBuscarAbierto(false);
+  };
+
+  const buscarTraspasosPorFecha = async () => {
+    if (!fecha1 || !fecha2) {
+      await Swal.fire({
+        icon: "warning",
+        title: "Fechas requeridas",
+        text: "Selecciona ambas fechas para buscar.",
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
+    if (!sucOrigen) {
+      await Swal.fire({
+        icon: "warning",
+        title: "Sucursal origen requerida",
+        text: "La sucursal origen debe estar definida para filtrar los envíos.",
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
+
+    setCargandoBusqueda(true);
+    try {
+      const response = await consumoApi.get(
+        "/api/CatTraspasoSalida/sp_bw_buscar_traspasos_por_fecha",
+        {
+          params: {
+            fechaInicio: fecha1,
+            fechaFin: fecha2,
+            sucOrigen,
+          },
+        }
+      );
+
+      const data = Array.isArray(response.data) ? response.data : [];
+      console.log("Primer item stringified:", JSON.stringify(data[0]));
+      setResultadosBusqueda(
+        data.map((item: any) => ({
+          exis: Number(obtenerValor(item, "exis") || 0),
+          clave: String(obtenerValor(item, "clave") || ""),
+          descripcion: String(obtenerValor(item, "descripcion", "descrip") || ""),
+          cantidad: Number(obtenerValor(item, "cantidad") || 0),
+          costoProm: Number(obtenerValor(item, "costoProm", "costo_prom") || 0),
+          importe: Number(obtenerValor(item, "importe") || 0),
+          obs: String(obtenerValor(item, "obs") || ""),
+          usuario: String(item.usuario ?? item.Usuario ?? ""),
+          sucOrigen: item.sucOrigen ?? item.SucOrigen ?? sucOrigen ?? undefined,
+          sucDestino: item.sucDestino ?? item.SucDestino ?? undefined,
+        }))
+      );
+    } catch (err: any) {
+      await Swal.fire({
+        icon: "error",
+        title: "Error al buscar traspasos",
+        text:
+          err.response?.data?.mensaje ||
+          "No fue posible obtener los traspasos por fecha.",
+        confirmButtonColor: "#000000",
+      });
+    } finally {
+      setCargandoBusqueda(false);
+    }
+  };
+
+  const seleccionarTraspaso = (traspaso: TraspasoBusqueda) => {
+    const clave = String(traspaso.clave).trim();
+    if (rows.some((r) => r.clave === clave)) {
+      Swal.fire({
+        icon: "warning",
+        title: "Producto duplicado",
+        text: "El producto ya se encuentra en el traspaso.",
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
+
+    if (traspaso.sucDestino != null && traspaso.sucDestino !== "") {
+      const sucDestinoNum = Number(traspaso.sucDestino);
+      if (!isNaN(sucDestinoNum)) {
+        setSucDestino(sucDestinoNum);
+      }
+    }
+
+    const nuevaId = Date.now();
+    setRows((prev) => {
+      const ultima = prev[prev.length - 1];
+      const nuevaFila: TraspasoRow = {
+        id: nuevaId,
+        exis: Number(traspaso.exis) || 0,
+        clave: String(traspaso.clave),
+        descripcion: String(traspaso.descripcion),
+        cantidad: Number(traspaso.cantidad) || 0,
+        costoProm: Number(traspaso.costoProm) || 0,
+        importe:
+          Number(traspaso.importe) ||
+          (Number(traspaso.cantidad) || 0) *
+            (Number(traspaso.costoProm) || 0),
+        obs: String(traspaso.obs),
+        validado: false,
+        esFraccion: false,
+        recuperado: false,
+        cantidadAnterior: 0,
+        usuario: String(traspaso.usuario || usuarioSesion || ""),
+      };
+      if (prev.length > 0 && !ultima?.clave) {
+        return [...prev.slice(0, -1), nuevaFila];
+      }
+      return [...prev, nuevaFila];
+    });
+    setSelectedRowId(nuevaId);
+    setDialogoBuscarAbierto(false);
+  };
+
+  const handleAgregarRenglon = () => {
+    const ultima = displayedRows[displayedRows.length - 1];
+    if (displayedRows.length > 0 && !ultima?.clave.trim()) {
+      setSelectedRowId(ultima.id);
+      return;
+    }
+    const nueva: TraspasoRow = { ...emptyRow, id: Date.now() };
+    setRows([...rows, nueva]);
+    setSelectedRowId(nueva.id);
   };
 
   const handleVistaPrevia = () => {
@@ -520,18 +897,6 @@ export default function TraspasoMercancia() {
             }}
           >
             <Stack direction="row" spacing={1} alignItems="center">
-              <Typography sx={{ fontWeight: "bold", minWidth: 90 }}>
-                N° de folio:
-              </Typography>
-              <TextField
-                size="small"
-                value={folio}
-                onChange={(e) => setFolio(Number(e.target.value) || 0)}
-                sx={{ width: 120, input: { textAlign: "right" } }}
-              />
-            </Stack>
-
-            <Stack direction="row" spacing={1} alignItems="center">
               <Typography sx={{ fontWeight: "bold", color: "blue", minWidth: 100 }}>
                 Suc. origen:
               </Typography>
@@ -542,6 +907,7 @@ export default function TraspasoMercancia() {
                   value={sucOrigen}
                   label="Sucursal origen"
                   onChange={(e) => setSucOrigen(Number(e.target.value))}
+                  disabled={Boolean(token)}
                 >
                   {sucursales.map((s) => (
                     <MenuItem key={s.cve_sucursal} value={s.cve_sucursal}>
@@ -556,9 +922,11 @@ export default function TraspasoMercancia() {
               <Typography sx={{ fontWeight: "bold", minWidth: 90 }}>Fecha:</Typography>
               <TextField
                 size="small"
+                type="date"
                 value={fecha}
-                onChange={(e) => setFecha(e.target.value)}
-                sx={{ width: 200 }}
+                InputProps={{ readOnly: true }}
+                InputLabelProps={{ shrink: true }}
+                sx={{ width: 160 }}
               />
             </Stack>
 
@@ -593,17 +961,24 @@ export default function TraspasoMercancia() {
             <Table size="small" sx={{ tableLayout: "fixed" }}>
               <TableHead>
                 <TableRow sx={{ bgcolor: "#f9fafb" }}>
-                  {["Exis", "Clave", "Descripción", "Cantidad", "Costo prom", "Importe", "OBS"].map(
-                    (h, idx) => (
-                      <TableCell key={idx} sx={{ ...cellSx, fontWeight: "bold" }}>
-                        {h}
-                      </TableCell>
-                    )
-                  )}
+                  {[
+                    { name: "Exis", width: 60 },
+                    { name: "Clave", width: 160 },
+                    { name: "Descripción", width: 300 },
+                    { name: "Cantidad", width: 80 },
+                    { name: "Costo prom", width: 100 },
+                    { name: "Importe", width: 100 },
+                    { name: "OBS", width: 80 },
+                    { name: "Acciones", width: 80 },
+                  ].map((h, idx) => (
+                    <TableCell key={idx} sx={{ ...cellSx, fontWeight: "bold", width: h.width }}>
+                      {h.name}
+                    </TableCell>
+                  ))}
                 </TableRow>
               </TableHead>
               <TableBody>
-                {displayedRows.map((row) => (
+                {displayedRows.map((row, idx) => (
                   <TableRow
                     key={row.id}
                     selected={row.id === selectedRowId}
@@ -619,6 +994,7 @@ export default function TraspasoMercancia() {
                         size="small"
                         type="number"
                         value={row.exis}
+                        disabled={!esMismoUsuario(row.usuario)}
                         onChange={(e) =>
                           updateRow(row.id, "exis", Number(e.target.value) || 0)
                         }
@@ -629,6 +1005,7 @@ export default function TraspasoMercancia() {
                     <TableCell sx={cellSx}>
                       <Autocomplete
                         size="small"
+                        disabled={sucDestino === "" || !esMismoUsuario(row.usuario)}
                         options={productosSelector}
                         loading={cargandoProductos}
                         value={productosSelector.find((producto) => producto.Clave.trim() === row.clave) || null}
@@ -650,7 +1027,7 @@ export default function TraspasoMercancia() {
                           <TextField
                             {...params}
                             variant="standard"
-                            placeholder="Seleccionar"
+                            placeholder={sucDestino === "" ? "Sel. suc. destino" : "Seleccionar"}
                             InputProps={{
                               ...params.InputProps,
                               disableUnderline: true,
@@ -666,16 +1043,45 @@ export default function TraspasoMercancia() {
                         sx={{ width: "100%", minWidth: 130 }}
                       />
                     </TableCell>
-                    <TableCell sx={cellSx}>
-                      <TextField
-                        variant="standard"
+                    <TableCell sx={{ ...cellSx, width: 300 }}>
+                      <Autocomplete
                         size="small"
-                        value={row.descripcion}
-                        onChange={(e) =>
-                          updateRow(row.id, "descripcion", e.target.value)
-                        }
-                        InputProps={{ disableUnderline: true }}
-                        sx={{ width: "100%" }}
+                        disabled={sucDestino === "" || !esMismoUsuario(row.usuario)}
+                        options={productosSelector}
+                        loading={cargandoProductos}
+                        value={productosSelector.find((producto) => producto.Clave.trim() === row.clave) || null}
+                        getOptionLabel={(producto) => producto.Descripcion.trim()}
+                        isOptionEqualToValue={(option, value) => option.Clave === value.Clave}
+                        onChange={(_, producto) => {
+                          if (!producto) return;
+                          const clave = producto.Clave.trim();
+                          updateRow(row.id, "clave", clave);
+                          updateRow(row.id, "descripcion", producto.Descripcion.trim());
+                          handleSeleccionarClave(row, clave);
+                        }}
+                        renderOption={(props, producto) => (
+                          <li {...props} key={`${producto.Clave}-${producto.Descripcion}`}>
+                            {producto.Descripcion.trim()}
+                          </li>
+                        )}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            variant="standard"
+                            placeholder={sucDestino === "" ? "Sel. suc. destino" : "Buscar descripción"}
+                            InputProps={{
+                              ...params.InputProps,
+                              disableUnderline: true,
+                              endAdornment: (
+                                <>
+                                  {validandoClaveId === row.id || cargandoProductos ? <CircularProgress size={14} /> : null}
+                                  {params.InputProps.endAdornment}
+                                </>
+                              ),
+                            }}
+                          />
+                        )}
+                        sx={{ width: "100%", minWidth: 280 }}
                       />
                     </TableCell>
                     <TableCell sx={cellSx}>
@@ -684,11 +1090,13 @@ export default function TraspasoMercancia() {
                         size="small"
                         type="number"
                         value={row.cantidad}
+                        disabled={!esMismoUsuario(row.usuario)}
+                        inputProps={{ min: 0 }}
                         onFocus={() => {
                           cantidadAnteriorRef.current[row.id] = row.cantidad;
                         }}
                         onChange={(e) =>
-                          updateRow(row.id, "cantidad", Number(e.target.value) || 0)
+                          updateRow(row.id, "cantidad", Math.max(0, Number(e.target.value) || 0))
                         }
                         onBlur={async (e) => {
                           const nuevaCantidad = Number(e.target.value) || 0;
@@ -701,6 +1109,13 @@ export default function TraspasoMercancia() {
                           });
                           if (!esValida) {
                             updateRow(row.id, "cantidad", anterior);
+                          } else if (nuevaCantidad !== anterior) {
+                            handleEditarCantidad(row.clave, nuevaCantidad, row.obs);
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && idx === displayedRows.length - 1) {
+                            handleAgregarRenglon();
                           }
                         }}
                         InputProps={{ disableUnderline: true }}
@@ -713,10 +1128,7 @@ export default function TraspasoMercancia() {
                         size="small"
                         type="number"
                         value={row.costoProm}
-                        onChange={(e) =>
-                          updateRow(row.id, "costoProm", Number(e.target.value))
-                        }
-                        InputProps={{ disableUnderline: true }}
+                        InputProps={{ disableUnderline: true, readOnly: true }}
                         sx={{ width: "100%" }}
                       />
                     </TableCell>
@@ -726,18 +1138,60 @@ export default function TraspasoMercancia() {
                         variant="standard"
                         size="small"
                         value={row.obs}
+                        disabled={!esMismoUsuario(row.usuario)}
+                        onFocus={() => {
+                          obsAnteriorRef.current[row.id] = row.obs;
+                        }}
                         onChange={(e) =>
                           updateRow(row.id, "obs", e.target.value)
                         }
+                        onBlur={(e) => {
+                          const anterior = obsAnteriorRef.current[row.id] ?? "";
+                          if (e.target.value !== anterior) {
+                            handleEditarCantidad(row.clave, row.cantidad, e.target.value);
+                          }
+                        }}
                         InputProps={{ disableUnderline: true }}
                         sx={{ width: "100%" }}
                       />
+                    </TableCell>
+                    <TableCell sx={cellSx}>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        disabled={!esMismoUsuario(row.usuario)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEliminarFila(row);
+                        }}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </TableContainer>
+
+          <Stack direction="row" justifyContent="flex-end" sx={{ mb: 1 }}>
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={<AddIcon />}
+              onClick={handleAgregarRenglon}
+              sx={{
+                bgcolor: "#000000",
+                color: "#fff",
+                textTransform: "none",
+                fontWeight: "bold",
+                boxShadow: "none",
+                "&:hover": { bgcolor: "#424242", boxShadow: "none" },
+              }}
+            >
+              Agregar renglón
+            </Button>
+          </Stack>
 
           {/* Botones */}
           <Stack
@@ -750,19 +1204,145 @@ export default function TraspasoMercancia() {
             <Button variant="contained" onClick={handleNuevo}>
               Nuevo
             </Button>
-            <Button variant="contained" onClick={handleGuardar}>
-              Guardar
+            <Button
+              variant="contained"
+              onClick={handleGuardar}
+              disabled={guardando}
+            >
+              {guardando ? "Guardando..." : "FINALIZAR"}
             </Button>
             <Button variant="contained" onClick={handleVistaPrevia}>
               Vista previa
             </Button>
-            <Button variant="contained" onClick={handleCancelarTraspaso}>
-              Cancelar Traspaso
+            <Button
+              variant="contained"
+              onClick={handleCancelarTraspaso}
+              disabled={cancelando}
+              sx={{ bgcolor: "#d9534f", color: "white" }}
+            >
+              {cancelando ? "Procesando..." : "Cancelar Traspaso"}
             </Button>
-            <Button variant="contained" onClick={handleBuscar}>
-              Buscar
+            <Button variant="contained" onClick={handleAbrirBusquedaPorFecha}>
+              Buscar por fecha
             </Button>
           </Stack>
+
+          <Dialog
+            open={dialogoBuscarAbierto}
+            onClose={handleCerrarBusquedaPorFecha}
+            maxWidth="lg"
+            fullWidth
+          >
+            <DialogTitle sx={{ bgcolor: "#000000", color: "#ffffff" }}>
+              Búsqueda de traspasos por fecha
+            </DialogTitle>
+            <DialogContent>
+              <Stack direction="row" spacing={2} alignItems="center" sx={{ mt: 1, mb: 2 }}>
+                <TextField
+                  label="Fecha inicio"
+                  type="date"
+                  size="small"
+                  value={fecha1}
+                  onChange={(e) => setFecha1(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                />
+                <TextField
+                  label="Fecha fin"
+                  type="date"
+                  size="small"
+                  value={fecha2}
+                  onChange={(e) => setFecha2(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                />
+                <Button
+                  variant="contained"
+                  onClick={buscarTraspasosPorFecha}
+                  disabled={cargandoBusqueda}
+                  startIcon={cargandoBusqueda ? <CircularProgress size={14} /> : undefined}
+                >
+                  Buscar
+                </Button>
+              </Stack>
+
+              <TableContainer component={Paper} variant="outlined" sx={{ overflowX: "auto" }}>
+                <Table size="small" sx={{ minWidth: 1100, tableLayout: "fixed" }}>
+                  <TableHead>
+                    <TableRow sx={{ bgcolor: "#f9fafb" }}>
+                      {[
+                        { name: "Exis", width: 50 },
+                        { name: "Clave", width: 80 },
+                        { name: "Descripción", width: 260 },
+                        { name: "Cantidad", width: 70 },
+                        { name: "Costo prom", width: 90 },
+                        { name: "Importe", width: 90 },
+                        { name: "OBS", width: 70 },
+                        { name: "Suc", width: 70 },
+                        { name: "Destino", width: 100 },
+                        { name: "Usuario", width: 100 },
+                        { name: "Acción", width: 90 },
+                      ].map((col, idx) => (
+                        <TableCell key={idx} sx={{ fontWeight: "bold", width: col.width }}>
+                          {col.name}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {resultadosBusqueda.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={11} align="center">
+                          Sin resultados
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      resultadosBusqueda.map((t, idx) => (
+                        <TableRow key={`${t.clave}-${idx}`}>
+                          <TableCell>{t.exis}</TableCell>
+                          <TableCell>{t.clave}</TableCell>
+                          <TableCell>{t.descripcion}</TableCell>
+                          <TableCell>{t.cantidad}</TableCell>
+                          <TableCell>{formatoMoneda(t.costoProm)}</TableCell>
+                          <TableCell>{formatoMoneda(t.importe)}</TableCell>
+                          <TableCell>{t.obs}</TableCell>
+                          <TableCell>
+                            {(() => {
+                              const val = t.sucOrigen ?? sucOrigen;
+                              const num = Number(val);
+                              const suc = isNaN(num) ? undefined : sucursales.find((s) => s.cve_sucursal === num);
+                              return suc ? suc.nombre : String(val ?? "");
+                            })()}
+                          </TableCell>
+                          <TableCell>
+                            {(() => {
+                              const val = t.sucDestino;
+                              const num = Number(val);
+                              const suc = isNaN(num) ? undefined : sucursales.find((s) => s.cve_sucursal === num);
+                              return suc ? suc.nombre : String(val ?? "");
+                            })()}
+                          </TableCell>
+                          <TableCell>{t.usuario}</TableCell>
+                          <TableCell>
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              onClick={() => seleccionarTraspaso(t)}
+                            >
+                              Seleccionar
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleCerrarBusquedaPorFecha} variant="outlined">
+                Cerrar
+              </Button>
+            </DialogActions>
+          </Dialog>
 
           {/* Totales */}
           <Box sx={{ display: "flex", justifyContent: "flex-end" }}>

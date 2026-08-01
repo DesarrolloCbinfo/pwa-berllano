@@ -67,5 +67,7 @@ export const routes = {
   facturacion: "/facturacion",
   inventario: "/inventario",
   traspasoMercancia: "/traspaso-mercancia",
+  recepcionTraspasos: "/recepcion-traspasos",
+  ajustesInventario: "/ajustes-inventario",
 };
 

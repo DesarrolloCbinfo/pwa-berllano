@@ -1,5 +1,5 @@
-import { Box, Typography, Grid, Card, CardContent } from '@mui/material';
-import { Warehouse, SwapHoriz } from '@mui/icons-material';
+import { Box, Typography } from '@mui/material';
+import { SwapHoriz, MoveToInbox, Tune } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { routes } from '../../../utils/Routes';
 
@@ -10,53 +10,85 @@ export default function InventarioPage() {
     {
       id: 'traspaso',
       title: 'Traspaso de Mercancía',
-      description: 'Genera traspasos entre sucursales',
       icon: SwapHoriz,
-      color: '#795548',
       path: routes.traspasoMercancia,
+    },
+    {
+      id: 'recepcionTraspasos',
+      title: 'Recepción de Traspasos',
+      icon: MoveToInbox,
+      path: routes.recepcionTraspasos,
+    },
+    {
+      id: 'ajustesInventario',
+      title: 'Ajustes al Inventario',
+      icon: Tune,
+      path: routes.ajustesInventario,
     },
   ];
 
   return (
     <Box sx={{ p: 4, minHeight: 'calc(100vh - 64px)' }}>
-      <Typography variant="h4" sx={{ textAlign: 'center', mb: 4, fontWeight: 600 }}>
+      <Typography
+        sx={{
+          textAlign: 'center',
+          mb: 4,
+          fontFamily: 'Georgia, "Times New Roman", serif',
+          fontWeight: 700,
+          fontSize: '1.75rem',
+          color: '#111',
+        }}
+      >
         Inventario
       </Typography>
-      <Grid container spacing={3} justifyContent="center">
+
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
+          gap: 2,
+          maxWidth: 480,
+          mx: 'auto',
+        }}
+      >
         {opciones.map((op) => {
           const Icon = op.icon;
           return (
-            <Grid item xs={12} sm={6} md={4} key={op.id}>
-              <Card
-                onClick={() => navigate(op.path)}
+            <Box
+              key={op.id}
+              onClick={() => navigate(op.path)}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.5,
+                p: 2,
+                minHeight: 96,
+                bgcolor: '#f8f9fa',
+                border: '1px solid #e0e0e0',
+                borderRadius: 2,
+                cursor: 'pointer',
+                transition: 'background 0.2s, border-color 0.2s',
+                '&:hover': {
+                  bgcolor: '#eef0f2',
+                  borderColor: '#c9cdd1',
+                },
+              }}
+            >
+              <Icon sx={{ fontSize: 28, color: '#1a1a1a', flexShrink: 0 }} />
+              <Typography
                 sx={{
-                  cursor: 'pointer',
-                  borderRadius: 3,
-                  backgroundColor: op.color,
-                  color: 'white',
-                  transition: 'transform 0.2s, box-shadow 0.2s',
-                  '&:hover': {
-                    transform: 'translateY(-4px)',
-                    boxShadow: 6,
-                  },
+                  fontSize: '0.95rem',
+                  fontWeight: 500,
+                  color: '#1a1a1a',
+                  lineHeight: 1.3,
                 }}
               >
-                <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 3 }}>
-                  <Icon sx={{ fontSize: 48 }} />
-                  <Box>
-                    <Typography variant="h6" fontWeight={600}>
-                      {op.title}
-                    </Typography>
-                    <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                      {op.description}
-                    </Typography>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
+                {op.title}
+              </Typography>
+            </Box>
           );
         })}
-      </Grid>
+      </Box>
     </Box>
   );
 }
