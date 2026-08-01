@@ -1123,7 +1123,29 @@ const handleValidarAutorizacionCobrar = async () => {
   }
 };
 
-const handleCobrarClick = () => {
+  const handleReiniciarCobro = () => {
+    setPagosRegistro([]);
+    setFormaPagoSeleccionada('');
+    setImportePago('');
+    setPagoEfectivo(0);
+    setTmpPagoEfectivo(0);
+    setSumaManual(0);
+    setPuntosPago(0);
+    setTmpPuntosPago(0);
+    setIsCredito(false);
+    setCuentaPuntos('');
+    setCuentaRecompensa('');
+    setSaldoPuntosCte(0);
+    setPuntosGanados(0);
+    setRecompensaTC('');
+    setBonificacion(0);
+    setFolioDev('');
+    setNc(0);
+    setAutorizacionInput('');
+    setDenominaciones({ '1000': 0, '500': 0, '200': 0, '100': 0, '50': 0, '20': 0, '10': 0, '5': 0, '2': 0, '1': 0, '0.50': 0, '0.20': 0, '0.10': 0, 'vales': 0 });
+  };
+
+  const handleCobrarClick = () => {
   // 1. RECALCULAR LA SUMA DE LA VENTA
   let subtotal = 0;
   let totalDescuentosEnDinero = 0;
@@ -1201,6 +1223,18 @@ const handleAgregarPago = () => {
     const importe = parseFloat(importePago);
     if (isNaN(importe) || importe <= 0) {
       Swal.fire({ icon: 'warning', title: 'Atención', text: 'Ingresa un importe válido', confirmButtonColor: '#333333' });
+      return;
+    }
+
+    const acumuladoActual = sumaManual + pagoEfectivo + puntosPago;
+    if (acumuladoActual + importe > totalVenta) {
+      const disponible = Math.max(0, totalVenta - acumuladoActual);
+      Swal.fire({
+        icon: 'warning',
+        title: 'Monto excedido',
+        text: `Solo puedes agregar $${disponible.toFixed(2)} más. El total de $${totalVenta.toFixed(2)} no puede superarse con tarjeta.`,
+        confirmButtonColor: '#333333'
+      });
       return;
     }
 
@@ -3867,6 +3901,7 @@ return (
 
     {/* Botones de Control Inferiores */}
     <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3, mt: 1.5 }}>
+      <Button variant="outlined" onClick={handleReiniciarCobro} color="warning" sx={{ borderRadius: 0, fontWeight: 'bold', textTransform: 'none', minWidth: 100, height: 32, fontSize: '0.85rem' }}>Reiniciar</Button>
       <Button variant="contained" disabled={isCredito || finalizandoVenta} onClick={() => Swal.fire({ icon: 'info', title: 'Cobro con Tarjeta', text: 'Llamando a realiza_pago_tc_banorte...', confirmButtonColor: '#333333' })} sx={{ backgroundColor: '#4a6572', color: 'white', borderRadius: 0, fontWeight: 'bold', textTransform: 'none', minWidth: 130, height: 32, fontSize: '0.85rem', border: '1px solid #34495e', '&:hover': { backgroundColor: '#34495e' } }}>Cobro con Tarjeta</Button>
       <Button variant="contained" onClick={handleFinalizarVenta} disabled={!puedeFinalizar || finalizandoVenta} sx={{ backgroundColor: '#4a6572', color: 'white', borderRadius: 0, fontWeight: 'bold', textTransform: 'none', minWidth: 130, height: 32, fontSize: '0.85rem', border: '1px solid #34495e', '&:hover': { backgroundColor: '#34495e' } }}>{finalizandoVenta ? 'Procesando...' : 'Registrar venta'}</Button>
       <Button variant="contained" onClick={() => setModalCobroOpen(false)} sx={{ backgroundColor: '#4a6572', color: 'white', borderRadius: 0, fontWeight: 'bold', textTransform: 'none', minWidth: 90, height: 32, fontSize: '0.85rem', border: '1px solid #34495e', '&:hover': { backgroundColor: '#34495e' } }}>Salir</Button>
