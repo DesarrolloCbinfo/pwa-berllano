@@ -1,6 +1,17 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 
+function generateUUID(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 type Store = {
   usuarioUUID: string
   createNewUsuarioUUID: () => void
@@ -16,13 +27,13 @@ type Store = {
 export const useFormularioStore = create<Store>()(
   persist(
     (set) => ({
-      usuarioUUID: crypto.randomUUID(),
-      createNewUsuarioUUID: () => set({ usuarioUUID: crypto.randomUUID() }),
+      usuarioUUID: generateUUID(),
+      createNewUsuarioUUID: () => set({ usuarioUUID: generateUUID() }),
       setUsuarioUUID: (usuarioUUID: string) => set({ usuarioUUID }),
       idCliente: "",
-      setIdCliente: (idCliente: string) => set({ idCliente, usuarioUUID: crypto.randomUUID()  }),
+      setIdCliente: (idCliente: string) => set({ idCliente, usuarioUUID: generateUUID()  }),
       nombreCliente: "",
-      setNombreCliente: (nombreCliente: string) => set({ nombreCliente, usuarioUUID: crypto.randomUUID() }),
+      setNombreCliente: (nombreCliente: string) => set({ nombreCliente, usuarioUUID: generateUUID() }),
       idFicha: "",
       setIdFicha: (idFicha: string) => set({ idFicha })
     }),

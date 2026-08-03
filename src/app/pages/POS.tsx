@@ -1475,6 +1475,29 @@ const verificaDatosVenta = () => {
           confirmButtonText: 'Aceptar'
         });
         
+        // Verificar si se requiere retiro de caja
+        try {
+          const retiroRes = await consumoApi.get(`/api/Cortedia/verifica-retiros?sucursal=${sucursal}&caja=1`);
+          if (retiroRes.data?.requiereRetiro) {
+            await Swal.fire({
+              icon: 'warning',
+              title: 'Retiro requerido',
+              html: `
+                <p>${retiroRes.data?.mensajeAlerta || 'El efectivo rebasó el límite.'}</p>
+                <p style="margin-top:8px;font-size:14px;color:#666;">
+                  Efectivo en caja: $${(retiroRes.data?.efectivoEnCaja || 0).toLocaleString('es-MX')}<br>
+                  Límite permitido: $${(retiroRes.data?.limitePermitido || 0).toLocaleString('es-MX')}<br>
+                  Avisos dados: ${retiroRes.data?.numeroDeAvisosDados || 0}
+                </p>
+              `,
+              confirmButtonText: 'Aceptar',
+              confirmButtonColor: '#333333'
+            });
+          }
+        } catch (err: any) {
+          console.error('Error verificando retiros:', err?.message || err);
+        }
+
         // Limpieza de pantalla (Emula inicializa_pantalla() de Access)
         setModalCobroOpen(false);
         setDetallesVenta([]);
