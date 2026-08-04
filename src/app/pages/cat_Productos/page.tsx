@@ -2258,7 +2258,7 @@ export default function CatProductos() {
       const params = {
         area: formData.area || '%', depto: formData.depto || '%', clase: formData.clase || '%',
         marca: formData.marca || '%', descripcion: formData.descripcion || null,
-        sucursal: sucursal, obsoleto: formData.incluir_obsoletos
+        sucursal: sucursal, obsoleto: formData.incluir_obsoletos ? 1 : 0
       };
 
       const response = await consumoApi.get('/api/CatProductosC/sp_bw_cat_combo_productos_sel', { params, timeout: 120000 });

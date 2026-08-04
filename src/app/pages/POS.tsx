@@ -7,6 +7,8 @@ import useSession from "../../hooks/useSession";
 import ClientesTable from "../../components/POS/ClientesTable";
 import PaginationControls from "../../components/POS/PaginationControl";
 import Swal from "sweetalert2";
+import { useNavigate } from "react-router-dom";
+import { routes } from "../../utils/Routes";
 import { Box, Button, Checkbox, Dialog, DialogContent, DialogTitle, Divider, FormControl, FormControlLabel, InputLabel, MenuItem, Select, useTheme, useMediaQuery, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, CircularProgress, IconButton, TextField, Autocomplete } from "@mui/material";
 import ProductosTable from "../../components/POS/ProductosTable";
 import DetalleVentasTable from "../../components/POS/DetalleVentasTable";
@@ -189,7 +191,8 @@ export default function POS() {
   const { consumoApi } = useConsumoApi();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  
+  const navigate = useNavigate();
+
   const [searchText, setSearchText] = React.useState("");
   const [modalClienteOpen, setModalClienteOpen] = React.useState(false);
   const [modalNuevoClienteOpen, setModalNuevoClienteOpen] = React.useState(false);
@@ -1493,6 +1496,22 @@ const verificaDatosVenta = () => {
               confirmButtonText: 'Aceptar',
               confirmButtonColor: '#333333'
             });
+
+            const irARetiros = await Swal.fire({
+              icon: 'question',
+              title: '¿Desea realizar el retiro?',
+              text: 'Puede ir al módulo de Retiros para registrarlo ahora.',
+              showCancelButton: true,
+              confirmButtonText: 'Sí',
+              cancelButtonText: 'No',
+              confirmButtonColor: '#3085d6',
+              cancelButtonColor: '#d33',
+            });
+
+            if (irARetiros.isConfirmed) {
+              navigate(routes.retiros);
+              return;
+            }
           }
         } catch (err: any) {
           console.error('Error verificando retiros:', err?.message || err);
