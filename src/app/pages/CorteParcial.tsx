@@ -18,6 +18,7 @@ import {
   DialogContent,
   TextField,
   IconButton,
+  GlobalStyles,
 } from "@mui/material";
 import CloseIcon from '@mui/icons-material/Close';
 import { useNavigate } from "react-router-dom";
@@ -64,6 +65,7 @@ export default function CorteParcial() {
   const [montoEsperadoFormularioA, setMontoEsperadoFormularioA] = useState<number>(0);
   const [montoObligatorio, setMontoObligatorio] = useState<number>(0);
   const [ultimoRetiroCompletado, setUltimoRetiroCompletado] = useState<boolean>(false);
+  const [retiroFondoCompletado, setRetiroFondoCompletado] = useState<boolean>(false);
   
   const denominaciones = [1000, 500, 200, 100, 50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1];
 
@@ -166,6 +168,24 @@ export default function CorteParcial() {
       return;
     }
 
+    if (montoObligatorio === 0) {
+      Swal.fire({
+        icon: "warning",
+        title: "Atención",
+        text: "No se requiere retiro de fondo para este corte",
+      });
+      return;
+    }
+
+    if (montoObligatorio > 0 && Math.abs(totalRetiroModal - montoObligatorio) >= 0.01) {
+      Swal.fire({
+        icon: "error",
+        title: "Retiro incorrecto",
+        text: `El monto del retiro de fondo (${totalRetiroModal.toFixed(2)}) no coincide con el monto esperado (${montoObligatorio.toFixed(2)}).`,
+      });
+      return;
+    }
+
     const dataParaGuardar = {
       cia: 1,
       sucursal: session?.sucursal || 0,
@@ -182,6 +202,7 @@ export default function CorteParcial() {
       const res = await axios.post('https://localhost:5001/api/Cortedia/registrar-fondo', dataParaGuardar);
       
       setLoading(false);
+      setRetiroFondoCompletado(true);
       cerrarModalRetiro();
       
       // Pequeño delay para asegurar que el modal se cierre antes de mostrar la alerta
@@ -585,31 +606,38 @@ export default function CorteParcial() {
   });
 
   return (
-    <Box sx={{ p: { xs: 2, sm: 3 }, maxWidth: 900, mx: "auto" }}>
+    <Box className="corte-parcial-page" sx={{ p: { xs: 2, sm: 3 }, maxWidth: 900, mx: "auto" }}>
+      <GlobalStyles
+        styles={{
+          '.corte-parcial-page .MuiTypography-root, .corte-parcial-page .MuiButton-root, .corte-parcial-page .MuiTableCell-root': {
+            fontFamily: '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif',
+          },
+        }}
+      />
       <Typography
         variant="h3"
-        sx={{ mb: 1, fontWeight: "bold", textAlign: "center", color: "primary.main" }}
+        sx={{ mb: 0.5, fontWeight: "bold", textAlign: "center", color: "primary.main" }}
       >
         Módulo de Corte de caja
       </Typography>
 
       {/* Info del corte */}
-      <Paper elevation={2} sx={{ p: 2, mb: 3 }}>
+      <Paper elevation={2} sx={{ p: 1, mb: 2 }}>
         <Box
           sx={{
             display: "flex",
             flexWrap: "wrap",
             justifyContent: "space-around",
-            gap: 2,
+            gap: 1,
           }}
         >
-          <Typography>
+          <Typography sx={{ fontSize: "0.85rem" }}>
             <strong>Sucursal:</strong> {session?.dSucursal || session?.sucursal}
           </Typography>
-          <Typography>
+          <Typography sx={{ fontSize: "0.85rem" }}>
             <strong>Corte:</strong> {ultimoCorte?.corte_maximo ?? "N/A"}
           </Typography>
-          <Typography>
+          <Typography sx={{ fontSize: "0.85rem" }}>
             <strong>Corte parcial:</strong>{" "}
             {ultimoCorte?.corte_parcial_maximo ?? "N/A"}
           </Typography>
@@ -617,14 +645,14 @@ export default function CorteParcial() {
       </Paper>
 
       {/* Medios de pago */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Typography variant="h6" sx={{ mb: 2, fontWeight: "bold" }}>
+      <Card sx={{ mb: 2 }}>
+        <CardContent sx={{ p: 1.5 }}>
+          <Typography variant="h6" sx={{ mb: 1, fontWeight: "bold" }}>
             Medios de pago
           </Typography>
 
-          <TableContainer component={Paper} variant="outlined">
-            <Table size="small">
+          <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 200, overflow: 'auto' }}>
+            <Table size="small" stickyHeader sx={{ '& th, & td': { py: 0.5, px: 1, fontSize: '0.85rem' } }}>
               <TableHead>
                 <TableRow sx={{ bgcolor: "grey.100" }}>
                   <TableCell>Tipo Pago</TableCell>
@@ -654,36 +682,36 @@ export default function CorteParcial() {
       </Card>
 
       {/* Totales */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+      <Card sx={{ mb: 2 }}>
+        <CardContent sx={{ p: 1.5 }}>
+          <Box sx={{ mb: 0.5 }}>
+            <Typography sx={{ fontWeight: "bold", fontSize: "1rem" }}>
               Total de Retiros: ${totalRetiros.toFixed(2)}
             </Typography>
           </Box>
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+          <Box sx={{ mb: 0.5 }}>
+            <Typography sx={{ fontWeight: "bold", fontSize: "1rem" }}>
               Total de Efectivo: ${totalEfectivo.toFixed(2)}
             </Typography>
           </Box>
 
-          <Divider sx={{ my: 2 }} />
+          <Divider sx={{ my: 1 }} />
 
           {!totalesCoinciden && totalRetiros > 0 && (
-            <Alert severity="warning" sx={{ mb: 2 }}>
+            <Alert severity="warning" sx={{ mb: 1, py: 0.5 }}>
                Los totales no coinciden. Intentos restantes:{" "}
               {maxIntentos - intentos}
             </Alert>
           )}
 
           {totalesCoinciden && totalRetiros === 0 && (
-            <Alert severity="warning" sx={{ mb: 2 }}>
+            <Alert severity="warning" sx={{ mb: 1, py: 0.5 }}>
                No se han registrado retiros.
             </Alert>
           )}
 
           {totalesCoinciden && totalRetiros > 0 && (
-            <Alert severity="success" sx={{ mb: 2 }}>
+            <Alert severity="success" sx={{ mb: 1, py: 0.5 }}>
                Los totales coinciden. Puedes finalizar el corte.
             </Alert>
           )}
@@ -698,13 +726,13 @@ export default function CorteParcial() {
           onClick={abrirModalRetiro}
           disabled={loading}
           sx={{
-            px: 4,
-            py: 1.5,
+            px: 3,
+            py: 1,
             fontWeight: "bold",
             borderRadius: 2,
             textTransform: "none",
-            fontSize: "1rem",
-            minWidth: 150,
+            fontSize: "0.9rem",
+            minWidth: 120,
           }}
         >
           Retiro de Fondo
@@ -714,15 +742,15 @@ export default function CorteParcial() {
           variant="contained"
           color="success"
           onClick={abrirModalUltimoRetiro}
-          disabled={loading}
+          disabled={loading || !retiroFondoCompletado}
           sx={{
-            px: 4,
-            py: 1.5,
+            px: 3,
+            py: 1,
             fontWeight: "bold",
             borderRadius: 2,
             textTransform: "none",
-            fontSize: "1rem",
-            minWidth: 150,
+            fontSize: "0.9rem",
+            minWidth: 120,
           }}
         >
           Último Retiro
@@ -734,13 +762,13 @@ export default function CorteParcial() {
           onClick={finalizarCorte}
           disabled={!ultimoRetiroCompletado || loading}
           sx={{
-            px: 4,
-            py: 1.5,
+            px: 3,
+            py: 1,
             fontWeight: "bold",
             borderRadius: 2,
             textTransform: "none",
-            fontSize: "1rem",
-            minWidth: 150,
+            fontSize: "0.9rem",
+            minWidth: 120,
           }}
         >
           {loading ? "Procesando..." : "Finalizar Corte"}
@@ -751,41 +779,33 @@ export default function CorteParcial() {
           color="secondary"
           onClick={cancelarCorte}
           sx={{
-            px: 4,
-            py: 1.5,
+            px: 3,
+            py: 1,
             fontWeight: "bold",
             borderRadius: 2,
             textTransform: "none",
-            fontSize: "1rem",
-            minWidth: 150,
+            fontSize: "0.9rem",
+            minWidth: 120,
           }}
         >
           Cancelar
         </Button>
       </Box>
 
-      {/* Footer */}
-      <Typography
-        variant="body2"
-        sx={{ textAlign: "center", color: "text.secondary", mt: 2 }}
-      >
-      </Typography>
 
       {/* Modal de Retiro de Fondo */}
       <Dialog
         open={modalRetiroAbierto}
         onClose={cerrarModalRetiro}
-        maxWidth="md"
-        fullWidth
+        maxWidth="sm"
         sx={{ zIndex: 1300 }}
       >
         <DialogContent sx={{ p: 0 }}>
-          <Box sx={{ p: 3 }}>
+          <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1, maxHeight: '90vh' }}>
             {/* Encabezado */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, borderBottom: '3px solid #000', pb: 1 }}>
-              <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-                Módulo de<br />
-                Retiros del Corte
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #000', pb: 0.5 }}>
+              <Typography sx={{ fontWeight: 'bold', fontSize: '1.1rem' }}>
+                Módulo de Retiros del Corte
               </Typography>
               <IconButton onClick={cerrarModalRetiro} size="small">
                 <CloseIcon />
@@ -793,39 +813,50 @@ export default function CorteParcial() {
             </Box>
 
             {/* Info del corte */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-around', mb: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
-              <Typography><strong>Caja:</strong> 1</Typography>
-              <Typography><strong>Corte:</strong> {ultimoCorte?.corte_maximo ?? "N/A"}</Typography>
-              <Typography><strong>Corte Parcial:</strong> {ultimoCorte?.corte_parcial_maximo ?? "N/A"}</Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-around', p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+              <Typography sx={{ fontSize: '0.85rem' }}><strong>Caja:</strong> 1</Typography>
+              <Typography sx={{ fontSize: '0.85rem' }}><strong>Corte:</strong> {ultimoCorte?.corte_maximo ?? "N/A"}</Typography>
+              <Typography sx={{ fontSize: '0.85rem' }}><strong>Corte Parcial:</strong> {ultimoCorte?.corte_parcial_maximo ?? "N/A"}</Typography>
             </Box>
 
-            {/* Denominaciones en dos columnas: Billetes y Monedas */}
-            <Box sx={{ display: 'flex', gap: 3, mb: 3 }}>
-              {/* Columna izquierda - Billetes (1000-20) */}
-              <Box sx={{ flex: 1 }}>
+            {/* Denominaciones: billetes a la izquierda, monedas a la derecha */}
+            <Box
+              sx={{
+                display: 'flex',
+                gap: 1.5,
+                justifyContent: 'center',
+                border: '2px solid #e9e9e9',
+                borderRadius: 2,
+                p: 1.5,
+                bgcolor: '#ffffff',
+                width: 'fit-content',
+                mx: 'auto',
+              }}
+            >
+              {/* Billetes */}
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25, minWidth: 170 }}>
+                <Typography sx={{ fontWeight: 'bold', fontSize: '0.85rem', textAlign: 'center' }}>Billetes</Typography>
                 {[1000, 500, 200, 100, 50, 20].map((d) => {
                   const cantidad = retirosModal[d] || 0;
                   const resultado = d * cantidad;
                   const esFila = [500, 100, 20].includes(d);
-                  
                   return (
                     <Box
                       key={d}
                       sx={{
-                        display: 'flex',
+                        display: 'grid',
+                        gridTemplateColumns: '60px 55px 55px',
                         alignItems: 'center',
-                        justifyContent: 'space-between',
-                        py: 0.5,
+                        gap: 0.5,
+                        py: 0.25,
+                        px: 0.75,
                         bgcolor: esFila ? 'grey.200' : 'transparent',
-                        px: 1
+                        borderRadius: 0.5,
                       }}
                     >
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 100 }}>
-                        <Typography sx={{ fontWeight: 'bold' }}>
-                          {formatDenominacion(d)} X
-                        </Typography>
-                      </Box>
-                      
+                      <Typography sx={{ fontWeight: 'bold', fontSize: '0.8rem', textAlign: 'left' }}>
+                        {formatDenominacion(d)} X
+                      </Typography>
                       <TextField
                         type="number"
                         value={cantidad}
@@ -834,13 +865,10 @@ export default function CorteParcial() {
                           setRetirosModal(prev => ({ ...prev, [d]: valor }));
                         }}
                         size="small"
-                        sx={{ width: 80 }}
-                        inputProps={{ min: 0, style: { textAlign: 'center' } }}
+                        sx={{ width: '100%', '& input': { p: '2px 4px', textAlign: 'center', fontSize: '0.8rem' } }}
+                        inputProps={{ min: 0 }}
                       />
-                      
-                      <Typography sx={{ minWidth: 30, textAlign: 'center' }}>=</Typography>
-                      
-                      <Typography sx={{ minWidth: 80, textAlign: 'right', fontWeight: 'bold' }}>
+                      <Typography sx={{ textAlign: 'right', fontWeight: 'bold', fontSize: '0.8rem' }}>
                         {resultado.toFixed(2)}
                       </Typography>
                     </Box>
@@ -848,31 +876,30 @@ export default function CorteParcial() {
                 })}
               </Box>
 
-              {/* Columna derecha - Monedas (10-0.1) */}
-              <Box sx={{ flex: 1 }}>
+              {/* Monedas */}
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25, minWidth: 170 }}>
+                <Typography sx={{ fontWeight: 'bold', fontSize: '0.85rem', textAlign: 'center' }}>Monedas</Typography>
                 {[10, 5, 2, 1, 0.5, 0.2, 0.1].map((d) => {
                   const cantidad = retirosModal[d] || 0;
                   const resultado = d * cantidad;
                   const esFila = [5, 1, 0.2, 0.1].includes(d);
-                  
                   return (
                     <Box
                       key={d}
                       sx={{
-                        display: 'flex',
+                        display: 'grid',
+                        gridTemplateColumns: '60px 55px 55px',
                         alignItems: 'center',
-                        justifyContent: 'space-between',
-                        py: 0.5,
+                        gap: 0.5,
+                        py: 0.25,
+                        px: 0.75,
                         bgcolor: esFila ? 'grey.200' : 'transparent',
-                        px: 1
+                        borderRadius: 0.5,
                       }}
                     >
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 100 }}>
-                        <Typography sx={{ fontWeight: 'bold' }}>
-                          {formatDenominacion(d)} X
-                        </Typography>
-                      </Box>
-                      
+                      <Typography sx={{ fontWeight: 'bold', fontSize: '0.8rem', textAlign: 'left' }}>
+                        {formatDenominacion(d)} X
+                      </Typography>
                       <TextField
                         type="number"
                         value={cantidad}
@@ -881,13 +908,10 @@ export default function CorteParcial() {
                           setRetirosModal(prev => ({ ...prev, [d]: valor }));
                         }}
                         size="small"
-                        sx={{ width: 80 }}
-                        inputProps={{ min: 0, style: { textAlign: 'center' } }}
+                        sx={{ width: '100%', '& input': { p: '2px 4px', textAlign: 'center', fontSize: '0.8rem' } }}
+                        inputProps={{ min: 0 }}
                       />
-                      
-                      <Typography sx={{ minWidth: 30, textAlign: 'center' }}>=</Typography>
-                      
-                      <Typography sx={{ minWidth: 80, textAlign: 'right', fontWeight: 'bold' }}>
+                      <Typography sx={{ textAlign: 'right', fontWeight: 'bold', fontSize: '0.8rem' }}>
                         {resultado.toFixed(2)}
                       </Typography>
                     </Box>
@@ -896,64 +920,64 @@ export default function CorteParcial() {
               </Box>
             </Box>
 
-            {/* Fila de VALES debajo de las dos columnas */}
-            <Box sx={{ mb: 3 }}>
-
-              {/* Fila de VALES */}
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  py: 0.5,
-                  bgcolor: '#c8e6c9',
-                  px: 1,
-                  mt: 1
-                }}
-              >
-                <Typography sx={{ fontWeight: 'bold', minWidth: 100 }}>VALES</Typography>
-                <TextField
-                  type="number"
-                  value={valesModal}
-                  onChange={(e) => setValesModal(parseFloat(e.target.value) || 0)}
-                  size="small"
-                  sx={{ width: 80 }}
-                  inputProps={{ min: 0, step: 0.01, style: { textAlign: 'center' } }}
-                />
-                <Typography sx={{ minWidth: 30, textAlign: 'center' }}>=</Typography>
-                <Typography sx={{ minWidth: 80, textAlign: 'right', fontWeight: 'bold' }}>
-                  {valesModal.toFixed(2)}
-                </Typography>
-              </Box>
+            {/* Fila de VALES */}
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: '60px 70px 60px',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 0.5,
+                py: 0.25,
+                px: 1,
+                bgcolor: '#c8e6c9',
+                borderRadius: 0.5,
+              }}
+            >
+              <Typography sx={{ fontWeight: 'bold', fontSize: '0.85rem', textAlign: 'left' }}>VALES</Typography>
+              <TextField
+                type="number"
+                value={valesModal}
+                onChange={(e) => setValesModal(parseFloat(e.target.value) || 0)}
+                size="small"
+                sx={{ width: '100%', '& input': { p: '2px 4px', textAlign: 'center', fontSize: '0.8rem' } }}
+                inputProps={{ min: 0, step: 0.01 }}
+              />
+              <Typography sx={{ textAlign: 'right', fontWeight: 'bold', fontSize: '0.85rem' }}>
+                {valesModal.toFixed(2)}
+              </Typography>
             </Box>
 
             {/* Total Retiro */}
-            <Box sx={{ mb: 2, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
-              <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+            <Box sx={{ p: 1, bgcolor: 'grey.100', borderRadius: 1 }}>
+              <Typography sx={{ fontWeight: 'bold', fontSize: '1rem' }}>
                 Total Retiro: ${totalRetiroModal.toFixed(2)}
               </Typography>
             </Box>
 
             {/* Observación */}
-            <Box sx={{ mb: 3 }}>
-              <Typography sx={{ mb: 1, fontWeight: 'bold' }}>Observación:</Typography>
+            <Box>
+              <Typography sx={{ mb: 0.25, fontWeight: 'bold', fontSize: '0.85rem' }}>Observación:</Typography>
               <TextField
                 fullWidth
                 multiline
-                rows={2}
+                rows={1}
+                size="small"
                 value={observacionModal}
                 onChange={(e) => setObservacionModal(e.target.value)}
                 placeholder="Ingrese observaciones..."
+                sx={{ '& textarea': { p: '4px 8px', fontSize: '0.85rem' } }}
               />
             </Box>
 
             {/* Botones */}
-            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
+            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', pt: 0.5 }}>
               <Button
                 variant="contained"
                 color="primary"
                 onClick={guardarRetiroFondo}
                 disabled={loading}
+                size="small"
               >
                 Guardar
               </Button>
@@ -961,6 +985,7 @@ export default function CorteParcial() {
                 variant="outlined"
                 color="secondary"
                 onClick={cerrarModalRetiro}
+                size="small"
               >
                 Salir
               </Button>
@@ -973,17 +998,15 @@ export default function CorteParcial() {
       <Dialog
         open={modalUltimoRetiroAbierto}
         onClose={cerrarModalUltimoRetiro}
-        maxWidth="md"
-        fullWidth
+        maxWidth="sm"
         sx={{ zIndex: 1300 }}
       >
         <DialogContent sx={{ p: 0 }}>
-          <Box sx={{ p: 3 }}>
+          <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1, maxHeight: '90vh' }}>
             {/* Encabezado */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, borderBottom: '3px solid #000', pb: 1 }}>
-              <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-                Módulo de<br />
-                Retiros del Corte
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #000', pb: 0.5 }}>
+              <Typography sx={{ fontWeight: 'bold', fontSize: '1.1rem' }}>
+                Módulo de Retiros del Corte
               </Typography>
               <IconButton onClick={cerrarModalUltimoRetiro} size="small">
                 <CloseIcon />
@@ -991,39 +1014,50 @@ export default function CorteParcial() {
             </Box>
 
             {/* Info del corte */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-around', mb: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
-              <Typography><strong>Caja:</strong> 1</Typography>
-              <Typography><strong>Corte:</strong> {ultimoCorte?.corte_maximo ?? "N/A"}</Typography>
-              <Typography><strong>Corte Parcial:</strong> {ultimoCorte?.corte_parcial_maximo ?? "N/A"}</Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-around', p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+              <Typography sx={{ fontSize: '0.85rem' }}><strong>Caja:</strong> 1</Typography>
+              <Typography sx={{ fontSize: '0.85rem' }}><strong>Corte:</strong> {ultimoCorte?.corte_maximo ?? "N/A"}</Typography>
+              <Typography sx={{ fontSize: '0.85rem' }}><strong>Corte Parcial:</strong> {ultimoCorte?.corte_parcial_maximo ?? "N/A"}</Typography>
             </Box>
 
-            {/* Denominaciones en dos columnas: Billetes y Monedas */}
-            <Box sx={{ display: 'flex', gap: 3, mb: 3 }}>
-              {/* Columna izquierda - Billetes (1000-20) */}
-              <Box sx={{ flex: 1 }}>
+            {/* Denominaciones: billetes a la izquierda, monedas a la derecha */}
+            <Box
+              sx={{
+                display: 'flex',
+                gap: 1.5,
+                justifyContent: 'center',
+                border: '2px solid #e9e9e9',
+                borderRadius: 2,
+                p: 1.5,
+                bgcolor: '#ffffff',
+                width: 'fit-content',
+                mx: 'auto',
+              }}
+            >
+              {/* Billetes */}
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25, minWidth: 170 }}>
+                <Typography sx={{ fontWeight: 'bold', fontSize: '0.85rem', textAlign: 'center' }}>Billetes</Typography>
                 {[1000, 500, 200, 100, 50, 20].map((d) => {
                   const cantidad = retirosUltimoModal[d] || 0;
                   const resultado = d * cantidad;
                   const esFila = [500, 100, 20].includes(d);
-                  
                   return (
                     <Box
                       key={d}
                       sx={{
-                        display: 'flex',
+                        display: 'grid',
+                        gridTemplateColumns: '60px 55px 55px',
                         alignItems: 'center',
-                        justifyContent: 'space-between',
-                        py: 0.5,
+                        gap: 0.5,
+                        py: 0.25,
+                        px: 0.75,
                         bgcolor: esFila ? 'grey.200' : 'transparent',
-                        px: 1
+                        borderRadius: 0.5,
                       }}
                     >
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 100 }}>
-                        <Typography sx={{ fontWeight: 'bold' }}>
-                          {formatDenominacion(d)} X
-                        </Typography>
-                      </Box>
-                      
+                      <Typography sx={{ fontWeight: 'bold', fontSize: '0.8rem', textAlign: 'left' }}>
+                        {formatDenominacion(d)} X
+                      </Typography>
                       <TextField
                         type="number"
                         value={cantidad}
@@ -1032,13 +1066,10 @@ export default function CorteParcial() {
                           setRetirosUltimoModal(prev => ({ ...prev, [d]: valor }));
                         }}
                         size="small"
-                        sx={{ width: 80 }}
-                        inputProps={{ min: 0, style: { textAlign: 'center' } }}
+                        sx={{ width: '100%', '& input': { p: '2px 4px', textAlign: 'center', fontSize: '0.8rem' } }}
+                        inputProps={{ min: 0 }}
                       />
-                      
-                      <Typography sx={{ minWidth: 30, textAlign: 'center' }}>=</Typography>
-                      
-                      <Typography sx={{ minWidth: 80, textAlign: 'right', fontWeight: 'bold' }}>
+                      <Typography sx={{ textAlign: 'right', fontWeight: 'bold', fontSize: '0.8rem' }}>
                         {resultado.toFixed(2)}
                       </Typography>
                     </Box>
@@ -1046,31 +1077,30 @@ export default function CorteParcial() {
                 })}
               </Box>
 
-              {/* Columna derecha - Monedas (10-0.1) */}
-              <Box sx={{ flex: 1 }}>
+              {/* Monedas */}
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25, minWidth: 170 }}>
+                <Typography sx={{ fontWeight: 'bold', fontSize: '0.85rem', textAlign: 'center' }}>Monedas</Typography>
                 {[10, 5, 2, 1, 0.5, 0.2, 0.1].map((d) => {
                   const cantidad = retirosUltimoModal[d] || 0;
                   const resultado = d * cantidad;
                   const esFila = [5, 1, 0.2, 0.1].includes(d);
-                  
                   return (
                     <Box
                       key={d}
                       sx={{
-                        display: 'flex',
+                        display: 'grid',
+                        gridTemplateColumns: '60px 55px 55px',
                         alignItems: 'center',
-                        justifyContent: 'space-between',
-                        py: 0.5,
+                        gap: 0.5,
+                        py: 0.25,
+                        px: 0.75,
                         bgcolor: esFila ? 'grey.200' : 'transparent',
-                        px: 1
+                        borderRadius: 0.5,
                       }}
                     >
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 100 }}>
-                        <Typography sx={{ fontWeight: 'bold' }}>
-                          {formatDenominacion(d)} X
-                        </Typography>
-                      </Box>
-                      
+                      <Typography sx={{ fontWeight: 'bold', fontSize: '0.8rem', textAlign: 'left' }}>
+                        {formatDenominacion(d)} X
+                      </Typography>
                       <TextField
                         type="number"
                         value={cantidad}
@@ -1079,13 +1109,10 @@ export default function CorteParcial() {
                           setRetirosUltimoModal(prev => ({ ...prev, [d]: valor }));
                         }}
                         size="small"
-                        sx={{ width: 80 }}
-                        inputProps={{ min: 0, style: { textAlign: 'center' } }}
+                        sx={{ width: '100%', '& input': { p: '2px 4px', textAlign: 'center', fontSize: '0.8rem' } }}
+                        inputProps={{ min: 0 }}
                       />
-                      
-                      <Typography sx={{ minWidth: 30, textAlign: 'center' }}>=</Typography>
-                      
-                      <Typography sx={{ minWidth: 80, textAlign: 'right', fontWeight: 'bold' }}>
+                      <Typography sx={{ textAlign: 'right', fontWeight: 'bold', fontSize: '0.8rem' }}>
                         {resultado.toFixed(2)}
                       </Typography>
                     </Box>
@@ -1094,64 +1121,64 @@ export default function CorteParcial() {
               </Box>
             </Box>
 
-            {/* Fila de VALES debajo de las dos columnas */}
-            <Box sx={{ mb: 3 }}>
-
-              {/* Fila de VALES */}
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  py: 0.5,
-                  bgcolor: '#c8e6c9',
-                  px: 1,
-                  mt: 1
-                }}
-              >
-                <Typography sx={{ fontWeight: 'bold', minWidth: 100 }}>VALES</Typography>
-                <TextField
-                  type="number"
-                  value={valesUltimoModal}
-                  onChange={(e) => setValesUltimoModal(parseFloat(e.target.value) || 0)}
-                  size="small"
-                  sx={{ width: 80 }}
-                  inputProps={{ min: 0, step: 0.01, style: { textAlign: 'center' } }}
-                />
-                <Typography sx={{ minWidth: 30, textAlign: 'center' }}>=</Typography>
-                <Typography sx={{ minWidth: 80, textAlign: 'right', fontWeight: 'bold' }}>
-                  {valesUltimoModal.toFixed(2)}
-                </Typography>
-              </Box>
+            {/* Fila de VALES */}
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: '60px 70px 60px',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 0.5,
+                py: 0.25,
+                px: 1,
+                bgcolor: '#c8e6c9',
+                borderRadius: 0.5,
+              }}
+            >
+              <Typography sx={{ fontWeight: 'bold', fontSize: '0.85rem', textAlign: 'left' }}>VALES</Typography>
+              <TextField
+                type="number"
+                value={valesUltimoModal}
+                onChange={(e) => setValesUltimoModal(parseFloat(e.target.value) || 0)}
+                size="small"
+                sx={{ width: '100%', '& input': { p: '2px 4px', textAlign: 'center', fontSize: '0.8rem' } }}
+                inputProps={{ min: 0, step: 0.01 }}
+              />
+              <Typography sx={{ textAlign: 'right', fontWeight: 'bold', fontSize: '0.85rem' }}>
+                {valesUltimoModal.toFixed(2)}
+              </Typography>
             </Box>
 
             {/* Total Retiro */}
-            <Box sx={{ mb: 2, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
-              <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+            <Box sx={{ p: 1, bgcolor: 'grey.100', borderRadius: 1 }}>
+              <Typography sx={{ fontWeight: 'bold', fontSize: '1rem' }}>
                 Total Retiro: ${totalUltimoRetiroModal.toFixed(2)}
               </Typography>
             </Box>
 
             {/* Observación */}
-            <Box sx={{ mb: 3 }}>
-              <Typography sx={{ mb: 1, fontWeight: 'bold' }}>Observación:</Typography>
+            <Box>
+              <Typography sx={{ mb: 0.25, fontWeight: 'bold', fontSize: '0.85rem' }}>Observación:</Typography>
               <TextField
                 fullWidth
                 multiline
-                rows={2}
+                rows={1}
+                size="small"
                 value={observacionUltimoModal}
                 onChange={(e) => setObservacionUltimoModal(e.target.value)}
                 placeholder="Ingrese observaciones..."
+                sx={{ '& textarea': { p: '4px 8px', fontSize: '0.85rem' } }}
               />
             </Box>
 
             {/* Botones */}
-            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
+            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', pt: 0.5 }}>
               <Button
                 variant="contained"
                 color="primary"
                 onClick={guardarUltimoRetiro}
                 disabled={loading}
+                size="small"
               >
                 Guardar
               </Button>
@@ -1159,6 +1186,7 @@ export default function CorteParcial() {
                 variant="outlined"
                 color="secondary"
                 onClick={cerrarModalUltimoRetiro}
+                size="small"
               >
                 Salir
               </Button>

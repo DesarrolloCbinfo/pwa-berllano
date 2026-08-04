@@ -254,11 +254,11 @@ const handleAplicarDescuento = () => {
     {
       accessorKey: "d_producto",
       header: "Descripción",
-      size: 100,
-      minSize: 100,
-      maxSize: 150,
+      size: 250,
+      minSize: 180,
+      maxSize: 1000,
       Cell: ({ cell }: any) => (
-        <Box sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <Box sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.9rem', fontWeight: 500 }}>
           {cell.getValue()}
         </Box>
       ),
@@ -429,9 +429,9 @@ const handleAplicarDescuento = () => {
       displayColumnDefOptions={{
         "mrt-row-actions": {
           header: "Acción",
-          size: 300, 
-          minSize: 240,
-          maxSize: 400,
+          size: 120, 
+          minSize: 100,
+          maxSize: 180,
         },
       }}
       renderDetailPanel={({ row }) => {
@@ -541,10 +541,11 @@ const handleAplicarDescuento = () => {
         density: "compact",
         columnSizing: {
           clave_prod: 80,
-          d_producto: 100,
+          d_producto: 250,
           Cant: 60,
           precio: 100,
           importe: 100,
+          'mrt-row-actions': 120,
         },
       }}
     />

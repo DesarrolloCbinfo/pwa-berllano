@@ -165,102 +165,72 @@ export default function CorteDia() {
   }, [session?.sucursal]);
 
   return (
-    <Box sx={{ p: { xs: 2, sm: 3 }, maxWidth: 800, mx: "auto" }}>
+    <Box sx={{ p: { xs: 2, sm: 3 }, maxWidth: 800, mx: "auto", fontFamily: '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif' }}>
       <Typography
         variant="h3"
-        sx={{ mb: 1, fontWeight: "bold", textAlign: "center", color: "primary.main" }}
+        sx={{ mb: 0.5, fontWeight: "bold", textAlign: "center", color: "primary.main" }}
       >
         Módulo de Corte de Día
       </Typography>
 
       {/* Info del corte */}
-      <Paper elevation={2} sx={{ p: 2, mb: 3 }}>
+      <Paper elevation={2} sx={{ p: 1, mb: 2 }}>
         <Box
           sx={{
             display: "flex",
             flexWrap: "wrap",
             justifyContent: "space-around",
-            gap: 2,
+            gap: 1,
           }}
         >
-          <Typography>
+          <Typography sx={{ fontSize: "0.85rem" }}>
             <strong>Sucursal:</strong> {session?.dSucursal || session?.sucursal}
           </Typography>
-          <Typography>
+          <Typography sx={{ fontSize: "0.85rem" }}>
             <strong>Corte:</strong> {ultimoCorte?.corte_maximo ?? "N/A"}
           </Typography>
-          <Typography>
+          <Typography sx={{ fontSize: "0.85rem" }}>
             <strong>Corte parcial:</strong> {ultimoCorte?.corte_parcial_maximo ?? "N/A"}
           </Typography>
         </Box>
       </Paper>
 
       {/* Resumen del corte */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Typography variant="h6" sx={{ mb: 3, fontWeight: "bold" }}>
+      <Card sx={{ mb: 2 }}>
+        <CardContent sx={{ p: 1.5 }}>
+          <Typography variant="h6" sx={{ mb: 1.5, fontWeight: "bold" }}>
             Resumen del Corte
           </Typography>
 
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <Box>
-              <Typography variant="body1" color="text.secondary">
-                Sucursal
-              </Typography>
-              <Typography variant="h6" fontWeight="bold">
-                {session?.dSucursal || session?.sucursal || "N/A"}
-              </Typography>
-            </Box>
-
-            <Box>
-              <Typography variant="body1" color="text.secondary">
-                Corte
-              </Typography>
-              <Typography variant="h6" fontWeight="bold">
-                {ultimoCorte?.corte_maximo ?? "N/A"}
-              </Typography>
-            </Box>
-
-            <Box>
-              <Typography variant="body1" color="text.secondary">
-                Corte Parcial
-              </Typography>
-              <Typography variant="h6" fontWeight="bold">
-                {ultimoCorte?.corte_parcial_maximo ?? "N/A"}
-              </Typography>
-            </Box>
-
-            <Box>
-              <Typography variant="body1" color="text.secondary">
-                Caja
-              </Typography>
-              <Typography variant="h6" fontWeight="bold">
-                1
-              </Typography>
-            </Box>
-
-            <Box>
-              <Typography variant="body1" color="text.secondary">
-                Fecha
-              </Typography>
-              <Typography variant="h6" fontWeight="bold">
-                {fechaActual}
-              </Typography>
-            </Box>
-
-            <Box>
-              <Typography variant="body1" color="text.secondary">
-                Hora
-              </Typography>
-              <Typography variant="h6" fontWeight="bold">
-                {horaActual}
-              </Typography>
-            </Box>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: "repeat(2, 1fr)",
+              gap: 1.5,
+            }}
+          >
+            {[
+              { label: "Sucursal", value: session?.dSucursal || session?.sucursal || "N/A" },
+              { label: "Corte", value: ultimoCorte?.corte_maximo ?? "N/A" },
+              { label: "Corte Parcial", value: ultimoCorte?.corte_parcial_maximo ?? "N/A" },
+              { label: "Caja", value: "1" },
+              { label: "Fecha", value: fechaActual },
+              { label: "Hora", value: horaActual },
+            ].map((item, idx) => (
+              <Box key={idx}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.75rem" }}>
+                  {item.label}
+                </Typography>
+                <Typography sx={{ fontWeight: "bold", fontSize: "0.95rem" }}>
+                  {item.value}
+                </Typography>
+              </Box>
+            ))}
           </Box>
         </CardContent>
       </Card>
 
-      <Divider sx={{ my: 3 }} />
+      <Divider sx={{ my: 1 }} />
 
       {/* Botones */}
       <Box sx={{ display: "flex", gap: 2, justifyContent: "center", mb: 3 }}>
@@ -270,13 +240,13 @@ export default function CorteDia() {
           onClick={confirmarCerrar}
           disabled={loading || !ultimoCorte}
           sx={{
-            px: 4,
-            py: 1.5,
+            px: 3,
+            py: 1,
             fontWeight: "bold",
             borderRadius: 2,
             textTransform: "none",
-            fontSize: "1rem",
-            minWidth: 150,
+            fontSize: "0.9rem",
+            minWidth: 120,
           }}
         >
           {loading ? "Procesando..." : "Finalizar Corte"}
@@ -287,25 +257,19 @@ export default function CorteDia() {
           color="secondary"
           onClick={cancelar}
           sx={{
-            px: 4,
-            py: 1.5,
+            px: 3,
+            py: 1,
             fontWeight: "bold",
             borderRadius: 2,
             textTransform: "none",
-            fontSize: "1rem",
-            minWidth: 150,
+            fontSize: "0.9rem",
+            minWidth: 120,
           }}
         >
           Cancelar
         </Button>
       </Box>
 
-      {/* Footer */}
-      <Typography
-        variant="body2"
-        sx={{ textAlign: "center", color: "text.secondary", mt: 2 }}
-      >
-      </Typography>
     </Box>
   );
 }
