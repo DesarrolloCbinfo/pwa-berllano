@@ -1303,23 +1303,7 @@ const ModalInfoStock = ({ open, onClose, consumoApi, setMessage, productoForm }:
         }
       }}
     >
-      <Box sx={{ background: 'linear-gradient(135deg, #333333 0%, #555555 100%)', color: 'white', p: 3, position: 'relative', overflow: 'hidden' }}>
-        <Box sx={{ position: 'relative', zIndex: 2 }}>
-          <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 1 }}>
-            Información de Stock
-          </Typography>
-          <Typography variant="body2" sx={{ opacity: 0.9, fontSize: '0.875rem' }}>
-            Consulta detallada de existencias, entradas, salidas y rotación
-          </Typography>
-        </Box>
-        <Box sx={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
-        <IconButton
-          onClick={onClose}
-          sx={{ position: 'absolute', top: 16, right: 16, color: 'white', zIndex: 3, bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
-        >
-          <CloseIcon />
-        </IconButton>
-      </Box>
+      
 
       <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
 
