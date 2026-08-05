@@ -66,6 +66,8 @@ export default function CorteParcial() {
   const [montoObligatorio, setMontoObligatorio] = useState<number>(0);
   const [ultimoRetiroCompletado, setUltimoRetiroCompletado] = useState<boolean>(false);
   const [retiroFondoCompletado, setRetiroFondoCompletado] = useState<boolean>(false);
+  const [totalRetiros, setTotalRetiros] = useState<number>(0);
+  const [finalizandoCorte, setFinalizandoCorte] = useState<boolean>(false);
   
   const denominaciones = [1000, 500, 200, 100, 50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1];
 
@@ -168,61 +170,59 @@ export default function CorteParcial() {
       return;
     }
 
-    if (montoObligatorio === 0) {
-      Swal.fire({
-        icon: "warning",
-        title: "Atención",
-        text: "No se requiere retiro de fondo para este corte",
-      });
-      return;
-    }
-
-    if (montoObligatorio > 0 && Math.abs(totalRetiroModal - montoObligatorio) >= 0.01) {
-      Swal.fire({
-        icon: "error",
-        title: "Retiro incorrecto",
-        text: `El monto del retiro de fondo (${totalRetiroModal.toFixed(2)}) no coincide con el monto esperado (${montoObligatorio.toFixed(2)}).`,
-      });
-      return;
-    }
-
     const dataParaGuardar = {
       cia: 1,
       sucursal: session?.sucursal || 0,
       caja: 1,
       corte: ultimoCorte.corte_maximo,
       corteParcial: ultimoCorte.corte_parcial_maximo,
-      usuario: session?.user?.id || session?.id || "",
-      montoRetiro: totalRetiroModal,
-      observaciones: observacionModal || ""
+      tipoRetiro: 1,
+      totalARetirar: totalRetiroModal,
+      totalEgreso: totalRetiroModal,
+      observacion: observacionModal || "",
+      usuario: session?.claveEmpleado || session?.id || ""
     };
 
     try {
       setLoading(true);
-      const res = await axios.post('https://localhost:5001/api/Cortedia/registrar-fondo', dataParaGuardar);
-      
+      console.log("Payload retiro fondo:", dataParaGuardar);
+      const res = await axios.post('https://localhost:5001/api/Corteparcial/sp_pos_guardar_retiro', dataParaGuardar);
+
       setLoading(false);
-      setRetiroFondoCompletado(true);
-      cerrarModalRetiro();
-      
-      // Pequeño delay para asegurar que el modal se cierre antes de mostrar la alerta
-      setTimeout(async () => {
-        await Swal.fire({
-          icon: "success",
-          title: "Éxito",
-          text: res.data?.mensaje || "Retiro de fondo registrado correctamente",
+
+      if (res.data?.permitido) {
+        setRetiroFondoCompletado(true);
+        cerrarModalRetiro();
+
+        // Pequeño delay para asegurar que el modal se cierre antes de mostrar la alerta
+        setTimeout(async () => {
+          await Swal.fire({
+            icon: "success",
+            title: "Éxito",
+            text: res.data?.mensaje || "Retiro de fondo registrado correctamente",
+          });
+          fetchInfoCorte();
+          fetchTotalRetiros();
+        }, 100);
+      } else {
+        const mensaje = res.data?.mensaje
+          ? res.data.mensaje.replace(/\s*\(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?\)/g, "")
+          : "El retiro no pudo ser registrado";
+        Swal.fire({
+          icon: "warning",
+          title: "Atención",
+          text: mensaje,
         });
-        fetchInfoCorte();
-      }, 100);
+      }
     } catch (error: any) {
       console.error("Error al guardar retiro:", error);
       setLoading(false);
       cerrarModalRetiro();
       
-      const errorMessage = error?.response?.data?.mensaje 
+      const errorMessage = (error?.response?.data?.mensaje 
         || error?.response?.data?.detalle 
         || error?.message 
-        || "No se pudo registrar el retiro";
+        || "No se pudo registrar el retiro").replace(/\s*\(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?\)/g, "");
       
       // Pequeño delay para asegurar que el modal se cierre antes de mostrar la alerta
       setTimeout(() => {
@@ -274,52 +274,46 @@ export default function CorteParcial() {
     try {
       setLoading(true);
 
-      const requestBody = {
+      const dataUltimoRetiro = {
         cia: 1,
         sucursal: session?.sucursal || 0,
+        caja: 1,
         corte: ultimoCorte.corte_maximo,
         corteParcial: ultimoCorte.corte_parcial_maximo,
-        caja: 1,
-        usuario: session?.user?.id || session?.id || "",
-        observaciones: observacionUltimoModal || "",
-        ultimoRetiroCorteParcial: totalUltimoRetiroModal,
-        
-        // 🚀 CAMBIO AQUÍ: Envía el estado que ya guardó los $110 (o lo que dicte la BD)
-        montoEsperadoFormularioA: montoEsperadoFormularioA,
-        
-        b1000: retirosUltimoModal[1000] || 0,
-        b500: retirosUltimoModal[500] || 0,
-        b200: retirosUltimoModal[200] || 0,
-        b100: retirosUltimoModal[100] || 0,
-        b50: retirosUltimoModal[50] || 0,
-        b20: retirosUltimoModal[20] || 0,
-        m10: retirosUltimoModal[10] || 0,
-        m5: retirosUltimoModal[5] || 0,
-        m2: retirosUltimoModal[2] || 0,
-        m1: retirosUltimoModal[1] || 0,
-        m05: retirosUltimoModal[0.5] || 0,
-        m02: retirosUltimoModal[0.2] || 0,
-        m01: retirosUltimoModal[0.1] || 0,
-        vales: valesUltimoModal || 0
+        tipoRetiro: 3,
+        totalARetirar: totalUltimoRetiroModal,
+        totalEgreso: totalUltimoRetiroModal,
+        observacion: observacionUltimoModal || "Último retiro parcial",
+        usuario: session?.claveEmpleado || ""
       };
 
-      console.log("Datos enviados para último retiro:", requestBody);
+      console.log("Payload último retiro:", dataUltimoRetiro);
 
-      const response = await axios.post("https://localhost:5001/api/Cortedia/Guardar", requestBody);
+      const response = await axios.post("https://localhost:5001/api/Corteparcial/sp_pos_guardar_retiro", dataUltimoRetiro);
 
       setLoading(false);
-      cerrarModalUltimoRetiro();
-      
-      // Pequeño delay para asegurar que el modal se cierre antes de mostrar la alerta
-      setTimeout(async () => {
-        await Swal.fire({
-          icon: "success",
-          title: "Éxito",
-          text: response.data?.mensaje || "Último retiro guardado correctamente.",
+
+      if (response.data?.permitido) {
+        cerrarModalUltimoRetiro();
+
+        // Pequeño delay para asegurar que el modal se cierre antes de mostrar la alerta
+        setTimeout(async () => {
+          await Swal.fire({
+            icon: "success",
+            title: "Éxito",
+            text: response.data?.mensaje || "Último retiro guardado correctamente.",
+          });
+          setUltimoRetiroCompletado(true);
+          fetchInfoCorte();
+          fetchTotalRetiros();
+        }, 100);
+      } else {
+        Swal.fire({
+          icon: "warning",
+          title: "Atención",
+          text: response.data?.mensaje || "El último retiro no pudo ser registrado",
         });
-        setUltimoRetiroCompletado(true);
-        fetchInfoCorte();
-      }, 100);
+      }
     } catch (error: any) {
       console.error("Error al guardar último retiro:", error);
       setLoading(false);
@@ -412,13 +406,24 @@ export default function CorteParcial() {
     return efectivoItem ? Number(efectivoItem.total) : 0;
   }, [infoCorte]);
 
-  // Calcular total de retiros
-  const totalRetiros = useMemo(() => {
-    const retiroItem = infoCorte.find(
-      (item) => item.descripcion === "retiro"
-    );
-    return retiroItem ? Number(retiroItem.total) : 0;
-  }, [infoCorte]);
+  // Obtener total de retiros desde la BD
+  const fetchTotalRetiros = async () => {
+    if (!ultimoCorte || !session?.sucursal) return;
+
+    try {
+      const res = await axios.get('https://localhost:5001/api/Corteparcial/total-retiros', {
+        params: {
+          sucursal: session.sucursal,
+          corte: ultimoCorte.corte_maximo,
+          corteParcial: ultimoCorte.corte_parcial_maximo,
+        },
+      });
+
+      setTotalRetiros(Number(res.data?.totalRetiros ?? 0) || 0);
+    } catch (error) {
+      console.error("Error obteniendo total de retiros:", error);
+    }
+  };
 
   // Calcular monto de medios de pago no efectivo
   const montoNoEfectivo = useMemo(() => {
@@ -487,32 +492,52 @@ export default function CorteParcial() {
 
   // Finalizar corte
   const finalizarCorte = async () => {
-    // Confirmación inicial
-    const confirmacion = await Swal.fire({
-      title: "¿Desea realizar el corte parcial?",
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
-      confirmButtonText: "Sí",
-      cancelButtonText: "No",
-      allowOutsideClick: false,
-    });
+    setFinalizandoCorte(true);
+    try {
+      // Validar que haya operaciones registradas
+      const tieneOperaciones = infoCorte.some(
+        (item) => item.descripcion !== "retiro" && Number(item.total) !== 0
+      );
 
-    if (!confirmacion.isConfirmed) return;
+      if (!tieneOperaciones) {
+        await Swal.fire({
+          icon: "warning",
+          title: "Atención",
+          text: "¡Atención! No se ha hecho ninguna operación dentro de este corte, por lo tanto no puede realizar el corte parcial. Verifique.",
+          confirmButtonColor: "#f8bb86",
+        });
+        return;
+      }
 
-    // Alerta informativa sobre cierre del sistema
-    await Swal.fire({
-      title: "Información",
-      text: "El sistema se cerrará para finalizar el corte parcial",
-      icon: "info",
-      confirmButtonColor: "#3085d6",
-      confirmButtonText: "Entendido",
-      allowOutsideClick: false,
-    });
+      // Confirmación inicial
+      const confirmacion = await Swal.fire({
+        title: "¿Desea realizar el corte parcial?",
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        confirmButtonText: "Sí",
+        cancelButtonText: "No",
+        allowOutsideClick: false,
+      });
 
-    // Cerrar corte directamente con el efectivo teórico
-    cerrarCorte(efectivoTeorico);
+      if (!confirmacion.isConfirmed) return;
+
+      // Alerta informativa sobre cierre del sistema
+      await Swal.fire({
+        title: "Información",
+        text: "El sistema se cerrará para finalizar el corte parcial",
+        icon: "info",
+        confirmButtonColor: "#3085d6",
+        confirmButtonText: "Entendido",
+        allowOutsideClick: false,
+      });
+
+      // Cerrar corte directamente con el efectivo teórico
+      await cerrarCorte(efectivoTeorico);
+    } finally {
+      setFinalizandoCorte(false);
+    }
   };
 
   // Cerrar corte en la API
@@ -529,7 +554,7 @@ export default function CorteParcial() {
         caja: 1,
         monto: montoCorte,
         corteFinal: false, // Corte parcial NO es corte final
-        usr: session?.user?.id || session?.id || "",
+        usr: session?.id || "",
         cia: 1,
         ultimoRetiro: ultimoRetiro
       };
@@ -594,6 +619,7 @@ export default function CorteParcial() {
   useEffect(() => {
     if (ultimoCorte?.corte_maximo) {
       fetchInfoCorte();
+      fetchTotalRetiros();
       setIntentos(0);
     }
   }, [ultimoCorte?.corte_maximo, ultimoCorte?.corte_parcial_maximo]);
@@ -760,7 +786,7 @@ export default function CorteParcial() {
           variant="contained"
           color="warning"
           onClick={finalizarCorte}
-          disabled={!ultimoRetiroCompletado || loading}
+          disabled={!ultimoRetiroCompletado || loading || finalizandoCorte}
           sx={{
             px: 3,
             py: 1,
@@ -771,7 +797,7 @@ export default function CorteParcial() {
             minWidth: 120,
           }}
         >
-          {loading ? "Procesando..." : "Finalizar Corte"}
+          {loading || finalizandoCorte ? "Procesando..." : "Finalizar Corte"}
         </Button>
 
         <Button

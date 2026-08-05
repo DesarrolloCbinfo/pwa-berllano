@@ -15,6 +15,7 @@ import RemoveIcon from "@mui/icons-material/Remove";
 import Swal from "sweetalert2";
 import useConsumoApi from "../../hooks/useConsumoApi";
 import useSession from "../../hooks/useSession";
+import axios from "axios";
 import "@fontsource/roboto/400.css";
 import "@fontsource/roboto/500.css";
 import "@fontsource/roboto/700.css";
@@ -40,8 +41,7 @@ export default function Retiros() {
   const [observaciones, setObservaciones] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [fondoSucursal, setFondoSucursal] = useState<number>(0);
-  const [efectivoEnCaja, setEfectivoEnCaja] = useState<number>(0);
-  const [retirosRegistrados, setRetirosRegistrados] = useState<number>(0);
+  const [totalARetirar, setTotalARetirar] = useState<number>(0);
   const [vales] = useState<number>(0);
   const [retirosOriginales, setRetirosOriginales] = useState<Record<number, number> | null>(null);
   const [intentosConfirmacion, setIntentosConfirmacion] = useState(0);
@@ -58,45 +58,35 @@ export default function Retiros() {
     fetchCorteActual();
   }, [session?.sucursal]);
 
-  // Cargar fondo de caja y el efectivo/límite del corte
+  // Cargar total a retirar desde el backend
   useEffect(() => {
-    const cargarDatosCorte = async () => {
+    if (dataCorteActual?.corte_maximo) {
+      cargarTotalARetirar();
+    }
+  }, [dataCorteActual]);
+
+  // Cargar fondo de caja de la sucursal
+  useEffect(() => {
+    const cargarFondoSucursal = async () => {
       const sucursalId = session?.sucursal;
       if (!sucursalId) return;
 
-      let fondo = Number((session as any)?.fondo ?? 0) || 0;
-      let efectivo = 0;
-      let limite = 0;
+      const fondoSesion = Number((session as any)?.fondo ?? 0) || 0;
 
       try {
-        const [sucursalRes, verificaRes] = await Promise.all([
-          consumoApi.get(`/api/sucursal/sucursal?sucursal=${sucursalId}`),
-          consumoApi.get(`/api/Cortedia/verifica-retiros?sucursal=${sucursalId}&caja=1`),
-        ]);
-
-        const sucursalData = Array.isArray(sucursalRes.data) && sucursalRes.data.length > 0
-          ? sucursalRes.data[0]
-          : sucursalRes.data;
-        fondo = Number(sucursalData?.fondo ?? fondo) || 0;
-
-        if (verificaRes.data) {
-          efectivo = Number(verificaRes.data?.efectivoEnCaja ?? 0) || 0;
-          limite = Number(verificaRes.data?.limitePermitido ?? 0) || 0;
-        }
+        const res = await consumoApi.get(`/api/sucursal/sucursal?sucursal=${sucursalId}`);
+        const sucursalData = Array.isArray(res.data) && res.data.length > 0
+          ? res.data[0]
+          : res.data;
+        const fondo = Number(sucursalData?.fondo ?? fondoSesion) || 0;
+        setFondoSucursal(fondo);
       } catch (error) {
-        console.error('Error cargando datos del corte:', error);
+        console.error('Error cargando fondo de la sucursal:', error);
+        setFondoSucursal(fondoSesion);
       }
-
-      // Si no se pudo obtener el fondo de la sucursal, usar el límite permitido como referencia
-      if (fondo <= 0 && limite > 0) {
-        fondo = limite;
-      }
-
-      setFondoSucursal(fondo);
-      setEfectivoEnCaja(efectivo);
     };
 
-    cargarDatosCorte();
+    cargarFondoSucursal();
   }, [session?.sucursal]);
 
   const fetchCorteActual = async () => {
@@ -114,13 +104,24 @@ export default function Retiros() {
     }
   };
 
-  // Cargar retiros acumulados del corte actual para restarlos del efectivo en caja
-  useEffect(() => {
-    if (!dataCorteActual || !session?.sucursal) return;
-    const key = `retiros_acum_${session.sucursal}_${dataCorteActual.corte_maximo}_${dataCorteActual.corte_parcial_maximo}`;
-    const acumulado = Number(localStorage.getItem(key)) || 0;
-    setRetirosRegistrados(acumulado);
-  }, [dataCorteActual, session?.sucursal]);
+  const cargarTotalARetirar = async () => {
+    if (!session?.sucursal || !dataCorteActual) return;
+
+    try {
+      const res = await axios.get('https://localhost:5001/api/Corteparcial/calcular-total-a-retirar', {
+        params: {
+          sucursal: session.sucursal,
+          caja: 1,
+          corte: dataCorteActual.corte_maximo,
+          corteParcial: dataCorteActual.corte_parcial_maximo,
+        },
+      });
+
+      setTotalARetirar(Number(res.data?.totalARetirar ?? 0) || 0);
+    } catch (error) {
+      console.error("Error al calcular el total a retirar:", error);
+    }
+  };
 
   const handleCantidadChange = (denominacion: number, value: number) => {
     setRetiros(prev => ({
@@ -151,13 +152,6 @@ export default function Retiros() {
   }, [retiros]);
 
   const totalEgreso = totalRetiro;
-  const totalARetirar = useMemo(() => {
-    return Math.max(0, totalEgreso - fondoSucursal);
-  }, [totalEgreso, fondoSucursal]);
-
-  const montoSugerido = useMemo(() => {
-    return Math.max(0, efectivoEnCaja - retirosRegistrados - fondoSucursal);
-  }, [efectivoEnCaja, retirosRegistrados, fondoSucursal]);
 
 
   const validarDenominacionesIguales = (): boolean => {
@@ -298,41 +292,31 @@ export default function Retiros() {
 
     setLoading(true);
     try {
-      const response = await consumoApi.post(
-        "/api/PuntoDeVenta/sp_kiosko_registra_retiro",
-        null,
-        {
-          params: {
-            caja: 1,
-            sucursal: session.sucursal,
-            corte: dataCorteActual.corte_maximo,
-            corte_parcial: dataCorteActual.corte_parcial_maximo,
-            retiro: totalFinal,
-            usuario: `'${session.claveEmpleado || session.id || "00001"}'`,
-            observaciones: observaciones.trim() || "sin observacion registrada",
-          },
-        }
+      const datosRetiro = {
+        cia: 1,
+        sucursal: session?.sucursal || 0,
+        caja: 1,
+        corte: dataCorteActual.corte_maximo,
+        corteParcial: dataCorteActual.corte_parcial_maximo,
+        tipoRetiro: 2,
+        totalARetirar: totalFinal,
+        totalEgreso: totalEgreso,
+        observacion: observaciones.trim() || ".",
+        usuario: session?.claveEmpleado || session?.id || "00001",
+      };
+
+      const response = await axios.post(
+        'https://localhost:5001/api/Corteparcial/sp_pos_guardar_retiro',
+        datosRetiro
       );
 
-      const resultado = Array.isArray(response.data) && response.data.length > 0 
-        ? response.data[0] 
-        : response.data;
-
-      if (resultado.codigo === 0) {
+      if (response.data?.permitido) {
         Swal.fire({
           icon: "success",
           title: "Éxito",
-          text: resultado.mensaje1 || "Retiro registrado correctamente",
+          text: response.data?.mensaje || "Retiro registrado correctamente",
           confirmButtonColor: "#3085d6",
         });
-
-        // Acumular retiro registrado para restarlo del efectivo en caja
-        const nuevoAcumulado = retirosRegistrados + totalFinal;
-        setRetirosRegistrados(nuevoAcumulado);
-        if (dataCorteActual && session?.sucursal) {
-          const key = `retiros_acum_${session.sucursal}_${dataCorteActual.corte_maximo}_${dataCorteActual.corte_parcial_maximo}`;
-          localStorage.setItem(key, String(nuevoAcumulado));
-        }
 
         // Limpiar formulario
         const init: Record<number, number> = {};
@@ -348,16 +332,19 @@ export default function Retiros() {
         Swal.fire({
           icon: "warning",
           title: "Atención",
-          text: resultado.mensaje1 || "No se pudo registrar el retiro",
+          text: response.data?.mensaje || "No se pudo registrar el retiro",
           confirmButtonColor: "#f8bb86",
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error al registrar retiro:", error);
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: "Hubo un problema al registrar el retiro. Por favor, intenta nuevamente.",
+        text: error?.response?.data?.mensaje 
+          || error?.response?.data?.detalle 
+          || error?.message 
+          || "Hubo un problema al registrar el retiro. Por favor, intenta nuevamente.",
         confirmButtonColor: "#d33",
       });
     } finally {
@@ -447,16 +434,9 @@ export default function Retiros() {
             variant="h5"
             sx={{ fontWeight: 'bold', color: '#5c5c5cff' }}
           >
-            {montoSugerido > 0
-              ? `$${montoSugerido.toFixed(2)}`
-              : 'No se requiere retiro'}
+            ${totalARetirar.toFixed(2)}
           </Typography>
         </Box>
-        {totalARetirar > 0 && (
-          <Typography variant="caption" sx={{ color: 'text.secondary', mt: 0.5 }}>
-            Conteo actual: ${totalARetirar.toFixed(2)}
-          </Typography>
-        )}
       </Paper>
 
       {/* Grid de denominaciones */}
