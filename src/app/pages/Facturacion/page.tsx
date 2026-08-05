@@ -8,11 +8,12 @@ import {
 } from '@mui/material';
 import {
   Receipt, Description, PictureAsPdf, Email, Send, Cancel,
-  CheckCircle, RadioButtonUnchecked, Search, NavigateBefore, NavigateNext, Visibility, Download, MoreVert
+  CheckCircle, RadioButtonUnchecked, Search, NavigateBefore, NavigateNext, Visibility, Download, MoreVert, People, Edit, Delete
 } from '@mui/icons-material';
 import type { IClienteFiscal } from './interfaces/IFactura';
 import { MaterialReactTable, type MRT_ColumnDef } from 'material-react-table';
 import useConsumoApiFacturacion from '../../../hooks/useConsumoApiFacturacion';
+import useConsumoApi from '../../../hooks/useConsumoApi';
 import useSession from '../../../hooks/useSession';
 import Swal from 'sweetalert2';
 import jsPDF from 'jspdf';
@@ -412,6 +413,7 @@ async function sendFacturaEmail(xmlContent: string, recipientEmail: string, seri
 export default function FacturacionPage() {
   const session = useSession();
   const { consumoApi: apiFacturacion } = useConsumoApiFacturacion();
+  const { consumoApi } = useConsumoApi();
 
   const [tabValue, setTabValue] = useState(0);
 
@@ -462,6 +464,11 @@ export default function FacturacionPage() {
   const [modalPdfPreview, setModalPdfPreview] = useState(false);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState('');
   const [loadingPdfPreview, setLoadingPdfPreview] = useState(false);
+
+  const [loadingClientesFiscales, setLoadingClientesFiscales] = useState(false);
+  const [modalClienteFiscal, setModalClienteFiscal] = useState(false);
+  const [editandoClienteFiscal, setEditandoClienteFiscal] = useState(false);
+  const [clienteFiscalForm, setClienteFiscalForm] = useState<IClienteFiscal>({ id: 0, rfc: '', nombreFiscal: '', cpFiscal: '', regimenFiscal: '', usoCFDI: '', correoFiscal: '' });
 
   const fetchedUuidKey = useRef('');
 
@@ -913,6 +920,61 @@ export default function FacturacionPage() {
     }
   };
 
+  const fetchClientesFiscalesTab = async () => {
+    setLoadingClientesFiscales(true);
+    try {
+      const res = await consumoApi.get('/api/RfcFiscales/sp_bw_cat_rfcFiscales_sel');
+      setClientesFiscales(res.data || []);
+    } catch {
+      Swal.fire('Error', 'No se pudieron cargar los clientes fiscales', 'error');
+    } finally {
+      setLoadingClientesFiscales(false);
+    }
+  };
+
+  const handleOpenClienteFiscal = (cliente?: IClienteFiscal) => {
+    if (cliente) {
+      setClienteFiscalForm({ ...cliente });
+      setEditandoClienteFiscal(true);
+    } else {
+      setClienteFiscalForm({ id: 0, rfc: '', nombreFiscal: '', cpFiscal: '', regimenFiscal: '', usoCFDI: '', correoFiscal: '' });
+      setEditandoClienteFiscal(false);
+    }
+    setModalClienteFiscal(true);
+  };
+
+  const handleSaveClienteFiscal = async () => {
+    const { rfc, nombreFiscal, cpFiscal, regimenFiscal, usoCFDI, correoFiscal } = clienteFiscalForm;
+    if (!rfc || !nombreFiscal || !regimenFiscal || !usoCFDI) {
+      Swal.fire('Validación', 'RFC, Nombre Fiscal, Régimen Fiscal y Uso CFDI son obligatorios.', 'warning');
+      return;
+    }
+    try {
+      if (editandoClienteFiscal) {
+        await consumoApi.put('/api/RfcFiscales/sp_bw_cat_rfcFiscales_upd', clienteFiscalForm);
+      } else {
+        await consumoApi.post('/api/RfcFiscales/sp_bw_cat_rfcFiscales_ins', { rfc, nombreFiscal, cpFiscal, regimenFiscal, usoCFDI, correoFiscal });
+      }
+      Swal.fire({ icon: 'success', title: editandoClienteFiscal ? 'Actualizado' : 'Creado', timer: 1500, showConfirmButton: false });
+      setModalClienteFiscal(false);
+      fetchClientesFiscalesTab();
+    } catch (err: any) {
+      Swal.fire('Error', err.response?.data?.message || err.message || 'Error al guardar', 'error');
+    }
+  };
+
+  const handleDeleteClienteFiscal = async (id: number) => {
+    const result = await Swal.fire({ title: '¿Eliminar?', text: 'Esta acción no se puede deshacer', icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: '#d32f2f' });
+    if (!result.isConfirmed) return;
+    try {
+      await consumoApi.delete(`/api/RfcFiscales/sp_bw_cat_rfcFiscales_del?id=${id}`);
+      Swal.fire({ icon: 'success', title: 'Eliminado', timer: 1500, showConfirmButton: false });
+      fetchClientesFiscalesTab();
+    } catch (err: any) {
+      Swal.fire('Error', err.response?.data?.message || err.message || 'Error al eliminar', 'error');
+    }
+  };
+
   const columnsVentas: MRT_ColumnDef<any>[] = [
     { accessorKey: 'fecha', header: 'Fecha', size: 90, Cell: ({ cell }) => new Date(cell.getValue<string>()).toLocaleDateString() },
     { accessorKey: 'dSucursal', header: 'Sucursal', size: 120 },
@@ -966,6 +1028,28 @@ export default function FacturacionPage() {
     { accessorKey: 'fechaCFDI', header: 'Fecha CFDI', size: 100, Cell: ({ cell }) => new Date(cell.getValue<string>()).toLocaleDateString() },
   ];
 
+  const columnsClientesFiscales: MRT_ColumnDef<IClienteFiscal>[] = [
+    {
+      id: 'acciones', header: 'Acciones', size: 100,
+      Cell: ({ row }) => (
+        <Box sx={{ display: 'flex', gap: 0.5 }}>
+          <IconButton size="small" onClick={() => handleOpenClienteFiscal(row.original)}><Edit fontSize="small" /></IconButton>
+          <IconButton size="small" color="error" onClick={() => handleDeleteClienteFiscal(row.original.id)}><Delete fontSize="small" /></IconButton>
+        </Box>
+      ),
+    },
+    { accessorKey: 'rfc', header: 'RFC', size: 140 },
+    { accessorKey: 'nombreFiscal', header: 'Nombre Fiscal', size: 200 },
+    { accessorKey: 'cpFiscal', header: 'CP', size: 80 },
+    { accessorKey: 'regimenFiscal', header: 'Régimen Fiscal', size: 120 },
+    { accessorKey: 'usoCFDI', header: 'Uso CFDI', size: 80 },
+    { accessorKey: 'correoFiscal', header: 'Correo', size: 180 },
+  ];
+
+  useEffect(() => {
+    if (tabValue === 2) fetchClientesFiscales();
+  }, [tabValue]);
+
   return (
     <Box>
       {/* ─── Header ─── */}
@@ -978,6 +1062,7 @@ export default function FacturacionPage() {
       <Tabs value={tabValue} onChange={(_, v) => setTabValue(v)} sx={{ mb: 3 }}>
         <Tab icon={<Receipt />} iconPosition="start" label="Generar Factura" />
         <Tab icon={<Description />} iconPosition="start" label="Facturas Timbradas" />
+        <Tab icon={<People />} iconPosition="start" label="Clientes Fiscales" />
       </Tabs>
 
       {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
@@ -1051,6 +1136,28 @@ export default function FacturacionPage() {
               data={facturas}
               enableStickyHeader
               initialState={{ density: 'compact', sorting: [{ id: 'folio', desc: true }] }}
+            />
+          )}
+        </Box>
+      )}
+
+      {/* ═══════════ TAB 2: CLIENTES FISCALES ═══════════ */}
+      {tabValue === 2 && (
+        <Box>
+          <Button variant="contained" startIcon={<People />} onClick={() => handleOpenClienteFiscal()} sx={{ mb: 2 }}>
+            Agregar Cliente Fiscal
+          </Button>
+
+          {loadingClientesFiscales ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
+          ) : clientesFiscales.length === 0 ? (
+            <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>No hay clientes fiscales registrados.</Typography>
+          ) : (
+            <MaterialReactTable
+              columns={columnsClientesFiscales}
+              data={clientesFiscales}
+              enableStickyHeader
+              initialState={{ density: 'compact' }}
             />
           )}
         </Box>
@@ -1347,6 +1454,35 @@ export default function FacturacionPage() {
             <iframe src={pdfPreviewUrl} style={{ width: '100%', height: '100%', border: 'none' }} title="PDF Preview" />
           ) : null}
         </DialogContent>
+      </Dialog>
+
+      {/* ═════ Modal Cliente Fiscal ═════ */}
+      <Dialog open={modalClienteFiscal} onClose={() => setModalClienteFiscal(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>{editandoClienteFiscal ? 'Editar' : 'Nuevo'} Cliente Fiscal</DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <TextField size="small" label="RFC" value={clienteFiscalForm.rfc} onChange={e => setClienteFiscalForm(p => ({ ...p, rfc: e.target.value.toUpperCase() }))} />
+            <TextField size="small" label="Nombre Fiscal" value={clienteFiscalForm.nombreFiscal} onChange={e => setClienteFiscalForm(p => ({ ...p, nombreFiscal: e.target.value }))} />
+            <TextField size="small" label="CP Fiscal" value={clienteFiscalForm.cpFiscal} onChange={e => setClienteFiscalForm(p => ({ ...p, cpFiscal: e.target.value }))} />
+            <FormControl fullWidth size="small">
+              <InputLabel>Régimen Fiscal</InputLabel>
+              <Select value={clienteFiscalForm.regimenFiscal} label="Régimen Fiscal" onChange={e => setClienteFiscalForm(p => ({ ...p, regimenFiscal: e.target.value }))}>
+                {Object.entries(REGIMEN_FISCAL_DESCRIPTIONS).map(([k, v]) => <MenuItem key={k} value={k}>{k} - {v}</MenuItem>)}
+              </Select>
+            </FormControl>
+            <FormControl fullWidth size="small">
+              <InputLabel>Uso CFDI</InputLabel>
+              <Select value={clienteFiscalForm.usoCFDI} label="Uso CFDI" onChange={e => setClienteFiscalForm(p => ({ ...p, usoCFDI: e.target.value }))}>
+                {usoCfdiOptions.map((o: any) => <MenuItem key={o.clave} value={o.clave}>{o.descripcion}</MenuItem>)}
+              </Select>
+            </FormControl>
+            <TextField size="small" label="Correo Fiscal" value={clienteFiscalForm.correoFiscal} onChange={e => setClienteFiscalForm(p => ({ ...p, correoFiscal: e.target.value }))} />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setModalClienteFiscal(false)} color="inherit">Cancelar</Button>
+          <Button onClick={handleSaveClienteFiscal} variant="contained">{editandoClienteFiscal ? 'Actualizar' : 'Guardar'}</Button>
+        </DialogActions>
       </Dialog>
     </Box>
   );
