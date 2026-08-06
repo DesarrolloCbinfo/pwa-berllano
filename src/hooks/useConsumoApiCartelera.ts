@@ -32,8 +32,8 @@ const useConsumoApiCartelera = () => {
 
   const consumoApi = useMemo(() => {
     const api = axios.create({
-       baseURL: "https://localhost:5001/:9080",
-      //baseURL: "http://localhost:9080",
+       baseURL: "https://217.216.95.62:5001/:9080",
+      //baseURL: "http://217.216.95.62:9080",
       headers: {
         "Content-Type": "application/json",
       },

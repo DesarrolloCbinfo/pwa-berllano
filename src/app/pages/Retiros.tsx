@@ -40,7 +40,7 @@ export default function Retiros() {
   const [observaciones, setObservaciones] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [fondoSucursal, setFondoSucursal] = useState<number>(0);
-  const [totalARetirar, setTotalARetirar] = useState<number>(0);
+
   const [vales] = useState<number>(0);
   const [retirosOriginales, setRetirosOriginales] = useState<Record<number, number> | null>(null);
   const [intentosConfirmacion, setIntentosConfirmacion] = useState(0);
@@ -57,12 +57,7 @@ export default function Retiros() {
     fetchCorteActual();
   }, [session?.sucursal]);
 
-  // Cargar total a retirar desde el backend
-  useEffect(() => {
-    if (dataCorteActual?.corte_maximo) {
-      cargarTotalARetirar();
-    }
-  }, [dataCorteActual]);
+
 
   // Cargar fondo de caja de la sucursal
   useEffect(() => {
@@ -103,24 +98,7 @@ export default function Retiros() {
     }
   };
 
-  const cargarTotalARetirar = async () => {
-    if (!session?.sucursal || !dataCorteActual) return;
 
-    try {
-      const res = await consumoApi.get('/api/Corteparcial/calcular-total-a-retirar', {
-        params: {
-          sucursal: session.sucursal,
-          caja: 1,
-          corte: dataCorteActual.corte_maximo,
-          corteParcial: dataCorteActual.corte_parcial_maximo,
-        },
-      });
-
-      setTotalARetirar(Number(res.data?.totalARetirar ?? 0) || 0);
-    } catch (error) {
-      console.error("Error al calcular el total a retirar:", error);
-    }
-  };
 
   const handleCantidadChange = (denominacion: number, value: number) => {
     setRetiros(prev => ({
@@ -273,10 +251,10 @@ export default function Retiros() {
         corte: dataCorteActual.corte_maximo,
         corteParcial: dataCorteActual.corte_parcial_maximo,
         tipoRetiro: 2,
-        totalARetirar: totalARetirar,
+        totalARetirar: totalEgreso,
         totalEgreso: totalEgreso,
         observacion: observaciones.trim() || ".",
-        usuario: session?.claveEmpleado || session?.id || "00001",
+        usuario: session?.id || session?.claveEmpleado || "00001",
       };
 
       const response = await consumoApi.post(
@@ -408,7 +386,7 @@ export default function Retiros() {
             variant="h5"
             sx={{ fontWeight: 'bold', color: '#5c5c5cff' }}
           >
-            ${totalARetirar.toFixed(2)}
+            ${totalEgreso.toFixed(2)}
           </Typography>
         </Box>
       </Paper>

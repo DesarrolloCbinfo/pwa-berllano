@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "srv": "ssh srv.us -R 1:localhost:5001"
+    "srv": "ssh srv.us -R 1:217.216.95.62:5001"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

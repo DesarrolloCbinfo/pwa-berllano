@@ -65,7 +65,7 @@ export default function CorteParcial() {
   const [montoObligatorio, setMontoObligatorio] = useState<number>(0);
   const [ultimoRetiroCompletado, setUltimoRetiroCompletado] = useState<boolean>(false);
   const [retiroFondoCompletado, setRetiroFondoCompletado] = useState<boolean>(false);
-  const [totalRetiros, setTotalRetiros] = useState<number>(0);
+
   const [finalizandoCorte, setFinalizandoCorte] = useState<boolean>(false);
   
   const denominaciones = [1000, 500, 200, 100, 50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1];
@@ -179,7 +179,7 @@ export default function CorteParcial() {
       totalARetirar: totalRetiroModal,
       totalEgreso: totalRetiroModal,
       observacion: observacionModal || "",
-      usuario: session?.claveEmpleado || session?.id || ""
+      usuario: session?.id || session?.claveEmpleado || ""
     };
 
     try {
@@ -201,7 +201,6 @@ export default function CorteParcial() {
             text: res.data?.mensaje || "Retiro de fondo registrado correctamente",
           });
           fetchInfoCorte();
-          fetchTotalRetiros();
         }, 100);
       } else {
         const mensaje = res.data?.mensaje
@@ -283,7 +282,7 @@ export default function CorteParcial() {
         totalARetirar: totalUltimoRetiroModal,
         totalEgreso: totalUltimoRetiroModal,
         observacion: observacionUltimoModal || "Último retiro parcial",
-        usuario: session?.claveEmpleado || ""
+        usuario: session?.id || session?.claveEmpleado || ""
       };
 
       console.log("Payload último retiro:", dataUltimoRetiro);
@@ -304,7 +303,6 @@ export default function CorteParcial() {
           });
           setUltimoRetiroCompletado(true);
           fetchInfoCorte();
-          fetchTotalRetiros();
         }, 100);
       } else {
         Swal.fire({
@@ -405,31 +403,35 @@ export default function CorteParcial() {
     return efectivoItem ? Number(efectivoItem.total) : 0;
   }, [infoCorte]);
 
-  // Obtener total de retiros desde la BD
-  const fetchTotalRetiros = async () => {
-    if (!ultimoCorte || !session?.sucursal) return;
+  // Obtener total de retiros desde infoCorte (ya calculado por sp_bw_get_info_corte)
+  const totalRetiros = useMemo(() => {
+    const retiroItem = infoCorte.find(item => item.descripcion === "retiro");
+    return retiroItem ? Number(retiroItem.total) : 0;
+  }, [infoCorte]);
 
-    try {
-      const res = await consumoApi.get('/api/Corteparcial/total-retiros', {
-        params: {
-          sucursal: session.sucursal,
-          corte: ultimoCorte.corte_maximo,
-          corteParcial: ultimoCorte.corte_parcial_maximo,
-        },
-      });
+  // Obtener retiro de fondo desde infoCorte
+  const totalRetiroFondo = useMemo(() => {
+    const item = infoCorte.find(i => i.descripcion === "retiro fondo");
+    return item ? Number(item.total) : 0;
+  }, [infoCorte]);
 
-      setTotalRetiros(Number(res.data?.totalRetiros ?? 0) || 0);
-    } catch (error) {
-      console.error("Error obteniendo total de retiros:", error);
-    }
-  };
+  // Obtener fondo total a entregar desde infoCorte
+  const fondoTotalEntregar = useMemo(() => {
+    const item = infoCorte.find(i => i.descripcion === "fondo total a entregar");
+    return item ? Number(item.total) : 0;
+  }, [infoCorte]);
+
+  // Verificar si ya se entregó el fondo completo
+  const fondoEntregado = useMemo(() => {
+    return fondoTotalEntregar > 0 && totalRetiroFondo >= fondoTotalEntregar;
+  }, [fondoTotalEntregar, totalRetiroFondo]);
 
   // Calcular monto de medios de pago no efectivo
   const montoNoEfectivo = useMemo(() => {
     return infoCorte
       .filter(
         (item) =>
-          item.descripcion !== "Efectivo" && item.descripcion !== "retiro"
+          item.descripcion !== "Efectivo" && item.descripcion !== "retiro" && item.descripcion !== "retiro fondo" && item.descripcion !== "fondo total a entregar"
       )
       .reduce((acc, item) => acc + Number(item.total), 0);
   }, [infoCorte]);
@@ -437,16 +439,16 @@ export default function CorteParcial() {
   // Calcular total de venta (todos los pagos) menos retiros
   const montoCorte = useMemo(() => {
     const totalVentas = infoCorte
-      .filter((item) => item.descripcion !== "retiro")
+      .filter((item) => item.descripcion !== "retiro" && item.descripcion !== "retiro fondo" && item.descripcion !== "fondo total a entregar")
       .reduce((acc, item) => acc + Number(item.total), 0);
     return totalVentas - totalRetiros;
-  }, [infoCorte, totalRetiros]);
+  }, [infoCorte]);
 
   // Filtrar medios de pago no efectivo para la tabla
   const mediosPagoTabla = useMemo(() => {
     return infoCorte.filter(
       (item) =>
-        item.descripcion !== "Efectivo" && item.descripcion !== "retiro"
+        item.descripcion !== "Efectivo" && item.descripcion !== "retiro" && item.descripcion !== "retiro fondo" && item.descripcion !== "fondo total a entregar"
     );
   }, [infoCorte]);
 
@@ -455,12 +457,12 @@ export default function CorteParcial() {
     const r = Number(totalRetiros.toFixed(2));
     const e = Number(totalEfectivo.toFixed(2));
     return r === e && r > 0;
-  }, [totalRetiros, totalEfectivo]);
+  }, [infoCorte, totalEfectivo]);
 
   // Calcular efectivo teórico (lo que debería haber en caja)
   const efectivoTeorico = useMemo(() => {
     return Number((totalEfectivo - totalRetiros).toFixed(2));
-  }, [totalEfectivo, totalRetiros]);
+  }, [infoCorte, totalEfectivo]);
 
   // Pedir efectivo real al usuario
   const pedirEfectivo = async () => {
@@ -618,7 +620,6 @@ export default function CorteParcial() {
   useEffect(() => {
     if (ultimoCorte?.corte_maximo) {
       fetchInfoCorte();
-      fetchTotalRetiros();
       setIntentos(0);
     }
   }, [ultimoCorte?.corte_maximo, ultimoCorte?.corte_parcial_maximo]);
@@ -716,6 +717,11 @@ export default function CorteParcial() {
           </Box>
           <Box sx={{ mb: 0.5 }}>
             <Typography sx={{ fontWeight: "bold", fontSize: "1rem" }}>
+              Retiro de Fondo: ${totalRetiroFondo.toFixed(2)}
+            </Typography>
+          </Box>
+          <Box sx={{ mb: 0.5 }}>
+            <Typography sx={{ fontWeight: "bold", fontSize: "1rem" }}>
               Total de Efectivo: ${totalEfectivo.toFixed(2)}
             </Typography>
           </Box>
@@ -767,7 +773,7 @@ export default function CorteParcial() {
           variant="contained"
           color="success"
           onClick={abrirModalUltimoRetiro}
-          disabled={loading || !retiroFondoCompletado}
+          disabled={loading || !fondoEntregado}
           sx={{
             px: 3,
             py: 1,

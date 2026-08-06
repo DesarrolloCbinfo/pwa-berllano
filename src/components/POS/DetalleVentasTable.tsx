@@ -95,7 +95,7 @@ export default function DetalleVentasTable({
       const usuarioFormateado = usuarioAutorizacion.trim().padStart(5, '0');
 
       // 💡 Si 'consumoApi' te da problemas, puedes usar directamente 'axios.post' 
-      // apuntando a la URL de tu entorno de desarrollo (ej. https://localhost:7119)
+      // apuntando a la URL de tu entorno de desarrollo (ej. https://217.216.95.62:7119)
       // 💡 Cambiamos el puerto 7119 por tu puerto real 5001
       const response = await consumoApi.post('/api/PuntoDeVenta/autorizar-supervisor', {
         usuario: usuarioFormateado,
