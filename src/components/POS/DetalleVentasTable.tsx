@@ -3,7 +3,6 @@ import { Button, Typography, useTheme, useMediaQuery, Box, MenuItem, Select, Dia
 import React, { useMemo, useState } from "react";
 import useConsumoApi from "../../hooks/useConsumoApi";
 import Swal from "sweetalert2";
-import axios from "axios"; // 💡 Importamos axios directo por seguridad
 
 type Estilista = {
   clave_empleado: string;
@@ -55,7 +54,7 @@ export default function DetalleVentasTable({
 }: Props) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const consumoApi = useConsumoApi();
+  const { consumoApi } = useConsumoApi();
 
   const [modalAutorizacionOpen, setModalAutorizacionOpen] = useState(false);
   const [usuarioAutorizacion, setUsuarioAutorizacion] = useState("");
@@ -70,7 +69,7 @@ export default function DetalleVentasTable({
 
   const cargarTiposDescuento = async () => {
   try {
-    const response = await axios.get('https://localhost:5001/api/PuntoDeVenta/sp_bw_cat_tipos_descuento_sel');
+    const response = await consumoApi.get('/api/PuntoDeVenta/sp_bw_cat_tipos_descuento_sel');
     const responseData = Array.isArray(response.data) ? response.data : [];
     setTiposDescuento(responseData);
   } catch (error) {
@@ -98,7 +97,7 @@ export default function DetalleVentasTable({
       // 💡 Si 'consumoApi' te da problemas, puedes usar directamente 'axios.post' 
       // apuntando a la URL de tu entorno de desarrollo (ej. https://localhost:7119)
       // 💡 Cambiamos el puerto 7119 por tu puerto real 5001
-      const response = await axios.post('https://localhost:5001/api/PuntoDeVenta/autorizar-supervisor', {
+      const response = await consumoApi.post('/api/PuntoDeVenta/autorizar-supervisor', {
         usuario: usuarioFormateado,
         contrasena: passwordAutorizacion,
         permiso: "autoriza_descuento"

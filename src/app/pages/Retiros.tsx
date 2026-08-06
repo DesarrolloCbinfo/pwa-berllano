@@ -15,7 +15,6 @@ import RemoveIcon from "@mui/icons-material/Remove";
 import Swal from "sweetalert2";
 import useConsumoApi from "../../hooks/useConsumoApi";
 import useSession from "../../hooks/useSession";
-import axios from "axios";
 import "@fontsource/roboto/400.css";
 import "@fontsource/roboto/500.css";
 import "@fontsource/roboto/700.css";
@@ -108,7 +107,7 @@ export default function Retiros() {
     if (!session?.sucursal || !dataCorteActual) return;
 
     try {
-      const res = await axios.get('https://localhost:5001/api/Corteparcial/calcular-total-a-retirar', {
+      const res = await consumoApi.get('/api/Corteparcial/calcular-total-a-retirar', {
         params: {
           sucursal: session.sucursal,
           caja: 1,
@@ -187,31 +186,6 @@ export default function Retiros() {
       return;
     }
 
-    const totalFinal = totalARetirar;
-
-    // Validar que el total físico cubra el fondo de caja
-    if (totalRetiro < fondoSucursal) {
-      Swal.fire({
-        icon: "error",
-        title: "Error de validación",
-        html: `
-          <p>El total físico de las denominaciones ($${totalRetiro.toFixed(2)}) es menor que el fondo de caja ($${fondoSucursal.toFixed(2)}).</p>
-          <p>Por favor, verifique las cantidades antes de continuar.</p>
-        `,
-        confirmButtonColor: "#d33",
-      });
-      return;
-    }
-    
-    if (totalFinal === 0) {
-      Swal.fire({
-        icon: "warning",
-        title: "Atención",
-        text: "El total físico es igual o menor al fondo de caja; no hay monto a retirar",
-        confirmButtonColor: "#f8bb86",
-      });
-      return;
-    }
 
     // Proceso de confirmación (3 veces)
     if (intentosConfirmacion === 0) {
@@ -299,14 +273,14 @@ export default function Retiros() {
         corte: dataCorteActual.corte_maximo,
         corteParcial: dataCorteActual.corte_parcial_maximo,
         tipoRetiro: 2,
-        totalARetirar: totalFinal,
+        totalARetirar: totalARetirar,
         totalEgreso: totalEgreso,
         observacion: observaciones.trim() || ".",
         usuario: session?.claveEmpleado || session?.id || "00001",
       };
 
-      const response = await axios.post(
-        'https://localhost:5001/api/Corteparcial/sp_pos_guardar_retiro',
+      const response = await consumoApi.post(
+        '/api/Corteparcial/sp_pos_guardar_retiro',
         datosRetiro
       );
 
@@ -392,7 +366,7 @@ export default function Retiros() {
               variant="contained"
               color="primary"
               onClick={RegistraRetiro}
-              disabled={loading || totalARetirar === 0}
+              disabled={loading}
               size="small"
               sx={{ minWidth: 90, px: 2, py: 0.5 }}
             >

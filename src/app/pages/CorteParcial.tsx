@@ -23,7 +23,6 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
-import axios from "axios";
 import useConsumoApi from "../../hooks/useConsumoApi";
 import useSession from "../../hooks/useSession";
 import { routes } from "../../utils/Routes";
@@ -93,7 +92,7 @@ export default function CorteParcial() {
         
         console.log("Parámetros enviados al GET:", params);
         
-        const respuesta = await axios.get('https://localhost:5001/api/cortedia/obtener-monto-esperado', {
+        const respuesta = await consumoApi.get('/api/cortedia/obtener-monto-esperado', {
           params
         });
         
@@ -186,7 +185,7 @@ export default function CorteParcial() {
     try {
       setLoading(true);
       console.log("Payload retiro fondo:", dataParaGuardar);
-      const res = await axios.post('https://localhost:5001/api/Corteparcial/sp_pos_guardar_retiro', dataParaGuardar);
+      const res = await consumoApi.post('/api/Corteparcial/sp_pos_guardar_retiro', dataParaGuardar);
 
       setLoading(false);
 
@@ -289,7 +288,7 @@ export default function CorteParcial() {
 
       console.log("Payload último retiro:", dataUltimoRetiro);
 
-      const response = await axios.post("https://localhost:5001/api/Corteparcial/sp_pos_guardar_retiro", dataUltimoRetiro);
+      const response = await consumoApi.post('/api/Corteparcial/sp_pos_guardar_retiro', dataUltimoRetiro);
 
       setLoading(false);
 
@@ -411,7 +410,7 @@ export default function CorteParcial() {
     if (!ultimoCorte || !session?.sucursal) return;
 
     try {
-      const res = await axios.get('https://localhost:5001/api/Corteparcial/total-retiros', {
+      const res = await consumoApi.get('/api/Corteparcial/total-retiros', {
         params: {
           sucursal: session.sucursal,
           corte: ultimoCorte.corte_maximo,
