@@ -55,12 +55,16 @@ export default function CorteParcial() {
   const [retirosModal, setRetirosModal] = useState<Record<number, number>>({});
   const [observacionModal, setObservacionModal] = useState<string>("");
   const [valesModal, setValesModal] = useState<number>(0);
+  const [intentosConfirmacion, setIntentosConfirmacion] = useState(0);
+  const [conteoAnterior, setConteoAnterior] = useState<string | null>(null);
   
   // Estados para modal de último retiro
   const [modalUltimoRetiroAbierto, setModalUltimoRetiroAbierto] = useState(false);
   const [retirosUltimoModal, setRetirosUltimoModal] = useState<Record<number, number>>({});
   const [observacionUltimoModal, setObservacionUltimoModal] = useState<string>("");
   const [valesUltimoModal, setValesUltimoModal] = useState<number>(0);
+  const [intentosConfirmacionUltimo, setIntentosConfirmacionUltimo] = useState(0);
+  const [conteoAnteriorUltimo, setConteoAnteriorUltimo] = useState<string | null>(null);
   const [montoEsperadoFormularioA, setMontoEsperadoFormularioA] = useState<number>(0);
   const [montoObligatorio, setMontoObligatorio] = useState<number>(0);
   const [ultimoRetiroCompletado, setUltimoRetiroCompletado] = useState<boolean>(false);
@@ -141,6 +145,8 @@ export default function CorteParcial() {
     setRetirosModal(init);
     setObservacionModal("");
     setValesModal(0);
+    setIntentosConfirmacion(0);
+    setConteoAnterior(null);
     setModalRetiroAbierto(true);
   };
 
@@ -168,6 +174,51 @@ export default function CorteParcial() {
       });
       return;
     }
+
+    // Triple confirmación del conteo físico
+    const conteoActual: Record<string, number> = {};
+    denominaciones.forEach(d => conteoActual[`m${d}`] = retirosModal[d] || 0);
+    conteoActual.vales = valesModal;
+    conteoActual.total = Number(totalRetiroModal.toFixed(2));
+    const conteoActualJson = JSON.stringify(conteoActual);
+
+    if (intentosConfirmacion > 0 && conteoActualJson !== conteoAnterior) {
+      Swal.fire({
+        icon: "error",
+        title: "Error de validación",
+        text: "Las cantidades no coinciden con el conteo anterior. Reiniciando confirmaciones. Vuelva a contar.",
+        confirmButtonColor: "#d33",
+      });
+      setIntentosConfirmacion(0);
+      setConteoAnterior(null);
+      const init: Record<number, number> = {};
+      denominaciones.forEach(d => init[d] = 0);
+      setRetirosModal(init);
+      setValesModal(0);
+      return;
+    }
+
+    const nuevoIntento = intentosConfirmacion + 1;
+    setConteoAnterior(conteoActualJson);
+
+    if (nuevoIntento < 3) {
+      setIntentosConfirmacion(nuevoIntento);
+      await Swal.fire({
+        icon: "success",
+        title: `Conteo ${nuevoIntento} registrado`,
+        text: "Realice la siguiente confirmación idéntica.",
+        confirmButtonColor: "#3085d6",
+        confirmButtonText: "Aceptar",
+      });
+      const init: Record<number, number> = {};
+      denominaciones.forEach(d => init[d] = 0);
+      setRetirosModal(init);
+      setValesModal(0);
+      return;
+    }
+
+    setIntentosConfirmacion(0);
+    setConteoAnterior(null);
 
     const dataParaGuardar = {
       cia: 1,
@@ -204,7 +255,7 @@ export default function CorteParcial() {
         }, 100);
       } else {
         const mensaje = res.data?.mensaje
-          ? res.data.mensaje.replace(/\s*\(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?\)/g, "")
+          ? res.data.mensaje.replace(/\s*\(\d+(?:,\d{3})*(?:\.\d{1,2})?\)/g, "")
           : "El retiro no pudo ser registrado";
         Swal.fire({
           icon: "warning",
@@ -220,7 +271,7 @@ export default function CorteParcial() {
       const errorMessage = (error?.response?.data?.mensaje 
         || error?.response?.data?.detalle 
         || error?.message 
-        || "No se pudo registrar el retiro").replace(/\s*\(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?\)/g, "");
+        || "No se pudo registrar el retiro").replace(/\s*\(\d+(?:,\d{3})*(?:\.\d{1,2})?\)/g, "");
       
       // Pequeño delay para asegurar que el modal se cierre antes de mostrar la alerta
       setTimeout(() => {
@@ -241,6 +292,8 @@ export default function CorteParcial() {
     setRetirosUltimoModal(init);
     setObservacionUltimoModal("");
     setValesUltimoModal(0);
+    setIntentosConfirmacionUltimo(0);
+    setConteoAnteriorUltimo(null);
     setModalUltimoRetiroAbierto(true);
   };
 
@@ -268,6 +321,51 @@ export default function CorteParcial() {
       });
       return;
     }
+
+    // Triple confirmación del conteo físico
+    const conteoActual: Record<string, number> = {};
+    denominaciones.forEach(d => conteoActual[`m${d}`] = retirosUltimoModal[d] || 0);
+    conteoActual.vales = valesUltimoModal;
+    conteoActual.total = Number(totalUltimoRetiroModal.toFixed(2));
+    const conteoActualJson = JSON.stringify(conteoActual);
+
+    if (intentosConfirmacionUltimo > 0 && conteoActualJson !== conteoAnteriorUltimo) {
+      Swal.fire({
+        icon: "error",
+        title: "Error de validación",
+        text: "Las cantidades no coinciden con el conteo anterior. Reiniciando confirmaciones. Vuelva a contar.",
+        confirmButtonColor: "#d33",
+      });
+      setIntentosConfirmacionUltimo(0);
+      setConteoAnteriorUltimo(null);
+      const init: Record<number, number> = {};
+      denominaciones.forEach(d => init[d] = 0);
+      setRetirosUltimoModal(init);
+      setValesUltimoModal(0);
+      return;
+    }
+
+    const nuevoIntento = intentosConfirmacionUltimo + 1;
+    setConteoAnteriorUltimo(conteoActualJson);
+
+    if (nuevoIntento < 3) {
+      setIntentosConfirmacionUltimo(nuevoIntento);
+      await Swal.fire({
+        icon: "success",
+        title: `Conteo ${nuevoIntento} registrado`,
+        text: "Realice la siguiente confirmación idéntica.",
+        confirmButtonColor: "#3085d6",
+        confirmButtonText: "Aceptar",
+      });
+      const init: Record<number, number> = {};
+      denominaciones.forEach(d => init[d] = 0);
+      setRetirosUltimoModal(init);
+      setValesUltimoModal(0);
+      return;
+    }
+
+    setIntentosConfirmacionUltimo(0);
+    setConteoAnteriorUltimo(null);
 
     try {
       setLoading(true);
@@ -524,18 +622,16 @@ export default function CorteParcial() {
 
       if (!confirmacion.isConfirmed) return;
 
-      // Alerta informativa sobre cierre del sistema
-      await Swal.fire({
-        title: "Información",
-        text: "El sistema se cerrará para finalizar el corte parcial",
-        icon: "info",
-        confirmButtonColor: "#3085d6",
-        confirmButtonText: "Entendido",
-        allowOutsideClick: false,
-      });
-
       // Cerrar corte directamente con el efectivo teórico
       await cerrarCorte(efectivoTeorico);
+
+      // Limpiar totales y recargar el siguiente corte parcial
+      setInfoCorte([]);
+      setRetiroFondoCompletado(false);
+      setUltimoRetiroCompletado(false);
+      setMontoObligatorio(0);
+      setMontoEsperadoFormularioA(0);
+      await fetchUltimoCorte();
     } finally {
       setFinalizandoCorte(false);
     }
@@ -570,14 +666,11 @@ export default function CorteParcial() {
       const data = res.data;
 
       if (data?.corteProcesado || data?.mensaje) {
-        Swal.fire(
-          "Corte realizado",
-          data?.mensaje || "Corte parcial registrado. La sesión se cerrará.",
-          "success"
-        ).then(() => {
-          // Cerrar sesión y redirigir al login
-          logout();
-          navigate(routes.login);
+        await Swal.fire({
+          icon: "success",
+          title: "Corte realizado",
+          text: data?.mensaje || "Corte parcial registrado.",
+          confirmButtonColor: "#3085d6",
         });
       } else {
         Swal.fire(

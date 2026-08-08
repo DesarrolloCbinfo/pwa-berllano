@@ -12,6 +12,8 @@ import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import useConsumoApi from "../../hooks/useConsumoApi";
 import useSession from "../../hooks/useSession";
+import { routes } from "../../utils/Routes";
+import { useAuth } from "../../context/AuthContext";
 
 interface CorteData {
   corte_maximo: number;
@@ -22,6 +24,7 @@ export default function CorteDia() {
   const { consumoApi } = useConsumoApi();
   const session = useSession();
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
   const [ultimoCorte, setUltimoCorte] = useState<CorteData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -103,7 +106,8 @@ export default function CorteDia() {
           icon: "success",
           allowOutsideClick: false,
         }).then(() => {
-          window.location.reload();
+          logout();
+          navigate(routes.login);
         });
       } else {
         Swal.fire(
