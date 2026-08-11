@@ -412,7 +412,12 @@ const totalTabulador = Object.entries(denominaciones).reduce((sum, [key, cant]) 
   
 
   //  MATEMÁTICA DE TOTALES CONTROLADOS MANUALMENTE
-  const totalVenta = detallesVenta.reduce((sum, item) => sum + item.importe, 0);
+  const totalVenta = detallesVenta.reduce((sum, item) => {
+    const cantidad = Number(item.Cant !== undefined ? item.Cant : (item.cantidad || 0));
+    const precio = Number(item.precio || 0);
+    const descuento = Number(item.descuento || 0);
+    return sum + (cantidad * precio) - descuento;
+  }, 0);
   
   // El total recibido suma la caja manual de tarjetas, el efectivo y el canje de puntos
   const totalPagado = isCredito ? 0 : (sumaManual + pagoEfectivo + puntosPago);
@@ -1904,9 +1909,9 @@ const fetchDetalleVenta = async (cliente: string, estilista: string, ventaOrigen
         clave_prod_original: producto.clave_prod,
         d_producto: producto.d_producto,
         tiempo: producto.tiempo || '00:00',
-        Cant: producto.cantidad,
-        precio: producto.precio,
-        importe: producto.importe,
+        Cant: Number(producto.cantidad || 0) < 1 ? Math.round(Number(producto.cantidad || 0) * 1000) : Math.round(Number(producto.cantidad || 0)),
+        precio: Number(producto.precio || 0),
+        importe: (Number(producto.cantidad || 0) < 1 ? Math.round(Number(producto.cantidad || 0) * 1000) : Math.round(Number(producto.cantidad || 0))) * Number(producto.precio || 0),
         descuento: 0,
         auxiliar: producto.id_auxiliar || '',
         d_auxiliar: producto.d_estilista_auxiliar || '',
@@ -1918,9 +1923,9 @@ const fetchDetalleVenta = async (cliente: string, estilista: string, ventaOrigen
           clave_prod: insumo.clave_prod,
           d_producto: insumo.d_producto,
           tiempo: '00:00',
-          Cant: insumo.cantidad,
-          precio: insumo.precio,
-          importe: insumo.importe,
+          Cant: Number(insumo.cantidad || 0) < 1 ? Math.round(Number(insumo.cantidad || 0) * 1000) : Math.round(Number(insumo.cantidad || 0)),
+          precio: Number(insumo.precio || 0),
+          importe: (Number(insumo.cantidad || 0) < 1 ? Math.round(Number(insumo.cantidad || 0) * 1000) : Math.round(Number(insumo.cantidad || 0))) * Number(insumo.precio || 0),
           descuento: 0,
           auxiliar: producto.id_auxiliar || '',
           d_auxiliar: producto.d_estilista_auxiliar || '',

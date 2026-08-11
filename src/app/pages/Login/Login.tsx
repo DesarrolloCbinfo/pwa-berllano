@@ -18,9 +18,6 @@ import logoImage from "../../../assets/imgs/imgLogin.jpg";
 import nombreLogo from "../../../assets/imgs/berllanoLogo.png";
 
 
-const MOSTRAR_SELECTOR_SUCURSAL = 1;
-
-
 
 const Login: React.FC = () => {
 
@@ -90,14 +87,17 @@ const handleNavigation = async () => {
         dSucursal: sucursalInfo?.nombre || "Sucursal"
       } as IUsuario;
 
-      // 4. Lógica de decisión según la bandera
-      if (MOSTRAR_SELECTOR_SUCURSAL === 0) {
-        // ENTRADA DIRECTA: No preguntamos nada
+      // 4. Si tiene sucursal fija (diferente de 0 y 99) entra directo
+      const tieneSucursalAsignada =
+        idSucursalDefault &&
+        idSucursalDefault !== 99 &&
+        idSucursalDefault !== 0;
+
+      if (tieneSucursalAsignada) {
         finalizarSesion(nuevoUsuarioBase);
       } else {
-        // ENTRADA CON MODAL: Abrimos el selector
         setResponseData(nuevoUsuarioBase);
-        setModalSucursal(true); // <--- ESTO ES LO QUE TE FALTABA
+        setModalSucursal(true);
       }
     } else {
       Swal.fire({

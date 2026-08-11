@@ -204,7 +204,7 @@ export default function TraspasoMercancia() {
   const hoy = new Date();
   const fechaHoy = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-${String(hoy.getDate()).padStart(2, "0")}`;
 
-  const [folio, setFolio] = useState<number>(1278);
+  const [folio, setFolio] = useState<number>(0);
   const [fecha, setFecha] = useState<string>(fechaHoy);
   const [sucOrigen, setSucOrigen] = useState<number | "">("");
   const [sucDestino, setSucDestino] = useState<number | "">("");
@@ -405,6 +405,24 @@ export default function TraspasoMercancia() {
               };
             })
           );
+
+          const posicion = rows.findIndex((r) => r.id === row.id);
+          await guardarRenglonBorrador({
+            claveProd: claveVal,
+            cantidad: cantidadVal,
+            costo: costoVal,
+            precioMenudeo:
+              Number(buscarCampo(["precioMenudeo", "precio_menudeo", "precio"], 0)) || 0,
+            ultimoCosto:
+              Number(
+                buscarCampo(
+                  ["ultimoCosto", "ultimo_costo", "costo"],
+                  costoVal
+                )
+              ) || costoVal,
+            posicion,
+            version: "",
+          });
         }
       } else if (typeof data === "string" && data.trim()) {
         await Swal.fire({
@@ -414,20 +432,56 @@ export default function TraspasoMercancia() {
           confirmButtonColor: "#000000",
         });
       }
-    } catch (err: any) {
-      await Swal.fire({
-        icon: "error",
-        title: "Error al validar producto",
-        text: err.response?.data?.mensaje || "No fue posible validar la clave del producto.",
-        confirmButtonColor: "#000000",
-      });
+    } catch (error: any) {
+      const mensajeReal = error.response?.data?.mensaje || "Error al validar producto";
+      alert(mensajeReal);
     } finally {
       setValidandoClaveId(null);
     }
   };
 
+  const guardarRenglonBorrador = async (renglon: {
+    claveProd: string;
+    cantidad: number;
+    costo: number;
+    precioMenudeo?: number;
+    ultimoCosto?: number;
+    posicion: number;
+    version?: string;
+  }) => {
+    try {
+      const cia = Number((token as any)?.cia) || 1;
+      const suc = Number(sucOrigen) || 0;
+      const payload = {
+        cia,
+        sucursal: suc,
+        sucOrigen: suc,
+        usuario:
+          (token as any)?.usuario ||
+          (typeof window !== "undefined" ? localStorage.getItem("usuario") || "" : ""),
+        claveProd: renglon.claveProd,
+        cantidad: Number(renglon.cantidad) || 0,
+        costo: Number(renglon.costo) || 0,
+        tasaIva: 16,
+        precioMenudeo: Number(renglon.precioMenudeo) || 0,
+        posicion: renglon.posicion,
+        ultimoCosto:
+          Number(renglon.ultimoCosto) || Number(renglon.costo) || 0,
+        version: renglon.version || "",
+      };
+      await consumoApi.post(
+        "/api/CatTraspasoSalida/sp_bw_guardar_renglon_borrador",
+        payload
+      );
+    } catch (error: any) {
+      const mensajeError = error.response?.data?.mensaje || "Error al validar producto";
+      console.error("Error completo:", error);
+      alert(mensajeError);
+    }
+  };
+
   const handleNuevo = () => {
-    setFolio((prev) => prev + 1);
+    setFolio(0);
     setFecha(fechaHoy);
     setSucDestino("");
     setUnidad("");
@@ -616,6 +670,8 @@ export default function TraspasoMercancia() {
     if (!claveProd) return;
 
     if (!folio || folio === 0) {
+      const fila = rows.find((r) => r.clave === claveProd);
+      const posicion = rows.findIndex((r) => r.clave === claveProd);
       setRows((prev) =>
         prev.map((item) =>
           item.clave === claveProd
@@ -630,6 +686,14 @@ export default function TraspasoMercancia() {
             : item
         )
       );
+      if (fila) {
+        await guardarRenglonBorrador({
+          claveProd: fila.clave,
+          cantidad: Number(nuevaCantidad) || 0,
+          costo: fila.costoProm,
+          posicion,
+        });
+      }
       return;
     }
 
@@ -689,6 +753,7 @@ export default function TraspasoMercancia() {
 
   const handleAbrirBusquedaPorFecha = () => {
     setDialogoBuscarAbierto(true);
+    buscarTraspasosPorFecha();
   };
 
   const handleCerrarBusquedaPorFecha = () => {
