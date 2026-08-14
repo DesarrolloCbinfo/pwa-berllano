@@ -4,7 +4,6 @@ import {
   Button,
   FormControl,
   FormControlLabel,
-  IconButton,
   InputLabel,
   MenuItem,
   Paper,
@@ -22,10 +21,6 @@ import {
   Typography,
   CircularProgress,
 } from "@mui/material";
-import FirstPageIcon from "@mui/icons-material/FirstPage";
-import LastPageIcon from "@mui/icons-material/LastPage";
-import NavigateBeforeIcon from "@mui/icons-material/NavigateBefore";
-import NavigateNextIcon from "@mui/icons-material/NavigateNext";
 import Swal from "sweetalert2";
 import useConsumoApi from "../../../hooks/useConsumoApi";
 import { useAuth } from "../../../context/AuthContext";
@@ -60,15 +55,34 @@ function formatoMoneda(valor: number) {
   return `$${(valor || 0).toFixed(2)}`;
 }
 
+function escaparHtml(valor: unknown) {
+  return String(valor ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 export default function RecepcionTraspasos() {
   const { consumoApi } = useConsumoApi();
   const { token } = useAuth();
+  const cia = Number((token as any)?.cia || (token as any)?.idCia) || 1;
   const usuarioSesion =
     token?.usuario ||
     (typeof window !== "undefined" ? localStorage.getItem("usuario") || "" : "") ||
     "ADMIN";
 
   const ahora = new Date();
+  const fechaHoy = ahora
+    .toLocaleDateString("es-MX", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    })
+    .split("/")
+    .reverse()
+    .join("-");
   const fechaHoraActual = ahora.toLocaleString("es-MX", {
     day: "2-digit",
     month: "short",
@@ -80,14 +94,17 @@ export default function RecepcionTraspasos() {
 
   const [sucursales, setSucursales] = useState<Sucursal[]>([]);
   const [sucursal, setSucursal] = useState<number | "">("");
+  const [sucOrigen, setSucOrigen] = useState<number>(0);
   const [folio, setFolio] = useState<string>("");
+  const [fechaInicio, setFechaInicio] = useState(fechaHoy);
+  const [fechaFin, setFechaFin] = useState(fechaHoy);
   const [renglones, setRenglones] = useState<RenglonTraspaso[]>([]);
   const [cargandoRecuperar, setCargandoRecuperar] = useState(false);
+  const [cargandoBuscar, setCargandoBuscar] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [formatoSalida, setFormatoSalida] = useState<"ticket" | "carta">("ticket");
-  const [busqueda, setBusqueda] = useState("");
-  const [sinFiltro, setSinFiltro] = useState(true);
   const [registroActual, setRegistroActual] = useState(0);
+  const sucursalDestino = Number(sucursal) || 0;
 
   useEffect(() => {
     const fetchSucursales = async () => {
@@ -100,13 +117,6 @@ export default function RecepcionTraspasos() {
           (item: Sucursal) => item.nombre !== "TODAS"
         );
         setSucursales(data);
-
-        const sucursalSesion = data.find(
-          (item: Sucursal) => item.cve_sucursal === Number(token?.claveDepartamento)
-        );
-        if (sucursalSesion) {
-          setSucursal(sucursalSesion.cve_sucursal);
-        }
       } catch (err) {
         console.error("Error al cargar sucursales:", err);
       }
@@ -115,8 +125,8 @@ export default function RecepcionTraspasos() {
   }, []);
 
   const nombreSucursal = useMemo(
-    () => sucursales.find((s) => s.cve_sucursal === sucursal)?.nombre || "",
-    [sucursales, sucursal]
+    () => sucursales.find((s) => s.cve_sucursal === sucursalDestino)?.nombre || "",
+    [sucursales, sucursalDestino]
   );
 
   const { subtotal, iva, total } = useMemo(() => {
@@ -128,34 +138,62 @@ export default function RecepcionTraspasos() {
     return { subtotal: sub, iva: ivaCalc, total: sub + ivaCalc };
   }, [renglones]);
 
-  const handleRecuperar = async () => {
-    if (!sucursal) {
+  const handleRecuperar = async (
+    folioSeleccionado?: string,
+    sucOrigenSeleccionado?: number
+  ) => {
+    const folioBusqueda = (folioSeleccionado ?? folio).trim();
+    const sucOrigenBusqueda = Number(sucOrigenSeleccionado) || 0;
+
+    if (cia <= 0) {
       Swal.fire({
         icon: "warning",
-        title: "Sucursal requerida",
-        text: "Selecciona la sucursal antes de recuperar el folio.",
+        title: "Compañía requerida",
+        text: "No se ha identificado la compañía de la sesión.",
         confirmButtonColor: "#000000",
       });
       return;
     }
-    if (!folio.trim()) {
+    if (sucursalDestino <= 0) {
+      Swal.fire({
+        icon: "warning",
+        title: "Sucursal requerida",
+        text: "Selecciona la sucursal destino antes de recuperar.",
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
+    if (Number(folioBusqueda) <= 0) {
       Swal.fire({
         icon: "warning",
         title: "Folio requerido",
-        text: "Captura el folio del traspaso a recuperar.",
+        text: "El folio del traspaso debe ser mayor a cero.",
         confirmButtonColor: "#000000",
       });
       return;
     }
 
+    if (folioSeleccionado && sucOrigenBusqueda <= 0) {
+      Swal.fire({
+        icon: "warning",
+        title: "Origen requerido",
+        text: "El traspaso seleccionado no tiene una sucursal origen válida.",
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
+    if (folioSeleccionado) setFolio(folioBusqueda);
+
     setCargandoRecuperar(true);
     try {
       const response = await consumoApi.get(
-        "/api/CatTraspasoEntrada/sp_recuperar_traspaso_recepcion",
+        "/api/Catrecepciontraspasos/sp_bw_obtener_detalle_recepcion_traspaso",
         {
           params: {
-            folio: folio.trim(),
-            sucursal: Number(sucursal),
+            cia,
+            sucursalDestino,
+            sucOrigen: sucOrigenBusqueda,
+            folio: folioBusqueda,
           },
         }
       );
@@ -180,7 +218,7 @@ export default function RecepcionTraspasos() {
         const importe =
           Number(obtenerValor(item, "importe") || 0) || cantidad * costo;
         return {
-          clave: String(obtenerValor(item, "clave") || ""),
+          clave: String(obtenerValor(item, "clave", "clave_prod") || ""),
           descripcion: String(obtenerValor(item, "descripcion") || ""),
           cantidad,
           costo,
@@ -191,6 +229,7 @@ export default function RecepcionTraspasos() {
 
       setRenglones(mapeados);
       setRegistroActual(0);
+      setSucOrigen(sucOrigenBusqueda);
     } catch (err: any) {
       Swal.fire({
         icon: "error",
@@ -206,11 +245,29 @@ export default function RecepcionTraspasos() {
   };
 
   const handleGuardar = async () => {
-    if (!sucursal || !folio.trim()) {
+    if (cia <= 0) {
+      Swal.fire({
+        icon: "warning",
+        title: "Compañía requerida",
+        text: "No se ha identificado la compañía de la sesión.",
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
+    if (sucursalDestino <= 0) {
       Swal.fire({
         icon: "warning",
         title: "Datos incompletos",
         text: "Selecciona la sucursal y captura el folio antes de guardar.",
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
+    if (Number(folio.trim()) <= 0) {
+      Swal.fire({
+        icon: "warning",
+        title: "Folio requerido",
+        text: "El folio del traspaso debe ser mayor a cero.",
         confirmButtonColor: "#000000",
       });
       return;
@@ -224,16 +281,28 @@ export default function RecepcionTraspasos() {
       });
       return;
     }
+    if (sucOrigen <= 0) {
+      Swal.fire({
+        icon: "warning",
+        title: "Origen requerido",
+        text: "No se ha identificado la sucursal origen del traspaso.",
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
 
     setGuardando(true);
     try {
       const response = await consumoApi.post(
-        "/api/CatTraspasoEntrada/sp_guardar_recepcion_traspaso",
+        "/api/Catrecepciontraspasos/sp_recepcion_traspaso_bodega",
+        null,
         {
-          folio: folio.trim(),
-          sucursal: Number(sucursal),
-          usuario: usuarioSesion,
-          renglones,
+          params: {
+            sucOrigen,
+            sucDestino: sucursalDestino,
+            folio: Number(folio.trim()),
+            usuario: usuarioSesion,
+          },
         }
       );
 
@@ -257,13 +326,257 @@ export default function RecepcionTraspasos() {
     }
   };
 
-  const handleBuscar = () => {
-    Swal.fire({
-      icon: "info",
-      title: "Buscar",
-      text: "Aquí se abriría el buscador de traspasos pendientes de recepción.",
-      confirmButtonColor: "#000000",
-    });
+  const handleBuscar = async () => {
+    if (cia <= 0) {
+      Swal.fire({
+        icon: "warning",
+        title: "Compañía requerida",
+        text: "No se ha identificado la compañía de la sesión.",
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
+    if (sucursalDestino <= 0) {
+      Swal.fire({
+        icon: "warning",
+        title: "Sucursal requerida",
+        text: "Selecciona la sucursal destino antes de buscar.",
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
+
+    setCargandoBuscar(true);
+    try {
+      const response = await consumoApi.get(
+        "/api/Catrecepciontraspasos/sp_bw_buscar_recepcion_por_fecha",
+        {
+          params: {
+            cia,
+            sucursalDestino,
+            sucOrigen: 0,
+            fechaInicio: `${fechaInicio}T00:00:00`,
+            fechaFin: `${fechaFin}T00:00:00`,
+            recibido: false,
+          },
+        }
+      );
+
+      const resultados = Array.isArray(response.data) ? response.data : [];
+
+
+      if (resultados.length === 0) {
+        Swal.fire({
+          icon: "info",
+          title: "Sin resultados",
+          text: "No hay traspasos pendientes de recepción en el rango indicado.",
+          confirmButtonColor: "#000000",
+        });
+        return;
+      }
+
+      const filasHtml = resultados
+        .map((item: any) => {
+          const folioResultado = String(obtenerValor(item, "folio") || "");
+          const fechaResultado = obtenerValor(item, "fecha");
+          const fechaTexto = fechaResultado
+            ? new Date(fechaResultado).toLocaleDateString("es-MX")
+            : "";
+          const sucOrigenResultado = obtenerValor(item, "suc_origen", "sucOrigen") || "";
+          const sucDestinoResultado = obtenerValor(item, "suc_destino", "sucDestino") || "";
+          const totalItems = Number(obtenerValor(item, "total_items", "totalItems") || 0);
+          const subtotal = Number(obtenerValor(item, "subtotal") || 0);
+          const totalIva = Number(obtenerValor(item, "total_iva", "totalIva") || 0);
+          const totalGeneral = Number(
+            obtenerValor(item, "total_general", "totalGeneral") || 0
+          );
+
+          return `
+            <tr>
+              <td style="padding:6px;border:1px solid #ddd;text-align:center;">
+                <input type="checkbox" name="folioRecepcion" value="${escaparHtml(folioResultado)}" />
+              </td>
+              <td style="padding:6px;border:1px solid #ddd;">${escaparHtml(folioResultado)}</td>
+              <td style="padding:6px;border:1px solid #ddd;">${escaparHtml(fechaTexto)}</td>
+              <td style="padding:6px;border:1px solid #ddd;text-align:center;">${escaparHtml(sucOrigenResultado)}</td>
+              <td style="padding:6px;border:1px solid #ddd;text-align:center;">${escaparHtml(sucDestinoResultado)}</td>
+              <td style="padding:6px;border:1px solid #ddd;text-align:center;">${totalItems}</td>
+              <td style="padding:6px;border:1px solid #ddd;text-align:right;">${formatoMoneda(subtotal)}</td>
+              <td style="padding:6px;border:1px solid #ddd;text-align:right;">${formatoMoneda(totalIva)}</td>
+              <td style="padding:6px;border:1px solid #ddd;text-align:right;">${formatoMoneda(totalGeneral)}</td>
+            </tr>`;
+        })
+        .join("");
+
+      const seleccion = await Swal.fire({
+        icon: "info",
+        title: "Traspasos pendientes",
+        html: `
+          <div style="max-height:420px;overflow:auto;text-align:left;">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+              <thead>
+                <tr style="background:#f0f0f0;">
+                  <th style="padding:6px;border:1px solid #ddd;"></th>
+                  <th style="padding:6px;border:1px solid #ddd;">Folio</th>
+                  <th style="padding:6px;border:1px solid #ddd;">Fecha</th>
+                  <th style="padding:6px;border:1px solid #ddd;">Origen</th>
+                  <th style="padding:6px;border:1px solid #ddd;">Destino</th>
+                  <th style="padding:6px;border:1px solid #ddd;">Artículos</th>
+                  <th style="padding:6px;border:1px solid #ddd;">Subtotal</th>
+                  <th style="padding:6px;border:1px solid #ddd;">IVA</th>
+                  <th style="padding:6px;border:1px solid #ddd;">Total</th>
+                </tr>
+              </thead>
+              <tbody>${filasHtml}</tbody>
+            </table>
+          </div>
+          <p style="margin:12px 0 0;font-size:13px;">Selecciona uno o más traspasos para cargarlos.</p>
+        `,
+        showCancelButton: true,
+        confirmButtonText: "Seleccionar",
+        cancelButtonText: "Cerrar",
+        confirmButtonColor: "#000000",
+        width: "min(95vw, 1000px)",
+        preConfirm: () => {
+          const seleccionados = Array.from(
+            document.querySelectorAll<HTMLInputElement>(
+              'input[name="folioRecepcion"]:checked'
+            )
+          ).map((i) => i.value);
+          if (seleccionados.length === 0) {
+            Swal.showValidationMessage("Selecciona al menos un traspaso.");
+          }
+          return seleccionados;
+        },
+      });
+
+      if (
+        seleccion.isConfirmed &&
+        Array.isArray(seleccion.value) &&
+        seleccion.value.length > 0
+      ) {
+        const seleccionados = resultados.filter((item: any) => {
+          const folioItem = String(obtenerValor(item, "folio") || "");
+          return seleccion.value.includes(folioItem);
+        });
+
+        await handleRecuperarSeleccionados(seleccionados);
+      }
+    } catch (err: any) {
+      Swal.fire({
+        icon: "error",
+        title: "Error al buscar",
+        text:
+          err.response?.data?.mensaje ||
+          "No fue posible buscar los traspasos pendientes de recepción.",
+        confirmButtonColor: "#000000",
+      });
+    } finally {
+      setCargandoBuscar(false);
+    }
+  };
+
+  const handleRecuperarSeleccionados = async (traspasos: any[]) => {
+    if (cia <= 0) {
+      Swal.fire({
+        icon: "warning",
+        title: "Compañía requerida",
+        text: "No se ha identificado la compañía de la sesión.",
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
+    if (sucursalDestino <= 0) {
+      Swal.fire({
+        icon: "warning",
+        title: "Sucursal requerida",
+        text: "Selecciona la sucursal destino antes de recuperar.",
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
+    if (traspasos.length === 0) {
+      Swal.fire({
+        icon: "warning",
+        title: "Traspasos requeridos",
+        text: "Selecciona al menos un traspaso.",
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
+
+    setCargandoRecuperar(true);
+    try {
+      const renglonesTotal: RenglonTraspaso[] = [];
+    
+
+      for (const traspaso of traspasos) {
+        const folioBusqueda = String(obtenerValor(traspaso, "folio") || "").trim();
+        const sucOrigenBusqueda = Number(
+          obtenerValor(traspaso, "suc_origen", "sucOrigen") || 0
+        );
+        if (Number(folioBusqueda) <= 0 || sucOrigenBusqueda <= 0) continue;
+
+        const response = await consumoApi.get(
+          "/api/Catrecepciontraspasos/sp_bw_obtener_detalle_recepcion_traspaso",
+          {
+            params: {
+              cia,
+              sucursalDestino,
+              sucOrigen: sucOrigenBusqueda,
+              folio: folioBusqueda,
+            },
+          }
+        );
+
+        const data = Array.isArray(response.data) ? response.data : [];
+        const mapeados: RenglonTraspaso[] = data.map((item: any) => {
+          const cantidad = Number(obtenerValor(item, "cantidad", "cant") || 0);
+          const costo = Number(obtenerValor(item, "costo", "costoProm") || 0);
+          const tasaIva = Number(obtenerValor(item, "tasaIva", "tasa_iva", "iva") || 0);
+          const importe = Number(obtenerValor(item, "importe") || 0) || cantidad * costo;
+          return {
+            clave: String(obtenerValor(item, "clave", "clave_prod") || ""),
+            descripcion: String(obtenerValor(item, "descripcion") || ""),
+            cantidad,
+            costo,
+            tasaIva,
+            importe,
+          };
+        });
+
+        renglonesTotal.push(...mapeados);
+      }
+
+      if (renglonesTotal.length === 0) {
+        Swal.fire({
+          icon: "info",
+          title: "Sin resultados",
+          text: "No se encontró información para los folios seleccionados.",
+          confirmButtonColor: "#000000",
+        });
+        setRenglones([]);
+        return;
+      }
+
+      setFolio(String(obtenerValor(traspasos[0], "folio") || ""));
+      setRenglones(renglonesTotal);
+      setRegistroActual(0);
+      setSucOrigen(
+        Number(obtenerValor(traspasos[0], "suc_origen", "sucOrigen") || 0)
+      );
+    } catch (err: any) {
+      Swal.fire({
+        icon: "error",
+        title: "Error al recuperar",
+        text:
+          err.response?.data?.mensaje ||
+          "No fue posible recuperar los traspasos seleccionados.",
+        confirmButtonColor: "#000000",
+      });
+    } finally {
+      setCargandoRecuperar(false);
+    }
   };
 
   const handleImprimir = () => {
@@ -290,8 +603,6 @@ export default function RecepcionTraspasos() {
     p: 0.6,
     fontSize: "0.82rem",
   };
-
-  const totalRegistros = renglones.length;
 
   return (
     <Box sx={{ p: { xs: 2, md: 3 }, bgcolor: "#f3f4f6", minHeight: "100vh" }}>
@@ -357,46 +668,54 @@ export default function RecepcionTraspasos() {
                     displayEmpty
                     value={sucursal}
                     onChange={(e) => setSucursal(Number(e.target.value))}
+                    renderValue={(value) =>
+                      value === "" ? (
+                        <em>Seleccione...</em>
+                      ) : (
+                        sucursales.find((s) => s.cve_sucursal === Number(value))?.nombre || ""
+                      )
+                    }
                   >
                     <MenuItem value="">
                       <em>Seleccione...</em>
                     </MenuItem>
-                    {sucursales.map((s) => (
-                      <MenuItem key={s.cve_sucursal} value={s.cve_sucursal}>
-                        {s.nombre}
-                      </MenuItem>
-                    ))}
+                    {sucursales
+                      .filter((s) => s.cve_sucursal !== Number(token?.claveDepartamento))
+                      .map((s) => (
+                        <MenuItem key={s.cve_sucursal} value={s.cve_sucursal}>
+                          {s.nombre}
+                        </MenuItem>
+                      ))}
                   </Select>
                 </FormControl>
               </Stack>
             </Stack>
 
-            {/* Folio + Recuperar */}
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
-              <Typography sx={{ fontWeight: "bold", minWidth: 55 }}>Folio:</Typography>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={2}
+              sx={{ mb: 2 }}
+              alignItems={{ sm: "center" }}
+            >
+              <Typography sx={{ fontWeight: "bold", minWidth: 110 }}>
+                Rango de fechas:
+              </Typography>
               <TextField
                 size="small"
-                value={folio}
-                onChange={(e) => setFolio(e.target.value)}
-                sx={{ flex: 1, maxWidth: 300 }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleRecuperar();
-                }}
+                type="date"
+                label="Desde"
+                value={fechaInicio}
+                onChange={(e) => setFechaInicio(e.target.value)}
+                InputLabelProps={{ shrink: true }}
               />
-              <Button
-                variant="contained"
-                onClick={handleRecuperar}
-                disabled={cargandoRecuperar}
-                sx={{
-                  bgcolor: "#d9d9d9",
-                  color: "#000",
-                  fontWeight: "bold",
-                  boxShadow: "none",
-                  "&:hover": { bgcolor: "#c7c7c7", boxShadow: "none" },
-                }}
-              >
-                {cargandoRecuperar ? <CircularProgress size={18} /> : "Recuperar"}
-              </Button>
+              <TextField
+                size="small"
+                type="date"
+                label="Hasta"
+                value={fechaFin}
+                onChange={(e) => setFechaFin(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+              />
             </Stack>
 
             {/* Tabla */}
@@ -429,7 +748,7 @@ export default function RecepcionTraspasos() {
                         <Typography variant="body2" color="text.secondary">
                           {cargandoRecuperar
                             ? "Cargando..."
-                            : "Captura un folio y presiona Recuperar."}
+                            : "Busca y selecciona un traspaso pendiente."}
                         </Typography>
                       </TableCell>
                     </TableRow>
@@ -480,81 +799,6 @@ export default function RecepcionTraspasos() {
               </Table>
             </TableContainer>
 
-            {/* Barra de registro / búsqueda */}
-            <Stack
-              direction={{ xs: "column", sm: "row" }}
-              spacing={1}
-              alignItems={{ sm: "center" }}
-              justifyContent="space-between"
-              sx={{ mb: 2, border: "1px solid #d0d0d0", p: 0.75, borderRadius: 0.5 }}
-            >
-              <Stack direction="row" spacing={0.5} alignItems="center">
-                <Typography variant="caption" sx={{ fontWeight: "bold", mr: 0.5 }}>
-                  Registro:
-                </Typography>
-                <IconButton
-                  size="small"
-                  disabled={totalRegistros === 0 || registroActual === 0}
-                  onClick={() => setRegistroActual(0)}
-                >
-                  <FirstPageIcon fontSize="small" />
-                </IconButton>
-                <IconButton
-                  size="small"
-                  disabled={totalRegistros === 0 || registroActual === 0}
-                  onClick={() => setRegistroActual((p) => Math.max(0, p - 1))}
-                >
-                  <NavigateBeforeIcon fontSize="small" />
-                </IconButton>
-                <TextField
-                  size="small"
-                  value={totalRegistros === 0 ? "" : registroActual + 1}
-                  InputProps={{ readOnly: true }}
-                  sx={{ width: 50 }}
-                  inputProps={{ style: { textAlign: "center" } }}
-                />
-                <IconButton
-                  size="small"
-                  disabled={totalRegistros === 0 || registroActual >= totalRegistros - 1}
-                  onClick={() =>
-                    setRegistroActual((p) => Math.min(totalRegistros - 1, p + 1))
-                  }
-                >
-                  <NavigateNextIcon fontSize="small" />
-                </IconButton>
-                <IconButton
-                  size="small"
-                  disabled={totalRegistros === 0 || registroActual >= totalRegistros - 1}
-                  onClick={() => setRegistroActual(Math.max(0, totalRegistros - 1))}
-                >
-                  <LastPageIcon fontSize="small" />
-                </IconButton>
-                <Typography
-                  variant="caption"
-                  sx={{
-                    ml: 1,
-                    px: 1,
-                    py: 0.3,
-                    border: "1px solid #ccc",
-                    borderRadius: 0.5,
-                    color: sinFiltro ? "#999" : "#000",
-                    cursor: "pointer",
-                  }}
-                  onClick={() => setSinFiltro((v) => !v)}
-                >
-                  Sin filtro
-                </Typography>
-              </Stack>
-
-              <TextField
-                size="small"
-                placeholder="Buscar"
-                value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
-                sx={{ width: { xs: "100%", sm: 220 } }}
-              />
-            </Stack>
-
             {/* Botonera + Formato + Totales */}
             <Stack
               direction={{ xs: "column", md: "row" }}
@@ -580,6 +824,7 @@ export default function RecepcionTraspasos() {
                 <Button
                   variant="contained"
                   onClick={handleBuscar}
+                  disabled={cargandoBuscar}
                   sx={{
                     bgcolor: "#d9d9d9",
                     color: "#000",
@@ -588,7 +833,7 @@ export default function RecepcionTraspasos() {
                     "&:hover": { bgcolor: "#c7c7c7", boxShadow: "none" },
                   }}
                 >
-                  Buscar
+                  {cargandoBuscar ? <CircularProgress size={18} /> : "Buscar"}
                 </Button>
                 <Button
                   variant="contained"
@@ -661,16 +906,6 @@ export default function RecepcionTraspasos() {
                 </Stack>
               </Stack>
             </Stack>
-
-            <Typography
-              variant="caption"
-              align="center"
-              sx={{ display: "block", mt: 3, fontWeight: "bold" }}
-            >
-              {`RECEPCIÓN DE TRASPASOS - SUC: ${nombreSucursal || "N/A"}, OFICINA, ${new Date().toLocaleDateString(
-                "es-MX"
-              )}, USR:${usuarioSesion.toUpperCase()}`}
-            </Typography>
           </Box>
         </Paper>
       </Box>

@@ -158,6 +158,7 @@ export default function AjustesInventario() {
   const [fechaInicioBuscar, setFechaInicioBuscar] = useState(formatearFechaInput);
   const [fechaFinBuscar, setFechaFinBuscar] = useState(formatearFechaInput);
   const [historialAjustes, setHistorialAjustes] = useState<AjusteHistorial[]>([]);
+  const [historialAjustesRaw, setHistorialAjustesRaw] = useState<AjusteBusquedaRow[]>([]);
   const [cargandoHistorial, setCargandoHistorial] = useState(false);
   const [ajusteSeleccionado, setAjusteSeleccionado] = useState<AjusteHistorial | null>(null);
 
@@ -201,6 +202,7 @@ export default function AjustesInventario() {
       setFechaInicioBuscar(hoy);
       setFechaFinBuscar(hoy);
       setHistorialAjustes([]);
+      setHistorialAjustesRaw([]);
       setAjusteSeleccionado(null);
     }
   }, [abrirDialogoBuscar]);
@@ -383,11 +385,57 @@ export default function AjustesInventario() {
     setAjusteSeleccionado(null);
   };
 
+  const seleccionarAjuste = (ajuste: AjusteHistorial) => {
+    const renglonesAjuste = historialAjustesRaw.filter((r) => r.folio === ajuste.folio);
+
+    if (renglonesAjuste.length === 0) {
+      Swal.fire({
+        icon: "warning",
+        title: "Sin renglones",
+        text: "No se encontraron renglones para este ajuste.",
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
+
+    const nuevosRenglones: RenglonAjuste[] = renglonesAjuste.map((row, idx) => {
+      const existenciaActual =
+        Number(obtenerValor(row, "existencia", "exis", "existenciaActual")) || 0;
+      const entradas = Number(obtenerValor(row, "entradas", "entrada")) || 0;
+      const salidas = Number(obtenerValor(row, "salidas", "salida")) || 0;
+      const costo = Number(obtenerValor(row, "costo", "costoProm")) || 0;
+      const clave = String(obtenerValor(row, "clave", "clave_prod", "claveProd") || "");
+      const descripcion = String(obtenerValor(row, "descripcion", "descrip", "nombre") || "");
+      const tasa = Number(obtenerValor(row, "tasa", "tasaIva", "tasa_iva")) || 0;
+
+      return {
+        id: Date.now() + idx,
+        clave,
+        descripcion,
+        existenciaActual,
+        entrada: entradas,
+        salida: salidas,
+        costo,
+        tasa,
+        nuevaExistencia: existenciaActual + entradas - salidas,
+      };
+    });
+
+    const tipoMovtoRaw = obtenerValor(renglonesAjuste[0], "tipo_movto", "tipo_movimiento");
+    if (tipoMovtoRaw != null) {
+      setTipoMovimiento(Number(tipoMovtoRaw));
+    }
+
+    setFolio(ajuste.folio);
+    setRenglones(nuevosRenglones);
+    setSelectedRowId(nuevosRenglones[0]?.id ?? null);
+    setAjusteSeleccionado(null);
+    setAbrirDialogoBuscar(false);
+  };
+
   const handleAceptarAjuste = () => {
     if (ajusteSeleccionado) {
-      setFolio(ajusteSeleccionado.folio);
-      setAjusteSeleccionado(null);
-      setAbrirDialogoBuscar(false);
+      seleccionarAjuste(ajusteSeleccionado);
     }
   };
 
@@ -441,10 +489,12 @@ export default function AjustesInventario() {
         {}
       );
 
+      setHistorialAjustesRaw(raw);
       setHistorialAjustes(Object.values(agrupados));
     } catch (err) {
       console.error("Error al buscar historial de ajustes:", err);
       setHistorialAjustes([]);
+      setHistorialAjustesRaw([]);
     } finally {
       setCargandoHistorial(false);
     }
@@ -961,7 +1011,7 @@ export default function AjustesInventario() {
             <Table stickyHeader size="small">
               <TableHead>
                 <TableRow>
-                  {["Folio", "Fecha", "Usuario", "Total", "Estado"].map((col) => (
+                  {["Folio", "Fecha", "Usuario", "Total", "Estado", "Acciones"].map((col) => (
                     <TableCell
                       key={col}
                       sx={{
@@ -978,7 +1028,7 @@ export default function AjustesInventario() {
               <TableBody>
                 {historialAjustes.length === 0 && !cargandoHistorial ? (
                   <TableRow>
-                    <TableCell colSpan={5} align="center" sx={{ border: "1px solid #b0b0b0" }}>
+                    <TableCell colSpan={6} align="center" sx={{ border: "1px solid #b0b0b0" }}>
                       Sin resultados
                     </TableCell>
                   </TableRow>
@@ -1010,6 +1060,25 @@ export default function AjustesInventario() {
                       </TableCell>
                       <TableCell sx={{ border: "1px solid #b0b0b0" }}>
                         {ajuste.estado}
+                      </TableCell>
+                      <TableCell sx={{ border: "1px solid #b0b0b0" }}>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            seleccionarAjuste(ajuste);
+                          }}
+                          sx={{
+                            textTransform: "none",
+                            fontWeight: "bold",
+                            borderColor: "#000000",
+                            color: "#000000",
+                            "&:hover": { bgcolor: "#000000", color: "#fff" },
+                          }}
+                        >
+                          Seleccionar
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))

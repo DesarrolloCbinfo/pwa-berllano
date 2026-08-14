@@ -30,6 +30,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import { useNavigate } from "react-router-dom";
 import useConsumoApi from "../../../hooks/useConsumoApi";
 import { useAuth } from "../../../context/AuthContext";
+import useSession from "../../../hooks/useSession";
 import Swal from "sweetalert2";
 
 type TraspasoRow = {
@@ -157,7 +158,24 @@ export default function TraspasoMercancia() {
   const navigate = useNavigate();
   const { consumoApi } = useConsumoApi();
   const { token } = useAuth();
+  const session = useSession();
+  const userLoggedRaw =
+    typeof window !== "undefined" ? localStorage.getItem("userLoggedv2") : null;
+  let userLogged: any = null;
+  if (userLoggedRaw) {
+    try {
+      userLogged = JSON.parse(userLoggedRaw);
+    } catch {
+      userLogged = null;
+    }
+  }
   const usuarioSesion =
+    userLogged?.claveEmpleado ||
+    userLogged?.id?.toString() ||
+    userLogged?.nombre ||
+    session?.claveEmpleado ||
+    session?.id?.toString() ||
+    session?.nombre ||
     token?.usuario ||
     (typeof window !== "undefined" ? localStorage.getItem("usuario") || "" : "") ||
     "";
@@ -313,11 +331,24 @@ export default function TraspasoMercancia() {
       const response = await consumoApi.post(
         "/api/CatTraspasoSalida/sp_validar_y_cargar_producto_traspaso",
         {
-          claveInput,
-          sucursalOrigen: sucOrigen,
-          sucursalDestino: sucDestino,
+          cia: 1,
+          sucursal: Number(sucOrigen) || 0,
+          sucOrigen: Number(sucOrigen) || 0,
+          sucursalOrigen: Number(sucOrigen) || 0,
+          sucursalDestino: Number(sucDestino) || 0,
+          usuario: usuarioSesion,
+          claveInput: (row as any).claveProd || row.clave || claveInput,
+          claveProd: (row as any).claveProd || row.clave || "",
+          cantidad: Number(row.cantidad) || 1,
+          costo: 0,
+          tasaIva: 0,
+          precioMenudeo: 0,
+          ultimoCosto: 0,
+          folio: Number(folio) || 0,
           validarExistenciaEstricta: true,
-          usuario: token?.usuario || "",
+          version: (row as any).version || "",
+          unidad: (row as any).unidad || "",
+          observaciones: (row as any).observaciones || row.obs || "",
         }
       );
 
@@ -346,83 +377,71 @@ export default function TraspasoMercancia() {
             return defecto;
           };
 
-          setRows((prev) =>
-            prev.map((r) => {
-              if (r.id !== row.id) return r;
-
-              const cantidadVal = Number(buscarCampo(["cantidad", "cant"], r.cantidad)) || 0;
-              const costoVal =
-                Number(
-                  buscarCampo(
-                    ["costoProm", "costoPromedio", "costo"],
-                    r.costoProm
-                  )
-                ) || 0;
-              const exisVal =
-                Number(
-                  buscarCampo(
-                    ["existencia", "exis", "stock", "disponible"],
-                    r.exis
-                  )
-                ) || 0;
-              const descripcionVal = buscarCampo(["descripcion", "descrip"], r.descripcion);
-              const claveVal = (buscarCampo(["clave"], r.clave) ?? "").toString().trim();
-              const esFraccionVal = Boolean(
-                buscarCampo(
-                  ["esFraccion", "es_fraccion", "fraccion", "esFraccionado"],
-                  r.esFraccion
-                )
-              );
-              const recuperadoVal = Boolean(
-                buscarCampo(["recuperado", "Recuperado"], r.recuperado)
-              );
-              const cantidadAnteriorVal =
-                Number(
-                  buscarCampo(
-                    ["cantidadAnterior", "cantidad_anterior", "cantidad_previa"],
-                    r.cantidadAnterior
-                  )
-                ) || 0;
-              const usuarioVal = String(
-                buscarCampo(
-                  ["usuario", "Usuario", "usuarioRegistro"],
-                  r.usuario || usuarioSesion
-                ) || ""
-              );
-
-              return {
-                ...r,
-                clave: claveVal,
-                descripcion: descripcionVal,
-                cantidad: cantidadVal,
-                costoProm: costoVal,
-                exis: exisVal,
-                importe: cantidadVal * costoVal,
-                esFraccion: esFraccionVal,
-                recuperado: recuperadoVal,
-                cantidadAnterior: cantidadAnteriorVal,
-                usuario: usuarioVal,
-              };
-            })
+          const cantidadVal = Number(buscarCampo(["cantidad", "cant"], row.cantidad)) || 0;
+          const costoVal =
+            Number(
+              buscarCampo(
+                ["costoProm", "costoPromedio", "costo"],
+                row.costoProm
+              )
+            ) || 0;
+          const exisVal =
+            Number(
+              buscarCampo(
+                ["existencia", "exis", "stock", "disponible"],
+                row.exis
+              )
+            ) || 0;
+          const claveVal = (buscarCampo(
+            ["clave", "claveReal", "claveProd", "clave_producto"],
+            row.clave
+          ) ?? "").toString().trim();
+          const productoEncontrado = productosSelector.find(
+            (p) => p.Clave.trim().toLowerCase() === claveVal.toLowerCase()
           );
-
-          const posicion = rows.findIndex((r) => r.id === row.id);
-          await guardarRenglonBorrador({
-            claveProd: claveVal,
-            cantidad: cantidadVal,
-            costo: costoVal,
-            precioMenudeo:
-              Number(buscarCampo(["precioMenudeo", "precio_menudeo", "precio"], 0)) || 0,
-            ultimoCosto:
-              Number(
-                buscarCampo(
-                  ["ultimoCosto", "ultimo_costo", "costo"],
-                  costoVal
-                )
-              ) || costoVal,
-            posicion,
-            version: "",
-          });
+          const descripcionVal =
+            buscarCampo(
+              ["descripcion", "descrip", "nombre", "descripcionProd", "descripcionProducto"],
+              row.descripcion
+            ) ||
+            productoEncontrado?.Descripcion?.trim() ||
+            "";
+          const esFraccionVal = Boolean(
+            buscarCampo(
+              ["esFraccion", "es_fraccion", "fraccion", "esFraccionado"],
+              row.esFraccion
+            )
+          );
+          const recuperadoVal = Boolean(
+            buscarCampo(["recuperado", "Recuperado"], row.recuperado)
+          );
+          const cantidadAnteriorVal =
+            Number(
+              buscarCampo(
+                ["cantidadAnterior", "cantidad_anterior", "cantidad_previa"],
+                row.cantidadAnterior
+              )
+            ) || 0;
+          const usuarioVal = String(row.usuario || usuarioSesion || "");
+          setRows((prev) =>
+            prev.map((r) =>
+              r.id !== row.id
+                ? r
+                : {
+                    ...r,
+                    clave: claveVal,
+                    descripcion: descripcionVal,
+                    cantidad: cantidadVal,
+                    costoProm: costoVal,
+                    exis: exisVal,
+                    importe: cantidadVal * costoVal,
+                    esFraccion: esFraccionVal,
+                    recuperado: recuperadoVal,
+                    cantidadAnterior: cantidadAnteriorVal,
+                    usuario: usuarioVal,
+                  }
+            )
+          );
         }
       } else if (typeof data === "string" && data.trim()) {
         await Swal.fire({
@@ -437,46 +456,6 @@ export default function TraspasoMercancia() {
       alert(mensajeReal);
     } finally {
       setValidandoClaveId(null);
-    }
-  };
-
-  const guardarRenglonBorrador = async (renglon: {
-    claveProd: string;
-    cantidad: number;
-    costo: number;
-    precioMenudeo?: number;
-    ultimoCosto?: number;
-    posicion: number;
-    version?: string;
-  }) => {
-    try {
-      const cia = Number((token as any)?.cia) || 1;
-      const suc = Number(sucOrigen) || 0;
-      const payload = {
-        cia,
-        sucursal: suc,
-        sucOrigen: suc,
-        usuario:
-          (token as any)?.usuario ||
-          (typeof window !== "undefined" ? localStorage.getItem("usuario") || "" : ""),
-        claveProd: renglon.claveProd,
-        cantidad: Number(renglon.cantidad) || 0,
-        costo: Number(renglon.costo) || 0,
-        tasaIva: 16,
-        precioMenudeo: Number(renglon.precioMenudeo) || 0,
-        posicion: renglon.posicion,
-        ultimoCosto:
-          Number(renglon.ultimoCosto) || Number(renglon.costo) || 0,
-        version: renglon.version || "",
-      };
-      await consumoApi.post(
-        "/api/CatTraspasoSalida/sp_bw_guardar_renglon_borrador",
-        payload
-      );
-    } catch (error: any) {
-      const mensajeError = error.response?.data?.mensaje || "Error al validar producto";
-      console.error("Error completo:", error);
-      alert(mensajeError);
     }
   };
 
@@ -506,19 +485,19 @@ export default function TraspasoMercancia() {
     const payload = {
       sucOrigen: Number(sucOrigen),
       sucDestino: Number(sucDestino),
-      usuario: token?.usuario || localStorage.getItem("usuario") || "",
+      usuario: usuarioSesion,
       unidad: unidad || null,
     };
 
     try {
       setGuardando(true);
-      const response = await consumoApi.post("/api/guardar-traspaso", payload);
+      const response = await consumoApi.post(
+        "/api/CatTraspasoSalida/sp_bw_finalizar_traspaso",
+        payload
+      );
 
       const folioGenerado = response.data?.folio || response.data?.Folio;
       const mensaje = response.data?.mensaje || response.data?.message || "Traspaso guardado";
-
-      setFolio(folioGenerado);
-      setTraspasoGuardado(true);
 
       Swal.fire({
         icon: "success",
@@ -526,6 +505,8 @@ export default function TraspasoMercancia() {
         text: `${mensaje} Folio asignado: ${folioGenerado}`,
         confirmButtonColor: "#000000",
       });
+
+      handleNuevo();
     } catch (error: any) {
       Swal.fire({
         icon: "error",
@@ -573,15 +554,11 @@ export default function TraspasoMercancia() {
     try {
       setCancelando(true);
       const response = await consumoApi.post(
-        "/api/CatTraspasoSalida/sp_cancelar_traspaso_sucursal",
-        null,
+        "/api/CatTraspasoSalida/sp_bw_cancelar_traspaso",
         {
-          params: {
-            folio,
-            sucursal: Number(sucOrigen),
-            usuarioCancelacion:
-              token?.usuario || localStorage.getItem("usuario") || "",
-          },
+          folio,
+          sucursal: Number(sucOrigen),
+          usuarioCancelacion: usuarioSesion,
         }
       );
 
@@ -602,12 +579,18 @@ export default function TraspasoMercancia() {
       setSucDestino("");
       setUnidad("");
     } catch (error: any) {
+      const mensajeReal =
+        error.response?.data?.mensaje ||
+        error.response?.data?.message ||
+        error.response?.data ||
+        error.message ||
+        "Error al procesar la cancelación.";
+      console.error("Error cancelar traspaso:", error);
       Swal.fire({
         icon: "error",
         title: "Error",
         text:
-          error.response?.data?.mensaje ||
-          "Error al procesar la cancelación.",
+          typeof mensajeReal === "string" ? mensajeReal : JSON.stringify(mensajeReal),
         confirmButtonColor: "#000000",
       });
     } finally {
@@ -618,14 +601,17 @@ export default function TraspasoMercancia() {
   const handleEliminarFila = async (row: TraspasoRow) => {
     if (row.clave) {
       try {
+        const posicion = rows.findIndex((r) => r.id === row.id);
         await consumoApi.delete(
           "/api/CatTraspasoSalida/sp_bw_eliminar_producto_traspaso",
           {
             params: {
               folio,
+              cia: Number(userLogged?.cia || session?.cia) || 1,
               sucursal: Number(sucOrigen),
               claveProd: row.clave,
-              usuario: token?.usuario || "",
+              usuario: usuarioSesion,
+              posicion,
             },
           }
         );
@@ -669,44 +655,19 @@ export default function TraspasoMercancia() {
   ) => {
     if (!claveProd) return;
 
-    if (!folio || folio === 0) {
-      const fila = rows.find((r) => r.clave === claveProd);
-      const posicion = rows.findIndex((r) => r.clave === claveProd);
-      setRows((prev) =>
-        prev.map((item) =>
-          item.clave === claveProd
-            ? {
-                ...item,
-                cantidad: Number(nuevaCantidad) || 0,
-                importe:
-                  (Number(nuevaCantidad) || 0) *
-                  (Number(item.costoProm) || 0),
-                obs: nuevaObs,
-              }
-            : item
-        )
-      );
-      if (fila) {
-        await guardarRenglonBorrador({
-          claveProd: fila.clave,
-          cantidad: Number(nuevaCantidad) || 0,
-          costo: fila.costoProm,
-          posicion,
-        });
-      }
-      return;
-    }
+    const fila = rows.find((r) => r.clave === claveProd);
+    if (!fila) return;
 
     try {
       const response = await consumoApi.put(
         "/api/CatTraspasoSalida/sp_bw_actualizar_traspaso_upd",
         {
-          folio,
-          sucursal: Number(sucOrigen),
+          folio: Number(folio) || 0,
+          sucursal: Number(sucOrigen) || 0,
           claveProd,
-          cantidad: Number(nuevaCantidad),
-          observaciones: nuevaObs,
-          usuario: token?.usuario || "",
+          cantidad: Number(nuevaCantidad) || 1,
+          observaciones: nuevaObs || fila.obs || "",
+          usuario: usuarioSesion,
         }
       );
 
@@ -716,18 +677,23 @@ export default function TraspasoMercancia() {
           if (item.clave !== claveProd) return item;
           const cantidadResp =
             data?.cantidad != null ? Number(data.cantidad) : Number(nuevaCantidad);
-          const obsResp =
-            data?.observaciones ?? data?.obs ?? nuevaObs ?? item.obs;
           const costoResp =
-            data?.costoProm != null ? Number(data.costoProm) : item.costoProm;
+            data?.costoProm != null
+              ? Number(data.costoProm)
+              : fila.costoProm;
+          const importeResp =
+            data?.importe != null
+              ? Number(data.importe)
+              : cantidadResp * costoResp;
+          const obsResp =
+            data?.observaciones ?? data?.obs ?? nuevaObs ?? fila.obs;
           return {
             ...item,
-            ...data,
             cantidad: cantidadResp,
+            costoProm: costoResp,
+            importe: importeResp,
             obs: obsResp,
             usuario: data?.usuario ?? item.usuario,
-            costoProm: costoResp,
-            importe: cantidadResp * costoResp,
           };
         })
       );
