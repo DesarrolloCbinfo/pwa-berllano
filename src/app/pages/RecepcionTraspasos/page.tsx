@@ -93,8 +93,7 @@ export default function RecepcionTraspasos() {
   });
 
   const [sucursales, setSucursales] = useState<Sucursal[]>([]);
-  const [sucursal, setSucursal] = useState<number | "">("");
-  const [sucOrigen, setSucOrigen] = useState<number>(0);
+  const [sucOrigen, setSucOrigen] = useState<number | "">("");
   const [folio, setFolio] = useState<string>("");
   const [fechaInicio, setFechaInicio] = useState(fechaHoy);
   const [fechaFin, setFechaFin] = useState(fechaHoy);
@@ -104,7 +103,26 @@ export default function RecepcionTraspasos() {
   const [guardando, setGuardando] = useState(false);
   const [formatoSalida, setFormatoSalida] = useState<"ticket" | "carta">("ticket");
   const [registroActual, setRegistroActual] = useState(0);
-  const sucursalDestino = Number(sucursal) || 0;
+  const sucursalDestino = useMemo(() => {
+    if (token) {
+      const s =
+        Number((token as any)?.sucursal) ||
+        Number((token as any)?.claveDepartamento) ||
+        0;
+      if (s > 0) return s;
+    }
+    if (typeof window !== "undefined") {
+      try {
+        const stored = JSON.parse(localStorage.getItem("token") || "{}");
+        const s =
+          Number(stored.sucursal) || Number(stored.claveDepartamento) || 0;
+        return s > 0 ? s : 0;
+      } catch {
+        return 0;
+      }
+    }
+    return 0;
+  }, [token]);
 
   useEffect(() => {
     const fetchSucursales = async () => {
@@ -143,7 +161,10 @@ export default function RecepcionTraspasos() {
     sucOrigenSeleccionado?: number
   ) => {
     const folioBusqueda = (folioSeleccionado ?? folio).trim();
-    const sucOrigenBusqueda = Number(sucOrigenSeleccionado) || 0;
+    const sucOrigenBusqueda =
+      sucOrigenSeleccionado !== undefined
+        ? Number(sucOrigenSeleccionado)
+        : Number(sucOrigen) || 0;
 
     if (cia <= 0) {
       Swal.fire({
@@ -298,7 +319,7 @@ export default function RecepcionTraspasos() {
         null,
         {
           params: {
-            sucOrigen,
+            sucOrigen: Number(sucOrigen),
             sucDestino: sucursalDestino,
             folio: Number(folio.trim()),
             usuario: usuarioSesion,
@@ -662,12 +683,14 @@ export default function RecepcionTraspasos() {
               </Stack>
 
               <Stack direction="row" spacing={1} alignItems="center">
-                <Typography sx={{ fontWeight: "bold", minWidth: 70 }}>Sucursal:</Typography>
+                <Typography sx={{ fontWeight: "bold", minWidth: 70 }}>Sucursal origen:</Typography>
                 <FormControl size="small" sx={{ minWidth: 200 }}>
                   <Select
                     displayEmpty
-                    value={sucursal}
-                    onChange={(e) => setSucursal(Number(e.target.value))}
+                    value={sucOrigen}
+                    onChange={(e) =>
+                      setSucOrigen(e.target.value === "" ? "" : Number(e.target.value))
+                    }
                     renderValue={(value) =>
                       value === "" ? (
                         <em>Seleccione...</em>
@@ -680,7 +703,7 @@ export default function RecepcionTraspasos() {
                       <em>Seleccione...</em>
                     </MenuItem>
                     {sucursales
-                      .filter((s) => s.cve_sucursal !== Number(token?.claveDepartamento))
+                      .filter((s) => s.cve_sucursal !== sucursalDestino)
                       .map((s) => (
                         <MenuItem key={s.cve_sucursal} value={s.cve_sucursal}>
                           {s.nombre}
@@ -847,19 +870,6 @@ export default function RecepcionTraspasos() {
                   }}
                 >
                   Imprimir
-                </Button>
-                <Button
-                  variant="contained"
-                  onClick={handleCerrar}
-                  sx={{
-                    bgcolor: "#d9d9d9",
-                    color: "#000",
-                    fontWeight: "bold",
-                    boxShadow: "none",
-                    "&:hover": { bgcolor: "#c7c7c7", boxShadow: "none" },
-                  }}
-                >
-                  Cerrar
                 </Button>
               </Stack>
 

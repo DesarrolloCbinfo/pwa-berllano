@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Autocomplete,
   Box,
@@ -26,6 +26,7 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from "@mui/icons-material/Close";
+import DeleteIcon from "@mui/icons-material/Delete";
 import Swal from "sweetalert2";
 import useConsumoApi from "../../../hooks/useConsumoApi";
 import { useAuth } from "../../../context/AuthContext";
@@ -41,6 +42,8 @@ type TipoMovimiento = {
 type ProductoSelector = {
   clave_prod: string;
   descripcion: string;
+  costo?: number;
+  tasa_iva?: number;
 };
 
 type RenglonAjuste = {
@@ -77,7 +80,9 @@ const obtenerValor = (obj: any, ...nombres: string[]) => {
   if (!obj || typeof obj !== "object") return undefined;
   const keys = Object.keys(obj);
   for (const nombre of nombres) {
-    const key = keys.find((k) => k.toLowerCase() === nombre.toLowerCase());
+    const key = keys.find((k) =>
+      k.toLowerCase().includes(nombre.toLowerCase())
+    );
     if (key !== undefined && obj[key] != null && obj[key] !== "") {
       return obj[key];
     }
@@ -164,6 +169,7 @@ export default function AjustesInventario() {
 
   const [renglones, setRenglones] = useState<RenglonAjuste[]>([crearRenglonVacio()]);
   const [selectedRowId, setSelectedRowId] = useState<number | null>(renglones[0].id);
+  const temporalGuardadoRef = useRef<Record<string, { entradas: number; salidas: number }>>({});
 
   useEffect(() => {
     const fetchTiposMovimiento = async () => {
@@ -184,9 +190,21 @@ export default function AjustesInventario() {
       try {
         setCargandoProductos(true);
         const response = await consumoApi.get(
-          "/api/CatAjustes/sp_fw_obtener_productos_activos"
+          "/api/CatAjustes/sp_bw_obtener_productos_activos_ajustes_sel"
         );
-        setProductosSelector(response.data || []);
+        const productosRaw = Array.isArray(response.data) ? response.data : [];
+      setProductosSelector(
+        productosRaw.map((item: any) => ({
+          clave_prod: String(
+            obtenerValor(item, "clave_prod", "cve_prod", "producto", "clave") || ""
+          ),
+          descripcion: String(
+            obtenerValor(item, "descripcion", "descrip", "nombre", "desc") || ""
+          ),
+          costo: Number(obtenerValor(item, "costo", "costo_promedio", "costoProm") || 0),
+          tasa_iva: Number(obtenerValor(item, "tasa_iva", "tasaIva", "iva") || 0),
+        }))
+      );
       } catch (err) {
         console.error("Error al cargar el selector de productos:", err);
       } finally {
@@ -242,73 +260,41 @@ export default function AjustesInventario() {
     );
   };
 
-  const handleSeleccionarProducto = async (
+  const handleSeleccionarProducto = (
     row: RenglonAjuste,
     producto: ProductoSelector
   ) => {
-    const claveInput = producto.clave_prod.trim();
-    updateRenglon(row.id, "clave", claveInput);
-    updateRenglon(row.id, "descripcion", producto.descripcion);
-    await handleSeleccionarClave(row, claveInput, producto.descripcion);
-  };
-
-  const handleSeleccionarClave = async (
-    row: RenglonAjuste,
-    claveSeleccionada: string,
-    descripcionSeleccionada: string
-  ) => {
-    const claveInput = claveSeleccionada.trim();
-    if (!claveInput || validandoClaveId === row.id) return;
-
-    setValidandoClaveId(row.id);
-    try {
-      const response = await consumoApi.get(
-        "/api/CatAjusteInventario/sp_obtener_producto_para_ajuste",
-        { params: { claveInput } }
-      );
-      const data = Array.isArray(response.data) ? response.data[0] : response.data;
-
-      if (!data) {
-        setValidandoClaveId(null);
-        return;
-      }
-
-      const descripcion = descripcionSeleccionada;
-      const existencia = Number(obtenerValor(data, "existencia", "exist_act") || 0);
-      const costo = Number(obtenerValor(data, "costo", "costoProm") || 0);
-
-      setRenglones((prev) => {
-        const actualizadas = prev.map((r) => {
-          if (r.id !== row.id) return r;
-          const actualizado: RenglonAjuste = {
-            ...r,
-            clave: claveInput,
-            descripcion,
-            existenciaActual: existencia,
-            costo,
-          };
-          actualizado.nuevaExistencia = recalcularNuevaExistencia(actualizado);
-          return actualizado;
-        });
-        const esUltima = actualizadas[actualizadas.length - 1]?.id === row.id;
-        if (esUltima) {
-          const nueva = crearRenglonVacio();
-          return [...actualizadas, nueva];
-        }
-        return actualizadas;
-      });
-    } catch (err: any) {
+    if (!tipoMovimiento) {
       Swal.fire({
-        icon: "error",
-        title: "Error al validar producto",
-        text:
-          err.response?.data?.mensaje ||
-          "No fue posible validar la clave del producto.",
+        icon: "warning",
+        title: "Tipo de movimiento requerido",
+        text: "Selecciona el tipo de movimiento antes de capturar un producto.",
         confirmButtonColor: "#000000",
       });
-    } finally {
-      setValidandoClaveId(null);
+      return;
     }
+
+    const claveInput = producto.clave_prod.trim();
+    const costo = Number(obtenerValor(producto, "costo", "costo_promedio", "costoProm") || 0);
+    const tasa = Number(obtenerValor(producto, "tasa_iva", "tasaIva", "iva") || 0);
+
+    setRenglones((prev) => {
+      const actualizadas = prev.map((r) => {
+        if (r.id !== row.id) return r;
+        const actualizado: RenglonAjuste = {
+          ...r,
+          clave: claveInput,
+          descripcion: producto.descripcion,
+          existenciaActual: 0,
+          costo,
+          tasa,
+        };
+        actualizado.nuevaExistencia = recalcularNuevaExistencia(actualizado);
+        return actualizado;
+      });
+      const esUltima = actualizadas[actualizadas.length - 1]?.id === row.id;
+      return esUltima ? [...actualizadas, crearRenglonVacio()] : actualizadas;
+    });
   };
 
   const handleNuevo = () => {
@@ -319,6 +305,59 @@ export default function AjustesInventario() {
     const nueva = crearRenglonVacio();
     setRenglones([nueva]);
     setSelectedRowId(nueva.id);
+  };
+
+  const guardarRenglonTemporal = async (row: RenglonAjuste) => {
+    if (!tipoMovimiento) {
+      alert("Por favor, seleccione un tipo de movimiento antes de capturar productos.");
+      return;
+    }
+    if (
+      sucursalSesion <= 0 ||
+      !row.clave.trim() ||
+      (row.entrada <= 0 && row.salida <= 0)
+    ) {
+      return;
+    }
+
+    const llave = `${row.id}:${row.clave.trim()}:${tipoMovimiento}`;
+    const anterior = temporalGuardadoRef.current[llave] || { entradas: 0, salidas: 0 };
+    const entradas = (Number(row.entrada) || 0) - anterior.entradas;
+    const salidas = (Number(row.salida) || 0) - anterior.salidas;
+
+    if (entradas === 0 && salidas === 0) return;
+
+    const payload = {
+      sucursal: sucursalSesion,
+      usuario: usuarioSesion,
+      claveProd: row.clave.trim(),
+      tipoMovto: Number(tipoMovimiento),
+      entradas,
+      salidas,
+      costo: Number(row.costo) || 0,
+      tasaIva: Number(row.tasa) || 0,
+      sucursalOrigen: null,
+      cveProveedor: null,
+      folioDocto: folioDocumento.trim() || null,
+      observacion: "",
+    };
+
+    try {
+      await consumoApi.post(
+        "/api/CatAjustes/sp_bw_guardar_ajuste_temporal",
+        payload
+      );
+      temporalGuardadoRef.current[llave] = {
+        entradas: Number(row.entrada) || 0,
+        salidas: Number(row.salida) || 0,
+      };
+    } catch (error: any) {
+      const mensajeError =
+        error.response?.data?.mensaje ||
+        error.response?.data?.error ||
+        error.message;
+      alert(`No se pudo agregar el producto: ${mensajeError}`);
+    }
   };
 
   const handleGuardar = async () => {
@@ -404,8 +443,12 @@ export default function AjustesInventario() {
       const entradas = Number(obtenerValor(row, "entradas", "entrada")) || 0;
       const salidas = Number(obtenerValor(row, "salidas", "salida")) || 0;
       const costo = Number(obtenerValor(row, "costo", "costoProm")) || 0;
-      const clave = String(obtenerValor(row, "clave", "clave_prod", "claveProd") || "");
-      const descripcion = String(obtenerValor(row, "descripcion", "descrip", "nombre") || "");
+      const clave = String(
+        obtenerValor(row, "clave", "clave_prod", "claveProd", "cve_prod", "producto") || ""
+      );
+      const descripcion = String(
+        obtenerValor(row, "descripcion", "descrip", "nombre", "desc") || ""
+      );
       const tasa = Number(obtenerValor(row, "tasa", "tasaIva", "tasa_iva")) || 0;
 
       return {
@@ -518,6 +561,15 @@ export default function AjustesInventario() {
   };
 
   const handleAgregarRenglon = () => {
+    if (!tipoMovimiento) {
+      Swal.fire({
+        icon: "warning",
+        title: "Tipo de movimiento requerido",
+        text: "Selecciona el tipo de movimiento antes de agregar un producto.",
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
     const ultima = renglones[renglones.length - 1];
     if (renglones.length > 0 && !ultima?.clave.trim()) {
       setSelectedRowId(ultima.id);
@@ -526,6 +578,48 @@ export default function AjustesInventario() {
     const nueva = crearRenglonVacio();
     setRenglones([...renglones, nueva]);
     setSelectedRowId(nueva.id);
+  };
+
+  const handleEliminarRenglon = async (id: number) => {
+    const row = renglones.find((r) => r.id === id);
+    const llave = row
+      ? `${row.id}:${row.clave.trim()}:${tipoMovimiento}`
+      : "";
+    const existeGuardadoTemporal = Boolean(
+      row?.clave.trim() && tipoMovimiento && temporalGuardadoRef.current[llave]
+    );
+
+    if (existeGuardadoTemporal) {
+      try {
+        await consumoApi.delete(
+          "/api/CatAjustes/sp_bw_eliminar_ajuste_temporal",
+          {
+            params: {
+              sucursal: sucursalSesion,
+              usuario: usuarioSesion,
+              claveProd: row!.clave.trim(),
+              tipoMovto: Number(tipoMovimiento),
+            },
+          }
+        );
+        delete temporalGuardadoRef.current[llave];
+      } catch (err: any) {
+        Swal.fire({
+          icon: "error",
+          title: "Error al eliminar",
+          text:
+            err.response?.data?.mensaje ||
+            "No fue posible eliminar el registro temporal.",
+          confirmButtonColor: "#000000",
+        });
+        return;
+      }
+    }
+
+    setRenglones((prev) => {
+      const restantes = prev.filter((r) => r.id !== id);
+      return restantes.length > 0 ? restantes : [crearRenglonVacio()];
+    });
   };
 
   const cellSx = {
@@ -643,18 +737,6 @@ export default function AjustesInventario() {
               />
             </Stack>
 
-            {/* Folio del documento */}
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
-              <Typography sx={{ fontWeight: "bold", minWidth: 140 }}>
-                Folio del documento:
-              </Typography>
-              <TextField
-                size="small"
-                value={folioDocumento}
-                onChange={(e) => setFolioDocumento(e.target.value)}
-                sx={{ flex: 1, maxWidth: 260 }}
-              />
-            </Stack>
 
             {/* Tabla */}
             <TableContainer
@@ -681,6 +763,7 @@ export default function AjustesInventario() {
                       { name: "C", width: 70 },
                       { name: "T", width: 60 },
                       { name: "Nueva exist.", width: 90 },
+                      { name: "", width: 50 },
                     ].map((h, idx) => (
                       <TableCell key={idx} sx={{ ...cellSx, fontWeight: "bold", width: h.width }}>
                         {h.name}
@@ -785,6 +868,7 @@ export default function AjustesInventario() {
                           onChange={(e) =>
                             updateRenglon(row.id, "entrada", Number(e.target.value) || 0)
                           }
+                          onBlur={() => guardarRenglonTemporal(row)}
                           onKeyDown={(e) => {
                             if (e.key === "Enter" && idx === renglones.length - 1) {
                               handleAgregarRenglon();
@@ -804,6 +888,7 @@ export default function AjustesInventario() {
                           onChange={(e) =>
                             updateRenglon(row.id, "salida", Number(e.target.value) || 0)
                           }
+                          onBlur={() => guardarRenglonTemporal(row)}
                           onKeyDown={(e) => {
                             if (e.key === "Enter" && idx === renglones.length - 1) {
                               handleAgregarRenglon();
@@ -813,9 +898,20 @@ export default function AjustesInventario() {
                         />
                       </TableCell>
                       <TableCell sx={cellSx}>{formatoMoneda(row.costo)}</TableCell>
-                      <TableCell sx={cellSx}>{row.tasa}%</TableCell>
+                      <TableCell sx={cellSx}>
+                        {(row.tasa <= 1 ? row.tasa * 100 : row.tasa).toFixed(0)}%
+                      </TableCell>
                       <TableCell sx={{ ...cellSx, fontWeight: "bold" }}>
                         {row.nuevaExistencia}
+                      </TableCell>
+                      <TableCell sx={{ ...cellSx, textAlign: "center" }}>
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => void handleEliminarRenglon(row.id)}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
                       </TableCell>
                     </TableRow>
                   ))}
