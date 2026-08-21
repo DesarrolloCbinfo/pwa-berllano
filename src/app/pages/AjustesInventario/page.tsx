@@ -251,7 +251,9 @@ export default function AjustesInventario() {
     setRenglones((prev) =>
       prev.map((r) => {
         if (r.id !== id) return r;
-        const actualizado = { ...r, [field]: value } as RenglonAjuste;
+        const rawValue =
+          field === "entrada" ? Math.max(0, Number(value) || 0) : value;
+        const actualizado = { ...r, [field]: rawValue } as RenglonAjuste;
         if (["entrada", "salida", "existenciaActual"].includes(field as string)) {
           actualizado.nuevaExistencia = recalcularNuevaExistencia(actualizado);
         }
@@ -298,6 +300,7 @@ export default function AjustesInventario() {
   };
 
   const handleNuevo = () => {
+    temporalGuardadoRef.current = {};
     setFolio((prev) => prev + 1);
     setFolioDocumento("");
     setTipoMovimiento("");
@@ -361,11 +364,14 @@ export default function AjustesInventario() {
   };
 
   const handleGuardar = async () => {
-    if (!tipoMovimiento) {
+    const tipoMovto = Number(tipoMovimiento);
+    const almacen = 1;
+
+    if (sucursalSesion <= 0 || tipoMovto <= 0 || almacen <= 0) {
       Swal.fire({
         icon: "warning",
-        title: "Tipo de movimiento requerido",
-        text: "Selecciona el tipo de movimiento antes de guardar.",
+        title: "Datos incompletos",
+        text: `Sucursal: ${sucursalSesion}, Tipo: ${tipoMovto}, Almacén: ${almacen}`,
         confirmButtonColor: "#000000",
       });
       return;
@@ -384,16 +390,24 @@ export default function AjustesInventario() {
 
     setGuardando(true);
     try {
+      await Promise.all(renglonesValidos.map((row) => guardarRenglonTemporal(row)));
+
       const response = await consumoApi.post(
-        "/api/CatAjusteInventario/sp_bw_guardar_ajuste_inventario",
+        "/api/CatAjustes/sp_bw_guardar_ajuste_definitivo",
         {
-          folio,
-          folioDocumento: folioDocumento || null,
-          tipoMovimiento,
+          sucursal: sucursalSesion,
           usuario: usuarioSesion,
-          renglones: renglonesValidos,
+          fechaOrden: new Date().toISOString(),
+          tipoMovto,
+          folioDocto: folioDocumento.trim(),
+          sucursalOrigen: null,
+          cveProveedor: null,
+          almacen: 1,
         }
       );
+
+      const folioGenerado = Number(response.data?.folioGenerado) || 0;
+      if (folioGenerado > 0) setFolio(folioGenerado);
 
       Swal.fire({
         icon: "success",
@@ -401,6 +415,7 @@ export default function AjustesInventario() {
         text: response.data?.mensaje || "Ajuste guardado correctamente.",
         confirmButtonColor: "#000000",
       });
+      handleNuevo();
     } catch (err: any) {
       Swal.fire({
         icon: "error",
@@ -425,7 +440,9 @@ export default function AjustesInventario() {
   };
 
   const seleccionarAjuste = (ajuste: AjusteHistorial) => {
-    const renglonesAjuste = historialAjustesRaw.filter((r) => r.folio === ajuste.folio);
+    const renglonesAjuste = historialAjustesRaw.filter(
+      (r) => Number(r.folio) === Number(ajuste.folio)
+    );
 
     if (renglonesAjuste.length === 0) {
       Swal.fire({
@@ -469,7 +486,7 @@ export default function AjustesInventario() {
       setTipoMovimiento(Number(tipoMovtoRaw));
     }
 
-    setFolio(ajuste.folio);
+    setFolio(Number(ajuste.folio));
     setRenglones(nuevosRenglones);
     setSelectedRowId(nuevosRenglones[0]?.id ?? null);
     setAjusteSeleccionado(null);
@@ -512,15 +529,17 @@ export default function AjustesInventario() {
 
       const agrupados = raw.reduce<Record<number, AjusteHistorial>>(
         (acc, row) => {
+          const folioNum = Number(row.folio) || 0;
+          if (folioNum <= 0) return acc;
           const movimiento =
             (Number(row.entradas) || 0) - (Number(row.salidas) || 0);
           const importe = Math.abs(movimiento) * (Number(row.costo) || 0);
 
-          if (acc[row.folio]) {
-            acc[row.folio].total += importe;
+          if (acc[folioNum]) {
+            acc[folioNum].total += importe;
           } else {
-            acc[row.folio] = {
-              folio: row.folio,
+            acc[folioNum] = {
+              folio: folioNum,
               fecha: row.fecha,
               usuario: row.usuario,
               total: importe,
@@ -557,7 +576,67 @@ export default function AjustesInventario() {
   };
 
   const handleSalir = () => {
-    handleNuevo();
+    window.location.href = "/";
+  };
+
+  const handleCancelar = async () => {
+    const folioACancelar = Number(folio);
+    const tipoMovto = Number(tipoMovimiento);
+
+    if (sucursalSesion <= 0 || folioACancelar <= 0 || tipoMovto <= 0) {
+      Swal.fire({
+        icon: "warning",
+        title: "Datos incompletos",
+        text: "Selecciona o carga un ajuste definitivo antes de cancelarlo.",
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
+
+    const confirmacion = await Swal.fire({
+      icon: "warning",
+      title: "Cancelar ajuste",
+      text: `¿Deseas cancelar el folio ${folioACancelar}? Se generará un contra-movimiento.`,
+      showCancelButton: true,
+      confirmButtonText: "Sí, cancelar",
+      cancelButtonText: "No",
+      confirmButtonColor: "#000000",
+    });
+
+    if (!confirmacion.isConfirmed) return;
+
+    setGuardando(true);
+    try {
+      const response = await consumoApi.post(
+        "/api/CatAjustes/sp_bw_cancelar_ajuste",
+        {
+          sucursal: sucursalSesion,
+          usuario: usuarioSesion,
+          folioACancelar,
+          tipoMovto,
+          almacen: 1,
+        }
+      );
+
+      Swal.fire({
+        icon: "success",
+        title: "Ajuste cancelado",
+        text: response.data?.mensaje || "Ajuste cancelado correctamente.",
+        confirmButtonColor: "#000000",
+      });
+      handleNuevo();
+    } catch (err: any) {
+      Swal.fire({
+        icon: "error",
+        title: "Error al cancelar",
+        text:
+          err.response?.data?.mensaje ||
+          "No fue posible cancelar el ajuste.",
+        confirmButtonColor: "#000000",
+      });
+    } finally {
+      setGuardando(false);
+    }
   };
 
   const handleAgregarRenglon = () => {
@@ -865,6 +944,7 @@ export default function AjustesInventario() {
                           value={row.entrada}
                           disabled={esMovimientoSalida === true}
                           InputProps={{ disableUnderline: true }}
+                          inputProps={{ min: 0 }}
                           onChange={(e) =>
                             updateRenglon(row.id, "entrada", Number(e.target.value) || 0)
                           }
@@ -990,6 +1070,21 @@ export default function AjustesInventario() {
                 }}
               >
                 {guardando ? <CircularProgress size={18} /> : "Guardar"}
+              </Button>
+              <Button
+                variant="contained"
+                onClick={handleCancelar}
+                disabled={guardando}
+                sx={{
+                  bgcolor: "#d9d9d9",
+                  color: "#000",
+                  fontWeight: "bold",
+                  boxShadow: "none",
+                  minWidth: 100,
+                  "&:hover": { bgcolor: "#c7c7c7", boxShadow: "none" },
+                }}
+              >
+                Cancelar
               </Button>
               <Button
                 variant="contained"

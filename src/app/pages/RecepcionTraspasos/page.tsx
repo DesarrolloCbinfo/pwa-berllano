@@ -357,11 +357,11 @@ export default function RecepcionTraspasos() {
       });
       return;
     }
-    if (sucursalDestino <= 0) {
+    if (sucursalDestino <= 0 || Number(sucOrigen) <= 0) {
       Swal.fire({
         icon: "warning",
         title: "Sucursal requerida",
-        text: "Selecciona la sucursal destino antes de buscar.",
+        text: "Selecciona la sucursal origen antes de buscar.",
         confirmButtonColor: "#000000",
       });
       return;
@@ -375,7 +375,7 @@ export default function RecepcionTraspasos() {
           params: {
             cia,
             sucursalDestino,
-            sucOrigen: 0,
+            sucOrigen: Number(sucOrigen),
             fechaInicio: `${fechaInicio}T00:00:00`,
             fechaFin: `${fechaFin}T00:00:00`,
             recibido: false,
@@ -383,8 +383,9 @@ export default function RecepcionTraspasos() {
         }
       );
 
-      const resultados = Array.isArray(response.data) ? response.data : [];
-
+      const resultados = (Array.isArray(response.data) ? response.data : []).filter(
+        (item: any) => Number(obtenerValor(item, "folio") || 0) > 0
+      );
 
       if (resultados.length === 0) {
         Swal.fire({
@@ -405,6 +406,12 @@ export default function RecepcionTraspasos() {
             : "";
           const sucOrigenResultado = obtenerValor(item, "suc_origen", "sucOrigen") || "";
           const sucDestinoResultado = obtenerValor(item, "suc_destino", "sucDestino") || "";
+          const nombreOrigen =
+            sucursales.find((s) => s.cve_sucursal === Number(sucOrigenResultado))?.nombre ||
+            String(sucOrigenResultado);
+          const nombreDestino =
+            sucursales.find((s) => s.cve_sucursal === Number(sucDestinoResultado))?.nombre ||
+            String(sucDestinoResultado);
           const totalItems = Number(obtenerValor(item, "total_items", "totalItems") || 0);
           const subtotal = Number(obtenerValor(item, "subtotal") || 0);
           const totalIva = Number(obtenerValor(item, "total_iva", "totalIva") || 0);
@@ -419,8 +426,8 @@ export default function RecepcionTraspasos() {
               </td>
               <td style="padding:6px;border:1px solid #ddd;">${escaparHtml(folioResultado)}</td>
               <td style="padding:6px;border:1px solid #ddd;">${escaparHtml(fechaTexto)}</td>
-              <td style="padding:6px;border:1px solid #ddd;text-align:center;">${escaparHtml(sucOrigenResultado)}</td>
-              <td style="padding:6px;border:1px solid #ddd;text-align:center;">${escaparHtml(sucDestinoResultado)}</td>
+              <td style="padding:6px;border:1px solid #ddd;text-align:center;">${escaparHtml(nombreOrigen)}</td>
+              <td style="padding:6px;border:1px solid #ddd;text-align:center;">${escaparHtml(nombreDestino)}</td>
               <td style="padding:6px;border:1px solid #ddd;text-align:center;">${totalItems}</td>
               <td style="padding:6px;border:1px solid #ddd;text-align:right;">${formatoMoneda(subtotal)}</td>
               <td style="padding:6px;border:1px solid #ddd;text-align:right;">${formatoMoneda(totalIva)}</td>
@@ -476,12 +483,20 @@ export default function RecepcionTraspasos() {
         Array.isArray(seleccion.value) &&
         seleccion.value.length > 0
       ) {
-        const seleccionados = resultados.filter((item: any) => {
+        const seleccionadosPorFolio = new Map<string, any>();
+        resultados.forEach((item: any) => {
           const folioItem = String(obtenerValor(item, "folio") || "");
-          return seleccion.value.includes(folioItem);
+          const origenItem = String(
+            obtenerValor(item, "suc_origen", "sucOrigen") || ""
+          );
+          if (seleccion.value.includes(folioItem)) {
+            seleccionadosPorFolio.set(`${folioItem}-${origenItem}`, item);
+          }
         });
 
-        await handleRecuperarSeleccionados(seleccionados);
+        await handleRecuperarSeleccionados(
+          Array.from(seleccionadosPorFolio.values())
+        );
       }
     } catch (err: any) {
       Swal.fire({
@@ -610,7 +625,14 @@ export default function RecepcionTraspasos() {
       });
       return;
     }
-    window.print();
+    if (formatoSalida === "carta") {
+      document.body.classList.add("modo-carta");
+      const limpiar = () => document.body.classList.remove("modo-carta");
+      window.addEventListener("afterprint", limpiar, { once: true });
+      window.print();
+    } else {
+      window.print();
+    }
   };
 
   const handleCerrar = () => {
@@ -626,7 +648,9 @@ export default function RecepcionTraspasos() {
   };
 
   return (
-    <Box sx={{ p: { xs: 2, md: 3 }, bgcolor: "#f3f4f6", minHeight: "100vh" }}>
+    <>
+      <style>{'body.modo-carta .no-imprimir-carta { display: none !important; }'}</style>
+      <Box sx={{ p: { xs: 2, md: 3 }, bgcolor: "#f3f4f6", minHeight: "100vh" }}>
       <Box sx={{ width: "100%", maxWidth: 900, mx: "auto" }}>
         <Paper
           elevation={0}
@@ -829,7 +853,7 @@ export default function RecepcionTraspasos() {
               alignItems={{ md: "flex-start" }}
               justifyContent="space-between"
             >
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap className="no-imprimir-carta">
                 <Button
                   variant="contained"
                   onClick={handleGuardar}
@@ -874,6 +898,7 @@ export default function RecepcionTraspasos() {
               </Stack>
 
               <Box
+                className="no-imprimir-carta"
                 sx={{
                   border: "1px solid #d0d0d0",
                   borderRadius: 0.5,
@@ -920,5 +945,6 @@ export default function RecepcionTraspasos() {
         </Paper>
       </Box>
     </Box>
+    </>
   );
 }

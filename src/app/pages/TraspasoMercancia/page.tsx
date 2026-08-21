@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Box,
   Button,
+  Checkbox,
   FormControl,
   InputLabel,
   MenuItem,
@@ -47,6 +48,8 @@ type TraspasoRow = {
   recuperado: boolean;
   cantidadAnterior: number;
   usuario: string;
+  recibido?: boolean;
+  estado?: string;
 };
 
 type Sucursal = {
@@ -67,6 +70,12 @@ type TraspasoBusqueda = {
   costoProm: number;
   importe: number;
   obs: string;
+  folio?: number;
+  estado?: string;
+  recibido?: boolean;
+  finalizado?: boolean;
+  aceptado?: boolean;
+  cancelado?: boolean;
   usuario?: string;
   sucOrigen?: number | string;
   sucDestino?: number | string;
@@ -74,6 +83,29 @@ type TraspasoBusqueda = {
 
 function formatoMoneda(valor: number) {
   return `$${valor.toFixed(2)}`;
+}
+
+function escaparHtml(valor: unknown) {
+  return String(valor ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function valorVerdadero(valor: unknown) {
+  return valor === true || valor === 1 || String(valor).toLowerCase() === "true";
+}
+
+function obtenerEstadoTraspaso(item: any) {
+  if (valorVerdadero(obtenerValor(item, "cancelado", "cancelada"))) return "CANCELADO";
+  if (valorVerdadero(obtenerValor(item, "recibido", "aceptado"))) return "ACEPTADO";
+
+  const estado = String(obtenerValor(item, "estado", "estatus", "status") || "").trim();
+  if (estado) return estado.toUpperCase();
+  if (valorVerdadero(obtenerValor(item, "finalizado", "procesado"))) return "FINALIZADO";
+  return Number(obtenerValor(item, "folio") || 0) > 0 ? "FINALIZADO" : "PENDIENTE";
 }
 
 const obtenerValor = (obj: any, ...nombres: string[]) => {
@@ -183,10 +215,15 @@ export default function TraspasoMercancia() {
   const esMismoUsuario = (rowUsuario?: string) => {
     const r = (rowUsuario || "").trim().toLowerCase();
     const s = (usuarioSesion || "").trim().toLowerCase();
-    if (!r) return true; // renglón nuevo, permite editar
-    if (!s) return false; // sesión desconocida, no permite editar renglones ajenos
+    if (!r) return true;
+    if (!s) return false;
     return r === s;
   };
+
+  const puedeEditarFila = (row: TraspasoRow) =>
+    !valorVerdadero(row.recibido) &&
+    String(row.estado || "").toUpperCase() !== "ACEPTADO" &&
+    esMismoUsuario(row.usuario);
 
   const cantidadAnteriorRef = useRef<Record<number, number>>({});
   const obsAnteriorRef = useRef<Record<number, string>>({});
@@ -257,6 +294,7 @@ export default function TraspasoMercancia() {
   const [fecha1, setFecha1] = useState<string>(fechaHoy);
   const [fecha2, setFecha2] = useState<string>(fechaHoy);
   const [resultadosBusqueda, setResultadosBusqueda] = useState<TraspasoBusqueda[]>([]);
+  const [traspasosSeleccionados, setTraspasosSeleccionados] = useState<number[]>([]);
   const [cargandoBusqueda, setCargandoBusqueda] = useState(false);
 
   useEffect(() => {
@@ -312,6 +350,21 @@ export default function TraspasoMercancia() {
     );
   };
 
+  const eliminarFilaLocal = (row: TraspasoRow) => {
+    setRows((prev) => {
+      const filtradas = prev.filter((r) => r.id !== row.id);
+      if (filtradas.length === 0) {
+        const nuevaFila = { ...emptyRow, id: Date.now() };
+        setSelectedRowId(nuevaFila.id);
+        return [nuevaFila];
+      }
+      if (selectedRowId === row.id) {
+        setSelectedRowId(filtradas[0].id);
+      }
+      return filtradas;
+    });
+  };
+
   const handleSeleccionarClave = async (row: TraspasoRow, claveSeleccionada?: string) => {
     const claveInput = (claveSeleccionada ?? row.clave).trim();
     if (!claveInput || validandoClaveId === row.id) return;
@@ -337,8 +390,9 @@ export default function TraspasoMercancia() {
           sucursalOrigen: Number(sucOrigen) || 0,
           sucursalDestino: Number(sucDestino) || 0,
           usuario: usuarioSesion,
-          claveInput: (row as any).claveProd || row.clave || claveInput,
-          claveProd: (row as any).claveProd || row.clave || "",
+          claveInput: claveInput,
+          claveProd: claveInput,
+          claveProdAnterior: row.clave.trim() || null,
           cantidad: Number(row.cantidad) || 1,
           costo: 0,
           tasaIva: 0,
@@ -365,6 +419,8 @@ export default function TraspasoMercancia() {
             text: data.mensaje,
             confirmButtonColor: "#000000",
           });
+          eliminarFilaLocal(row);
+          return;
         } else {
           const buscarCampo = (nombres: string[], defecto: any) => {
             const keys = Object.keys(data);
@@ -450,10 +506,19 @@ export default function TraspasoMercancia() {
           text: data,
           confirmButtonColor: "#000000",
         });
+        eliminarFilaLocal(row);
+        return;
       }
     } catch (error: any) {
       const mensajeReal = error.response?.data?.mensaje || "Error al validar producto";
-      alert(mensajeReal);
+      await Swal.fire({
+        icon: "warning",
+        title: "Aviso",
+        text: mensajeReal,
+        confirmButtonColor: "#000000",
+      });
+      eliminarFilaLocal(row);
+      return;
     } finally {
       setValidandoClaveId(null);
     }
@@ -555,10 +620,14 @@ export default function TraspasoMercancia() {
       setCancelando(true);
       const response = await consumoApi.post(
         "/api/CatTraspasoSalida/sp_bw_cancelar_traspaso",
+        null,
         {
-          folio,
-          sucursal: Number(sucOrigen),
-          usuarioCancelacion: usuarioSesion,
+          params: {
+            folio: Number(folio),
+            sucursal: Number(sucOrigen),
+            usuarioCancelacion: usuarioSesion,
+            formularioPermiso: "CANCELACION DE TRASPASOS",
+          },
         }
       );
 
@@ -664,9 +733,13 @@ export default function TraspasoMercancia() {
         {
           folio: Number(folio) || 0,
           sucursal: Number(sucOrigen) || 0,
+          sucDestino: Number(sucDestino) || 0,
           claveProd,
           cantidad: Number(nuevaCantidad) || 1,
-          observaciones: nuevaObs || fila.obs || "",
+          observaciones:
+            Number(folio) > 0
+              ? "EDITADO"
+              : nuevaObs || fila.obs || "",
           usuario: usuarioSesion,
         }
       );
@@ -718,11 +791,20 @@ export default function TraspasoMercancia() {
   };
 
   const handleAbrirBusquedaPorFecha = () => {
+    const nuevaFila = { ...emptyRow, id: Date.now() };
+    setRows([nuevaFila]);
+    setSelectedRowId(nuevaFila.id);
+    setFolio(0);
+    setSucDestino("");
+    setUnidad("");
+    setTraspasoGuardado(false);
+    setTraspasosSeleccionados([]);
+    setResultadosBusqueda([]);
     setDialogoBuscarAbierto(true);
-    buscarTraspasosPorFecha();
   };
 
   const handleCerrarBusquedaPorFecha = () => {
+    setTraspasosSeleccionados([]);
     setDialogoBuscarAbierto(false);
   };
 
@@ -770,6 +852,12 @@ export default function TraspasoMercancia() {
           costoProm: Number(obtenerValor(item, "costoProm", "costo_prom") || 0),
           importe: Number(obtenerValor(item, "importe") || 0),
           obs: String(obtenerValor(item, "obs") || ""),
+          folio: Number(obtenerValor(item, "folio") || 0),
+          estado: obtenerEstadoTraspaso(item),
+          recibido: valorVerdadero(obtenerValor(item, "recibido")),
+          finalizado: valorVerdadero(obtenerValor(item, "finalizado")),
+          aceptado: valorVerdadero(obtenerValor(item, "aceptado")),
+          cancelado: valorVerdadero(obtenerValor(item, "cancelado")),
           usuario: String(item.usuario ?? item.Usuario ?? ""),
           sucOrigen: item.sucOrigen ?? item.SucOrigen ?? sucOrigen ?? undefined,
           sucDestino: item.sucDestino ?? item.SucDestino ?? undefined,
@@ -789,6 +877,77 @@ export default function TraspasoMercancia() {
     }
   };
 
+  const cargarTraspasosSeleccionados = () => {
+    const seleccionados = resultadosBusqueda.filter((_, index) =>
+      traspasosSeleccionados.includes(index)
+    );
+
+    if (seleccionados.length === 0) {
+      Swal.fire({
+        icon: "warning",
+        title: "Traspasos requeridos",
+        text: "Selecciona uno o más traspasos.",
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
+
+    seleccionados.forEach((traspaso) => {
+      const folioSeleccionado = Number(traspaso.folio) || 0;
+      if (folioSeleccionado > 0) setFolio(folioSeleccionado);
+      if (traspaso.sucOrigen != null && traspaso.sucOrigen !== "") {
+        setSucOrigen(Number(traspaso.sucOrigen));
+      }
+      if (traspaso.sucDestino != null && traspaso.sucDestino !== "") {
+        setSucDestino(Number(traspaso.sucDestino));
+      }
+
+      const clave = String(traspaso.clave).trim();
+      setRows((prev) => {
+        const existente = prev.find((row) => row.clave.trim() === clave);
+        if (existente) {
+          return prev.map((row) =>
+            row.id === existente.id
+              ? {
+                  ...row,
+                  cantidad: row.cantidad + (Number(traspaso.cantidad) || 0),
+                  importe:
+                    row.importe +
+                    (Number(traspaso.importe) ||
+                      (Number(traspaso.cantidad) || 0) *
+                        (Number(traspaso.costoProm) || 0)),
+                }
+              : row
+          );
+        }
+
+        const nuevaFila: TraspasoRow = {
+          ...emptyRow,
+          id: Date.now() + Math.random(),
+          exis: Number(traspaso.exis) || 0,
+          clave,
+          descripcion: String(traspaso.descripcion),
+          cantidad: Number(traspaso.cantidad) || 0,
+          costoProm: Number(traspaso.costoProm) || 0,
+          importe:
+            Number(traspaso.importe) ||
+            (Number(traspaso.cantidad) || 0) * (Number(traspaso.costoProm) || 0),
+          obs: String(traspaso.obs),
+          usuario: String(traspaso.usuario || usuarioSesion || ""),
+          recibido: traspaso.recibido,
+          estado: traspaso.estado,
+        };
+        const ultima = prev[prev.length - 1];
+        return prev.length > 0 && !ultima?.clave
+          ? [...prev.slice(0, -1), nuevaFila]
+          : [...prev, nuevaFila];
+      });
+    });
+
+    setTraspasosSeleccionados([]);
+    setDialogoBuscarAbierto(false);
+  };
+
   const seleccionarTraspaso = (traspaso: TraspasoBusqueda) => {
     const clave = String(traspaso.clave).trim();
     if (rows.some((r) => r.clave === clave)) {
@@ -799,6 +958,18 @@ export default function TraspasoMercancia() {
         confirmButtonColor: "#000000",
       });
       return;
+    }
+
+    const folioSeleccionado = Number(traspaso.folio) || 0;
+    if (folioSeleccionado > 0) {
+      setFolio(folioSeleccionado);
+    }
+
+    if (traspaso.sucOrigen != null && traspaso.sucOrigen !== "") {
+      const sucOrigenNum = Number(traspaso.sucOrigen);
+      if (!isNaN(sucOrigenNum)) {
+        setSucOrigen(sucOrigenNum);
+      }
     }
 
     if (traspaso.sucDestino != null && traspaso.sucDestino !== "") {
@@ -828,6 +999,8 @@ export default function TraspasoMercancia() {
         recuperado: false,
         cantidadAnterior: 0,
         usuario: String(traspaso.usuario || usuarioSesion || ""),
+        recibido: traspaso.recibido,
+        estado: traspaso.estado,
       };
       if (prev.length > 0 && !ultima?.clave) {
         return [...prev.slice(0, -1), nuevaFila];
@@ -849,13 +1022,92 @@ export default function TraspasoMercancia() {
     setSelectedRowId(nueva.id);
   };
 
-  const handleVistaPrevia = () => {
-    Swal.fire({
-      icon: "info",
-      title: "Vista previa",
-      text: "Vista previa del traspaso folio " + folio,
-      confirmButtonColor: "#1f2937",
-    });
+  const handleVistaPrevia = async () => {
+    if (Number(folio) <= 0 || Number(sucOrigen) <= 0) {
+      Swal.fire({
+        icon: "warning",
+        title: "Datos requeridos",
+        text: "Carga un traspaso con folio y sucursal origen antes de ver la vista previa.",
+        confirmButtonColor: "#1f2937",
+      });
+      return;
+    }
+
+    try {
+      const response = await consumoApi.get(
+        "/api/CatTraspasoSalida/sp_bw_reporte_traspaso",
+        {
+          params: {
+            sucursal: Number(sucOrigen),
+            folio: Number(folio),
+          },
+        }
+      );
+
+      const cabecera = response.data?.cabecera?.[0] || {};
+      const detalle = Array.isArray(response.data?.detalle)
+        ? response.data.detalle
+        : [];
+      const fechaOrden = obtenerValor(cabecera, "fecha_orden", "fechaOrden");
+      const fechaTexto = fechaOrden
+        ? new Date(fechaOrden).toLocaleString("es-MX")
+        : "";
+
+      const filas = detalle
+        .map((item: any) => {
+          const cantidad = Number(obtenerValor(item, "cantidad") || 0);
+          const costo = Number(obtenerValor(item, "costo") || 0);
+          const importe = cantidad * costo;
+          return `
+            <tr>
+              <td>${escaparHtml(obtenerValor(item, "clave_prod", "claveProd"))}</td>
+              <td>${escaparHtml(obtenerValor(item, "descripcion"))}</td>
+              <td style="text-align:right">${cantidad}</td>
+              <td style="text-align:right">${formatoMoneda(costo)}</td>
+              <td style="text-align:right">${formatoMoneda(importe)}</td>
+            </tr>`;
+        })
+        .join("");
+
+      await Swal.fire({
+        title: `Vista previa - Folio ${escaparHtml(obtenerValor(cabecera, "folio") || folio)}`,
+        html: `
+          <div style="text-align:left;font-size:13px;margin-bottom:12px;">
+            <strong>Origen:</strong> ${escaparHtml(obtenerValor(cabecera, "origen"))}<br />
+            <strong>Destino:</strong> ${escaparHtml(obtenerValor(cabecera, "destino"))}<br />
+            <strong>Fecha:</strong> ${escaparHtml(fechaTexto)}<br />
+            <strong>Usuario:</strong> ${escaparHtml(obtenerValor(cabecera, "nombre_usuario", "nombreUsuario", "usuario"))}<br />
+            <strong>Estado:</strong> ${escaparHtml(obtenerValor(cabecera, "leyenda", "LEYENDA"))}
+          </div>
+          <div style="max-height:360px;overflow:auto;text-align:left;">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+              <thead>
+                <tr style="background:#f0f0f0;">
+                  <th style="padding:6px;border:1px solid #ddd;text-align:left">Clave</th>
+                  <th style="padding:6px;border:1px solid #ddd;text-align:left">Descripción</th>
+                  <th style="padding:6px;border:1px solid #ddd;text-align:right">Cantidad</th>
+                  <th style="padding:6px;border:1px solid #ddd;text-align:right">Costo</th>
+                  <th style="padding:6px;border:1px solid #ddd;text-align:right">Importe</th>
+                </tr>
+              </thead>
+              <tbody>${filas || "<tr><td colspan=5>Sin productos</td></tr>"}</tbody>
+            </table>
+          </div>
+        `,
+        confirmButtonText: "Cerrar",
+        confirmButtonColor: "#000000",
+        width: "min(95vw, 900px)",
+      });
+    } catch (err: any) {
+      Swal.fire({
+        icon: "error",
+        title: "Error al obtener vista previa",
+        text:
+          err.response?.data?.mensaje ||
+          "No fue posible obtener el reporte del traspaso.",
+        confirmButtonColor: "#1f2937",
+      });
+    }
   };
 
   const cellSx = {
@@ -1016,7 +1268,20 @@ export default function TraspasoMercancia() {
                     onClick={() => setSelectedRowId(row.id)}
                     sx={{
                       cursor: "pointer",
+                      color: puedeEditarFila(row) ? "inherit" : "#374151",
                       bgcolor: row.id === selectedRowId ? "#b3d9ff" : "inherit",
+                      "& .Mui-disabled": {
+                        opacity: 1,
+                        color: "#374151",
+                        WebkitTextFillColor: "#374151",
+                      },
+                      "& .MuiInputBase-input.Mui-disabled": {
+                        color: "#374151",
+                        WebkitTextFillColor: "#374151",
+                      },
+                      "& .MuiAutocomplete-root.Mui-disabled": {
+                        opacity: 1,
+                      },
                     }}
                   >
                     <TableCell sx={cellSx}>
@@ -1025,7 +1290,7 @@ export default function TraspasoMercancia() {
                         size="small"
                         type="number"
                         value={row.exis}
-                        disabled={!esMismoUsuario(row.usuario)}
+                        disabled={!puedeEditarFila(row)}
                         onChange={(e) =>
                           updateRow(row.id, "exis", Number(e.target.value) || 0)
                         }
@@ -1036,7 +1301,7 @@ export default function TraspasoMercancia() {
                     <TableCell sx={cellSx}>
                       <Autocomplete
                         size="small"
-                        disabled={sucDestino === "" || !esMismoUsuario(row.usuario)}
+                        disabled={sucDestino === "" || !puedeEditarFila(row)}
                         options={productosSelector}
                         loading={cargandoProductos}
                         value={productosSelector.find((producto) => producto.Clave.trim() === row.clave) || null}
@@ -1077,7 +1342,7 @@ export default function TraspasoMercancia() {
                     <TableCell sx={{ ...cellSx, width: 300 }}>
                       <Autocomplete
                         size="small"
-                        disabled={sucDestino === "" || !esMismoUsuario(row.usuario)}
+                        disabled={sucDestino === "" || !puedeEditarFila(row)}
                         options={productosSelector}
                         loading={cargandoProductos}
                         value={productosSelector.find((producto) => producto.Clave.trim() === row.clave) || null}
@@ -1121,7 +1386,7 @@ export default function TraspasoMercancia() {
                         size="small"
                         type="number"
                         value={row.cantidad}
-                        disabled={!esMismoUsuario(row.usuario)}
+                        disabled={!puedeEditarFila(row)}
                         inputProps={{ min: 0 }}
                         onFocus={() => {
                           cantidadAnteriorRef.current[row.id] = row.cantidad;
@@ -1169,7 +1434,7 @@ export default function TraspasoMercancia() {
                         variant="standard"
                         size="small"
                         value={row.obs}
-                        disabled={!esMismoUsuario(row.usuario)}
+                        disabled={!puedeEditarFila(row)}
                         onFocus={() => {
                           obsAnteriorRef.current[row.id] = row.obs;
                         }}
@@ -1190,7 +1455,7 @@ export default function TraspasoMercancia() {
                       <IconButton
                         size="small"
                         color="error"
-                        disabled={!esMismoUsuario(row.usuario)}
+                        disabled={!puedeEditarFila(row)}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleEliminarFila(row);
@@ -1295,22 +1560,37 @@ export default function TraspasoMercancia() {
                 </Button>
               </Stack>
 
-              <TableContainer component={Paper} variant="outlined" sx={{ overflowX: "auto" }}>
-                <Table size="small" sx={{ minWidth: 1100, tableLayout: "fixed" }}>
+              <TableContainer component={Paper} variant="outlined" sx={{ overflowX: "hidden" }}>
+                <Table
+                  size="small"
+                  sx={{
+                    width: "100%",
+                    tableLayout: "fixed",
+                    minWidth: 0,
+                    "& .MuiTableCell-root": {
+                      px: 0.6,
+                      py: 0.4,
+                      fontSize: "0.75rem",
+                      whiteSpace: "normal",
+                      wordBreak: "break-word",
+                    },
+                  }}
+                >
                   <TableHead>
                     <TableRow sx={{ bgcolor: "#f9fafb" }}>
                       {[
-                        { name: "Exis", width: 50 },
-                        { name: "Clave", width: 80 },
-                        { name: "Descripción", width: 260 },
-                        { name: "Cantidad", width: 70 },
-                        { name: "Costo prom", width: 90 },
-                        { name: "Importe", width: 90 },
-                        { name: "OBS", width: 70 },
-                        { name: "Suc", width: 70 },
-                        { name: "Destino", width: 100 },
-                        { name: "Usuario", width: 100 },
-                        { name: "Acción", width: 90 },
+                        { name: "Exis", width: "5%" },
+                        { name: "Clave", width: "7%" },
+                        { name: "Descripción", width: "20%" },
+                        { name: "Cantidad", width: "6%" },
+                        { name: "Costo prom", width: "8%" },
+                        { name: "Importe", width: "8%" },
+                        { name: "OBS", width: "5%" },
+                        { name: "Suc", width: "7%" },
+                        { name: "Destino", width: "10%" },
+                        { name: "Usuario", width: "10%" },
+                        { name: "Estado", width: "9%" },
+                        { name: "Acción", width: "9%" },
                       ].map((col, idx) => (
                         <TableCell key={idx} sx={{ fontWeight: "bold", width: col.width }}>
                           {col.name}
@@ -1321,7 +1601,7 @@ export default function TraspasoMercancia() {
                   <TableBody>
                     {resultadosBusqueda.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={11} align="center">
+                        <TableCell colSpan={12} align="center">
                           Sin resultados
                         </TableCell>
                       </TableRow>
@@ -1352,14 +1632,19 @@ export default function TraspasoMercancia() {
                             })()}
                           </TableCell>
                           <TableCell>{t.usuario}</TableCell>
+                          <TableCell>{t.estado || "PENDIENTE"}</TableCell>
                           <TableCell>
-                            <Button
-                              variant="outlined"
+                            <Checkbox
                               size="small"
-                              onClick={() => seleccionarTraspaso(t)}
-                            >
-                              Seleccionar
-                            </Button>
+                              checked={traspasosSeleccionados.includes(idx)}
+                              onChange={() =>
+                                setTraspasosSeleccionados((prev) =>
+                                  prev.includes(idx)
+                                    ? prev.filter((selected) => selected !== idx)
+                                    : [...prev, idx]
+                                )
+                              }
+                            />
                           </TableCell>
                         </TableRow>
                       ))
@@ -1371,6 +1656,13 @@ export default function TraspasoMercancia() {
             <DialogActions>
               <Button onClick={handleCerrarBusquedaPorFecha} variant="outlined">
                 Cerrar
+              </Button>
+              <Button
+                onClick={cargarTraspasosSeleccionados}
+                variant="contained"
+                disabled={traspasosSeleccionados.length === 0}
+              >
+                Cargar seleccionados ({traspasosSeleccionados.length})
               </Button>
             </DialogActions>
           </Dialog>

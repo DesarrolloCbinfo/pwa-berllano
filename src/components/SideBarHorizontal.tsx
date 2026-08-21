@@ -111,7 +111,7 @@ const SidebarHorizontal = () => {
   };
 
   return (
-    <AppBar position="sticky" sx={{ backgroundColor: "#adb4b1ff" }}>
+    <AppBar position="sticky" className="no-imprimir-carta" sx={{ backgroundColor: "#adb4b1ff" }}>
       <Toolbar sx={{ 
         width: isMobile ? "100%" : "70%", 
         mx: "auto",

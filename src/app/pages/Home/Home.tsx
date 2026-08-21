@@ -18,9 +18,11 @@ import {
   Warehouse,
 } from '@mui/icons-material';
 import { routes } from '../../../utils/Routes';
+import useSession from '../../../hooks/useSession';
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
+  const session = useSession();
   const [showCatalogs, setShowCatalogs] = useState(false);
   const [showRRHH, setShowRRHH] = useState(false);
   const [showComercial, setShowComercial] = useState(false);
@@ -90,7 +92,20 @@ const Home: React.FC = () => {
       color: '#6f42c1', 
       action: () => setShowRRHH(!showRRHH) 
     },
+    { 
+      id: 'demoStepper', 
+      title: 'DemoStepper', 
+      description: 'Formulario de prueba', 
+      icon: Settings, 
+      color: '#6c757d', 
+      path: routes.demoStepper 
+    },
   ];
+
+  const visibleActions = mainActions.filter((action) =>
+    action.id !== "demoStepper" ||
+    (session?.nombre || "").toLowerCase().includes("admin")
+  );
 
   const comercialesItems = [
     //Proveedores
@@ -208,7 +223,7 @@ const Home: React.FC = () => {
     { id: 'folios', title: 'Folios Nómina', path: routes.cat_nominas_folios },
     
     
-    { id: 'turnosDobles', title: 'Turnos Dobles', path: routes.cat_turnos_dobles },
+    { id: 'turnosDobles', title: 'Turnos Dobles', path: routes.Cat_turnos_dobles },
   ];
 
  
@@ -221,7 +236,7 @@ const Home: React.FC = () => {
           <h1 className={styles.dashboardTitle}>Panel Principal</h1>
           
           <div className={styles.mainActions}>
-            {mainActions.map((action) => {
+            {visibleActions.map((action) => {
               const Icon = action.icon;
               return (
                 <button
