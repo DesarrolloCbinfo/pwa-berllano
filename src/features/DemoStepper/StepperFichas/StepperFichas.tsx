@@ -24,7 +24,7 @@ import {
 } from '../../../app/pages/DemoStepper/types/DemoStepperTypes';
 import { FormularioRespuesta } from './types/StepperFichasTypes';
 import { useMutation } from '@tanstack/react-query';
-import useConsumoApi from '../../../hooks/useConsumoApi';
+import useConsumoApiFichas from '../../../hooks/useConsumoApiFichas';
 import { StepperFichasApis } from './apis/StepperFichasApis';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
@@ -60,7 +60,17 @@ export default function StepperFichas({
 
   const { token } = useAuth();
 
-  const { consumoApi } = useConsumoApi();
+  const { consumoApi } = useConsumoApiFichas();
+
+  const getArchivoUrl = (ruta: string | null | undefined) => {
+    if (!ruta) return '';
+
+    const url = ruta.startsWith('/api/')
+      ? ruta
+      : `/api/Archivos/${encodeURIComponent(ruta)}`;
+
+    return consumoApi.getUri({ url });
+  };
 
   const { mutate: upsertFomularioRespuesta } = useMutation({
     mutationFn: (data: FormularioRespuesta) =>
@@ -396,10 +406,12 @@ export default function StepperFichas({
                       alignItems: 'flex-start',
                     }}
                   >
-                    {pregunta?.nombreImagen.length > 0 && (
+                    {(pregunta?.imagen || pregunta?.nombreImagen) && (
                       <figure style={{ maxWidth: '500px' }}>
                         <img
-                          src={`https://217.216.95.62:5001/api/Archivos/${pregunta.nombreImagen}`}
+                          src={getArchivoUrl(
+                            pregunta.imagen || pregunta.nombreImagen,
+                          )}
                           style={{
                             width: '100%',
                             height: '100%',
@@ -488,9 +500,9 @@ export default function StepperFichas({
                           >
                             {pregunta?.opciones?.map((opcion) => (
                               <Box sx={{ display: 'flex' }}>
-                                {opcion?.nombre_imagen.length > 0 && (
+                                {opcion?.nombre_imagen && (
                                   <img
-                                    src={`https://217.216.95.62:5001/api/Archivos/${opcion.nombre_imagen}`}
+                                    src={getArchivoUrl(opcion.nombre_imagen)}
                                     style={{
                                       width: '100%',
                                       height: '100%',
@@ -529,9 +541,9 @@ export default function StepperFichas({
                           <FormGroup>
                             {pregunta?.opciones?.map((opcion) => (
                               <Box sx={{ display: 'flex' }}>
-                                {opcion?.nombre_imagen.length > 0 && (
+                                {opcion?.nombre_imagen && (
                                   <img
-                                    src={`https://217.216.95.62:5001/api/Archivos/${opcion.nombre_imagen}`}
+                                    src={getArchivoUrl(opcion.nombre_imagen)}
                                     style={{
                                       width: '100%',
                                       height: '100%',

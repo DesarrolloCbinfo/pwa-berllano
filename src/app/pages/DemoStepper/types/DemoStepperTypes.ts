@@ -39,8 +39,8 @@ export type PreguntasStepper = {
   requerido: boolean
   type: "text" | "number" | "select" | "radio" | "checkbox"
   spOrigenDato: number | null
-  nombreImagen: string
-  imagen: { fileName: string, contentType: string, fileDownloadName: string, lastModified: string, entityTag: string, enableRangeProcessing: boolean }
+  nombreImagen: string | null
+  imagen: string | null
   opcionesSelect: OptionSelectStepper[]
   opciones: OptionStepper[]
   respuestaPlaceholder?: string
@@ -56,5 +56,5 @@ export type OptionStepper = {
   opcion_id: number
   pregunta_id: number
   valor: string
-  nombre_imagen: string
+  nombre_imagen: string | null
 }

@@ -1,6 +1,6 @@
 import { FormControl, InputLabel, Select, MenuItem } from "@mui/material"
 import { useQuery } from "@tanstack/react-query"
-import useConsumoApi from "../../../hooks/useConsumoApi"
+import useConsumoApiFichas from "../../../hooks/useConsumoApiFichas"
 import { SelectFichaApis } from "./apis/SelectFichaApis"
 import { useFormularioStore } from "../../../app/pages/DemoStepper/store/useFormularioStore"
 
@@ -13,7 +13,7 @@ type Ficha = {
 }
 
 export default function SelectFicha() {
-  const { consumoApi } = useConsumoApi()
+  const { consumoApi } = useConsumoApiFichas()
   const { idFicha, setIdFicha } = useFormularioStore()
 
   const { data: fichas } = useQuery<Ficha[]>({

@@ -337,7 +337,7 @@ async function generatePdfBlob(xmlContent: string): Promise<Blob> {
       <div style="margin-top:10px;padding-top:8px;border-top:1px solid #ccc;font-size:12px;color:#444;">
         <p style="margin:2px 0;text-align:center;">Si tiene alguna duda con su factura envíe un correo a berllanofacturacion2019@gmail.com o llame al tel. 01.22.88.12.19.89</p>
         <p style="margin:2px 0;text-align:center;">La posesión de este documento no implica su liquidación</p>
-        <p style="margin:2px 0;text-align:center;">Operador : ADMIN - Administrador SISTEMAS</p>
+        <p style="margin:2px 0;text-align:center;">Operador : ADMIN - Administrador SISTEMAS v1</p>
       </div>
       <div style="margin-top:12px;font-size:11px;color:#444;display:flex;justify-content:space-between;">
         <span>Fecha de impresión ${new Date().toLocaleString('es-MX')}</span>

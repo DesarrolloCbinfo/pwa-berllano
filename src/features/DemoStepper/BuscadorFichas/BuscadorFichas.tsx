@@ -15,7 +15,7 @@ import {
   MRT_ColumnDef,
 } from "material-react-table";
 import { useQuery } from "@tanstack/react-query";
-import useConsumoApi from "../../../hooks/useConsumoApi";
+import useConsumoApiFichas from "../../../hooks/useConsumoApiFichas";
 import { BuscadorFichasApis } from "./apis/BuscadorFichasApis";
 import { useFormularioStore } from "../../../app/pages/DemoStepper/store/useFormularioStore";
 
@@ -26,7 +26,7 @@ type Props = {
 };
 
 export default function BuscadorFichas({ onClose, open, handleModoFichaLectura }: Props) {
-  const { consumoApi } = useConsumoApi();
+  const { consumoApi } = useConsumoApiFichas();
   const { idCliente, setIdCliente, setUsuarioUUID, setNombreCliente, setIdFicha } = useFormularioStore();
   const [fechas, setFechas] = useState({
     fechaInicial: "1/1/2025",

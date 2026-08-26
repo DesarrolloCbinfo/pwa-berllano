@@ -3,7 +3,7 @@ import AutocompleteCliente from "../../../features/DemoStepper/AutocompleteClien
 import { DemoStepperApis } from "./apis/DemoStepperApis";
 import { FichaStepper, initialDataFichaStepper } from "./types/DemoStepperTypes";
 import { useQuery } from "@tanstack/react-query";
-import useConsumoApi from "../../../hooks/useConsumoApi";
+import useConsumoApiFichas from "../../../hooks/useConsumoApiFichas";
 import { useState } from "react";
 import BuscadorFichas from "../../../features/DemoStepper/BuscadorFichas/BuscadorFichas";
 import { Button } from "@mui/material";
@@ -12,7 +12,7 @@ import { useFormularioStore } from "./store/useFormularioStore";
 import SelectFicha from "../../../features/DemoStepper/SelectFicha/SelectFicha";
 
 export default function DemoStepper() {
-  const { consumoApi } = useConsumoApi();
+  const { consumoApi } = useConsumoApiFichas();
   const { usuarioUUID, createNewUsuarioUUID, idCliente, nombreCliente, idFicha } = useFormularioStore();
   const [modoFicha, setModoFicha] = useState<"nueva" | "lectura">("nueva");
 

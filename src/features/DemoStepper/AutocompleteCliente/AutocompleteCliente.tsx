@@ -2,7 +2,7 @@ import * as React from "react";
 import TextField from "@mui/material/TextField";
 import Autocomplete from "@mui/material/Autocomplete";
 import CircularProgress from "@mui/material/CircularProgress";
-import useConsumoApi from "../../../hooks/useConsumoApi";
+import useConsumoApiFichas from "../../../hooks/useConsumoApiFichas";
 import { useQuery } from "@tanstack/react-query";
 import { AutocompleteClienteApis } from "./apis/AutocompleteClienteApis";
 import { Cliente } from "./types/AutocompleteClienteTypes";
@@ -23,7 +23,7 @@ export default function AutocompleteCliente() {
     apMaterno: "",
   } as Cliente; // Type assertion to Cliente since we're only using these properties
 
-  const { consumoApi } = useConsumoApi();
+  const { consumoApi } = useConsumoApiFichas();
 
   const {
     data: clientes = [],
