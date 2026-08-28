@@ -102,10 +102,9 @@ const Home: React.FC = () => {
     },
   ];
 
-  const visibleActions = mainActions.filter((action) =>
-    action.id !== "demoStepper" ||
-    (session?.nombre || "").toLowerCase().includes("admin")
-  );
+  const visibleActions = mainActions.filter((action) =>{
+    return true
+  });
 
   const comercialesItems = [
     //Proveedores

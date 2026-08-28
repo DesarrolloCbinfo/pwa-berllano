@@ -63,11 +63,15 @@ export default function StepperFichas({
   const { consumoApi } = useConsumoApiFichas();
 
   const getArchivoUrl = (ruta: string | null | undefined) => {
-    if (!ruta) return '';
+    const value = ruta?.trim();
+    if (!value) return '';
 
-    const url = ruta.startsWith('/api/')
-      ? ruta
-      : `/api/Archivos/${encodeURIComponent(ruta)}`;
+    if (/^(https?:)?\/\//i.test(value)) return value;
+
+    const normalizedPath = value.startsWith('api/') ? `/${value}` : value;
+    const url = normalizedPath.startsWith('/api/')
+      ? normalizedPath
+      : `/api/Archivos/${encodeURIComponent(value)}`;
 
     return consumoApi.getUri({ url });
   };
@@ -401,20 +405,31 @@ export default function StepperFichas({
                     sx={{
                       m: 0,
                       p: 0,
+                      width: '100%',
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'flex-start',
                     }}
                   >
-                    {(pregunta?.imagen || pregunta?.nombreImagen) && (
-                      <figure style={{ maxWidth: '500px' }}>
+                    {(pregunta?.imagen?.trim() ||
+                      pregunta?.nombreImagen?.trim()) && (
+                      <figure
+                        style={{
+                          width: '100%',
+                          maxWidth: '500px',
+                          margin: 0,
+                        }}
+                      >
                         <img
                           src={getArchivoUrl(
-                            pregunta.imagen || pregunta.nombreImagen,
+                            pregunta.imagen?.trim() ||
+                              pregunta.nombreImagen?.trim(),
                           )}
+                          alt={`Imagen de ${pregunta.label}`}
                           style={{
+                            display: 'block',
                             width: '100%',
-                            height: '100%',
+                            height: 'auto',
                             objectFit: 'contain',
                           }}
                         />
@@ -485,7 +500,7 @@ export default function StepperFichas({
                           </Select>
                         </FormControl>
                       ) : pregunta?.type === 'radio' ? (
-                        <FormControl>
+                        <FormControl sx={{ width: '100%' }}>
                           <FormLabel
                             id={pregunta?.preguntaId.toString()}
                             sx={{ fontFamily: "'Courier Prime', monospace" }}
@@ -499,13 +514,22 @@ export default function StepperFichas({
                             onChange={(e) => handleChangeRespuesta(e, pregunta)}
                           >
                             {pregunta?.opciones?.map((opcion) => (
-                              <Box sx={{ display: 'flex' }}>
-                                {opcion?.nombre_imagen && (
+                              <Box
+                                sx={{
+                                  display: 'flex',
+                                  width: '100%',
+                                  alignItems: 'center',
+                                  flexWrap: 'wrap',
+                                }}
+                              >
+                                {opcion?.nombre_imagen?.trim() && (
                                   <img
-                                    src={getArchivoUrl(opcion.nombre_imagen)}
+                                    src={getArchivoUrl(opcion.nombre_imagen?.trim())}
+                                    alt={`Imagen de ${opcion.valor}`}
                                     style={{
+                                      display: 'block',
                                       width: '100%',
-                                      height: '100%',
+                                      height: 'auto',
                                       objectFit: 'contain',
                                       maxWidth: '400px',
                                     }}
@@ -531,7 +555,7 @@ export default function StepperFichas({
                           </RadioGroup>
                         </FormControl>
                       ) : pregunta?.type === 'checkbox' ? (
-                        <FormControl>
+                        <FormControl sx={{ width: '100%' }}>
                           <FormLabel
                             id={pregunta?.preguntaId.toString()}
                             sx={{ fontFamily: "'Courier Prime', monospace" }}
@@ -540,13 +564,22 @@ export default function StepperFichas({
                           </FormLabel>
                           <FormGroup>
                             {pregunta?.opciones?.map((opcion) => (
-                              <Box sx={{ display: 'flex' }}>
-                                {opcion?.nombre_imagen && (
+                              <Box
+                                sx={{
+                                  display: 'flex',
+                                  width: '100%',
+                                  alignItems: 'center',
+                                  flexWrap: 'wrap',
+                                }}
+                              >
+                                {opcion?.nombre_imagen?.trim() && (
                                   <img
-                                    src={getArchivoUrl(opcion.nombre_imagen)}
+                                    src={getArchivoUrl(opcion.nombre_imagen?.trim())}
+                                    alt={`Imagen de ${opcion.valor}`}
                                     style={{
+                                      display: 'block',
                                       width: '100%',
-                                      height: '100%',
+                                      height: 'auto',
                                       objectFit: 'contain',
                                       maxWidth: '400px',
                                     }}
