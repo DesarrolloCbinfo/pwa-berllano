@@ -379,6 +379,22 @@ export default function TraspasoMercancia() {
       return;
     }
 
+    const claveNormalizada = claveInput.toLowerCase();
+    const duplicado = rows.find(
+      (r) => r.id !== row.id && r.clave.trim().toLowerCase() === claveNormalizada
+    );
+    if (duplicado) {
+      await Swal.fire({
+        icon: "warning",
+        title: "Producto duplicado",
+        text: `La clave ${claveInput} ya fue agregada al traspaso. Solo se permiten productos diferentes.`,
+        confirmButtonColor: "#000000",
+      });
+      updateRow(row.id, "clave", row.clave);
+      updateRow(row.id, "descripcion", row.descripcion);
+      return;
+    }
+
     setValidandoClaveId(row.id);
     try {
       const response = await consumoApi.post(
@@ -1246,13 +1262,13 @@ export default function TraspasoMercancia() {
                 <TableRow sx={{ bgcolor: "#f9fafb" }}>
                   {[
                     { name: "Exis", width: 60 },
-                    { name: "Clave", width: 160 },
+                    { name: "Clave", width: 115 },
                     { name: "Descripción", width: 300 },
-                    { name: "Cantidad", width: 80 },
-                    { name: "Costo prom", width: 100 },
-                    { name: "Importe", width: 100 },
-                    { name: "OBS", width: 80 },
-                    { name: "Acciones", width: 80 },
+                    { name: "Cantidad", width: 60 },
+                    { name: "Costo prom", width: 80 },
+                    { name: "Importe", width: 70 },
+                    { name: "OBS", width: 140 },
+                    { name: "Acciones", width: 70 },
                   ].map((h, idx) => (
                     <TableCell key={idx} sx={{ ...cellSx, fontWeight: "bold", width: h.width }}>
                       {h.name}

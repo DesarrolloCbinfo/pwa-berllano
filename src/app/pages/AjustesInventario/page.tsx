@@ -73,6 +73,7 @@ type AjusteBusquedaRow = {
   entradas: number;
   salidas: number;
   costo: number;
+  total?: number;
   estado?: string;
 };
 
@@ -234,14 +235,19 @@ export default function AjustesInventario() {
   const total = useMemo(
     () =>
       renglones.reduce(
-        (sum, r) => sum + (r.entrada - r.salida) * (r.costo || 0),
+        (sum, r) =>
+          sum +
+          ((Number(r.entrada) || 0) - (Number(r.salida) || 0)) *
+            (r.costo || 0),
         0
       ),
     [renglones]
   );
 
   const recalcularNuevaExistencia = (r: RenglonAjuste): number =>
-    (r.existenciaActual || 0) + (r.entrada || 0) - (r.salida || 0);
+    (Number(r.existenciaActual) || 0) +
+    (Number(r.entrada) || 0) -
+    (Number(r.salida) || 0);
 
   const updateRenglon = (
     id: number,
@@ -252,7 +258,9 @@ export default function AjustesInventario() {
       prev.map((r) => {
         if (r.id !== id) return r;
         const rawValue =
-          field === "entrada" ? Math.max(0, Number(value) || 0) : value;
+          field === "entrada" || field === "salida"
+            ? Math.max(0, Number(value) || 0)
+            : Number(value) || 0;
         const actualizado = { ...r, [field]: rawValue } as RenglonAjuste;
         if (["entrada", "salida", "existenciaActual"].includes(field as string)) {
           actualizado.nuevaExistencia = recalcularNuevaExistencia(actualizado);
@@ -318,7 +326,7 @@ export default function AjustesInventario() {
     if (
       sucursalSesion <= 0 ||
       !row.clave.trim() ||
-      (row.entrada <= 0 && row.salida <= 0)
+      (Number(row.entrada) === 0 && Number(row.salida) === 0)
     ) {
       return;
     }
@@ -339,7 +347,7 @@ export default function AjustesInventario() {
       salidas,
       costo: Number(row.costo) || 0,
       tasaIva: Number(row.tasa) || 0,
-      sucursalOrigen: null,
+      sucursalOrigen: sucursalSesion,
       cveProveedor: null,
       folioDocto: folioDocumento.trim() || null,
       observacion: "",
@@ -400,7 +408,7 @@ export default function AjustesInventario() {
           fechaOrden: new Date().toISOString(),
           tipoMovto,
           folioDocto: folioDocumento.trim(),
-          sucursalOrigen: null,
+          sucursalOrigen: sucursalSesion,
           cveProveedor: null,
           almacen: 1,
         }
@@ -454,6 +462,16 @@ export default function AjustesInventario() {
       return;
     }
 
+    if (ajuste.usuario && ajuste.usuario !== usuarioSesion) {
+      Swal.fire({
+        icon: "warning",
+        title: "Ajuste de otro usuario",
+        text: "No puedes editar un ajuste capturado por otro usuario.",
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
+
     const nuevosRenglones: RenglonAjuste[] = renglonesAjuste.map((row, idx) => {
       const existenciaActual =
         Number(obtenerValor(row, "existencia", "exis", "existenciaActual")) || 0;
@@ -463,8 +481,13 @@ export default function AjustesInventario() {
       const clave = String(
         obtenerValor(row, "clave", "clave_prod", "claveProd", "cve_prod", "producto") || ""
       );
+      const producto = productosSelector.find(
+        (p) => p.clave_prod.trim() === clave.trim()
+      );
       const descripcion = String(
-        obtenerValor(row, "descripcion", "descrip", "nombre", "desc") || ""
+        obtenerValor(row, "descripcion", "descrip", "nombre", "desc") ||
+        producto?.descripcion ||
+        ""
       );
       const tasa = Number(obtenerValor(row, "tasa", "tasaIva", "tasa_iva")) || 0;
 
@@ -517,6 +540,7 @@ export default function AjustesInventario() {
         {
           params: {
             sucursal: sucursalSesion,
+            usuario: usuarioSesion,
             fechaInicio: fechaInicioBuscar,
             fechaFin: fechaFinBuscar,
           },
@@ -530,10 +554,10 @@ export default function AjustesInventario() {
       const agrupados = raw.reduce<Record<number, AjusteHistorial>>(
         (acc, row) => {
           const folioNum = Number(row.folio) || 0;
-          if (folioNum <= 0) return acc;
           const movimiento =
             (Number(row.entradas) || 0) - (Number(row.salidas) || 0);
-          const importe = Math.abs(movimiento) * (Number(row.costo) || 0);
+          const importe =
+            Number(row.total) || Math.abs(movimiento) * (Number(row.costo) || 0);
 
           if (acc[folioNum]) {
             acc[folioNum].total += importe;
@@ -816,7 +840,6 @@ export default function AjustesInventario() {
               />
             </Stack>
 
-
             {/* Tabla */}
             <TableContainer
               component={Paper}
@@ -965,6 +988,7 @@ export default function AjustesInventario() {
                           value={row.salida}
                           disabled={esMovimientoSalida === false}
                           InputProps={{ disableUnderline: true }}
+                          inputProps={{ min: 0 }}
                           onChange={(e) =>
                             updateRenglon(row.id, "salida", Number(e.target.value) || 0)
                           }
@@ -1256,6 +1280,7 @@ export default function AjustesInventario() {
                         <Button
                           variant="outlined"
                           size="small"
+                          disabled={ajuste.usuario !== usuarioSesion}
                           onClick={(e) => {
                             e.stopPropagation();
                             seleccionarAjuste(ajuste);
@@ -1296,7 +1321,7 @@ export default function AjustesInventario() {
             <Button
               variant="contained"
               onClick={handleAceptarAjuste}
-              disabled={!ajusteSeleccionado}
+              disabled={!ajusteSeleccionado || ajusteSeleccionado.usuario !== usuarioSesion}
               sx={{
                 bgcolor: "#000000",
                 color: "#fff",

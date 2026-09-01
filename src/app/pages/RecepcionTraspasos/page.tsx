@@ -266,6 +266,8 @@ export default function RecepcionTraspasos() {
   };
 
   const handleGuardar = async () => {
+    if (guardando) return;
+
     if (cia <= 0) {
       Swal.fire({
         icon: "warning",
@@ -327,7 +329,12 @@ export default function RecepcionTraspasos() {
         }
       );
 
-      Swal.fire({
+      setRenglones([]);
+      setFolio("");
+      setSucOrigen("");
+      setRegistroActual(0);
+
+      await Swal.fire({
         icon: "success",
         title: "Éxito",
         text: response.data?.mensaje || "Recepción guardada correctamente.",
@@ -857,7 +864,7 @@ export default function RecepcionTraspasos() {
                 <Button
                   variant="contained"
                   onClick={handleGuardar}
-                  disabled={guardando}
+                  disabled={guardando || cargandoRecuperar || cargandoBuscar || renglones.length === 0}
                   sx={{
                     bgcolor: "#d9d9d9",
                     color: "#000",
