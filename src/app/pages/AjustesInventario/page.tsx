@@ -6,6 +6,7 @@ import {
   Checkbox,
   CircularProgress,
   Dialog,
+  DialogActions,
   DialogContent,
   DialogTitle,
   FormControl,
@@ -163,10 +164,13 @@ export default function AjustesInventario() {
   const [abrirDialogoBuscar, setAbrirDialogoBuscar] = useState(false);
   const [fechaInicioBuscar, setFechaInicioBuscar] = useState(formatearFechaInput);
   const [fechaFinBuscar, setFechaFinBuscar] = useState(formatearFechaInput);
+  const [tipoMovtoBuscar, setTipoMovtoBuscar] = useState<number | "">("");
   const [historialAjustes, setHistorialAjustes] = useState<AjusteHistorial[]>([]);
   const [historialAjustesRaw, setHistorialAjustesRaw] = useState<AjusteBusquedaRow[]>([]);
   const [cargandoHistorial, setCargandoHistorial] = useState(false);
   const [ajusteSeleccionado, setAjusteSeleccionado] = useState<AjusteHistorial | null>(null);
+  const [usuarioAjuste, setUsuarioAjuste] = useState<string>("");
+  const [abrirVistaPrevia, setAbrirVistaPrevia] = useState(false);
 
   const [renglones, setRenglones] = useState<RenglonAjuste[]>([crearRenglonVacio()]);
   const [selectedRowId, setSelectedRowId] = useState<number | null>(renglones[0].id);
@@ -234,13 +238,14 @@ export default function AjustesInventario() {
 
   const total = useMemo(
     () =>
-      renglones.reduce(
-        (sum, r) =>
-          sum +
-          ((Number(r.entrada) || 0) - (Number(r.salida) || 0)) *
-            (r.costo || 0),
-        0
-      ),
+      renglones.reduce((sum, r) => {
+        const cantidad =
+          (Number(r.entrada) || 0) + (Number(r.salida) || 0);
+        const costo = Number(r.costo) || 0;
+        const tasaRaw = Number(r.tasa) || 0;
+        const tasa = tasaRaw <= 1 ? tasaRaw : tasaRaw / 100;
+        return sum + cantidad * costo * (1 + tasa);
+      }, 0),
     [renglones]
   );
 
@@ -312,6 +317,7 @@ export default function AjustesInventario() {
     setFolio((prev) => prev + 1);
     setFolioDocumento("");
     setTipoMovimiento("");
+    setUsuarioAjuste("");
 
     const nueva = crearRenglonVacio();
     setRenglones([nueva]);
@@ -372,6 +378,7 @@ export default function AjustesInventario() {
   };
 
   const handleGuardar = async () => {
+    if (guardando) return;
     const tipoMovto = Number(tipoMovimiento);
     const almacen = 1;
 
@@ -379,7 +386,7 @@ export default function AjustesInventario() {
       Swal.fire({
         icon: "warning",
         title: "Datos incompletos",
-        text: `Sucursal: ${sucursalSesion}, Tipo: ${tipoMovto}, Almacén: ${almacen}`,
+        text: "Ingrese datos para guardar el ajuste",
         confirmButtonColor: "#000000",
       });
       return;
@@ -472,6 +479,18 @@ export default function AjustesInventario() {
       return;
     }
 
+    if (ajuste.estado?.toLowerCase() === "cancelado") {
+      Swal.fire({
+        icon: "warning",
+        title: "Ajuste cancelado",
+        text: "No puedes editar un ajuste cancelado.",
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
+
+    setUsuarioAjuste(ajuste.usuario || "");
+
     const nuevosRenglones: RenglonAjuste[] = renglonesAjuste.map((row, idx) => {
       const existenciaActual =
         Number(obtenerValor(row, "existencia", "exis", "existenciaActual")) || 0;
@@ -543,6 +562,7 @@ export default function AjustesInventario() {
             usuario: usuarioSesion,
             fechaInicio: fechaInicioBuscar,
             fechaFin: fechaFinBuscar,
+            ...(tipoMovtoBuscar !== "" ? { tipoMovto: tipoMovtoBuscar } : {}),
           },
         }
       );
@@ -587,7 +607,7 @@ export default function AjustesInventario() {
   };
 
   const handleVistaPrevia = () => {
-    if (renglones.filter((r) => r.clave).length === 0) {
+    if (renglones.filter((r) => r.clave.trim()).length === 0) {
       Swal.fire({
         icon: "warning",
         title: "Nada que mostrar",
@@ -596,7 +616,11 @@ export default function AjustesInventario() {
       });
       return;
     }
-    window.print();
+    setAbrirVistaPrevia(true);
+  };
+
+  const handleCerrarVistaPrevia = () => {
+    setAbrirVistaPrevia(false);
   };
 
   const handleSalir = () => {
@@ -604,6 +628,16 @@ export default function AjustesInventario() {
   };
 
   const handleCancelar = async () => {
+    if (guardando) return;
+    if (usuarioAjuste && usuarioAjuste !== usuarioSesion) {
+      Swal.fire({
+        icon: "warning",
+        title: "Ajuste de otro usuario",
+        text: "No puedes cancelar un ajuste capturado por otro usuario.",
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
     const folioACancelar = Number(folio);
     const tipoMovto = Number(tipoMovimiento);
 
@@ -783,8 +817,8 @@ export default function AjustesInventario() {
               justifyContent="space-between"
             >
 
-              <Stack direction="row" spacing={1} alignItems="center" sx={{ flex: 1, maxWidth: 420 }}>
-                <Typography sx={{ fontWeight: "bold", minWidth: 130 }}>
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ flex: 1, maxWidth: 560 }}>
+                <Typography sx={{ fontWeight: "bold", minWidth: 80 }}>
                   Tipo de movimiento:
                 </Typography>
                 <FormControl size="small" fullWidth>
@@ -1098,7 +1132,7 @@ export default function AjustesInventario() {
               <Button
                 variant="contained"
                 onClick={handleCancelar}
-                disabled={guardando}
+                disabled={guardando || (usuarioAjuste && usuarioAjuste !== usuarioSesion)}
                 sx={{
                   bgcolor: "#d9d9d9",
                   color: "#000",
@@ -1206,6 +1240,22 @@ export default function AjustesInventario() {
               onChange={(e) => setFechaFinBuscar(e.target.value)}
               InputLabelProps={{ shrink: true }}
             />
+            <FormControl size="small" sx={{ minWidth: 220 }}>
+              <Select
+                value={tipoMovtoBuscar}
+                displayEmpty
+                onChange={(e) => setTipoMovtoBuscar(e.target.value as number | "")}
+              >
+                <MenuItem value="">
+                  <em>Todos</em>
+                </MenuItem>
+                {tiposMovimiento.map((t) => (
+                  <MenuItem key={t.tipo_movto} value={t.tipo_movto}>
+                    {t.descripcion}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
             <Button
               variant="contained"
               onClick={handleBuscarHistorial}
@@ -1280,7 +1330,10 @@ export default function AjustesInventario() {
                         <Button
                           variant="outlined"
                           size="small"
-                          disabled={ajuste.usuario !== usuarioSesion}
+                          disabled={
+                            ajuste.usuario !== usuarioSesion ||
+                            ajuste.estado?.toLowerCase() === "cancelado"
+                          }
                           onClick={(e) => {
                             e.stopPropagation();
                             seleccionarAjuste(ajuste);
@@ -1321,7 +1374,11 @@ export default function AjustesInventario() {
             <Button
               variant="contained"
               onClick={handleAceptarAjuste}
-              disabled={!ajusteSeleccionado || ajusteSeleccionado.usuario !== usuarioSesion}
+              disabled={
+                !ajusteSeleccionado ||
+                ajusteSeleccionado.usuario !== usuarioSesion ||
+                ajusteSeleccionado.estado?.toLowerCase() === "cancelado"
+              }
               sx={{
                 bgcolor: "#000000",
                 color: "#fff",
@@ -1335,6 +1392,181 @@ export default function AjustesInventario() {
             </Button>
           </Stack>
         </DialogContent>
+      </Dialog>
+
+      {/* Diálogo de vista previa */}
+      <Dialog
+        open={abrirVistaPrevia}
+        onClose={handleCerrarVistaPrevia}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle
+          sx={{
+            m: 0,
+            p: 2,
+            bgcolor: "#000000",
+            color: "#fff",
+            fontWeight: "bold",
+          }}
+        >
+          Vista previa del ajuste
+          <IconButton
+            aria-label="close"
+            onClick={handleCerrarVistaPrevia}
+            sx={{
+              position: "absolute",
+              right: 8,
+              top: 8,
+              color: "#fff",
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Box sx={{ p: 2 }}>
+            <Typography
+              variant="h6"
+              align="center"
+              sx={{ fontWeight: "bold", mb: 1 }}
+            >
+              DISTRIBUIDORA BÓDMAS S.A. DE C.V.
+            </Typography>
+            <Typography align="center" sx={{ mb: 2 }}>
+              Ajuste al inventario de mercancías
+            </Typography>
+
+            <Box sx={{ borderTop: "1px dashed #bdbdbd", my: 1 }} />
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 1,
+                mb: 2,
+              }}
+            >
+              <Typography>
+                <strong>FOLIO:</strong> {folio}
+              </Typography>
+              <Typography sx={{ textAlign: "right" }}>
+                <strong>Fecha:</strong> {new Date().toLocaleDateString("es-MX")}
+              </Typography>
+              <Typography>
+                <strong>Sucursal:</strong> {sucursalSesion || "—"}
+              </Typography>
+              <Typography sx={{ textAlign: "right" }}>
+                <strong>Tipo de ajuste:</strong>{" "}
+                {tiposMovimiento
+                  .find((t) => t.tipo_movto === Number(tipoMovimiento))
+                  ?.descripcion?.toUpperCase() || "—"}
+              </Typography>
+              <Typography>
+                <strong>Origen del ajuste:</strong> {sucursalSesion || "—"}
+              </Typography>
+              <Typography sx={{ textAlign: "right" }}>
+                <strong>Documento:</strong> {folioDocumento.trim() || "—"}
+              </Typography>
+            </Box>
+            <Box sx={{ borderTop: "1px dashed #bdbdbd", my: 1 }} />
+
+            <TableContainer component={Paper} variant="outlined">
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: "bold" }}>Clave</TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>Descripción</TableCell>
+                    <TableCell sx={{ fontWeight: "bold", textAlign: "right" }}>
+                      Exist. anterior
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: "bold", textAlign: "right" }}>
+                      Entradas
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: "bold", textAlign: "right" }}>
+                      Salidas
+                    </TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {renglones
+                    .filter((r) => r.clave.trim())
+                    .map((r) => (
+                      <TableRow key={r.id}>
+                        <TableCell>{r.clave}</TableCell>
+                        <TableCell>{r.descripcion}</TableCell>
+                        <TableCell align="right">
+                          {Number(r.existenciaActual) || 0}
+                        </TableCell>
+                        <TableCell align="right">
+                          {Number(r.entrada) || 0}
+                        </TableCell>
+                        <TableCell align="right">
+                          {Number(r.salida) || 0}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+
+            <Box sx={{ borderTop: "1px dashed #bdbdbd", my: 1 }} />
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 1,
+                mb: 2,
+              }}
+            >
+              <Typography>
+                <strong>Total de registros:</strong>{" "}
+                {renglones.filter((r) => r.clave.trim()).length}
+              </Typography>
+              <Typography sx={{ textAlign: "right" }}>
+                <strong>Costo total:</strong> {formatoMoneda(total)}
+              </Typography>
+              <Typography>
+                <strong>Capturado por:</strong>{" "}
+                {usuarioAjuste || usuarioSesion || "—"}
+              </Typography>
+              <Typography sx={{ textAlign: "right" }}>
+                <strong>Página 1 de 1</strong>
+              </Typography>
+            </Box>
+            <Box sx={{ borderTop: "1px dashed #bdbdbd", my: 1 }} />
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button
+            onClick={() => window.print()}
+            variant="contained"
+            sx={{
+              bgcolor: "#000000",
+              color: "#fff",
+              textTransform: "none",
+              fontWeight: "bold",
+              boxShadow: "none",
+              mr: 1,
+              "&:hover": { bgcolor: "#424242" },
+            }}
+          >
+            Imprimir
+          </Button>
+          <Button
+            onClick={handleCerrarVistaPrevia}
+            variant="contained"
+            sx={{
+              bgcolor: "#d9d9d9",
+              color: "#000",
+              textTransform: "none",
+              fontWeight: "bold",
+              boxShadow: "none",
+              "&:hover": { bgcolor: "#c7c7c7" },
+            }}
+          >
+            Cerrar
+          </Button>
+        </DialogActions>
       </Dialog>
     </Box>
   );

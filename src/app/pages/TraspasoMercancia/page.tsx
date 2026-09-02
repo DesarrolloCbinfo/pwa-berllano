@@ -893,6 +893,39 @@ export default function TraspasoMercancia() {
     }
   };
 
+  const toggleTraspasoSeleccionado = (
+    idx: number,
+    traspaso: TraspasoBusqueda
+  ) => {
+    setTraspasosSeleccionados((prev) => {
+      if (prev.includes(idx)) {
+        return prev.filter((selected) => selected !== idx);
+      }
+      const referenciaIdx = prev[0];
+      if (referenciaIdx !== undefined) {
+        const referencia = resultadosBusqueda[referenciaIdx];
+        if (referencia) {
+          const refOrigen =
+            Number(referencia.sucOrigen ?? sucOrigen) || 0;
+          const refDestino = Number(referencia.sucDestino) || 0;
+          const nuevoOrigen =
+            Number(traspaso.sucOrigen ?? sucOrigen) || 0;
+          const nuevoDestino = Number(traspaso.sucDestino) || 0;
+          if (nuevoOrigen !== refOrigen || nuevoDestino !== refDestino) {
+            Swal.fire({
+              icon: "warning",
+              title: "Sucursales diferentes",
+              text: "No puedes seleccionar traspasos con sucursales distintas.",
+              confirmButtonColor: "#000000",
+            });
+            return prev;
+          }
+        }
+      }
+      return [...prev, idx];
+    });
+  };
+
   const cargarTraspasosSeleccionados = () => {
     const seleccionados = resultadosBusqueda.filter((_, index) =>
       traspasosSeleccionados.includes(index)
@@ -1653,13 +1686,7 @@ export default function TraspasoMercancia() {
                             <Checkbox
                               size="small"
                               checked={traspasosSeleccionados.includes(idx)}
-                              onChange={() =>
-                                setTraspasosSeleccionados((prev) =>
-                                  prev.includes(idx)
-                                    ? prev.filter((selected) => selected !== idx)
-                                    : [...prev, idx]
-                                )
-                              }
+                              onChange={() => toggleTraspasoSeleccionado(idx, t)}
                             />
                           </TableCell>
                         </TableRow>
