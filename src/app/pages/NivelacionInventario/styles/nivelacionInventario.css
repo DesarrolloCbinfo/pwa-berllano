@@ -1,0 +1,288 @@
+/* =========================================
+   NIVELACIÓN
+   MOBILE FIRST
+========================================= */
+
+.nivelacion {
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 16px;
+    box-sizing: border-box;
+}
+
+
+/* =========================================
+   HEADER
+========================================= */
+
+.nivelacion__header {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+
+    padding-bottom: 16px;
+    border-bottom: 3px solid #222;
+}
+
+.nivelacion__modulo {
+    display: block;
+
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.nivelacion__header h1 {
+    margin: 0;
+
+    font-size: 1.8rem;
+    line-height: 1.1;
+}
+
+
+/* =========================================
+   FOLIO
+========================================= */
+
+.nivelacion__folio {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.nivelacion__folio label {
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.folio__control {
+    display: flex;
+    gap: 8px;
+}
+
+.folio__control input {
+    flex: 1;
+    min-width: 0;
+}
+
+.folio__control button {
+    white-space: nowrap;
+}
+
+
+/* =========================================
+   CONTENIDO
+========================================= */
+
+.nivelacion__contenido {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+
+    margin-top: 24px;
+}
+
+
+/* =========================================
+   CAMPOS
+========================================= */
+
+.nivelacion__filtros {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+}
+
+.campo {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.campo label {
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.campo input,
+.campo select,
+.folio__control input {
+    width: 100%;
+    height: 42px;
+
+    padding: 0 10px;
+
+    border: 1px solid #bbb;
+    border-radius: 6px;
+
+    background: white;
+
+    font-size: 1rem;
+
+    box-sizing: border-box;
+}
+
+.campo input:focus,
+.campo select:focus,
+.folio__control input:focus {
+    outline: none;
+    border-color: #2684ff;
+    box-shadow: 0 0 0 2px rgba(38, 132, 255, 0.15);
+}
+
+
+/* =========================================
+   PERIODOS
+========================================= */
+
+.nivelacion__periodos {
+    min-width: 0;
+}
+
+.nivelacion__periodos h2 {
+    margin: 0 0 10px;
+
+    font-size: 1.1rem;
+}
+
+.periodos__tabla {
+    width: 100%;
+
+    overflow-x: auto;
+
+    border: 1px solid #ddd;
+    border-radius: 6px;
+}
+
+.periodos__tabla table {
+    width: 100%;
+    min-width: 450px;
+
+    border-collapse: collapse;
+}
+
+.periodos__tabla th {
+    padding: 10px;
+
+    text-align: left;
+
+    background: #f3f4f6;
+
+    font-size: 0.85rem;
+}
+
+.periodos__tabla td {
+    padding: 8px;
+
+    border-top: 1px solid #ddd;
+}
+
+.periodos__tabla input {
+    width: 100%;
+    height: 36px;
+
+    box-sizing: border-box;
+
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+
+/* =========================================
+   BOTONES
+========================================= */
+
+.nivelacion__acciones {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    margin-top: 32px;
+}
+
+.btn {
+    min-height: 46px;
+
+    padding: 10px 24px;
+
+    border: none;
+    border-radius: 6px;
+
+    font-size: 1rem;
+    font-weight: 600;
+
+    cursor: pointer;
+}
+
+.btn--primary {
+    background: #1976d2;
+    color: white;
+}
+
+.btn--secondary {
+    background: #e5e7eb;
+    color: #333;
+}
+
+
+/* =========================================
+   TABLET
+========================================= */
+
+@media (min-width: 576px) {
+
+    .nivelacion {
+        padding: 24px;
+    }
+
+    .nivelacion__filtros {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .nivelacion__acciones {
+        flex-direction: row;
+    }
+
+    .btn {
+        min-width: 130px;
+    }
+}
+
+
+/* =========================================
+   DESKTOP
+========================================= */
+
+@media (min-width: 992px) {
+
+    .nivelacion {
+        padding: 32px;
+    }
+
+    .nivelacion__header {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: flex-end;
+    }
+
+    .nivelacion__header h1 {
+        font-size: 2.2rem;
+    }
+
+    .nivelacion__folio {
+        min-width: 220px;
+    }
+
+    .nivelacion__contenido {
+        grid-template-columns: minmax(350px, 1fr) minmax(450px, 1fr);
+        align-items: start;
+    }
+
+    .nivelacion__filtros {
+        grid-template-columns: 1fr;
+    }
+
+    .nivelacion__acciones {
+        justify-content: flex-start;
+    }
+}

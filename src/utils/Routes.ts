@@ -1,5 +1,4 @@
 
-
 export const routes = {
   login: "/login",
   home: "/",
@@ -63,11 +62,16 @@ export const routes = {
   cat_PermisosDeptos:"/cat_PermisosDeptos",
   Validacion_Productos_Servicios: "/validacion_productos_servicios",
   pos2: "/pos2",
+  //cartelera digital
   carteleraDigital: "/cartelera-digital",
+  //Facturacion
   facturacion: "/facturacion",
+
+  //Inventario
   inventario: "/inventario",
   traspasoMercancia: "/traspaso-mercancia",
   recepcionTraspasos: "/recepcion-traspasos",
   ajustesInventario: "/ajustes-inventario",
+  NivelacionInventarioPage: "/nivelacion-inventario",
 };
 

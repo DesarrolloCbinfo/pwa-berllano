@@ -25,6 +25,12 @@ export default function InventarioPage() {
       icon: Tune,
       path: routes.ajustesInventario,
     },
+     {
+      id: 'NivelacionInventarioPage',
+      title: 'nivelación Inventario',
+      icon: Tune,
+      path: routes.NivelacionInventarioPage,
+    },
   ];
 
   return (
