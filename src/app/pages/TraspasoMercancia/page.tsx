@@ -332,6 +332,31 @@ export default function TraspasoMercancia() {
     return { subtotal: sub, iva: ivaCalc, total: sub + ivaCalc };
   }, [rows]);
 
+  const traspasoCancelado = useMemo(
+    () => rows.some((r) => String(r.estado || "").toUpperCase() === "CANCELADO"),
+    [rows]
+  );
+
+  const traspasoFinalizado = useMemo(
+    () => rows.some((r) => String(r.estado || "").toUpperCase() === "FINALIZADO"),
+    [rows]
+  );
+
+  const traspasoAceptado = useMemo(
+    () => rows.some((r) => String(r.estado || "").toUpperCase() === "ACEPTADO"),
+    [rows]
+  );
+
+  const traspasoPendiente = useMemo(
+    () => rows.some((r) => String(r.estado || "").toUpperCase() === "PENDIENTE"),
+    [rows]
+  );
+
+  const traspasoOtroUsuario = useMemo(
+    () => rows.some((r) => !esMismoUsuario(r.usuario)),
+    [rows]
+  );
+
   const updateRow = (
     id: number,
     field: keyof TraspasoRow,
@@ -453,7 +478,7 @@ export default function TraspasoMercancia() {
           const costoVal =
             Number(
               buscarCampo(
-                ["costoProm", "costoPromedio", "costo"],
+                ["costoProm", "costoPromedio", "costo", "ultimoCosto", "ultimo_costo", "costo_promedio"],
                 row.costoProm
               )
             ) || 0;
@@ -769,6 +794,8 @@ export default function TraspasoMercancia() {
           const costoResp =
             data?.costoProm != null
               ? Number(data.costoProm)
+              : data?.ultimoCosto != null
+              ? Number(data.ultimoCosto)
               : fila.costoProm;
           const importeResp =
             data?.importe != null
@@ -1274,11 +1301,13 @@ export default function TraspasoMercancia() {
                   label="Sucursal destino"
                   onChange={(e) => setSucDestino(Number(e.target.value))}
                 >
-                  {sucursales.map((s) => (
-                    <MenuItem key={s.cve_sucursal} value={s.cve_sucursal}>
-                      {s.nombre}
-                    </MenuItem>
-                  ))}
+                  {sucursales
+                    .filter((s) => s.cve_sucursal !== sucOrigen)
+                    .map((s) => (
+                      <MenuItem key={s.cve_sucursal} value={s.cve_sucursal}>
+                        {s.nombre}
+                      </MenuItem>
+                    ))}
                 </Select>
               </FormControl>
             </Stack>
@@ -1467,16 +1496,7 @@ export default function TraspasoMercancia() {
                         sx={{ width: "100%" }}
                       />
                     </TableCell>
-                    <TableCell sx={cellSx}>
-                      <TextField
-                        variant="standard"
-                        size="small"
-                        type="number"
-                        value={row.costoProm}
-                        InputProps={{ disableUnderline: true, readOnly: true }}
-                        sx={{ width: "100%" }}
-                      />
-                    </TableCell>
+                    <TableCell sx={cellSx}>{formatoMoneda(row.costoProm)}</TableCell>
                     <TableCell sx={cellSx}>{formatoMoneda(row.importe)}</TableCell>
                     <TableCell sx={cellSx}>
                       <TextField
@@ -1525,6 +1545,7 @@ export default function TraspasoMercancia() {
               size="small"
               startIcon={<AddIcon />}
               onClick={handleAgregarRenglon}
+              disabled={traspasoAceptado || traspasoCancelado || traspasoOtroUsuario}
               sx={{
                 bgcolor: "#000000",
                 color: "#fff",
@@ -1552,17 +1573,17 @@ export default function TraspasoMercancia() {
             <Button
               variant="contained"
               onClick={handleGuardar}
-              disabled={guardando}
+              disabled={guardando || traspasoCancelado || traspasoFinalizado || traspasoAceptado}
             >
               {guardando ? "Guardando..." : "FINALIZAR"}
             </Button>
-            <Button variant="contained" onClick={handleVistaPrevia}>
+            <Button variant="contained" onClick={handleVistaPrevia} disabled={traspasoPendiente}>
               Vista previa
             </Button>
             <Button
               variant="contained"
               onClick={handleCancelarTraspaso}
-              disabled={cancelando}
+              disabled={cancelando || traspasoCancelado || traspasoPendiente}
               sx={{ bgcolor: "#d9534f", color: "white" }}
             >
               {cancelando ? "Procesando..." : "Cancelar Traspaso"}

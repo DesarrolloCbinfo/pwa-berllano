@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Box,
   Button,
@@ -123,6 +123,8 @@ export default function RecepcionTraspasos() {
     }
     return 0;
   }, [token]);
+
+  const resultadosBusquedaRef = useRef<any[]>([]);
 
   useEffect(() => {
     const fetchSucursales = async () => {
@@ -393,6 +395,7 @@ export default function RecepcionTraspasos() {
       const resultados = (Array.isArray(response.data) ? response.data : []).filter(
         (item: any) => Number(obtenerValor(item, "folio") || 0) > 0
       );
+      resultadosBusquedaRef.current = resultados;
 
       if (resultados.length === 0) {
         Swal.fire({
@@ -419,26 +422,44 @@ export default function RecepcionTraspasos() {
           const nombreDestino =
             sucursales.find((s) => s.cve_sucursal === Number(sucDestinoResultado))?.nombre ||
             String(sucDestinoResultado);
-          const totalItems = Number(obtenerValor(item, "total_items", "totalItems") || 0);
-          const subtotal = Number(obtenerValor(item, "subtotal") || 0);
-          const totalIva = Number(obtenerValor(item, "total_iva", "totalIva") || 0);
-          const totalGeneral = Number(
-            obtenerValor(item, "total_general", "totalGeneral") || 0
+          const claveProdResultado = String(
+            obtenerValor(item, "clave", "clave_prod", "claveProd") || ""
           );
+          const descripcionResultado = String(
+            obtenerValor(item, "descripcion", "descrip", "nombre", "desc") || ""
+          );
+          const cantidadResultado = Number(
+            obtenerValor(item, "cantidad", "cant") || 0
+          );
+          const costoResultado = Number(
+            obtenerValor(item, "costo", "ultimo_costo", "ultimoCosto", "costoProm") || 0
+          );
+          const tasaIvaResultado = Number(
+            obtenerValor(item, "tasaIva", "tasa_iva", "iva") || 0
+          );
+          const tasaIvaDecimal =
+            tasaIvaResultado > 1 ? tasaIvaResultado / 100 : tasaIvaResultado;
+          const importeResultado =
+            Number(
+              obtenerValor(item, "importe", "total_general", "totalGeneral") || 0
+            ) ||
+            (cantidadResultado * costoResultado * (1 + tasaIvaDecimal));
 
           return `
             <tr>
               <td style="padding:6px;border:1px solid #ddd;text-align:center;">
-                <input type="checkbox" name="folioRecepcion" value="${escaparHtml(folioResultado)}" />
+                <input type="checkbox" name="folioRecepcion" value="${escaparHtml(folioResultado)}|${escaparHtml(claveProdResultado)}|${escaparHtml(sucOrigenResultado)}" />
               </td>
               <td style="padding:6px;border:1px solid #ddd;">${escaparHtml(folioResultado)}</td>
               <td style="padding:6px;border:1px solid #ddd;">${escaparHtml(fechaTexto)}</td>
               <td style="padding:6px;border:1px solid #ddd;text-align:center;">${escaparHtml(nombreOrigen)}</td>
               <td style="padding:6px;border:1px solid #ddd;text-align:center;">${escaparHtml(nombreDestino)}</td>
-              <td style="padding:6px;border:1px solid #ddd;text-align:center;">${totalItems}</td>
-              <td style="padding:6px;border:1px solid #ddd;text-align:right;">${formatoMoneda(subtotal)}</td>
-              <td style="padding:6px;border:1px solid #ddd;text-align:right;">${formatoMoneda(totalIva)}</td>
-              <td style="padding:6px;border:1px solid #ddd;text-align:right;">${formatoMoneda(totalGeneral)}</td>
+              <td style="padding:6px;border:1px solid #ddd;">${escaparHtml(claveProdResultado)}</td>
+              <td style="padding:6px;border:1px solid #ddd;">${escaparHtml(descripcionResultado)}</td>
+              <td style="padding:6px;border:1px solid #ddd;text-align:center;">${cantidadResultado}</td>
+              <td style="padding:6px;border:1px solid #ddd;text-align:right;">${formatoMoneda(costoResultado)}</td>
+              <td style="padding:6px;border:1px solid #ddd;text-align:center;">${tasaIvaResultado}%</td>
+              <td style="padding:6px;border:1px solid #ddd;text-align:right;">${formatoMoneda(importeResultado)}</td>
             </tr>`;
         })
         .join("");
@@ -451,15 +472,19 @@ export default function RecepcionTraspasos() {
             <table style="width:100%;border-collapse:collapse;font-size:12px;">
               <thead>
                 <tr style="background:#f0f0f0;">
-                  <th style="padding:6px;border:1px solid #ddd;"></th>
+                  <th style="padding:6px;border:1px solid #ddd;text-align:center;">
+                    <input type="checkbox" id="selectAll" title="Seleccionar todos" />
+                  </th>
                   <th style="padding:6px;border:1px solid #ddd;">Folio</th>
                   <th style="padding:6px;border:1px solid #ddd;">Fecha</th>
                   <th style="padding:6px;border:1px solid #ddd;">Origen</th>
                   <th style="padding:6px;border:1px solid #ddd;">Destino</th>
-                  <th style="padding:6px;border:1px solid #ddd;">Artículos</th>
-                  <th style="padding:6px;border:1px solid #ddd;">Subtotal</th>
-                  <th style="padding:6px;border:1px solid #ddd;">IVA</th>
-                  <th style="padding:6px;border:1px solid #ddd;">Total</th>
+                  <th style="padding:6px;border:1px solid #ddd;">Clave</th>
+                  <th style="padding:6px;border:1px solid #ddd;">Descripción</th>
+                  <th style="padding:6px;border:1px solid #ddd;">Cantidad</th>
+                  <th style="padding:6px;border:1px solid #ddd;">Costo</th>
+                  <th style="padding:6px;border:1px solid #ddd;">Tasa I</th>
+                  <th style="padding:6px;border:1px solid #ddd;">Importe</th>
                 </tr>
               </thead>
               <tbody>${filasHtml}</tbody>
@@ -472,6 +497,15 @@ export default function RecepcionTraspasos() {
         cancelButtonText: "Cerrar",
         confirmButtonColor: "#000000",
         width: "min(95vw, 1000px)",
+        didOpen: () => {
+          const selectAll = document.getElementById("selectAll") as HTMLInputElement | null;
+          if (!selectAll) return;
+          selectAll.addEventListener("change", () => {
+            document.querySelectorAll<HTMLInputElement>('input[name="folioRecepcion"]').forEach((cb) => {
+              cb.checked = selectAll.checked;
+            });
+          });
+        },
         preConfirm: () => {
           const seleccionados = Array.from(
             document.querySelectorAll<HTMLInputElement>(
@@ -490,20 +524,18 @@ export default function RecepcionTraspasos() {
         Array.isArray(seleccion.value) &&
         seleccion.value.length > 0
       ) {
-        const seleccionadosPorFolio = new Map<string, any>();
-        resultados.forEach((item: any) => {
-          const folioItem = String(obtenerValor(item, "folio") || "");
-          const origenItem = String(
-            obtenerValor(item, "suc_origen", "sucOrigen") || ""
-          );
-          if (seleccion.value.includes(folioItem)) {
-            seleccionadosPorFolio.set(`${folioItem}-${origenItem}`, item);
-          }
-        });
+        const seleccionados = seleccion.value
+          .map((val: string) => {
+            const partes = String(val || "").split("|");
+            const folio = partes[0]?.trim();
+            const clave = partes[1]?.trim();
+            const sucOrigen = Number(partes[2] || 0);
+            if (!folio || !clave || !sucOrigen) return null;
+            return { folio, clave, suc_origen: sucOrigen };
+          })
+          .filter(Boolean) as any[];
 
-        await handleRecuperarSeleccionados(
-          Array.from(seleccionadosPorFolio.values())
-        );
+        await handleRecuperarSeleccionados(seleccionados);
       }
     } catch (err: any) {
       Swal.fire({
@@ -551,42 +583,69 @@ export default function RecepcionTraspasos() {
     setCargandoRecuperar(true);
     try {
       const renglonesTotal: RenglonTraspaso[] = [];
-    
 
-      for (const traspaso of traspasos) {
-        const folioBusqueda = String(obtenerValor(traspaso, "folio") || "").trim();
-        const sucOrigenBusqueda = Number(
-          obtenerValor(traspaso, "suc_origen", "sucOrigen") || 0
+      const foliosMap = new Map<
+        string,
+        { folio: string; sucOrigen: number; claves: Set<string> }
+      >();
+      for (const t of traspasos) {
+        const folio = String(obtenerValor(t, "folio") || "").trim();
+        const sucOrigen = Number(
+          obtenerValor(t, "suc_origen", "sucOrigen") || 0
         );
-        if (Number(folioBusqueda) <= 0 || sucOrigenBusqueda <= 0) continue;
+        const clave = String(obtenerValor(t, "clave", "clave_prod") || "").trim();
+        if (!folio || !sucOrigen || !clave) continue;
+        const key = `${folio}-${sucOrigen}`;
+        if (!foliosMap.has(key)) {
+          foliosMap.set(key, { folio, sucOrigen, claves: new Set() });
+        }
+        foliosMap.get(key)!.claves.add(clave);
+      }
 
+      for (const { folio, sucOrigen, claves } of foliosMap.values()) {
         const response = await consumoApi.get(
           "/api/Catrecepciontraspasos/sp_bw_obtener_detalle_recepcion_traspaso",
           {
             params: {
               cia,
               sucursalDestino,
-              sucOrigen: sucOrigenBusqueda,
-              folio: folioBusqueda,
+              sucOrigen,
+              folio,
             },
           }
         );
 
         const data = Array.isArray(response.data) ? response.data : [];
-        const mapeados: RenglonTraspaso[] = data.map((item: any) => {
-          const cantidad = Number(obtenerValor(item, "cantidad", "cant") || 0);
-          const costo = Number(obtenerValor(item, "costo", "costoProm") || 0);
-          const tasaIva = Number(obtenerValor(item, "tasaIva", "tasa_iva", "iva") || 0);
-          const importe = Number(obtenerValor(item, "importe") || 0) || cantidad * costo;
-          return {
-            clave: String(obtenerValor(item, "clave", "clave_prod") || ""),
-            descripcion: String(obtenerValor(item, "descripcion") || ""),
-            cantidad,
-            costo,
-            tasaIva,
-            importe,
-          };
-        });
+
+        const mapeados: RenglonTraspaso[] = data
+          .filter((item: any) => {
+            const claveItem = String(
+              obtenerValor(item, "clave", "clave_prod") || ""
+            ).trim();
+            return claveItem !== "" && claves.has(claveItem);
+          })
+          .map((item: any) => {
+            const cantidad = Number(obtenerValor(item, "cantidad", "cant") || 0);
+            const costo = Number(
+              obtenerValor(item, "costo", "ultimo_costo", "ultimoCosto", "costoProm") || 0
+            );
+            const tasaIva = Number(
+              obtenerValor(item, "tasaIva", "tasa_iva", "iva") || 0
+            );
+            const importe =
+              Number(obtenerValor(item, "importe", "total_general", "totalGeneral") || 0) ||
+              cantidad * costo;
+            return {
+              clave: String(obtenerValor(item, "clave", "clave_prod") || ""),
+              descripcion: String(
+                obtenerValor(item, "descripcion", "descrip", "nombre", "desc") || ""
+              ),
+              cantidad,
+              costo,
+              tasaIva,
+              importe,
+            };
+          });
 
         renglonesTotal.push(...mapeados);
       }

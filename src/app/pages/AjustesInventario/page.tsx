@@ -15,6 +15,7 @@ import {
   MenuItem,
   Paper,
   Select,
+  SelectChangeEvent,
   Stack,
   Table,
   TableBody,
@@ -45,6 +46,7 @@ type ProductoSelector = {
   descripcion: string;
   costo?: number;
   tasa_iva?: number;
+  existencia?: number;
 };
 
 type RenglonAjuste = {
@@ -95,6 +97,13 @@ const obtenerValor = (obj: any, ...nombres: string[]) => {
 function formatoMoneda(valor: number) {
   return `$${(valor || 0).toFixed(2)}`;
 }
+
+const normalizarCosto = (valor: number) => Number((Number(valor) || 0).toFixed(2));
+const normalizarTasa = (valor: number) => {
+  let n = Number(valor) || 0;
+  if (n > 1) n = n / 100;
+  return Number(n.toFixed(4));
+};
 
 const formatearFechaInput = (fecha: Date = new Date()) => {
   const anio = fecha.getFullYear();
@@ -170,7 +179,9 @@ export default function AjustesInventario() {
   const [cargandoHistorial, setCargandoHistorial] = useState(false);
   const [ajusteSeleccionado, setAjusteSeleccionado] = useState<AjusteHistorial | null>(null);
   const [usuarioAjuste, setUsuarioAjuste] = useState<string>("");
+  const [estadoAjuste, setEstadoAjuste] = useState<string>("");
   const [abrirVistaPrevia, setAbrirVistaPrevia] = useState(false);
+  const [vistaPreviaGuardar, setVistaPreviaGuardar] = useState(false);
 
   const [renglones, setRenglones] = useState<RenglonAjuste[]>([crearRenglonVacio()]);
   const [selectedRowId, setSelectedRowId] = useState<number | null>(renglones[0].id);
@@ -206,8 +217,9 @@ export default function AjustesInventario() {
           descripcion: String(
             obtenerValor(item, "descripcion", "descrip", "nombre", "desc") || ""
           ),
-          costo: Number(obtenerValor(item, "costo", "costo_promedio", "costoProm") || 0),
-          tasa_iva: Number(obtenerValor(item, "tasa_iva", "tasaIva", "iva") || 0),
+          costo: normalizarCosto(obtenerValor(item, "costo", "costo_promedio", "costoProm")),
+          tasa_iva: normalizarTasa(obtenerValor(item, "tasa_iva", "tasaIva", "iva")),
+          existencia: Number(obtenerValor(item, "existencia", "exis", "stock", "disponible") || 0),
         }))
       );
       } catch (err) {
@@ -248,6 +260,10 @@ export default function AjustesInventario() {
       }, 0),
     [renglones]
   );
+  const ajusteBloqueado = useMemo(
+    () => estadoAjuste.toLowerCase() === "finalizado",
+    [estadoAjuste]
+  );
 
   const recalcularNuevaExistencia = (r: RenglonAjuste): number =>
     (Number(r.existenciaActual) || 0) +
@@ -259,6 +275,7 @@ export default function AjustesInventario() {
     field: keyof RenglonAjuste,
     value: string | number
   ) => {
+    if (ajusteBloqueado) return;
     setRenglones((prev) =>
       prev.map((r) => {
         if (r.id !== id) return r;
@@ -275,10 +292,11 @@ export default function AjustesInventario() {
     );
   };
 
-  const handleSeleccionarProducto = (
+  const handleSeleccionarProducto = async (
     row: RenglonAjuste,
     producto: ProductoSelector
   ) => {
+    if (ajusteBloqueado) return;
     if (!tipoMovimiento) {
       Swal.fire({
         icon: "warning",
@@ -290,8 +308,69 @@ export default function AjustesInventario() {
     }
 
     const claveInput = producto.clave_prod.trim();
-    const costo = Number(obtenerValor(producto, "costo", "costo_promedio", "costoProm") || 0);
-    const tasa = Number(obtenerValor(producto, "tasa_iva", "tasaIva", "iva") || 0);
+    const costo = normalizarCosto(obtenerValor(producto, "costo", "costo_promedio", "costoProm"));
+    const tasa = normalizarTasa(obtenerValor(producto, "tasa_iva", "tasaIva", "iva"));
+    let existencia =
+      Number(obtenerValor(producto, "existencia", "exis", "stock", "disponible") || 0);
+
+    // Si se cambia el producto de un renglón, eliminar el temporal del producto anterior
+    if (
+      row.clave.trim() &&
+      row.clave.trim() !== claveInput &&
+      tipoMovimiento
+    ) {
+      try {
+        await consumoApi.delete("/api/CatAjustes/sp_bw_eliminar_ajuste_temporal", {
+          params: {
+            sucursal: sucursalSesion,
+            usuario: usuarioSesion,
+            claveProd: row.clave.trim(),
+            tipoMovto: Number(tipoMovimiento),
+          },
+        });
+        const llaveAnterior = `${row.id}:${row.clave.trim()}:${tipoMovimiento}`;
+        delete temporalGuardadoRef.current[llaveAnterior];
+      } catch (err) {
+        console.error("Error al eliminar temporal anterior:", err);
+      }
+    }
+
+    setValidandoClaveId(row.id);
+    try {
+      const response = await consumoApi.post(
+        "/api/CatTraspasoSalida/sp_validar_y_cargar_producto_traspaso",
+        {
+          cia: 1,
+          sucursal: Number(sucursalSesion) || 0,
+          sucOrigen: Number(sucursalSesion) || 0,
+          sucursalOrigen: Number(sucursalSesion) || 0,
+          sucursalDestino: Number(sucursalSesion) || 0,
+          usuario: usuarioSesion,
+          claveInput,
+          claveProd: claveInput,
+          claveProdAnterior: row.clave.trim() || null,
+          cantidad: 0,
+          costo: 0,
+          tasaIva: 0,
+          precioMenudeo: 0,
+          ultimoCosto: 0,
+          folio: Number(folio) || 0,
+          validarExistenciaEstricta: false,
+          version: "",
+          unidad: "",
+          observaciones: "",
+        }
+      );
+      const data = Array.isArray(response.data) ? response.data[0] : response.data;
+      if (data && typeof data === "object" && !data.mensaje) {
+        existencia =
+          Number(obtenerValor(data, "existencia", "exis", "stock", "disponible") || existencia);
+      }
+    } catch (err) {
+      console.error("Error al consultar existencia:", err);
+    } finally {
+      setValidandoClaveId(null);
+    }
 
     setRenglones((prev) => {
       const actualizadas = prev.map((r) => {
@@ -300,7 +379,7 @@ export default function AjustesInventario() {
           ...r,
           clave: claveInput,
           descripcion: producto.descripcion,
-          existenciaActual: 0,
+          existenciaActual: existencia,
           costo,
           tasa,
         };
@@ -314,45 +393,121 @@ export default function AjustesInventario() {
 
   const handleNuevo = () => {
     temporalGuardadoRef.current = {};
+    setVistaPreviaGuardar(false);
     setFolio((prev) => prev + 1);
     setFolioDocumento("");
     setTipoMovimiento("");
     setUsuarioAjuste("");
+    setEstadoAjuste("");
 
     const nueva = crearRenglonVacio();
     setRenglones([nueva]);
     setSelectedRowId(nueva.id);
   };
 
+  const handleCambioTipoMovimiento = async (e: SelectChangeEvent<number | "">) => {
+    if (ajusteBloqueado) return;
+    const nuevoValor = e.target.value === "" ? "" : Number(e.target.value);
+
+    const movimientoSeleccionado = tiposMovimiento.find(
+      (t) => t.tipo_movto === Number(nuevoValor)
+    );
+
+    if (movimientoSeleccionado) {
+      const blnSucursal = Boolean((movimientoSeleccionado as any).blnSucursal);
+      const blnProveedor = Boolean((movimientoSeleccionado as any).blnProveedor);
+
+      if (blnSucursal === blnProveedor) {
+        await Swal.fire({
+          icon: "warning",
+          title: "Atención",
+          text: "El origen definido para este tipo de ajuste no es coherente.\n\nFavor de verificarlo.",
+          confirmButtonColor: "#000000",
+        });
+        return;
+      }
+    }
+
+    const renglonesCapturados = renglones.filter((r) => r.clave.trim() !== "");
+
+    if (renglonesCapturados.length > 0) {
+      const resultado = await Swal.fire({
+        icon: "warning",
+        title: "Atención",
+        text: "Se va a eliminar la lista actual de productos.\n¿Desea continuar?",
+        showCancelButton: true,
+        confirmButtonText: "Sí",
+        cancelButtonText: "No",
+        confirmButtonColor: "#000000",
+        cancelButtonColor: "#6c757d",
+      });
+
+      if (!resultado.isConfirmed) {
+        return;
+      }
+
+      try {
+        await consumoApi.delete(
+          "/api/CatAjustes/sp_bw_eliminar_ajustes_temporales_usuario",
+          {
+            params: { sucursal: sucursalSesion, usuario: usuarioSesion },
+          }
+        );
+      } catch (err) {
+        console.error("Error al limpiar temporales:", err);
+      }
+    }
+
+    const nueva = crearRenglonVacio();
+    setRenglones([nueva]);
+    setSelectedRowId(nueva.id);
+    temporalGuardadoRef.current = {};
+
+    setTipoMovimiento(nuevoValor);
+  };
+
   const guardarRenglonTemporal = async (row: RenglonAjuste) => {
     if (!tipoMovimiento) {
-      alert("Por favor, seleccione un tipo de movimiento antes de capturar productos.");
+      Swal.fire({
+        icon: "warning",
+        title: "Atención",
+        text: "Por favor, seleccione un tipo de movimiento antes de capturar productos.",
+        confirmButtonColor: "#000000",
+      });
       return;
     }
+
+    const entradasValue = Number(row.entrada) || 0;
+    const salidasValue = Number(row.salida) || 0;
+
     if (
       sucursalSesion <= 0 ||
       !row.clave.trim() ||
-      (Number(row.entrada) === 0 && Number(row.salida) === 0)
+      (entradasValue === 0 && salidasValue === 0)
     ) {
       return;
     }
 
     const llave = `${row.id}:${row.clave.trim()}:${tipoMovimiento}`;
     const anterior = temporalGuardadoRef.current[llave] || { entradas: 0, salidas: 0 };
-    const entradas = (Number(row.entrada) || 0) - anterior.entradas;
-    const salidas = (Number(row.salida) || 0) - anterior.salidas;
 
-    if (entradas === 0 && salidas === 0) return;
+    // Si ya se guardó la misma combinación, no volver a llamar
+    if (
+      anterior.entradas === entradasValue &&
+      anterior.salidas === salidasValue
+    ) {
+      return;
+    }
 
     const payload = {
       sucursal: sucursalSesion,
       usuario: usuarioSesion,
       claveProd: row.clave.trim(),
       tipoMovto: Number(tipoMovimiento),
-      entradas,
-      salidas,
-      costo: Number(row.costo) || 0,
-      tasaIva: Number(row.tasa) || 0,
+      entradas: entradasValue,
+      salidas: salidasValue,
+      costo: normalizarCosto(row.costo),
+      tasaIva: normalizarTasa(row.tasa),
       sucursalOrigen: sucursalSesion,
       cveProveedor: null,
       folioDocto: folioDocumento.trim() || null,
@@ -365,20 +520,26 @@ export default function AjustesInventario() {
         payload
       );
       temporalGuardadoRef.current[llave] = {
-        entradas: Number(row.entrada) || 0,
-        salidas: Number(row.salida) || 0,
+        entradas: entradasValue,
+        salidas: salidasValue,
       };
     } catch (error: any) {
       const mensajeError =
         error.response?.data?.mensaje ||
         error.response?.data?.error ||
         error.message;
-      alert(`No se pudo agregar el producto: ${mensajeError}`);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: `No se pudo agregar el producto: ${mensajeError}`,
+        confirmButtonColor: "#000000",
+      });
     }
   };
 
   const handleGuardar = async () => {
     if (guardando) return;
+    if (ajusteBloqueado) return;
     const tipoMovto = Number(tipoMovimiento);
     const almacen = 1;
 
@@ -398,6 +559,17 @@ export default function AjustesInventario() {
         icon: "warning",
         title: "Sin renglones",
         text: "Captura al menos un producto para ajustar.",
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
+
+    const renglonSinExistencia = renglonesValidos.find((r) => Number(r.nuevaExistencia) < 0);
+    if (renglonSinExistencia) {
+      Swal.fire({
+        icon: "warning",
+        title: "Existencia insuficiente",
+        text: `El producto ${renglonSinExistencia.descripcion || renglonSinExistencia.clave} no cuenta con existencia suficiente para ajustar.`,
         confirmButtonColor: "#000000",
       });
       return;
@@ -424,13 +596,25 @@ export default function AjustesInventario() {
       const folioGenerado = Number(response.data?.folioGenerado) || 0;
       if (folioGenerado > 0) setFolio(folioGenerado);
 
-      Swal.fire({
+      const confirmarImpresion = await Swal.fire({
         icon: "success",
-        title: "Éxito",
-        text: response.data?.mensaje || "Ajuste guardado correctamente.",
+        title: "Ajuste guardado",
+        text:
+          (response.data?.mensaje || "Ajuste guardado correctamente.") +
+          " ¿Deseas imprimir?",
+        showCancelButton: true,
+        confirmButtonText: "Sí, imprimir",
+        cancelButtonText: "No",
         confirmButtonColor: "#000000",
+        cancelButtonColor: "#6c757d",
       });
-      handleNuevo();
+
+      if (confirmarImpresion.isConfirmed) {
+        setVistaPreviaGuardar(true);
+        setAbrirVistaPrevia(true);
+      } else {
+        handleNuevo();
+      }
     } catch (err: any) {
       Swal.fire({
         icon: "error",
@@ -489,14 +673,32 @@ export default function AjustesInventario() {
       return;
     }
 
+    const tipoMovtoAjuste = Number(
+      obtenerValor(renglonesAjuste[0], "tipo_movto", "tipo_movimiento")
+    );
+    if (
+      tipoMovimiento !== "" &&
+      tipoMovtoAjuste > 0 &&
+      tipoMovtoAjuste !== Number(tipoMovimiento)
+    ) {
+      Swal.fire({
+        icon: "warning",
+        title: "Tipo de movimiento diferente",
+        text: "No puedes seleccionar un ajuste de otro tipo de movimiento.",
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
+
     setUsuarioAjuste(ajuste.usuario || "");
+    setEstadoAjuste(ajuste.estado || "");
 
     const nuevosRenglones: RenglonAjuste[] = renglonesAjuste.map((row, idx) => {
-      const existenciaActual =
+      const existenciaActualRaw =
         Number(obtenerValor(row, "existencia", "exis", "existenciaActual")) || 0;
       const entradas = Number(obtenerValor(row, "entradas", "entrada")) || 0;
       const salidas = Number(obtenerValor(row, "salidas", "salida")) || 0;
-      const costo = Number(obtenerValor(row, "costo", "costoProm")) || 0;
+      const costo = normalizarCosto(obtenerValor(row, "costo", "costoProm"));
       const clave = String(
         obtenerValor(row, "clave", "clave_prod", "claveProd", "cve_prod", "producto") || ""
       );
@@ -508,7 +710,9 @@ export default function AjustesInventario() {
         producto?.descripcion ||
         ""
       );
-      const tasa = Number(obtenerValor(row, "tasa", "tasaIva", "tasa_iva")) || 0;
+      const existenciaActual =
+        existenciaActualRaw || Number(producto?.existencia) || 0;
+      const tasa = normalizarTasa(obtenerValor(row, "tasa", "tasaIva", "tasa_iva"));
 
       return {
         id: Date.now() + idx,
@@ -621,6 +825,10 @@ export default function AjustesInventario() {
 
   const handleCerrarVistaPrevia = () => {
     setAbrirVistaPrevia(false);
+    if (vistaPreviaGuardar) {
+      setVistaPreviaGuardar(false);
+      handleNuevo();
+    }
   };
 
   const handleSalir = () => {
@@ -698,6 +906,7 @@ export default function AjustesInventario() {
   };
 
   const handleAgregarRenglon = () => {
+    if (ajusteBloqueado) return;
     if (!tipoMovimiento) {
       Swal.fire({
         icon: "warning",
@@ -718,6 +927,7 @@ export default function AjustesInventario() {
   };
 
   const handleEliminarRenglon = async (id: number) => {
+    if (ajusteBloqueado) return;
     const row = renglones.find((r) => r.id === id);
     const llave = row
       ? `${row.id}:${row.clave.trim()}:${tipoMovimiento}`
@@ -825,7 +1035,8 @@ export default function AjustesInventario() {
                   <Select
                     displayEmpty
                     value={tipoMovimiento}
-                    onChange={(e) => setTipoMovimiento(Number(e.target.value))}
+                    onChange={handleCambioTipoMovimiento}
+                    disabled={ajusteBloqueado}
                   >
                     <MenuItem value="">
                       <em>Seleccione...</em>
@@ -921,6 +1132,7 @@ export default function AjustesInventario() {
                       <TableCell sx={cellSx}>
                         <Autocomplete
                           size="small"
+                          disabled={ajusteBloqueado}
                           options={productosSelector}
                           loading={cargandoProductos}
                           value={
@@ -958,6 +1170,7 @@ export default function AjustesInventario() {
                       <TableCell sx={cellSx}>
                         <Autocomplete
                           size="small"
+                          disabled={ajusteBloqueado}
                           options={productosSelector}
                           loading={cargandoProductos}
                           value={
@@ -999,7 +1212,7 @@ export default function AjustesInventario() {
                           size="small"
                           type="number"
                           value={row.entrada}
-                          disabled={esMovimientoSalida === true}
+                          disabled={esMovimientoSalida === true || ajusteBloqueado}
                           InputProps={{ disableUnderline: true }}
                           inputProps={{ min: 0 }}
                           onChange={(e) =>
@@ -1020,7 +1233,7 @@ export default function AjustesInventario() {
                           size="small"
                           type="number"
                           value={row.salida}
-                          disabled={esMovimientoSalida === false}
+                          disabled={esMovimientoSalida === false || ajusteBloqueado}
                           InputProps={{ disableUnderline: true }}
                           inputProps={{ min: 0 }}
                           onChange={(e) =>
@@ -1046,6 +1259,7 @@ export default function AjustesInventario() {
                         <IconButton
                           size="small"
                           color="error"
+                          disabled={ajusteBloqueado}
                           onClick={() => void handleEliminarRenglon(row.id)}
                         >
                           <DeleteIcon fontSize="small" />
@@ -1063,6 +1277,7 @@ export default function AjustesInventario() {
                 size="small"
                 startIcon={<AddIcon />}
                 onClick={handleAgregarRenglon}
+                disabled={ajusteBloqueado}
                 sx={{
                   bgcolor: "#000000",
                   color: "#fff",
@@ -1117,7 +1332,7 @@ export default function AjustesInventario() {
               <Button
                 variant="contained"
                 onClick={handleGuardar}
-                disabled={guardando}
+                disabled={guardando || ajusteBloqueado}
                 sx={{
                   bgcolor: "#d9d9d9",
                   color: "#000",
@@ -1431,7 +1646,7 @@ export default function AjustesInventario() {
               align="center"
               sx={{ fontWeight: "bold", mb: 1 }}
             >
-              DISTRIBUIDORA BÓDMAS S.A. DE C.V.
+              Berllano
             </Typography>
             <Typography align="center" sx={{ mb: 2 }}>
               Ajuste al inventario de mercancías
