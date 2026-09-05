@@ -1,6 +1,13 @@
-import React, { useState,useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import axios from "axios";
 import useConsumoApi from "../../../hooks/useConsumoApi";
 import "./styles/nivelacionInventario.css";
+import Swal from "sweetalert2";
+import { Box, Tabs, Tab, CircularProgress, Typography } from "@mui/material";
+import {
+  MaterialReactTable,
+  type MRT_ColumnDef,
+} from "material-react-table";
 
 interface Periodo {
     id: number;
@@ -20,6 +27,28 @@ interface CatArea {
   version: string | null
   fecha_alta: string | null
   fecha_act: string | null
+}
+
+interface ResumenNivelacion01 {
+  clave_prod: string;
+  descripcion: string;
+  marca: string;
+  [key: string]: string | number | null | undefined;
+}
+
+interface ResumenNivelacion02 {
+  SucOrigen: number;
+  SucDestino: string;
+  clave_prod: string;
+  descripcion: string;
+  marca: string;
+  cantidad: number;
+}
+
+interface ResumenNivelacion03 {
+  SucOrigen: number;
+  SucDestino: string;
+  SALIDAS: number;
 }
 
 const NivelacionInventarioPage: React.FC = () => {
@@ -43,6 +72,12 @@ const NivelacionInventarioPage: React.FC = () => {
             f2: ""
         }
     ]);
+
+    const [tabValue, setTabValue] = useState(0);
+    const [dataResumen01, setDataResumen01] = useState<ResumenNivelacion01[]>([]);
+    const [dataResumen02, setDataResumen02] = useState<ResumenNivelacion02[]>([]);
+    const [dataResumen03, setDataResumen03] = useState<ResumenNivelacion03[]>([]);
+    const [loadingGuardar, setLoadingGuardar] = useState(false);
 
 
     useEffect(() => {
@@ -89,21 +124,158 @@ const NivelacionInventarioPage: React.FC = () => {
         console.log("Buscar folio:", folio);
     };
 
-    const handleNivelacion = () => {
-        console.log({
-            area,
-            marca,
-            diasMinimo,
-            diasStock,
-            periodos
+    const sucursalesResumen01 = useMemo(() => {
+        const sucursales: string[] = [];
+        const primerRegistro = dataResumen01[0];
+        if (!primerRegistro) return sucursales;
+
+        Object.keys(primerRegistro).forEach((key) => {
+            const match = key.match(/^e(\d+)$/);
+            if (match && !sucursales.includes(match[1])) {
+                sucursales.push(match[1]);
+            }
         });
 
-        setGuardarDisabled(true);
-    };
+        return sucursales.sort((a, b) => Number(a) - Number(b));
+    }, [dataResumen01]);
 
-    const handleGuardar = () => {
-        console.log("Guardar");
-        setGuardarDisabled(!false);
+    const columnsResumen01 = useMemo<MRT_ColumnDef<ResumenNivelacion01>[]>(
+        () => [
+            { accessorKey: "clave_prod", header: "Clave", size: 140 },
+            { accessorKey: "descripcion", header: "Descripción", size: 260 },
+            { accessorKey: "marca", header: "Marca", size: 180 },
+            ...sucursalesResumen01.flatMap((suc) => [
+                { accessorKey: `e${suc}`, header: `Exist ${suc}`, size: 90, align: "right" as const },
+                { accessorKey: `stock_minimo${suc}`, header: `Stock mín ${suc}`, size: 110, align: "right" as const },
+                { accessorKey: `desp${suc}`, header: `Desp ${suc}`, size: 90, align: "right" as const },
+                { accessorKey: `dias${suc}`, header: `Días ${suc}`, size: 80, align: "right" as const },
+                { accessorKey: `despDiario${suc}`, header: `Desp diario ${suc}`, size: 120, align: "right" as const },
+                { accessorKey: `cantNecesaria${suc}`, header: `Cant necesaria ${suc}`, size: 140, align: "right" as const },
+                { accessorKey: `stockResultado${suc}`, header: `Stock result ${suc}`, size: 130, align: "right" as const },
+                { accessorKey: `Faltante${suc}`, header: `Faltante ${suc}`, size: 100, align: "right" as const },
+                { accessorKey: `Excedente${suc}`, header: `Excedente ${suc}`, size: 110, align: "right" as const },
+            ]),
+        ],
+        [sucursalesResumen01]
+    );
+
+    const columnsResumen02 = useMemo<MRT_ColumnDef<ResumenNivelacion02>[]>(
+        () => [
+            { accessorKey: "SucOrigen", header: "Sucursal origen", size: 140 },
+            { accessorKey: "SucDestino", header: "Sucursal destino", size: 150 },
+            { accessorKey: "clave_prod", header: "Clave", size: 120 },
+            { accessorKey: "descripcion", header: "Descripción", size: 280 },
+            { accessorKey: "marca", header: "Marca", size: 180 },
+            { accessorKey: "cantidad", header: "Cantidad", size: 100, align: "right" },
+        ],
+        []
+    );
+
+    const columnsResumen03 = useMemo<MRT_ColumnDef<ResumenNivelacion03>[]>(
+        () => [
+            { accessorKey: "SucOrigen", header: "Sucursal origen", size: 150 },
+            { accessorKey: "SucDestino", header: "Sucursal destino", size: 150 },
+            {
+                accessorKey: "SALIDAS",
+                header: "Salidas",
+                size: 130,
+                align: "right",
+                Cell: ({ cell }) => Number(cell.getValue<number>()).toFixed(3),
+            },
+        ],
+        []
+    );
+
+const handleNivelacion = async () => {
+    // Si la variable está vacía, nula o solo tiene espacios, asigna '%'
+    const areaParam = area.trim() !== "" ? area : "%";
+    const marcaParam = marca.trim() !== "" ? marca : "%";
+
+    console.log({ area: areaParam, marca: marcaParam, diasMinimo, diasStock, periodos });
+
+    try {
+        // Mapeo según la prueba cURL: p1=diasStock, p2=marca, p3=diasMinimo, p4=area
+        const response = await consumoApi.post(
+            `/api/nivelacionInventario/sp_bw_nivelacionInventario?p1=${diasStock}&p2=${encodeURIComponent(marcaParam)}&p3=${diasMinimo}&p4=${encodeURIComponent(areaParam)}`,
+            {}
+        );
+
+        const resultado = response.data?.[0];
+
+        if (resultado && resultado.codigo === 0) {
+            Swal.fire({
+                icon: 'success',
+                title: resultado.mensaje2 || '¡Éxito!',
+                text: resultado.mensaje1 || 'Nivelación exitosa'
+            });
+            setGuardarDisabled(false); // Habilitar el botón Guardar
+
+ try {
+            const [res01, res02, res03] = await Promise.all([
+                consumoApi.get(`/api/nivelacionInventario/sp_obtiene_resumenNivelacion01`),
+                consumoApi.get(`/api/nivelacionInventario/sp_obtiene_resumenNivelacion02`),
+                consumoApi.get(`/api/nivelacionInventario/sp_obtiene_resumenNivelacion03`),
+            ]);
+
+            setDataResumen01(res01.data || []);
+            setDataResumen02(res02.data || []);
+            setDataResumen03(res03.data || []);
+            setTabValue(0);
+
+            Swal.fire({
+                icon: 'success',
+                title: '¡Éxito!',
+                text: 'Resúmenes generados correctamente.'
+            });
+        } catch (error: unknown) {
+            console.error("Error al generar los resúmenes:", error);
+
+            let mensaje = 'No se pudieron generar los resúmenes.';
+            if (axios.isAxiosError(error)) {
+                const data = error.response?.data as { mensaje1?: string } | undefined;
+                mensaje = data?.mensaje1 || mensaje;
+            }
+
+            Swal.fire({
+                icon: 'error',
+                title: 'Error de red',
+                text: mensaje
+            });
+        } finally {
+            setLoadingGuardar(false);
+        }
+
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: resultado?.mensaje1 || 'Ocurrió un problema al procesar la nivelación.'
+            });
+        }
+
+    } catch (error: unknown) {
+        console.error("Error al guardar la nivelación:", error);
+
+        let mensaje = 'No se pudo conectar con el servidor.';
+        if (axios.isAxiosError(error)) {
+            const data = error.response?.data as { mensaje1?: string } | undefined;
+            mensaje = data?.mensaje1 || mensaje;
+        }
+
+        Swal.fire({
+            icon: 'error',
+            title: 'Error de red',
+            text: mensaje
+        });
+    }
+
+
+};
+
+const handleGuardar = async () => {
+       
+     
+
     };
 
     return (
@@ -169,7 +341,7 @@ const NivelacionInventarioPage: React.FC = () => {
                             </option>
 
                             {areas.map((area) => (
-                                <option key={area.area} value={area.area}>
+                                <option key={area.area} value={area.descripcion}>
                                     {area.descripcion}
                                 </option>
                             ))}
@@ -192,7 +364,7 @@ const NivelacionInventarioPage: React.FC = () => {
                             </option>
 
                             {rows.map((marca) => (
-                                <option key={marca.id} value={marca.id}>
+                                <option key={marca.id} value={marca.marca}>
                                     {marca.marca}
                                 </option>
                             ))}
@@ -317,11 +489,92 @@ const NivelacionInventarioPage: React.FC = () => {
                 </button>
 
                 <button
-                    className="btn btn--secondary" disabled={guardarDisabled}
+                    className="btn btn--secondary" 
                     onClick={handleGuardar}
                 >
                     Guardar
                 </button>
+
+            </section>
+
+            {/* RESÚMENES */}
+            <section className="nivelacion__resumenes">
+
+                {loadingGuardar && (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                        <CircularProgress />
+                    </Box>
+                )}
+
+                {!loadingGuardar && (dataResumen01.length > 0 || dataResumen02.length > 0 || dataResumen03.length > 0) && (
+                    <>
+                        <Tabs
+                            value={tabValue}
+                            onChange={(_e, v) => setTabValue(v)}
+                            sx={{ mb: 2 }}
+                            variant="scrollable"
+                            scrollButtons="auto"
+                        >
+                            <Tab label="Resumen Nivelación 1" />
+                            <Tab style={{ backgroundColor: '#ED7B64' , color: '#000000'}} label="Resumen Nivelación 2" />
+                            <Tab style={{ backgroundColor: '#61CC61' , color: '#000000'}} label="Resumen Nivelación 3" />
+                        </Tabs>
+
+                        {tabValue === 0 && (
+                            dataResumen01.length > 0
+                                ? (
+                                    <MaterialReactTable
+                                        columns={columnsResumen01}
+                                        data={dataResumen01}
+                                        enableStickyHeader
+                                        initialState={{ density: 'compact' }}
+                                        muiTablePaperProps={{ sx: { maxWidth: '100%', overflowX: 'auto' } }}
+                                    />
+                                )
+                                : (
+                                    <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+                                        No hay datos de resumen de nivelación.
+                                    </Typography>
+                                )
+                        )}
+
+                        {tabValue === 1 && (
+                            dataResumen02.length > 0
+                                ? (
+                                    <MaterialReactTable
+                                        columns={columnsResumen02}
+                                        data={dataResumen02}
+                                        enableStickyHeader
+                                        initialState={{ density: 'compact' }}
+                                        muiTablePaperProps={{ sx: { maxWidth: '100%', overflowX: 'auto' } }}
+                                    />
+                                )
+                                : (
+                                    <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+                                        No hay movimientos.
+                                    </Typography>
+                                )
+                        )}
+
+                        {tabValue === 2 && (
+                            dataResumen03.length > 0
+                                ? (
+                                    <MaterialReactTable
+                                        columns={columnsResumen03}
+                                        data={dataResumen03}
+                                        enableStickyHeader
+                                        initialState={{ density: 'compact' }}
+                                        muiTablePaperProps={{ sx: { maxWidth: '100%', overflowX: 'auto' } }}
+                                    />
+                                )
+                                : (
+                                    <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+                                        No hay salidas.
+                                    </Typography>
+                                )
+                        )}
+                    </>
+                )}
 
             </section>
 

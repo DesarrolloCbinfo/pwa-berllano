@@ -189,6 +189,26 @@
 
 
 /* =========================================
+   RESÚMENES (TABS + TABLAS)
+========================================= */
+
+.nivelacion__resumenes {
+    margin-top: 32px;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.nivelacion__resumenes .MuiTabs-root {
+    border-bottom: 1px solid #ddd;
+}
+
+.nivelacion__resumenes .MuiTabs-flexContainer {
+    flex-wrap: wrap;
+}
+
+
+/* =========================================
    BOTONES
 ========================================= */
 
