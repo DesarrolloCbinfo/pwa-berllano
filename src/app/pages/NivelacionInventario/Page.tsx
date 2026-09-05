@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import useConsumoApi from "../../../hooks/useConsumoApi";
+import { useAuth } from "../../../context/AuthContext";
+import useSession from "../../../hooks/useSession";
 import "./styles/nivelacionInventario.css";
 import Swal from "sweetalert2";
 import { Box, Tabs, Tab, CircularProgress, Typography } from "@mui/material";
@@ -51,8 +53,26 @@ interface ResumenNivelacion03 {
   SALIDAS: number;
 }
 
+interface InfoTraspaso {
+  SucOrigen: number | string;
+  SucDestino: number | string;
+  clave_prod: string;
+  descripcion: string;
+  marca: string;
+  cantidad: number | string;
+  [key: string]: any;
+}
+
+interface TraspasoGenerado {
+  SucOrigen: number;
+  SucDestino: number;
+  FolioTraspaso: number;
+}
+
 const NivelacionInventarioPage: React.FC = () => {
       const { consumoApi } = useConsumoApi();
+      const { token } = useAuth();
+      const session = useSession();
 
     const [folio, setFolio] = useState("");
     const [area, setArea] = useState("");
@@ -64,6 +84,12 @@ const NivelacionInventarioPage: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [rows, setRows] = useState<CatMarcas[]>([]);
     const [guardarDisabled, setGuardarDisabled] = useState(true);
+
+    const [modalOpen, setModalOpen] = useState(false);
+    const [infoTraspasos, setInfoTraspasos] = useState<InfoTraspaso[]>([]);
+    const [traspasosGenerados, setTraspasosGenerados] = useState<TraspasoGenerado[]>([]);
+    const [loadingModal, setLoadingModal] = useState(false);
+    const [modalPaso, setModalPaso] = useState<'info' | 'resultado'>('info');
 
     const [periodos, setPeriodos] = useState<Periodo[]>([
         {
@@ -78,6 +104,12 @@ const NivelacionInventarioPage: React.FC = () => {
     const [dataResumen02, setDataResumen02] = useState<ResumenNivelacion02[]>([]);
     const [dataResumen03, setDataResumen03] = useState<ResumenNivelacion03[]>([]);
     const [loadingGuardar, setLoadingGuardar] = useState(false);
+
+    const usuarioSesion =
+        session?.id ||
+        token?.usuario ||
+        (typeof window !== "undefined" ? localStorage.getItem("usuario") || "" : "") ||
+        "";
 
 
     useEffect(() => {
@@ -273,10 +305,80 @@ const handleNivelacion = async () => {
 };
 
 const handleGuardar = async () => {
-       
-     
+    setLoadingModal(true);
+    try {
+        const response = await consumoApi.get(
+            '/api/nivelacionInventario/sp_dame_info_traspaso_nivelacion'
+        );
+        setInfoTraspasos(response.data || []);
+        setTraspasosGenerados([]);
+        setModalPaso('info');
+        setModalOpen(true);
+    } catch (err: any) {
+        Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: err.response?.data?.mensaje || "No se pudo obtener la información de nivelación.",
+            confirmButtonColor: "#1f2937",
+        });
+    } finally {
+        setLoadingModal(false);
+    }
+};
 
-    };
+const handleGenerarTraspasos = async () => {
+    setLoadingModal(true);
+    try {
+        const areaParam = area.trim() !== "" ? area : "%";
+        const marcaParam = marca.trim() !== "" ? marca : "%";
+
+        const payload = {
+            diasVenta: Number(diasStock) || 0,
+            marca: marcaParam,
+            diasMinimosExcedentes: Number(diasMinimo) || 0,
+            area: areaParam,
+            usuario: usuarioSesion,
+            sucursal: token?.claveDepartamento || 0,
+        };
+
+        const response = await consumoApi.post(
+            '/api/nivelacionInventario/sp_procesar_y_guardar_nivelacion',
+            payload
+        );
+
+        const data = response.data;
+        const status = data?.status?.[0];
+
+        if (status?.codigo !== 0) {
+            Swal.fire({
+                icon: "warning",
+                title: "Aviso",
+                text: status?.mensaje1 || "No se pudieron generar los traspasos.",
+                confirmButtonColor: "#1f2937",
+            });
+            return;
+        }
+
+        Swal.fire({
+            icon: "success",
+            title: status?.mensaje2 || "Éxito",
+            text: status?.mensaje1 || "Traspasos generados correctamente.",
+            confirmButtonColor: "#1f2937",
+        });
+
+        setTraspasosGenerados(data?.traspasos || []);
+        setModalPaso('resultado');
+    } catch (err: any) {
+        Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: err.response?.data?.mensaje || "Error al generar los traspasos.",
+            confirmButtonColor: "#1f2937",
+        });
+    } finally {
+        setLoadingModal(false);
+    }
+};
 
     return (
         <main className="nivelacion">
@@ -577,6 +679,113 @@ const handleGuardar = async () => {
                 )}
 
             </section>
+
+            {/* MODAL NIVELACION */}
+            {modalOpen && (
+                <div className="modal-overlay" onClick={() => !loadingModal && setModalOpen(false)}>
+                    <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2>
+                                {modalPaso === 'info'
+                                    ? 'Información de traspasos a nivelar'
+                                    : 'Traspasos generados'}
+                            </h2>
+                            <button
+                                className="modal-close"
+                                onClick={() => setModalOpen(false)}
+                                disabled={loadingModal}
+                            >
+                                &times;
+                            </button>
+                        </div>
+
+                        <div className="modal-body">
+                            {loadingModal ? (
+                                <p className="modal-loading">Cargando...</p>
+                            ) : modalPaso === 'info' ? (
+                                <>
+                                    {infoTraspasos.length === 0 ? (
+                                        <p className="modal-vacio">No hay traspasos para nivelar.</p>
+                                    ) : (
+                                        <div className="modal-tabla-wrapper">
+                                            <table className="modal-tabla">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Suc. Origen</th>
+                                                        <th>Suc. Destino</th>
+                                                        <th>Clave</th>
+                                                        <th>Descripción</th>
+                                                        <th>Marca</th>
+                                                        <th>Cantidad</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {infoTraspasos.map((item, idx) => (
+                                                        <tr key={idx}>
+                                                            <td>{item.SucOrigen}</td>
+                                                            <td>{item.SucDestino}</td>
+                                                            <td>{item.clave_prod}</td>
+                                                            <td>{item.descripcion}</td>
+                                                            <td>{item.marca}</td>
+                                                            <td>{item.cantidad}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <>
+                                    {traspasosGenerados.length === 0 ? (
+                                        <p className="modal-vacio">No se generaron traspasos.</p>
+                                    ) : (
+                                        <div className="modal-tabla-wrapper">
+                                            <table className="modal-tabla">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Suc. Origen</th>
+                                                        <th>Suc. Destino</th>
+                                                        <th>Folio Traspaso</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {traspasosGenerados.map((item, idx) => (
+                                                        <tr key={idx}>
+                                                            <td>{item.SucOrigen}</td>
+                                                            <td>{item.SucDestino}</td>
+                                                            <td>{item.FolioTraspaso}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
+
+                        <div className="modal-footer">
+                            <button
+                                className="btn btn--secondary"
+                                onClick={() => setModalOpen(false)}
+                                disabled={loadingModal}
+                            >
+                                {modalPaso === 'resultado' ? 'Cerrar' : 'Cancelar'}
+                            </button>
+                            {modalPaso === 'info' && infoTraspasos.length > 0 && (
+                                <button
+                                    className="btn btn--primary"
+                                    onClick={handleGenerarTraspasos}
+                                    disabled={loadingModal}
+                                >
+                                    Generar Traspasos
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
 
         </main>
     );
