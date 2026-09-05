@@ -32,6 +32,9 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import Swal from "sweetalert2";
 import useConsumoApi from "../../../hooks/useConsumoApi";
 import { useAuth } from "../../../context/AuthContext";
+import useFetchData from "../../../hooks/useFetchData";
+import { ICatSucursal } from "../CatSucursal/interfaces/ICatSucursal";
+import { CatSucursalApis } from "../CatSucursal/apis/CatSucursalApis";
 
 type TipoMovimiento = {
   tipo_movto: number;
@@ -78,20 +81,46 @@ type AjusteBusquedaRow = {
   costo: number;
   total?: number;
   estado?: string;
+  clave_prod?: string;
+  descripcion?: string;
+  tipo_movto?: number;
+  existenciaActual?: number;
+  nuevaExistencia?: number;
 };
 
 const obtenerValor = (obj: any, ...nombres: string[]) => {
   if (!obj || typeof obj !== "object") return undefined;
   const keys = Object.keys(obj);
+
+  // Búsqueda exacta primero
   for (const nombre of nombres) {
-    const key = keys.find((k) =>
-      k.toLowerCase().includes(nombre.toLowerCase())
-    );
+    const lower = nombre.toLowerCase();
+    const key = keys.find((k) => k.toLowerCase() === lower);
     if (key !== undefined && obj[key] != null && obj[key] !== "") {
       return obj[key];
     }
   }
+
+  // Si no hay exacta, búsqueda parcial preferiendo la que inicie con el nombre y sea más corta
+  for (const nombre of nombres) {
+    const lower = nombre.toLowerCase();
+    const matches = keys.filter((k) => k.toLowerCase().includes(lower));
+    if (matches.length > 0) {
+      const startsWith = matches.filter((k) =>
+        k.toLowerCase().startsWith(lower)
+      );
+      const candidates = startsWith.length > 0 ? startsWith : matches;
+      const key = candidates.sort((a, b) => a.length - b.length)[0];
+      if (obj[key] != null && obj[key] !== "") return obj[key];
+    }
+  }
   return undefined;
+};
+
+const asNumber = (raw: any): number | undefined => {
+  if (raw === undefined || raw === null || raw === "") return undefined;
+  const n = Number(raw);
+  return Number.isNaN(n) ? undefined : n;
 };
 
 function formatoMoneda(valor: number) {
@@ -150,6 +179,15 @@ export default function AjustesInventario() {
     return 0;
   }, [token]);
 
+  const dataSucursales = useFetchData<ICatSucursal>(CatSucursalApis.get);
+
+  const nombreSucursalSesion = useMemo(
+    () =>
+      dataSucursales.find((s) => Number(s.sucursalId) === Number(sucursalSesion))?.nombre ||
+      (sucursalSesion ? String(sucursalSesion) : "—"),
+    [dataSucursales, sucursalSesion]
+  );
+
   const ahora = new Date();
   const fechaHoraActual = ahora.toLocaleString("es-MX", {
     day: "2-digit",
@@ -177,7 +215,7 @@ export default function AjustesInventario() {
   const [historialAjustes, setHistorialAjustes] = useState<AjusteHistorial[]>([]);
   const [historialAjustesRaw, setHistorialAjustesRaw] = useState<AjusteBusquedaRow[]>([]);
   const [cargandoHistorial, setCargandoHistorial] = useState(false);
-  const [ajusteSeleccionado, setAjusteSeleccionado] = useState<AjusteHistorial | null>(null);
+  const [selectedRawIndexes, setSelectedRawIndexes] = useState<Set<number>>(new Set());
   const [usuarioAjuste, setUsuarioAjuste] = useState<string>("");
   const [estadoAjuste, setEstadoAjuste] = useState<string>("");
   const [abrirVistaPrevia, setAbrirVistaPrevia] = useState(false);
@@ -238,7 +276,7 @@ export default function AjustesInventario() {
       setFechaFinBuscar(hoy);
       setHistorialAjustes([]);
       setHistorialAjustesRaw([]);
-      setAjusteSeleccionado(null);
+      setSelectedRawIndexes(new Set());
     }
   }, [abrirDialogoBuscar]);
 
@@ -261,9 +299,70 @@ export default function AjustesInventario() {
     [renglones]
   );
   const ajusteBloqueado = useMemo(
-    () => estadoAjuste.toLowerCase() === "finalizado",
+    () =>
+      estadoAjuste.toLowerCase() === "finalizado" ||
+      estadoAjuste.toLowerCase() === "cancelado",
     [estadoAjuste]
   );
+
+  const ajustePorFolio = useMemo(() => {
+    const map: Record<number, AjusteHistorial> = {};
+    historialAjustes.forEach((a) => {
+      map[a.folio] = a;
+    });
+    return map;
+  }, [historialAjustes]);
+
+  const estadoSeleccionadoActual = useMemo(() => {
+    if (selectedRawIndexes.size === 0) return null;
+    const primerIndice = Array.from(selectedRawIndexes)[0];
+    const primerRenglon = historialAjustesRaw[primerIndice];
+    if (!primerRenglon) return null;
+    const ajuste = ajustePorFolio[Number(primerRenglon.folio) || 0];
+    return (ajuste?.estado || primerRenglon.estado || "").toLowerCase().trim();
+  }, [selectedRawIndexes, historialAjustesRaw, ajustePorFolio]);
+
+  const isRowDisabled = (row: AjusteBusquedaRow) => {
+    const ajuste = ajustePorFolio[Number(row.folio) || 0];
+    const cancelado = ajuste?.estado?.toLowerCase() === "cancelado";
+    const otroUsuario = ajuste && ajuste.usuario !== usuarioSesion;
+    if (cancelado || otroUsuario) return true;
+
+    if (estadoSeleccionadoActual !== null) {
+      const estadoRow = (ajuste?.estado || row.estado || "").toLowerCase().trim();
+      if (estadoRow !== estadoSeleccionadoActual) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
+  const toggleRawIndex = (index: number) => {
+    const row = historialAjustesRaw[index];
+    if (!row) return;
+    const ajuste = ajustePorFolio[Number(row.folio) || 0];
+    const estadoRow = (ajuste?.estado || row.estado || "").toLowerCase().trim();
+
+    if (!selectedRawIndexes.has(index) && estadoSeleccionadoActual !== null) {
+      if (estadoRow !== estadoSeleccionadoActual) {
+        Swal.fire({
+          icon: "warning",
+          title: "Estado diferente",
+          text: `No se pueden seleccionar registros con estados diferentes (actual: "${estadoSeleccionadoActual}", seleccionado: "${estadoRow}").`,
+          confirmButtonColor: "#000000",
+        });
+        return;
+      }
+    }
+
+    setSelectedRawIndexes((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  };
 
   const recalcularNuevaExistencia = (r: RenglonAjuste): number =>
     (Number(r.existenciaActual) || 0) +
@@ -308,6 +407,21 @@ export default function AjustesInventario() {
     }
 
     const claveInput = producto.clave_prod.trim();
+
+    const yaExiste = renglones.some(
+      (r) => r.id !== row.id && r.clave.trim().toUpperCase() === claveInput.toUpperCase()
+    );
+
+    if (yaExiste) {
+      Swal.fire({
+        icon: "warning",
+        title: "Producto duplicado",
+        text: `El producto con clave "${claveInput}" ya se encuentra agregado en la lista.`,
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
+
     const costo = normalizarCosto(obtenerValor(producto, "costo", "costo_promedio", "costoProm"));
     const tasa = normalizarTasa(obtenerValor(producto, "tasa_iva", "tasaIva", "iva"));
     let existencia =
@@ -380,10 +494,12 @@ export default function AjustesInventario() {
           clave: claveInput,
           descripcion: producto.descripcion,
           existenciaActual: existencia,
+          entrada: 0,
+          salida: 0,
           costo,
           tasa,
+          nuevaExistencia: existencia,
         };
-        actualizado.nuevaExistencia = recalcularNuevaExistencia(actualizado);
         return actualizado;
       });
       const esUltima = actualizadas[actualizadas.length - 1]?.id === row.id;
@@ -394,7 +510,7 @@ export default function AjustesInventario() {
   const handleNuevo = () => {
     temporalGuardadoRef.current = {};
     setVistaPreviaGuardar(false);
-    setFolio((prev) => prev + 1);
+    setFolio(0);
     setFolioDocumento("");
     setTipoMovimiento("");
     setUsuarioAjuste("");
@@ -564,7 +680,9 @@ export default function AjustesInventario() {
       return;
     }
 
-    const renglonSinExistencia = renglonesValidos.find((r) => Number(r.nuevaExistencia) < 0);
+    const renglonSinExistencia = renglonesValidos.find(
+      (r) => Number(r.nuevaExistencia) < 0
+    );
     if (renglonSinExistencia) {
       Swal.fire({
         icon: "warning",
@@ -635,13 +753,19 @@ export default function AjustesInventario() {
 
   const handleCerrarDialogoBuscar = () => {
     setAbrirDialogoBuscar(false);
-    setAjusteSeleccionado(null);
+    setSelectedRawIndexes(new Set());
   };
 
-  const seleccionarAjuste = (ajuste: AjusteHistorial) => {
-    const renglonesAjuste = historialAjustesRaw.filter(
-      (r) => Number(r.folio) === Number(ajuste.folio)
-    );
+  const seleccionarAjuste = async (
+    ajuste: AjusteHistorial,
+    renglonesAjusteOverride?: AjusteBusquedaRow[]
+  ) => {
+    const renglonesAjuste =
+      renglonesAjusteOverride && renglonesAjusteOverride.length > 0
+        ? renglonesAjusteOverride
+        : historialAjustesRaw.filter(
+            (r) => Number(r.folio) === Number(ajuste.folio)
+          );
 
     if (renglonesAjuste.length === 0) {
       Swal.fire({
@@ -693,39 +817,105 @@ export default function AjustesInventario() {
     setUsuarioAjuste(ajuste.usuario || "");
     setEstadoAjuste(ajuste.estado || "");
 
-    const nuevosRenglones: RenglonAjuste[] = renglonesAjuste.map((row, idx) => {
-      const existenciaActualRaw =
-        Number(obtenerValor(row, "existencia", "exis", "existenciaActual")) || 0;
-      const entradas = Number(obtenerValor(row, "entradas", "entrada")) || 0;
-      const salidas = Number(obtenerValor(row, "salidas", "salida")) || 0;
-      const costo = normalizarCosto(obtenerValor(row, "costo", "costoProm"));
-      const clave = String(
-        obtenerValor(row, "clave", "clave_prod", "claveProd", "cve_prod", "producto") || ""
-      );
-      const producto = productosSelector.find(
-        (p) => p.clave_prod.trim() === clave.trim()
-      );
-      const descripcion = String(
-        obtenerValor(row, "descripcion", "descrip", "nombre", "desc") ||
-        producto?.descripcion ||
-        ""
-      );
-      const existenciaActual =
-        existenciaActualRaw || Number(producto?.existencia) || 0;
-      const tasa = normalizarTasa(obtenerValor(row, "tasa", "tasaIva", "tasa_iva"));
+    const nuevosRenglones: RenglonAjuste[] = await Promise.all(
+      renglonesAjuste.map(async (row, idx) => {
+        const existenciaActualRaw = asNumber(
+          obtenerValor(
+            row,
+            "existenciaActual",
+            "existencia_actual",
+            "cant",
+            "cantidad",
+            "existencia",
+            "exis",
+            "stock",
+            "disponible"
+          )
+        );
+        const entradas = asNumber(obtenerValor(row, "entradas", "entrada")) ?? 0;
+        const salidas = asNumber(obtenerValor(row, "salidas", "salida")) ?? 0;
+        const costo = normalizarCosto(obtenerValor(row, "costo", "costoProm"));
+        const clave = String(
+          obtenerValor(row, "clave", "clave_prod", "claveProd", "cve_prod", "producto") || ""
+        );
+        const producto = productosSelector.find(
+          (p) => p.clave_prod.trim() === clave.trim()
+        );
+        const descripcion = String(
+          obtenerValor(row, "descripcion", "descrip", "nombre", "desc") ||
+          producto?.descripcion ||
+          ""
+        );
+        const productoExistencia = asNumber(producto?.existencia);
+        let existenciaActual =
+          existenciaActualRaw ?? productoExistencia ?? 0;
 
-      return {
-        id: Date.now() + idx,
-        clave,
-        descripcion,
-        existenciaActual,
-        entrada: entradas,
-        salida: salidas,
-        costo,
-        tasa,
-        nuevaExistencia: existenciaActual + entradas - salidas,
-      };
-    });
+        if (existenciaActual === 0 && clave.trim()) {
+          try {
+            const resp = await consumoApi.post(
+              "/api/CatTraspasoSalida/sp_validar_y_cargar_producto_traspaso",
+              {
+                cia: 1,
+                sucursal: Number(sucursalSesion) || 0,
+                sucOrigen: Number(sucursalSesion) || 0,
+                sucursalOrigen: Number(sucursalSesion) || 0,
+                sucursalDestino: Number(sucursalSesion) || 0,
+                usuario: usuarioSesion,
+                claveInput: clave.trim(),
+                claveProd: clave.trim(),
+                claveProdAnterior: null,
+                cantidad: 0,
+                costo: 0,
+                tasaIva: 0,
+                precioMenudeo: 0,
+                ultimoCosto: 0,
+                folio: Number(ajuste.folio) || 0,
+                validarExistenciaEstricta: false,
+                version: "",
+                unidad: "",
+                observaciones: "",
+              }
+            );
+            const data = Array.isArray(resp.data) ? resp.data[0] : resp.data;
+            if (data && typeof data === "object" && !data.mensaje) {
+              const exisConsulta = asNumber(
+                obtenerValor(data, "existencia", "exis", "stock", "disponible")
+              );
+              if (exisConsulta !== undefined) {
+                existenciaActual = exisConsulta;
+              }
+            }
+          } catch (err) {
+            console.error("Error al consultar existencia al cargar ajuste:", err);
+          }
+        }
+
+        const tasa = normalizarTasa(obtenerValor(row, "tasa", "tasaIva", "tasa_iva"));
+        const nuevaExistenciaCalculada = recalcularNuevaExistencia({
+          id: 0,
+          clave,
+          descripcion,
+          existenciaActual,
+          entrada: entradas,
+          salida: salidas,
+          costo,
+          tasa,
+          nuevaExistencia: 0,
+        });
+
+        return {
+          id: Date.now() + idx,
+          clave,
+          descripcion,
+          existenciaActual,
+          entrada: entradas,
+          salida: salidas,
+          costo,
+          tasa,
+          nuevaExistencia: nuevaExistenciaCalculada,
+        };
+      })
+    );
 
     const tipoMovtoRaw = obtenerValor(renglonesAjuste[0], "tipo_movto", "tipo_movimiento");
     if (tipoMovtoRaw != null) {
@@ -735,14 +925,62 @@ export default function AjustesInventario() {
     setFolio(Number(ajuste.folio));
     setRenglones(nuevosRenglones);
     setSelectedRowId(nuevosRenglones[0]?.id ?? null);
-    setAjusteSeleccionado(null);
+    setSelectedRawIndexes(new Set());
     setAbrirDialogoBuscar(false);
   };
 
   const handleAceptarAjuste = () => {
-    if (ajusteSeleccionado) {
-      seleccionarAjuste(ajusteSeleccionado);
+    if (selectedRawIndexes.size === 0) return;
+
+    const selectedRows = Array.from(selectedRawIndexes)
+      .sort((a, b) => a - b)
+      .map((i) => historialAjustesRaw[i]);
+
+    const folios = new Set(selectedRows.map((r) => Number(r.folio) || 0));
+    const estados = new Set(
+      selectedRows.map((r) => {
+        const a = ajustePorFolio[Number(r.folio) || 0];
+        return (a?.estado || r.estado || "").toLowerCase().trim();
+      })
+    );
+
+    if (estados.size > 1) {
+      Swal.fire({
+        icon: "warning",
+        title: "Estados diferentes",
+        text: "No se pueden seleccionar registros con estados diferentes.",
+        confirmButtonColor: "#000000",
+      });
+      return;
     }
+
+    if (folios.size > 1) {
+      Swal.fire({
+        icon: "warning",
+        title: "Selección inválida",
+        text: "Solo puede seleccionar renglones del mismo folio.",
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
+
+    const folioNum = Array.from(folios)[0];
+    let ajuste = historialAjustes.find((a) => a.folio === folioNum);
+    if (!ajuste) {
+      const first = selectedRows[0];
+      ajuste = {
+        folio: folioNum,
+        fecha: first.fecha,
+        usuario: first.usuario,
+        total: selectedRows.reduce(
+          (sum, r) => sum + (Number(r.total) || 0),
+          0
+        ),
+        estado: first.estado || "",
+      };
+    }
+
+    seleccionarAjuste(ajuste, selectedRows);
   };
 
   const handleBuscarHistorial = async () => {
@@ -801,6 +1039,7 @@ export default function AjustesInventario() {
 
       setHistorialAjustesRaw(raw);
       setHistorialAjustes(Object.values(agrupados));
+      setSelectedRawIndexes(new Set());
     } catch (err) {
       console.error("Error al buscar historial de ajustes:", err);
       setHistorialAjustes([]);
@@ -949,7 +1188,6 @@ export default function AjustesInventario() {
             },
           }
         );
-        delete temporalGuardadoRef.current[llave];
       } catch (err: any) {
         Swal.fire({
           icon: "error",
@@ -959,7 +1197,8 @@ export default function AjustesInventario() {
             "No fue posible eliminar el registro temporal.",
           confirmButtonColor: "#000000",
         });
-        return;
+      } finally {
+        delete temporalGuardadoRef.current[llave];
       }
     }
 
@@ -1304,57 +1543,47 @@ export default function AjustesInventario() {
                 variant="contained"
                 onClick={handleNuevo}
                 sx={{
-                  bgcolor: "#d9d9d9",
-                  color: "#000",
+                  bgcolor: "#000000",
+                  color: "#fff",
                   fontWeight: "bold",
                   boxShadow: "none",
                   minWidth: 100,
-                  "&:hover": { bgcolor: "#c7c7c7", boxShadow: "none" },
+                  "&:hover": { bgcolor: "#424242", boxShadow: "none" },
                 }}
               >
                 Nuevo
               </Button>
               <Button
                 variant="contained"
-                onClick={handleBuscar}
-                disabled={buscando}
-                sx={{
-                  bgcolor: "#d9d9d9",
-                  color: "#000",
-                  fontWeight: "bold",
-                  boxShadow: "none",
-                  minWidth: 100,
-                  "&:hover": { bgcolor: "#c7c7c7", boxShadow: "none" },
-                }}
-              >
-                Buscar
-              </Button>
-              <Button
-                variant="contained"
                 onClick={handleGuardar}
                 disabled={guardando || ajusteBloqueado}
                 sx={{
-                  bgcolor: "#d9d9d9",
-                  color: "#000",
+                  bgcolor: "#000000",
+                  color: "#fff",
                   fontWeight: "bold",
                   boxShadow: "none",
                   minWidth: 100,
-                  "&:hover": { bgcolor: "#c7c7c7", boxShadow: "none" },
+                  "&:hover": { bgcolor: "#424242", boxShadow: "none" },
                 }}
               >
-                {guardando ? <CircularProgress size={18} /> : "Guardar"}
+                {guardando ? <CircularProgress size={18} color="inherit" /> : "Guardar"}
               </Button>
               <Button
                 variant="contained"
                 onClick={handleCancelar}
-                disabled={guardando || (usuarioAjuste && usuarioAjuste !== usuarioSesion)}
+                disabled={
+                  guardando ||
+                  estadoAjuste.toLowerCase() === "cancelado" ||
+                  estadoAjuste.toLowerCase() === "edición" ||
+                  (usuarioAjuste && usuarioAjuste !== usuarioSesion)
+                }
                 sx={{
-                  bgcolor: "#d9d9d9",
-                  color: "#000",
+                  bgcolor: "#d32f2f",
+                  color: "#fff",
                   fontWeight: "bold",
                   boxShadow: "none",
                   minWidth: 100,
-                  "&:hover": { bgcolor: "#c7c7c7", boxShadow: "none" },
+                  "&:hover": { bgcolor: "#b71c1c", boxShadow: "none" },
                 }}
               >
                 Cancelar
@@ -1363,26 +1592,41 @@ export default function AjustesInventario() {
                 variant="contained"
                 onClick={handleVistaPrevia}
                 sx={{
-                  bgcolor: "#d9d9d9",
-                  color: "#000",
+                  bgcolor: "#000000",
+                  color: "#fff",
                   fontWeight: "bold",
                   boxShadow: "none",
                   minWidth: 100,
-                  "&:hover": { bgcolor: "#c7c7c7", boxShadow: "none" },
+                  "&:hover": { bgcolor: "#424242", boxShadow: "none" },
                 }}
               >
                 Vista previa
               </Button>
               <Button
                 variant="contained"
-                onClick={handleSalir}
+                onClick={handleBuscar}
+                disabled={buscando}
                 sx={{
-                  bgcolor: "#d9d9d9",
-                  color: "#000",
+                  bgcolor: "#000000",
+                  color: "#fff",
                   fontWeight: "bold",
                   boxShadow: "none",
                   minWidth: 100,
-                  "&:hover": { bgcolor: "#c7c7c7", boxShadow: "none" },
+                  "&:hover": { bgcolor: "#424242", boxShadow: "none" },
+                }}
+              >
+                Buscar
+              </Button>
+              <Button
+                variant="contained"
+                onClick={handleSalir}
+                sx={{
+                  bgcolor: "#000000",
+                  color: "#fff",
+                  fontWeight: "bold",
+                  boxShadow: "none",
+                  minWidth: 100,
+                  "&:hover": { bgcolor: "#424242", boxShadow: "none" },
                 }}
               >
                 Salir
@@ -1406,7 +1650,7 @@ export default function AjustesInventario() {
       <Dialog
         open={abrirDialogoBuscar}
         onClose={handleCerrarDialogoBuscar}
-        maxWidth="md"
+        maxWidth="lg"
         fullWidth
       >
         <DialogTitle
@@ -1487,85 +1731,185 @@ export default function AjustesInventario() {
             </Button>
           </Stack>
 
-          <TableContainer component={Paper} sx={{ maxHeight: 320 }}>
+          <TableContainer component={Paper} sx={{ maxHeight: 380, overflowX: "auto" }}>
             <Table stickyHeader size="small">
               <TableHead>
                 <TableRow>
-                  {["Folio", "Fecha", "Usuario", "Total", "Estado", "Acciones"].map((col) => (
+                  {[
+                    { label: "", width: 40 },
+                    { label: "Folio", width: 55 },
+                    { label: "Fecha", width: 85 },
+                    { label: "Usuario", width: 80 },
+                    { label: "Clave", width: 80 },
+                    { label: "Descripción", width: 180 },
+                    { label: "Entrada", width: 65 },
+                    { label: "Salida", width: 65 },
+                    { label: "Total", width: 75 },
+                    { label: "Estado", width: 75 },
+                  ].map((h, idx) => (
                     <TableCell
-                      key={col}
+                      key={idx}
                       sx={{
                         fontWeight: "bold",
                         bgcolor: "#e3f2fd",
                         border: "1px solid #b0b0b0",
+                        width: h.width,
+                        py: 0.5,
+                        px: 1,
+                        fontSize: "0.78rem",
+                        whiteSpace: "nowrap",
                       }}
                     >
-                      {col}
+                      {idx === 0 ? (
+                        <Checkbox
+                          size="small"
+                          sx={{ p: 0 }}
+                          checked={(() => {
+                            const seleccionables = historialAjustesRaw
+                              .map((row, i) => ({ row, i }))
+                              .filter(({ row }) => !isRowDisabled(row));
+                            return (
+                              seleccionables.length > 0 &&
+                              seleccionables.every(({ i }) =>
+                                selectedRawIndexes.has(i)
+                              )
+                            );
+                          })()}
+                          indeterminate={(() => {
+                            const seleccionables = historialAjustesRaw
+                              .map((row, i) => ({ row, i }))
+                              .filter(({ row }) => !isRowDisabled(row));
+                            return (
+                              seleccionables.some(({ i }) =>
+                                selectedRawIndexes.has(i)
+                              ) &&
+                              !seleccionables.every(({ i }) =>
+                                selectedRawIndexes.has(i)
+                              )
+                            );
+                          })()}
+                          onChange={() => {
+                            const seleccionables = historialAjustesRaw
+                              .map((row, i) => ({ row, i }))
+                              .filter(({ row }) => !isRowDisabled(row));
+                            const todos = seleccionables.every(({ i }) =>
+                              selectedRawIndexes.has(i)
+                            );
+                            const next = new Set(selectedRawIndexes);
+                            if (todos) {
+                              seleccionables.forEach(({ i }) => next.delete(i));
+                            } else {
+                              seleccionables.forEach(({ i }) => next.add(i));
+                            }
+                            setSelectedRawIndexes(next);
+                          }}
+                        />
+                      ) : (
+                        h.label
+                      )}
                     </TableCell>
                   ))}
                 </TableRow>
               </TableHead>
               <TableBody>
-                {historialAjustes.length === 0 && !cargandoHistorial ? (
+                {historialAjustesRaw.length === 0 && !cargandoHistorial ? (
                   <TableRow>
-                    <TableCell colSpan={6} align="center" sx={{ border: "1px solid #b0b0b0" }}>
+                    <TableCell
+                      colSpan={10}
+                      align="center"
+                      sx={{ border: "1px solid #b0b0b0", py: 2 }}
+                    >
                       Sin resultados
                     </TableCell>
                   </TableRow>
                 ) : (
-                  historialAjustes.map((ajuste) => (
-                    <TableRow
-                      key={ajuste.folio}
-                      onClick={() => setAjusteSeleccionado(ajuste)}
-                      sx={{
-                        cursor: "pointer",
-                        bgcolor:
-                          ajusteSeleccionado?.folio === ajuste.folio
-                            ? "#e6e6e6"
-                            : "inherit",
-                        "&:hover": { bgcolor: "#e3f2fd" },
-                      }}
-                    >
-                      <TableCell sx={{ border: "1px solid #b0b0b0" }}>
-                        {ajuste.folio}
-                      </TableCell>
-                      <TableCell sx={{ border: "1px solid #b0b0b0" }}>
-                        {new Date(ajuste.fecha).toLocaleDateString("es-MX")}
-                      </TableCell>
-                      <TableCell sx={{ border: "1px solid #b0b0b0" }}>
-                        {ajuste.usuario}
-                      </TableCell>
-                      <TableCell sx={{ border: "1px solid #b0b0b0" }}>
-                        {formatoMoneda(ajuste.total)}
-                      </TableCell>
-                      <TableCell sx={{ border: "1px solid #b0b0b0" }}>
-                        {ajuste.estado}
-                      </TableCell>
-                      <TableCell sx={{ border: "1px solid #b0b0b0" }}>
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          disabled={
-                            ajuste.usuario !== usuarioSesion ||
-                            ajuste.estado?.toLowerCase() === "cancelado"
-                          }
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            seleccionarAjuste(ajuste);
-                          }}
+                  historialAjustesRaw.map((row, index) => {
+                    const disabled = isRowDisabled(row);
+                    const ajuste = ajustePorFolio[Number(row.folio) || 0];
+                    const clave = String(
+                      obtenerValor(
+                        row,
+                        "clave",
+                        "clave_prod",
+                        "claveProd",
+                        "cve_prod",
+                        "producto"
+                      ) || ""
+                    );
+                    const descripcion = String(
+                      obtenerValor(
+                        row,
+                        "descripcion",
+                        "descrip",
+                        "nombre",
+                        "desc"
+                      ) || ""
+                    );
+                    const entradas =
+                      asNumber(obtenerValor(row, "entradas", "entrada")) ?? 0;
+                    const salidas =
+                      asNumber(obtenerValor(row, "salidas", "salida")) ?? 0;
+                    const cellStyle = {
+                      border: "1px solid #b0b0b0",
+                      py: 0.5,
+                      px: 1,
+                      fontSize: "0.78rem",
+                      whiteSpace: "nowrap",
+                    };
+                    return (
+                      <TableRow key={index} hover>
+                        <TableCell
                           sx={{
-                            textTransform: "none",
-                            fontWeight: "bold",
-                            borderColor: "#000000",
-                            color: "#000000",
-                            "&:hover": { bgcolor: "#000000", color: "#fff" },
+                            ...cellStyle,
+                            textAlign: "center",
                           }}
                         >
-                          Seleccionar
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                          <Checkbox
+                            size="small"
+                            sx={{ p: 0 }}
+                            checked={selectedRawIndexes.has(index)}
+                            onChange={() => toggleRawIndex(index)}
+                            disabled={disabled}
+                          />
+                        </TableCell>
+                        <TableCell sx={cellStyle}>
+                          {Number(row.folio) || 0}
+                        </TableCell>
+                        <TableCell sx={cellStyle}>
+                          {new Date(row.fecha).toLocaleDateString("es-MX")}
+                        </TableCell>
+                        <TableCell sx={cellStyle}>
+                          {row.usuario}
+                        </TableCell>
+                        <TableCell sx={cellStyle}>
+                          {clave}
+                        </TableCell>
+                        <TableCell
+                          sx={{
+                            ...cellStyle,
+                            maxWidth: 220,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                          title={descripcion}
+                        >
+                          {descripcion}
+                        </TableCell>
+                        <TableCell sx={cellStyle}>
+                          {entradas}
+                        </TableCell>
+                        <TableCell sx={cellStyle}>
+                          {salidas}
+                        </TableCell>
+                        <TableCell sx={cellStyle}>
+                          {formatoMoneda(Number(row.total) || 0)}
+                        </TableCell>
+                        <TableCell sx={cellStyle}>
+                          {ajuste?.estado || row.estado || ""}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
@@ -1589,11 +1933,7 @@ export default function AjustesInventario() {
             <Button
               variant="contained"
               onClick={handleAceptarAjuste}
-              disabled={
-                !ajusteSeleccionado ||
-                ajusteSeleccionado.usuario !== usuarioSesion ||
-                ajusteSeleccionado.estado?.toLowerCase() === "cancelado"
-              }
+              disabled={selectedRawIndexes.size === 0}
               sx={{
                 bgcolor: "#000000",
                 color: "#fff",
@@ -1668,7 +2008,7 @@ export default function AjustesInventario() {
                 <strong>Fecha:</strong> {new Date().toLocaleDateString("es-MX")}
               </Typography>
               <Typography>
-                <strong>Sucursal:</strong> {sucursalSesion || "—"}
+                <strong>Sucursal:</strong> {nombreSucursalSesion}
               </Typography>
               <Typography sx={{ textAlign: "right" }}>
                 <strong>Tipo de ajuste:</strong>{" "}
@@ -1677,7 +2017,7 @@ export default function AjustesInventario() {
                   ?.descripcion?.toUpperCase() || "—"}
               </Typography>
               <Typography>
-                <strong>Origen del ajuste:</strong> {sucursalSesion || "—"}
+                <strong>Origen del ajuste:</strong> {nombreSucursalSesion}
               </Typography>
               <Typography sx={{ textAlign: "right" }}>
                 <strong>Documento:</strong> {folioDocumento.trim() || "—"}

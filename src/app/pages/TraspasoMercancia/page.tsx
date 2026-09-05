@@ -263,6 +263,58 @@ export default function TraspasoMercancia() {
   const [fecha, setFecha] = useState<string>(fechaHoy);
   const [sucOrigen, setSucOrigen] = useState<number | "">("");
   const [sucDestino, setSucDestino] = useState<number | "">("");
+  const [sucDestinoOcupada, setSucDestinoOcupada] = useState(false);
+
+  const verificarSucDestinoOcupada = useCallback(
+    async (sucDestinoNum: number) => {
+      if (!sucOrigen || !sucDestinoNum) return false;
+      try {
+        const response = await consumoApi.get(
+          "/api/CatTraspasoSalida/sp_bw_buscar_traspasos_por_fecha",
+          {
+            params: {
+              fechaInicio: fechaHoy,
+              fechaFin: fechaHoy,
+              sucOrigen,
+            },
+          }
+        );
+        const data = Array.isArray(response.data) ? response.data : [];
+        const ocupada = data.some((item: any) => {
+          const itemSucDestino =
+            Number(obtenerValor(item, "sucDestino", "SucDestino", "suc_destino", "sucursalDestino")) || 0;
+          const itemUsuario = String(obtenerValor(item, "usuario", "Usuario") || "").trim().toLowerCase();
+          const itemFolio = Number(obtenerValor(item, "folio") || 0);
+          const itemEstado = String(obtenerValor(item, "estado", "leyenda") || "").toUpperCase();
+          return (
+            itemSucDestino === sucDestinoNum &&
+            itemUsuario !== (usuarioSesion || "").trim().toLowerCase() &&
+            itemFolio === 0 &&
+            itemEstado !== "CANCELADO" &&
+            itemEstado !== "FINALIZADO" &&
+            itemEstado !== "ACEPTADO"
+          );
+        });
+        return ocupada;
+      } catch (err) {
+        console.error("Error verificando sucursal destino:", err);
+        return false;
+      }
+    },
+    [sucOrigen, usuarioSesion, fechaHoy, consumoApi]
+  );
+
+  useEffect(() => {
+    if (!sucOrigen || !sucDestino) {
+      setSucDestinoOcupada(false);
+      return;
+    }
+    const verificar = async () => {
+      const ocupada = await verificarSucDestinoOcupada(Number(sucDestino));
+      setSucDestinoOcupada(ocupada);
+    };
+    verificar();
+  }, [sucDestino, sucOrigen, verificarSucDestinoOcupada]);
 
   const emptyRow: TraspasoRow = {
     id: Date.now(),
@@ -404,6 +456,18 @@ export default function TraspasoMercancia() {
       return;
     }
 
+    if (await verificarSucDestinoOcupada(Number(sucDestino))) {
+      await Swal.fire({
+        icon: "warning",
+        title: "Sucursal destino ocupada",
+        text: "Otro usuario ya está trabajando un traspaso a esta sucursal destino. No puedes agregar registros.",
+        confirmButtonColor: "#000000",
+      });
+      updateRow(row.id, "clave", "");
+      updateRow(row.id, "descripcion", "");
+      return;
+    }
+
     const claveNormalizada = claveInput.toLowerCase();
     const duplicado = rows.find(
       (r) => r.id !== row.id && r.clave.trim().toLowerCase() === claveNormalizada
@@ -434,7 +498,7 @@ export default function TraspasoMercancia() {
           claveInput: claveInput,
           claveProd: claveInput,
           claveProdAnterior: row.clave.trim() || null,
-          cantidad: Number(row.cantidad) || 1,
+          cantidad: Number(row.cantidad) || 0,
           costo: 0,
           tasaIva: 0,
           precioMenudeo: 0,
@@ -474,7 +538,7 @@ export default function TraspasoMercancia() {
             return defecto;
           };
 
-          const cantidadVal = Number(buscarCampo(["cantidad", "cant"], row.cantidad)) || 0;
+          const cantidadInicial = Number(row.cantidad) || 0;
           const costoVal =
             Number(
               buscarCampo(
@@ -528,10 +592,10 @@ export default function TraspasoMercancia() {
                     ...r,
                     clave: claveVal,
                     descripcion: descripcionVal,
-                    cantidad: cantidadVal,
+                    cantidad: cantidadInicial,
                     costoProm: costoVal,
                     exis: exisVal,
-                    importe: cantidadVal * costoVal,
+                    importe: cantidadInicial * costoVal,
                     esFraccion: esFraccionVal,
                     recuperado: recuperadoVal,
                     cantidadAnterior: cantidadAnteriorVal,
@@ -577,12 +641,46 @@ export default function TraspasoMercancia() {
     setTraspasoGuardado(false);
   };
 
+  const handleCambioSucDestino = (valor: number | "") => {
+    setFolio(0);
+    setFecha(fechaHoy);
+    setSucDestino(valor);
+    setUnidad("");
+    const newRow = { ...emptyRow, id: Date.now() };
+    setRows([newRow]);
+    setSelectedRowId(newRow.id);
+    setVerNoValidados(false);
+    setTraspasoGuardado(false);
+    setTraspasosSeleccionados([]);
+  };
+
   const handleGuardar = async () => {
     if (!sucDestino) {
       Swal.fire({
         icon: "warning",
         title: "Atención",
         text: "Indique la sucursal destino.",
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
+
+    const renglonesConProducto = rows.filter((r) => r.clave.trim() !== "");
+    if (renglonesConProducto.length === 0) {
+      Swal.fire({
+        icon: "warning",
+        title: "Atención",
+        text: "Agrega al menos un producto al traspaso.",
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
+    const conCantidadInvalida = renglonesConProducto.find((r) => Number(r.cantidad) <= 0);
+    if (conCantidadInvalida) {
+      Swal.fire({
+        icon: "warning",
+        title: "Atención",
+        text: "Todos los productos deben tener una cantidad mayor a 0.",
         confirmButtonColor: "#000000",
       });
       return;
@@ -776,7 +874,7 @@ export default function TraspasoMercancia() {
           sucursal: Number(sucOrigen) || 0,
           sucDestino: Number(sucDestino) || 0,
           claveProd,
-          cantidad: Number(nuevaCantidad) || 1,
+          cantidad: Number(nuevaCantidad) || 0,
           observaciones:
             Number(folio) > 0
               ? "EDITADO"
@@ -1087,7 +1185,16 @@ export default function TraspasoMercancia() {
     setDialogoBuscarAbierto(false);
   };
 
-  const handleAgregarRenglon = () => {
+  const handleAgregarRenglon = async () => {
+    if (sucDestino && (await verificarSucDestinoOcupada(Number(sucDestino)))) {
+      Swal.fire({
+        icon: "warning",
+        title: "Sucursal destino ocupada",
+        text: "Otro usuario ya está trabajando un traspaso a esta sucursal destino. No puedes agregar registros.",
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
     const ultima = displayedRows[displayedRows.length - 1];
     if (displayedRows.length > 0 && !ultima?.clave.trim()) {
       setSelectedRowId(ultima.id);
@@ -1299,7 +1406,10 @@ export default function TraspasoMercancia() {
                   labelId="destino-label"
                   value={sucDestino}
                   label="Sucursal destino"
-                  onChange={(e) => setSucDestino(Number(e.target.value))}
+                  onChange={(e) => {
+                    const nuevoDestino = e.target.value === "" ? "" : Number(e.target.value);
+                    handleCambioSucDestino(nuevoDestino);
+                  }}
                 >
                   {sucursales
                     .filter((s) => s.cve_sucursal !== sucOrigen)
@@ -1379,7 +1489,7 @@ export default function TraspasoMercancia() {
                     <TableCell sx={cellSx}>
                       <Autocomplete
                         size="small"
-                        disabled={sucDestino === "" || !puedeEditarFila(row)}
+                        disabled={sucDestino === "" || !puedeEditarFila(row) || sucDestinoOcupada}
                         options={productosSelector}
                         loading={cargandoProductos}
                         value={productosSelector.find((producto) => producto.Clave.trim() === row.clave) || null}
@@ -1420,7 +1530,7 @@ export default function TraspasoMercancia() {
                     <TableCell sx={{ ...cellSx, width: 300 }}>
                       <Autocomplete
                         size="small"
-                        disabled={sucDestino === "" || !puedeEditarFila(row)}
+                        disabled={sucDestino === "" || !puedeEditarFila(row) || sucDestinoOcupada}
                         options={productosSelector}
                         loading={cargandoProductos}
                         value={productosSelector.find((producto) => producto.Clave.trim() === row.clave) || null}
@@ -1475,6 +1585,10 @@ export default function TraspasoMercancia() {
                         onBlur={async (e) => {
                           const nuevaCantidad = Number(e.target.value) || 0;
                           const anterior = cantidadAnteriorRef.current[row.id] ?? 0;
+                          if (nuevaCantidad === 0) {
+                            updateRow(row.id, "cantidad", 0);
+                            return;
+                          }
                           const esValida = await validarCantidad(nuevaCantidad, {
                             existencia: row.exis,
                             esFraccion: row.esFraccion,
@@ -1545,7 +1659,7 @@ export default function TraspasoMercancia() {
               size="small"
               startIcon={<AddIcon />}
               onClick={handleAgregarRenglon}
-              disabled={traspasoAceptado || traspasoCancelado || traspasoOtroUsuario}
+              disabled={traspasoAceptado || traspasoCancelado || traspasoFinalizado || traspasoOtroUsuario || sucDestinoOcupada}
               sx={{
                 bgcolor: "#000000",
                 color: "#fff",
