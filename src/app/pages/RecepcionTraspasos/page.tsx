@@ -2,6 +2,10 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Box,
   Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControl,
   FormControlLabel,
   InputLabel,
@@ -19,8 +23,11 @@ import {
   TableRow,
   TextField,
   Typography,
+  Checkbox,
   CircularProgress,
+  IconButton,
 } from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
 import Swal from "sweetalert2";
 import useConsumoApi from "../../../hooks/useConsumoApi";
 import { useAuth } from "../../../context/AuthContext";
@@ -95,9 +102,14 @@ export default function RecepcionTraspasos() {
   const [sucursales, setSucursales] = useState<Sucursal[]>([]);
   const [sucOrigen, setSucOrigen] = useState<number | "">("");
   const [folio, setFolio] = useState<string>("");
+  const [folioBuscar, setFolioBuscar] = useState<string>("");
   const [fechaInicio, setFechaInicio] = useState(fechaHoy);
   const [fechaFin, setFechaFin] = useState(fechaHoy);
   const [renglones, setRenglones] = useState<RenglonTraspaso[]>([]);
+  const [dialogoBuscarAbierto, setDialogoBuscarAbierto] = useState(false);
+  const [abrirVistaPreviaCarta, setAbrirVistaPreviaCarta] = useState(false);
+  const [resultadosBusqueda, setResultadosBusqueda] = useState<any[]>([]);
+  const [seleccionadosDialogo, setSeleccionadosDialogo] = useState<number[]>([]);
   const [cargandoRecuperar, setCargandoRecuperar] = useState(false);
   const [cargandoBuscar, setCargandoBuscar] = useState(false);
   const [guardando, setGuardando] = useState(false);
@@ -147,6 +159,16 @@ export default function RecepcionTraspasos() {
   const nombreSucursal = useMemo(
     () => sucursales.find((s) => s.cve_sucursal === sucursalDestino)?.nombre || "",
     [sucursales, sucursalDestino]
+  );
+
+  const nombreSucursalOrigen = useMemo(
+    () => sucursales.find((s) => s.cve_sucursal === Number(sucOrigen))?.nombre || String(sucOrigen || "—"),
+    [sucursales, sucOrigen]
+  );
+
+  const totalCantidadPiezas = useMemo(
+    () => renglones.reduce((sum, r) => sum + (Number(r.cantidad) || 0), 0),
+    [renglones]
   );
 
   const { subtotal, iva, total } = useMemo(() => {
@@ -356,7 +378,7 @@ export default function RecepcionTraspasos() {
     }
   };
 
-  const handleBuscar = async () => {
+  const handleBuscar = () => {
     if (cia <= 0) {
       Swal.fire({
         icon: "warning",
@@ -376,6 +398,13 @@ export default function RecepcionTraspasos() {
       return;
     }
 
+    setResultadosBusqueda([]);
+    setSeleccionadosDialogo([]);
+    setDialogoBuscarAbierto(true);
+    ejecutarBusquedaPendientes();
+  };
+
+  const ejecutarBusquedaPendientes = async () => {
     setCargandoBuscar(true);
     try {
       const response = await consumoApi.get(
@@ -392,151 +421,20 @@ export default function RecepcionTraspasos() {
         }
       );
 
-      const resultados = (Array.isArray(response.data) ? response.data : []).filter(
+      const todosResultados = (Array.isArray(response.data) ? response.data : []).filter(
         (item: any) => Number(obtenerValor(item, "folio") || 0) > 0
       );
-      resultadosBusquedaRef.current = resultados;
 
-      if (resultados.length === 0) {
-        Swal.fire({
-          icon: "info",
-          title: "Sin resultados",
-          text: "No hay traspasos pendientes de recepción en el rango indicado.",
-          confirmButtonColor: "#000000",
-        });
-        return;
-      }
-
-      const filasHtml = resultados
-        .map((item: any) => {
-          const folioResultado = String(obtenerValor(item, "folio") || "");
-          const fechaResultado = obtenerValor(item, "fecha");
-          const fechaTexto = fechaResultado
-            ? new Date(fechaResultado).toLocaleDateString("es-MX")
-            : "";
-          const sucOrigenResultado = obtenerValor(item, "suc_origen", "sucOrigen") || "";
-          const sucDestinoResultado = obtenerValor(item, "suc_destino", "sucDestino") || "";
-          const nombreOrigen =
-            sucursales.find((s) => s.cve_sucursal === Number(sucOrigenResultado))?.nombre ||
-            String(sucOrigenResultado);
-          const nombreDestino =
-            sucursales.find((s) => s.cve_sucursal === Number(sucDestinoResultado))?.nombre ||
-            String(sucDestinoResultado);
-          const claveProdResultado = String(
-            obtenerValor(item, "clave", "clave_prod", "claveProd") || ""
-          );
-          const descripcionResultado = String(
-            obtenerValor(item, "descripcion", "descrip", "nombre", "desc") || ""
-          );
-          const cantidadResultado = Number(
-            obtenerValor(item, "cantidad", "cant") || 0
-          );
-          const costoResultado = Number(
-            obtenerValor(item, "costo", "ultimo_costo", "ultimoCosto", "costoProm") || 0
-          );
-          const tasaIvaResultado = Number(
-            obtenerValor(item, "tasaIva", "tasa_iva", "iva") || 0
-          );
-          const tasaIvaDecimal =
-            tasaIvaResultado > 1 ? tasaIvaResultado / 100 : tasaIvaResultado;
-          const importeResultado =
-            Number(
-              obtenerValor(item, "importe", "total_general", "totalGeneral") || 0
-            ) ||
-            (cantidadResultado * costoResultado * (1 + tasaIvaDecimal));
-
-          return `
-            <tr>
-              <td style="padding:6px;border:1px solid #ddd;text-align:center;">
-                <input type="checkbox" name="folioRecepcion" value="${escaparHtml(folioResultado)}|${escaparHtml(claveProdResultado)}|${escaparHtml(sucOrigenResultado)}" />
-              </td>
-              <td style="padding:6px;border:1px solid #ddd;">${escaparHtml(folioResultado)}</td>
-              <td style="padding:6px;border:1px solid #ddd;">${escaparHtml(fechaTexto)}</td>
-              <td style="padding:6px;border:1px solid #ddd;text-align:center;">${escaparHtml(nombreOrigen)}</td>
-              <td style="padding:6px;border:1px solid #ddd;text-align:center;">${escaparHtml(nombreDestino)}</td>
-              <td style="padding:6px;border:1px solid #ddd;">${escaparHtml(claveProdResultado)}</td>
-              <td style="padding:6px;border:1px solid #ddd;">${escaparHtml(descripcionResultado)}</td>
-              <td style="padding:6px;border:1px solid #ddd;text-align:center;">${cantidadResultado}</td>
-              <td style="padding:6px;border:1px solid #ddd;text-align:right;">${formatoMoneda(costoResultado)}</td>
-              <td style="padding:6px;border:1px solid #ddd;text-align:center;">${tasaIvaResultado}%</td>
-              <td style="padding:6px;border:1px solid #ddd;text-align:right;">${formatoMoneda(importeResultado)}</td>
-            </tr>`;
-        })
-        .join("");
-
-      const seleccion = await Swal.fire({
-        icon: "info",
-        title: "Traspasos pendientes",
-        html: `
-          <div style="max-height:420px;overflow:auto;text-align:left;">
-            <table style="width:100%;border-collapse:collapse;font-size:12px;">
-              <thead>
-                <tr style="background:#f0f0f0;">
-                  <th style="padding:6px;border:1px solid #ddd;text-align:center;">
-                    <input type="checkbox" id="selectAll" title="Seleccionar todos" />
-                  </th>
-                  <th style="padding:6px;border:1px solid #ddd;">Folio</th>
-                  <th style="padding:6px;border:1px solid #ddd;">Fecha</th>
-                  <th style="padding:6px;border:1px solid #ddd;">Origen</th>
-                  <th style="padding:6px;border:1px solid #ddd;">Destino</th>
-                  <th style="padding:6px;border:1px solid #ddd;">Clave</th>
-                  <th style="padding:6px;border:1px solid #ddd;">Descripción</th>
-                  <th style="padding:6px;border:1px solid #ddd;">Cantidad</th>
-                  <th style="padding:6px;border:1px solid #ddd;">Costo</th>
-                  <th style="padding:6px;border:1px solid #ddd;">Tasa I</th>
-                  <th style="padding:6px;border:1px solid #ddd;">Importe</th>
-                </tr>
-              </thead>
-              <tbody>${filasHtml}</tbody>
-            </table>
-          </div>
-          <p style="margin:12px 0 0;font-size:13px;">Selecciona uno o más traspasos para cargarlos.</p>
-        `,
-        showCancelButton: true,
-        confirmButtonText: "Seleccionar",
-        cancelButtonText: "Cerrar",
-        confirmButtonColor: "#000000",
-        width: "min(95vw, 1000px)",
-        didOpen: () => {
-          const selectAll = document.getElementById("selectAll") as HTMLInputElement | null;
-          if (!selectAll) return;
-          selectAll.addEventListener("change", () => {
-            document.querySelectorAll<HTMLInputElement>('input[name="folioRecepcion"]').forEach((cb) => {
-              cb.checked = selectAll.checked;
-            });
-          });
-        },
-        preConfirm: () => {
-          const seleccionados = Array.from(
-            document.querySelectorAll<HTMLInputElement>(
-              'input[name="folioRecepcion"]:checked'
+      const folioNum = folioBuscar.trim() !== "" ? Number(folioBuscar.trim()) : null;
+      const resultados =
+        folioNum !== null && !isNaN(folioNum)
+          ? todosResultados.filter(
+              (item: any) => Number(obtenerValor(item, "folio") || 0) === folioNum
             )
-          ).map((i) => i.value);
-          if (seleccionados.length === 0) {
-            Swal.showValidationMessage("Selecciona al menos un traspaso.");
-          }
-          return seleccionados;
-        },
-      });
+          : todosResultados;
 
-      if (
-        seleccion.isConfirmed &&
-        Array.isArray(seleccion.value) &&
-        seleccion.value.length > 0
-      ) {
-        const seleccionados = seleccion.value
-          .map((val: string) => {
-            const partes = String(val || "").split("|");
-            const folio = partes[0]?.trim();
-            const clave = partes[1]?.trim();
-            const sucOrigen = Number(partes[2] || 0);
-            if (!folio || !clave || !sucOrigen) return null;
-            return { folio, clave, suc_origen: sucOrigen };
-          })
-          .filter(Boolean) as any[];
-
-        await handleRecuperarSeleccionados(seleccionados);
-      }
+      setResultadosBusqueda(resultados);
+      setSeleccionadosDialogo([]);
     } catch (err: any) {
       Swal.fire({
         icon: "error",
@@ -548,6 +446,36 @@ export default function RecepcionTraspasos() {
       });
     } finally {
       setCargandoBuscar(false);
+    }
+  };
+
+  const handleCargarSeleccionadosDialogo = async () => {
+    if (seleccionadosDialogo.length === 0) return;
+    const seleccionados = seleccionadosDialogo.map((idx) => {
+      const item = resultadosBusqueda[idx];
+      return {
+        folio: String(obtenerValor(item, "folio") || "").trim(),
+        clave: String(obtenerValor(item, "clave", "clave_prod", "claveProd") || "").trim(),
+        suc_origen: Number(obtenerValor(item, "suc_origen", "sucOrigen") || sucOrigen),
+      };
+    }).filter((x) => x.folio && x.clave);
+
+    setDialogoBuscarAbierto(false);
+    setSeleccionadosDialogo([]);
+    await handleRecuperarSeleccionados(seleccionados);
+  };
+
+  const toggleSeleccionDialogo = (index: number) => {
+    setSeleccionadosDialogo((prev) =>
+      prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]
+    );
+  };
+
+  const toggleSeleccionarTodosDialogo = () => {
+    if (seleccionadosDialogo.length === resultadosBusqueda.length) {
+      setSeleccionadosDialogo([]);
+    } else {
+      setSeleccionadosDialogo(resultadosBusqueda.map((_, i) => i));
     }
   };
 
@@ -692,13 +620,14 @@ export default function RecepcionTraspasos() {
       return;
     }
     if (formatoSalida === "carta") {
-      document.body.classList.add("modo-carta");
-      const limpiar = () => document.body.classList.remove("modo-carta");
-      window.addEventListener("afterprint", limpiar, { once: true });
-      window.print();
+      setAbrirVistaPreviaCarta(true);
     } else {
       window.print();
     }
+  };
+
+  const ejecutarImpresionCarta = () => {
+    window.print();
   };
 
   const handleCerrar = () => {
@@ -715,7 +644,28 @@ export default function RecepcionTraspasos() {
 
   return (
     <>
-      <style>{'body.modo-carta .no-imprimir-carta { display: none !important; }'}</style>
+      <style>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          #seccion-impresion-carta, #seccion-impresion-carta * {
+            visibility: visible;
+          }
+          #seccion-impresion-carta {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            padding: 20px;
+            margin: 0;
+            background: #fff;
+          }
+          .no-imprimir {
+            display: none !important;
+          }
+        }
+      `}</style>
       <Box sx={{ p: { xs: 2, md: 3 }, bgcolor: "#f3f4f6", minHeight: "100vh" }}>
       <Box sx={{ width: "100%", maxWidth: 900, mx: "auto" }}>
         <Paper
@@ -835,11 +785,18 @@ export default function RecepcionTraspasos() {
             <TableContainer
               component={Paper}
               variant="outlined"
-              sx={{ border: "1px solid #9e9e9e", borderRadius: 0, boxShadow: "none", mb: 1 }}
+              sx={{
+                border: "1px solid #9e9e9e",
+                borderRadius: 0,
+                boxShadow: "none",
+                mb: 1,
+                maxHeight: 340,
+                overflowY: "auto",
+              }}
             >
-              <Table size="small" sx={{ tableLayout: "fixed" }}>
+              <Table size="small" stickyHeader sx={{ tableLayout: "fixed" }}>
                 <TableHead>
-                  <TableRow sx={{ bgcolor: "#f0f0f0" }}>
+                  <TableRow>
                     {[
                       { name: "Clave", width: 100 },
                       { name: "Descripción", width: 260 },
@@ -848,13 +805,13 @@ export default function RecepcionTraspasos() {
                       { name: "Tasa I", width: 70 },
                       { name: "Importe", width: 100 },
                     ].map((h, idx) => (
-                      <TableCell key={idx} sx={{ ...cellSx, fontWeight: "bold", width: h.width }}>
+                      <TableCell key={idx} sx={{ ...cellSx, fontWeight: "bold", width: h.width, bgcolor: "#f0f0f0" }}>
                         {h.name}
                       </TableCell>
                     ))}
                   </TableRow>
                 </TableHead>
-                <TableBody sx={{ height: 260 }}>
+                <TableBody>
                   {renglones.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} sx={{ ...cellSx, height: 220 }} align="center">
@@ -1010,6 +967,360 @@ export default function RecepcionTraspasos() {
           </Box>
         </Paper>
       </Box>
+
+      {/* Diálogo de búsqueda de traspasos pendientes */}
+      <Dialog
+        open={dialogoBuscarAbierto}
+        onClose={() => setDialogoBuscarAbierto(false)}
+        maxWidth="lg"
+        fullWidth
+      >
+        <DialogTitle sx={{ bgcolor: "#000000", color: "#ffffff" }}>
+          Búsqueda de traspasos pendientes
+        </DialogTitle>
+        <DialogContent>
+          <Stack direction="row" spacing={2} alignItems="center" sx={{ mt: 1, mb: 2 }}>
+            <TextField
+              label="Folio"
+              type="number"
+              size="small"
+              sx={{ width: 120 }}
+              value={folioBuscar}
+              onChange={(e) => setFolioBuscar(e.target.value)}
+              placeholder="Todos"
+              InputLabelProps={{ shrink: true }}
+            />
+            <TextField
+              label="Fecha inicio"
+              type="date"
+              size="small"
+              value={fechaInicio}
+              onChange={(e) => setFechaInicio(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
+            <TextField
+              label="Fecha fin"
+              type="date"
+              size="small"
+              value={fechaFin}
+              onChange={(e) => setFechaFin(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
+            <Button
+              variant="contained"
+              onClick={ejecutarBusquedaPendientes}
+              disabled={cargandoBuscar}
+              startIcon={cargandoBuscar ? <CircularProgress size={14} color="inherit" /> : undefined}
+              sx={{ bgcolor: "#000000", color: "#fff", "&:hover": { bgcolor: "#333333" } }}
+            >
+              Buscar
+            </Button>
+          </Stack>
+
+          <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 380, overflowX: "auto" }}>
+            <Table size="small" stickyHeader sx={{ width: "100%", minWidth: 800 }}>
+              <TableHead>
+                <TableRow sx={{ bgcolor: "#f9fafb" }}>
+                  <TableCell sx={{ fontWeight: "bold", width: 50, textAlign: "center" }}>
+                    <Checkbox
+                      size="small"
+                      checked={
+                        resultadosBusqueda.length > 0 &&
+                        seleccionadosDialogo.length === resultadosBusqueda.length
+                      }
+                      indeterminate={
+                        seleccionadosDialogo.length > 0 &&
+                        seleccionadosDialogo.length < resultadosBusqueda.length
+                      }
+                      onChange={toggleSeleccionarTodosDialogo}
+                    />
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: "bold", width: 70 }}>Folio</TableCell>
+                  <TableCell sx={{ fontWeight: "bold", width: 90 }}>Fecha</TableCell>
+                  <TableCell sx={{ fontWeight: "bold", width: 100 }}>Origen</TableCell>
+                  <TableCell sx={{ fontWeight: "bold", width: 100 }}>Destino</TableCell>
+                  <TableCell sx={{ fontWeight: "bold", width: 85 }}>Clave</TableCell>
+                  <TableCell sx={{ fontWeight: "bold", width: 220 }}>Descripción</TableCell>
+                  <TableCell sx={{ fontWeight: "bold", width: 70, textAlign: "center" }}>Cantidad</TableCell>
+                  <TableCell sx={{ fontWeight: "bold", width: 85, textAlign: "right" }}>Costo</TableCell>
+                  <TableCell sx={{ fontWeight: "bold", width: 65, textAlign: "center" }}>Tasa I</TableCell>
+                  <TableCell sx={{ fontWeight: "bold", width: 90, textAlign: "right" }}>Importe</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {resultadosBusqueda.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={11} align="center" sx={{ py: 3 }}>
+                      {cargandoBuscar ? "Buscando..." : "Sin resultados"}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  resultadosBusqueda.map((item, idx) => {
+                    const folioResultado = String(obtenerValor(item, "folio") || "");
+                    const fechaResultado = obtenerValor(item, "fecha");
+                    const fechaTexto = fechaResultado
+                      ? new Date(fechaResultado).toLocaleDateString("es-MX")
+                      : "";
+                    const sucOrigenResultado = obtenerValor(item, "suc_origen", "sucOrigen") || "";
+                    const sucDestinoResultado = obtenerValor(item, "suc_destino", "sucDestino") || "";
+                    const nombreOrigen =
+                      sucursales.find((s) => s.cve_sucursal === Number(sucOrigenResultado))?.nombre ||
+                      String(sucOrigenResultado);
+                    const nombreDestino =
+                      sucursales.find((s) => s.cve_sucursal === Number(sucDestinoResultado))?.nombre ||
+                      String(sucDestinoResultado);
+                    const claveProdResultado = String(
+                      obtenerValor(item, "clave", "clave_prod", "claveProd") || ""
+                    );
+                    const descripcionResultado = String(
+                      obtenerValor(item, "descripcion", "descrip", "nombre", "desc") || ""
+                    );
+                    const cantidadResultado = Number(
+                      obtenerValor(item, "cantidad", "cant") || 0
+                    );
+                    const costoResultado = Number(
+                      obtenerValor(item, "costo", "ultimo_costo", "ultimoCosto", "costoProm") || 0
+                    );
+                    const tasaIvaResultado = Number(
+                      obtenerValor(item, "tasaIva", "tasa_iva", "iva") || 0
+                    );
+                    const tasaIvaDecimal =
+                      tasaIvaResultado > 1 ? tasaIvaResultado / 100 : tasaIvaResultado;
+                    const importeResultado =
+                      Number(
+                        obtenerValor(item, "importe", "total_general", "totalGeneral") || 0
+                      ) ||
+                      (cantidadResultado * costoResultado * (1 + tasaIvaDecimal));
+
+                    return (
+                      <TableRow key={idx} hover>
+                        <TableCell sx={{ textAlign: "center" }}>
+                          <Checkbox
+                            size="small"
+                            checked={seleccionadosDialogo.includes(idx)}
+                            onChange={() => toggleSeleccionDialogo(idx)}
+                          />
+                        </TableCell>
+                        <TableCell>{folioResultado}</TableCell>
+                        <TableCell>{fechaTexto}</TableCell>
+                        <TableCell>{nombreOrigen}</TableCell>
+                        <TableCell>{nombreDestino}</TableCell>
+                        <TableCell>{claveProdResultado}</TableCell>
+                        <TableCell sx={{ maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={descripcionResultado}>
+                          {descripcionResultado}
+                        </TableCell>
+                        <TableCell sx={{ textAlign: "center" }}>{cantidadResultado}</TableCell>
+                        <TableCell sx={{ textAlign: "right" }}>{formatoMoneda(costoResultado)}</TableCell>
+                        <TableCell sx={{ textAlign: "center" }}>{tasaIvaResultado}%</TableCell>
+                        <TableCell sx={{ textAlign: "right" }}>{formatoMoneda(importeResultado)}</TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDialogoBuscarAbierto(false)} variant="outlined">
+            Cerrar
+          </Button>
+          <Button
+            onClick={handleCargarSeleccionadosDialogo}
+            variant="contained"
+            disabled={seleccionadosDialogo.length === 0}
+            sx={{ bgcolor: "#000000", color: "#fff", "&:hover": { bgcolor: "#333333" } }}
+          >
+            Seleccionar ({seleccionadosDialogo.length})
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Diálogo de vista previa formato Carta estilizado */}
+      <Dialog
+        open={abrirVistaPreviaCarta}
+        onClose={() => setAbrirVistaPreviaCarta(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle
+          sx={{
+            m: 0,
+            p: 2,
+            bgcolor: "#000000",
+            color: "#fff",
+            fontWeight: "bold",
+          }}
+        >
+          Vista previa de recepción de traspaso (Formato Carta)
+          <IconButton
+            aria-label="close"
+            onClick={() => setAbrirVistaPreviaCarta(false)}
+            sx={{
+              position: "absolute",
+              right: 8,
+              top: 8,
+              color: "#fff",
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Box id="seccion-impresion-carta" sx={{ p: { xs: 1, sm: 2 }, bgcolor: "#fff" }}>
+            <Typography
+              variant="h5"
+              align="center"
+              sx={{ fontWeight: "bold", letterSpacing: 1 }}
+            >
+              BERLLANO
+            </Typography>
+            <Typography
+              variant="subtitle1"
+              align="center"
+              sx={{ fontWeight: "bold", color: "#424242", mb: 1.5 }}
+            >
+              RECEPCIÓN DE TRASPASO DE MERCANCÍAS
+            </Typography>
+
+            <Box sx={{ borderTop: "2px solid #000", my: 1 }} />
+
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+                gap: 0.8,
+                fontSize: "0.88rem",
+                mb: 1.5,
+              }}
+            >
+              <Typography variant="body2">
+                <strong>FOLIO TRASPASO:</strong> {folio || "—"}
+              </Typography>
+              <Typography variant="body2" sx={{ textAlign: { sm: "right" } }}>
+                <strong>Fecha recepción:</strong> {new Date().toLocaleDateString("es-MX")} {new Date().toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Sucursal origen:</strong> {nombreSucursalOrigen}
+              </Typography>
+              <Typography variant="body2" sx={{ textAlign: { sm: "right" } }}>
+                <strong>Sucursal destino:</strong> {nombreSucursal || sucursales.find((s) => s.cve_sucursal === sucursalDestino)?.nombre || "—"}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Usuario receptor:</strong> {usuarioSesion}
+              </Typography>
+              <Typography variant="body2" sx={{ textAlign: { sm: "right" } }}>
+                <strong>Compañía:</strong> {cia}
+              </Typography>
+            </Box>
+
+            <Box sx={{ borderTop: "1px dashed #757575", my: 1 }} />
+
+            <TableContainer component={Paper} variant="outlined" sx={{ mb: 1.5, boxShadow: "none", border: "1px solid #b0b0b0" }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow sx={{ bgcolor: "#f5f5f5" }}>
+                    <TableCell sx={{ fontWeight: "bold", py: 0.8, border: "1px solid #b0b0b0" }}>Clave</TableCell>
+                    <TableCell sx={{ fontWeight: "bold", py: 0.8, border: "1px solid #b0b0b0" }}>Descripción</TableCell>
+                    <TableCell sx={{ fontWeight: "bold", textAlign: "right", py: 0.8, border: "1px solid #b0b0b0" }}>Cant.</TableCell>
+                    <TableCell sx={{ fontWeight: "bold", textAlign: "right", py: 0.8, border: "1px solid #b0b0b0" }}>Costo U.</TableCell>
+                    <TableCell sx={{ fontWeight: "bold", textAlign: "center", py: 0.8, border: "1px solid #b0b0b0" }}>IVA</TableCell>
+                    <TableCell sx={{ fontWeight: "bold", textAlign: "right", py: 0.8, border: "1px solid #b0b0b0" }}>Importe</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {renglones.map((r, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell sx={{ border: "1px solid #e0e0e0", py: 0.6 }}>{r.clave}</TableCell>
+                      <TableCell sx={{ border: "1px solid #e0e0e0", py: 0.6 }}>{r.descripcion}</TableCell>
+                      <TableCell sx={{ border: "1px solid #e0e0e0", textAlign: "right", py: 0.6 }}>{r.cantidad}</TableCell>
+                      <TableCell sx={{ border: "1px solid #e0e0e0", textAlign: "right", py: 0.6 }}>{formatoMoneda(r.costo)}</TableCell>
+                      <TableCell sx={{ border: "1px solid #e0e0e0", textAlign: "center", py: 0.6 }}>{r.tasaIva}%</TableCell>
+                      <TableCell sx={{ border: "1px solid #e0e0e0", textAlign: "right", py: 0.6 }}>{formatoMoneda(r.importe)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+
+            <Box sx={{ borderTop: "1px dashed #757575", my: 1 }} />
+
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 1,
+                mb: 3,
+              }}
+            >
+              <Box>
+                <Typography variant="body2">
+                  <strong>Total de partidas:</strong> {renglones.length}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Total de piezas:</strong> {totalCantidadPiezas}
+                </Typography>
+              </Box>
+              <Box sx={{ textAlign: "right" }}>
+                <Typography variant="body2">
+                  <strong>Subtotal:</strong> {formatoMoneda(subtotal)}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>IVA:</strong> {formatoMoneda(iva)}
+                </Typography>
+                <Typography variant="subtitle1" sx={{ fontWeight: "bold" }}>
+                  <strong>TOTAL:</strong> {formatoMoneda(total)}
+                </Typography>
+              </Box>
+            </Box>
+
+            {/* Bloque de firmas */}
+            <Box
+              sx={{
+                mt: 4,
+                pt: 3,
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 6,
+                textAlign: "center",
+              }}
+            >
+              <Box>
+                <Box sx={{ borderBottom: "1px solid #000", mb: 1, mx: 3 }} />
+                <Typography variant="caption" sx={{ fontWeight: "bold", display: "block" }}>
+                  ENTREGÓ (Origen: {nombreSucursalOrigen})
+                </Typography>
+              </Box>
+              <Box>
+                <Box sx={{ borderBottom: "1px solid #000", mb: 1, mx: 3 }} />
+                <Typography variant="caption" sx={{ fontWeight: "bold", display: "block" }}>
+                  RECIBIÓ ({usuarioSesion})
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions className="no-imprimir" sx={{ p: 2 }}>
+          <Button
+            onClick={() => setAbrirVistaPreviaCarta(false)}
+            variant="outlined"
+          >
+            Cerrar
+          </Button>
+          <Button
+            onClick={ejecutarImpresionCarta}
+            variant="contained"
+            sx={{
+              bgcolor: "#000000",
+              color: "#fff",
+              fontWeight: "bold",
+              "&:hover": { bgcolor: "#333333" },
+            }}
+          >
+            Imprimir Formato Carta
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
     </>
   );

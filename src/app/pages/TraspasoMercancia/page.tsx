@@ -345,6 +345,7 @@ export default function TraspasoMercancia() {
   const [cancelando, setCancelando] = useState(false);
   const [fecha1, setFecha1] = useState<string>(fechaHoy);
   const [fecha2, setFecha2] = useState<string>(fechaHoy);
+  const [folioBuscar, setFolioBuscar] = useState<string>("");
   const [resultadosBusqueda, setResultadosBusqueda] = useState<TraspasoBusqueda[]>([]);
   const [traspasosSeleccionados, setTraspasosSeleccionados] = useState<number[]>([]);
   const [cargandoBusqueda, setCargandoBusqueda] = useState(false);
@@ -938,6 +939,7 @@ export default function TraspasoMercancia() {
     setFolio(0);
     setSucDestino("");
     setUnidad("");
+    setFolioBuscar("");
     setTraspasoGuardado(false);
     setTraspasosSeleccionados([]);
     setResultadosBusqueda([]);
@@ -946,6 +948,7 @@ export default function TraspasoMercancia() {
 
   const handleCerrarBusquedaPorFecha = () => {
     setTraspasosSeleccionados([]);
+    setFolioBuscar("");
     setDialogoBuscarAbierto(false);
   };
 
@@ -984,26 +987,32 @@ export default function TraspasoMercancia() {
 
       const data = Array.isArray(response.data) ? response.data : [];
       console.log("Primer item stringified:", JSON.stringify(data[0]));
-      setResultadosBusqueda(
-        data.map((item: any) => ({
-          exis: Number(obtenerValor(item, "exis") || 0),
-          clave: String(obtenerValor(item, "clave") || ""),
-          descripcion: String(obtenerValor(item, "descripcion", "descrip") || ""),
-          cantidad: Number(obtenerValor(item, "cantidad") || 0),
-          costoProm: Number(obtenerValor(item, "costoProm", "costo_prom") || 0),
-          importe: Number(obtenerValor(item, "importe") || 0),
-          obs: String(obtenerValor(item, "obs") || ""),
-          folio: Number(obtenerValor(item, "folio") || 0),
-          estado: obtenerEstadoTraspaso(item),
-          recibido: valorVerdadero(obtenerValor(item, "recibido")),
-          finalizado: valorVerdadero(obtenerValor(item, "finalizado")),
-          aceptado: valorVerdadero(obtenerValor(item, "aceptado")),
-          cancelado: valorVerdadero(obtenerValor(item, "cancelado")),
-          usuario: String(item.usuario ?? item.Usuario ?? ""),
-          sucOrigen: item.sucOrigen ?? item.SucOrigen ?? sucOrigen ?? undefined,
-          sucDestino: item.sucDestino ?? item.SucDestino ?? undefined,
-        }))
-      );
+      const mapeados = data.map((item: any) => ({
+        exis: Number(obtenerValor(item, "exis") || 0),
+        clave: String(obtenerValor(item, "clave") || ""),
+        descripcion: String(obtenerValor(item, "descripcion", "descrip") || ""),
+        cantidad: Number(obtenerValor(item, "cantidad") || 0),
+        costoProm: Number(obtenerValor(item, "costoProm", "costo_prom") || 0),
+        importe: Number(obtenerValor(item, "importe") || 0),
+        obs: String(obtenerValor(item, "obs") || ""),
+        folio: Number(obtenerValor(item, "folio") || 0),
+        estado: obtenerEstadoTraspaso(item),
+        recibido: valorVerdadero(obtenerValor(item, "recibido")),
+        finalizado: valorVerdadero(obtenerValor(item, "finalizado")),
+        aceptado: valorVerdadero(obtenerValor(item, "aceptado")),
+        cancelado: valorVerdadero(obtenerValor(item, "cancelado")),
+        usuario: String(item.usuario ?? item.Usuario ?? ""),
+        sucOrigen: item.sucOrigen ?? item.SucOrigen ?? sucOrigen ?? undefined,
+        sucDestino: item.sucDestino ?? item.SucDestino ?? undefined,
+      }));
+
+      const folioNum = folioBuscar.trim() !== "" ? Number(folioBuscar.trim()) : null;
+      const filtrados =
+        folioNum !== null && !isNaN(folioNum)
+          ? mapeados.filter((m: TraspasoBusqueda) => m.folio === folioNum)
+          : mapeados;
+
+      setResultadosBusqueda(filtrados);
     } catch (err: any) {
       await Swal.fire({
         icon: "error",
@@ -1719,6 +1728,16 @@ export default function TraspasoMercancia() {
             <DialogContent>
               <Stack direction="row" spacing={2} alignItems="center" sx={{ mt: 1, mb: 2 }}>
                 <TextField
+                  label="Folio"
+                  type="number"
+                  size="small"
+                  sx={{ width: 120 }}
+                  value={folioBuscar}
+                  onChange={(e) => setFolioBuscar(e.target.value)}
+                  placeholder="Todos"
+                  InputLabelProps={{ shrink: true }}
+                />
+                <TextField
                   label="Fecha inicio"
                   type="date"
                   size="small"
@@ -1763,18 +1782,18 @@ export default function TraspasoMercancia() {
                   <TableHead>
                     <TableRow sx={{ bgcolor: "#f9fafb" }}>
                       {[
+                        { name: "Folio", width: "6%" },
                         { name: "Exis", width: "5%" },
                         { name: "Clave", width: "7%" },
                         { name: "Descripción", width: "20%" },
                         { name: "Cantidad", width: "6%" },
                         { name: "Costo prom", width: "8%" },
                         { name: "Importe", width: "8%" },
-                        { name: "OBS", width: "5%" },
-                        { name: "Suc", width: "7%" },
-                        { name: "Destino", width: "10%" },
-                        { name: "Usuario", width: "10%" },
+                        { name: "OBS", width: "13%" },
+                        { name: "Destino", width: "7%" },
+                        { name: "Usuario", width: "6%" },
                         { name: "Estado", width: "9%" },
-                        { name: "Acción", width: "9%" },
+                        { name: "Acción", width: "5%" },
                       ].map((col, idx) => (
                         <TableCell key={idx} sx={{ fontWeight: "bold", width: col.width }}>
                           {col.name}
@@ -1792,6 +1811,7 @@ export default function TraspasoMercancia() {
                     ) : (
                       resultadosBusqueda.map((t, idx) => (
                         <TableRow key={`${t.clave}-${idx}`}>
+                          <TableCell>{t.folio || 0}</TableCell>
                           <TableCell>{t.exis}</TableCell>
                           <TableCell>{t.clave}</TableCell>
                           <TableCell>{t.descripcion}</TableCell>
@@ -1799,14 +1819,6 @@ export default function TraspasoMercancia() {
                           <TableCell>{formatoMoneda(t.costoProm)}</TableCell>
                           <TableCell>{formatoMoneda(t.importe)}</TableCell>
                           <TableCell>{t.obs}</TableCell>
-                          <TableCell>
-                            {(() => {
-                              const val = t.sucOrigen ?? sucOrigen;
-                              const num = Number(val);
-                              const suc = isNaN(num) ? undefined : sucursales.find((s) => s.cve_sucursal === num);
-                              return suc ? suc.nombre : String(val ?? "");
-                            })()}
-                          </TableCell>
                           <TableCell>
                             {(() => {
                               const val = t.sucDestino;

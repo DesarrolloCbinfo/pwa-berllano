@@ -211,7 +211,7 @@ export default function AjustesInventario() {
   const [abrirDialogoBuscar, setAbrirDialogoBuscar] = useState(false);
   const [fechaInicioBuscar, setFechaInicioBuscar] = useState(formatearFechaInput);
   const [fechaFinBuscar, setFechaFinBuscar] = useState(formatearFechaInput);
-  const [tipoMovtoBuscar, setTipoMovtoBuscar] = useState<number | "">("");
+  const [folioBuscar, setFolioBuscar] = useState<string>("");
   const [historialAjustes, setHistorialAjustes] = useState<AjusteHistorial[]>([]);
   const [historialAjustesRaw, setHistorialAjustesRaw] = useState<AjusteBusquedaRow[]>([]);
   const [cargandoHistorial, setCargandoHistorial] = useState(false);
@@ -274,6 +274,7 @@ export default function AjustesInventario() {
       const hoy = formatearFechaInput();
       setFechaInicioBuscar(hoy);
       setFechaFinBuscar(hoy);
+      setFolioBuscar("");
       setHistorialAjustes([]);
       setHistorialAjustesRaw([]);
       setSelectedRawIndexes(new Set());
@@ -753,6 +754,7 @@ export default function AjustesInventario() {
 
   const handleCerrarDialogoBuscar = () => {
     setAbrirDialogoBuscar(false);
+    setFolioBuscar("");
     setSelectedRawIndexes(new Set());
   };
 
@@ -1004,14 +1006,19 @@ export default function AjustesInventario() {
             usuario: usuarioSesion,
             fechaInicio: fechaInicioBuscar,
             fechaFin: fechaFinBuscar,
-            ...(tipoMovtoBuscar !== "" ? { tipoMovto: tipoMovtoBuscar } : {}),
           },
         }
       );
 
-      const raw: AjusteBusquedaRow[] = Array.isArray(response.data)
+      const rawResponse: AjusteBusquedaRow[] = Array.isArray(response.data)
         ? response.data
         : [];
+
+      const folioNum = folioBuscar.trim() !== "" ? Number(folioBuscar.trim()) : null;
+      const raw: AjusteBusquedaRow[] =
+        folioNum !== null && !isNaN(folioNum)
+          ? rawResponse.filter((r) => Number(r.folio) === folioNum)
+          : rawResponse;
 
       const agrupados = raw.reduce<Record<number, AjusteHistorial>>(
         (acc, row) => {
@@ -1684,6 +1691,16 @@ export default function AjustesInventario() {
             sx={{ mb: 2 }}
           >
             <TextField
+              label="Folio"
+              type="number"
+              size="small"
+              sx={{ width: 120 }}
+              value={folioBuscar}
+              onChange={(e) => setFolioBuscar(e.target.value)}
+              placeholder="Todos"
+              InputLabelProps={{ shrink: true }}
+            />
+            <TextField
               label="Fecha inicio"
               type="date"
               size="small"
@@ -1699,22 +1716,6 @@ export default function AjustesInventario() {
               onChange={(e) => setFechaFinBuscar(e.target.value)}
               InputLabelProps={{ shrink: true }}
             />
-            <FormControl size="small" sx={{ minWidth: 220 }}>
-              <Select
-                value={tipoMovtoBuscar}
-                displayEmpty
-                onChange={(e) => setTipoMovtoBuscar(e.target.value as number | "")}
-              >
-                <MenuItem value="">
-                  <em>Todos</em>
-                </MenuItem>
-                {tiposMovimiento.map((t) => (
-                  <MenuItem key={t.tipo_movto} value={t.tipo_movto}>
-                    {t.descripcion}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
             <Button
               variant="contained"
               onClick={handleBuscarHistorial}
