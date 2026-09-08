@@ -2255,10 +2255,19 @@ export default function CatProductos() {
       const sucursal = getSucursalUsuario();
       if (sucursal === 0) { setLoading(false); return; }
 
+      const limpiarFiltro = (val: string | null | undefined) => {
+        if (!val || val === "%" || val.trim() === "") return null;
+        return val.trim();
+      };
+
       const params = {
-        area: formData.area || '%', depto: formData.depto || '%', clase: formData.clase || '%',
-        marca: formData.marca || '%', descripcion: formData.descripcion || null,
-        sucursal: sucursal, obsoleto: formData.incluir_obsoletos ? 1 : 0
+        area: limpiarFiltro(formData.area),
+        depto: limpiarFiltro(formData.depto),
+        clase: limpiarFiltro(formData.clase),
+        marca: limpiarFiltro(formData.marca),
+        descripcion: limpiarFiltro(formData.descripcion),
+        sucursal: Number(sucursal) || 0,
+        obsoleto: Boolean(formData.incluir_obsoletos)
       };
 
       const response = await consumoApi.get('/api/CatProductosC/sp_bw_cat_combo_productos_sel', { params, timeout: 120000 });
