@@ -63,22 +63,15 @@ type ProductoSelector = {
 };
 
 type TraspasoBusqueda = {
-  exis: number;
-  clave: string;
-  descripcion: string;
-  cantidad: number;
-  costoProm: number;
-  importe: number;
-  obs: string;
-  folio?: number;
-  estado?: string;
-  recibido?: boolean;
-  finalizado?: boolean;
-  aceptado?: boolean;
-  cancelado?: boolean;
-  usuario?: string;
-  sucOrigen?: number | string;
-  sucDestino?: number | string;
+  folio: number;
+  sucOrigen: number;
+  sucDestino: number;
+  usuario: string;
+  totalCantidad: number;
+  importeTotal: number;
+  recibido: boolean;
+  cancelado: boolean;
+  estado: string;
 };
 
 function formatoMoneda(valor: number) {
@@ -986,24 +979,21 @@ export default function TraspasoMercancia() {
       );
 
       const data = Array.isArray(response.data) ? response.data : [];
-      console.log("Primer item stringified:", JSON.stringify(data[0]));
-      const mapeados = data.map((item: any) => ({
-        exis: Number(obtenerValor(item, "exis") || 0),
-        clave: String(obtenerValor(item, "clave") || ""),
-        descripcion: String(obtenerValor(item, "descripcion", "descrip") || ""),
-        cantidad: Number(obtenerValor(item, "cantidad") || 0),
-        costoProm: Number(obtenerValor(item, "costoProm", "costo_prom") || 0),
-        importe: Number(obtenerValor(item, "importe") || 0),
-        obs: String(obtenerValor(item, "obs") || ""),
-        folio: Number(obtenerValor(item, "folio") || 0),
-        estado: obtenerEstadoTraspaso(item),
-        recibido: valorVerdadero(obtenerValor(item, "recibido")),
-        finalizado: valorVerdadero(obtenerValor(item, "finalizado")),
-        aceptado: valorVerdadero(obtenerValor(item, "aceptado")),
-        cancelado: valorVerdadero(obtenerValor(item, "cancelado")),
-        usuario: String(item.usuario ?? item.Usuario ?? ""),
-        sucOrigen: item.sucOrigen ?? item.SucOrigen ?? sucOrigen ?? undefined,
-        sucDestino: item.sucDestino ?? item.SucDestino ?? undefined,
+      console.log("Respuesta de sp_bw_buscar_traspasos_por_fecha (primer item):", data[0]);
+      const mapeados: TraspasoBusqueda[] = data.map((item: any) => ({
+        folio: Number(obtenerValor(item, "Folio", "folio") || 0),
+        sucOrigen: Number(obtenerValor(item, "SucOrigen", "suc_origen", "sucOrigen") || sucOrigen || 0),
+        sucDestino: Number(obtenerValor(item, "SucDestino", "suc_destino", "sucDestino") || 0),
+        usuario: String(obtenerValor(item, "Usuario", "usuario") || ""),
+        totalCantidad: Number(
+          obtenerValor(item, "TotalCantidad", "totalCantidad", "total_cantidad", "cantidad", "cant", "sum_cantidad") || 0
+        ),
+        importeTotal: Number(
+          obtenerValor(item, "ImporteTotal", "importeTotal", "importe_total", "importe", "total", "montoTotal") || 0
+        ),
+        recibido: valorVerdadero(obtenerValor(item, "Recibido", "recibido")),
+        cancelado: valorVerdadero(obtenerValor(item, "Cancelado", "cancelado")),
+        estado: String(obtenerValor(item, "Estado", "estado") || "PENDIENTE"),
       }));
 
       const folioNum = folioBuscar.trim() !== "" ? Number(folioBuscar.trim()) : null;
@@ -1060,7 +1050,7 @@ export default function TraspasoMercancia() {
     });
   };
 
-  const cargarTraspasosSeleccionados = () => {
+  const cargarTraspasosSeleccionados = async () => {
     const seleccionados = resultadosBusqueda.filter((_, index) =>
       traspasosSeleccionados.includes(index)
     );
@@ -1075,123 +1065,126 @@ export default function TraspasoMercancia() {
       return;
     }
 
-    seleccionados.forEach((traspaso) => {
-      const folioSeleccionado = Number(traspaso.folio) || 0;
+    setCargandoBusqueda(true);
+    try {
+      const primerTraspaso = seleccionados[0];
+      const folioSeleccionado = Number(primerTraspaso.folio) || 0;
       if (folioSeleccionado > 0) setFolio(folioSeleccionado);
-      if (traspaso.sucOrigen != null && traspaso.sucOrigen !== "") {
-        setSucOrigen(Number(traspaso.sucOrigen));
-      }
-      if (traspaso.sucDestino != null && traspaso.sucDestino !== "") {
-        setSucDestino(Number(traspaso.sucDestino));
-      }
+      if (primerTraspaso.sucOrigen) setSucOrigen(Number(primerTraspaso.sucOrigen));
+      if (primerTraspaso.sucDestino) setSucDestino(Number(primerTraspaso.sucDestino));
 
-      const clave = String(traspaso.clave).trim();
-      setRows((prev) => {
-        const existente = prev.find((row) => row.clave.trim() === clave);
-        if (existente) {
-          return prev.map((row) =>
-            row.id === existente.id
-              ? {
-                  ...row,
-                  cantidad: row.cantidad + (Number(traspaso.cantidad) || 0),
-                  importe:
-                    row.importe +
-                    (Number(traspaso.importe) ||
-                      (Number(traspaso.cantidad) || 0) *
-                        (Number(traspaso.costoProm) || 0)),
+      let todasLasFilas: TraspasoRow[] = [];
+
+      for (const traspaso of seleccionados) {
+        const response = await consumoApi.get(
+          "/api/CatTraspasoSalida/sp_bw_reporte_traspaso",
+          {
+            params: {
+              sucursal: Number(traspaso.sucOrigen || sucOrigen),
+              folio: Number(traspaso.folio),
+            },
+          }
+        );
+
+        const detalle = Array.isArray(response.data?.detalle)
+          ? response.data.detalle
+          : Array.isArray(response.data)
+          ? response.data
+          : [];
+
+        for (const item of detalle) {
+          const clave = String(obtenerValor(item, "clave_prod", "claveProd", "clave") || "").trim();
+          if (!clave) continue;
+          const descripcion = String(obtenerValor(item, "descripcion", "descrip") || "");
+          const cantidad = Number(obtenerValor(item, "cantidad", "cant") || 0);
+          const costoProm = Number(obtenerValor(item, "costo", "costoProm", "costo_prom", "ultimoCosto") || 0);
+          const importe = Number(obtenerValor(item, "importe") || 0) || cantidad * costoProm;
+          const obs = String(obtenerValor(item, "observaciones", "obs") || "");
+          let exis = Number(obtenerValor(item, "exis", "existencia", "existenciaActual") || 0);
+
+          if (exis === 0) {
+            try {
+              const respProd = await consumoApi.post(
+                "/api/CatTraspasoSalida/sp_validar_y_cargar_producto_traspaso",
+                {
+                  cia: 1,
+                  sucursal: Number(traspaso.sucOrigen || sucOrigen) || 0,
+                  sucOrigen: Number(traspaso.sucOrigen || sucOrigen) || 0,
+                  sucursalOrigen: Number(traspaso.sucOrigen || sucOrigen) || 0,
+                  sucursalDestino: Number(traspaso.sucDestino || sucDestino) || 0,
+                  usuario: usuarioSesion,
+                  claveInput: clave,
+                  claveProd: clave,
+                  cantidad,
+                  folio: Number(traspaso.folio) || 0,
+                  validarExistenciaEstricta: false,
                 }
-              : row
+              );
+              const dataProd = Array.isArray(respProd.data) ? respProd.data[0] : respProd.data;
+              if (dataProd?.existencia != null) {
+                exis = Number(dataProd.existencia);
+              }
+            } catch {
+              // fallback
+            }
+          }
+
+          const existente = todasLasFilas.find(
+            (r) => r.clave.trim().toUpperCase() === clave.toUpperCase()
           );
+          if (existente) {
+            existente.cantidad += cantidad;
+            existente.importe += importe;
+          } else {
+            todasLasFilas.push({
+              id: Date.now() + Math.random(),
+              exis,
+              clave,
+              descripcion,
+              cantidad,
+              costoProm,
+              importe,
+              obs,
+              validado: true,
+              esFraccion: false,
+              recuperado: true,
+              cantidadAnterior: cantidad,
+              usuario: String(obtenerValor(item, "usuario") || traspaso.usuario || usuarioSesion || ""),
+              recibido: traspaso.recibido,
+              estado: traspaso.estado,
+            });
+          }
         }
+      }
 
-        const nuevaFila: TraspasoRow = {
-          ...emptyRow,
-          id: Date.now() + Math.random(),
-          exis: Number(traspaso.exis) || 0,
-          clave,
-          descripcion: String(traspaso.descripcion),
-          cantidad: Number(traspaso.cantidad) || 0,
-          costoProm: Number(traspaso.costoProm) || 0,
-          importe:
-            Number(traspaso.importe) ||
-            (Number(traspaso.cantidad) || 0) * (Number(traspaso.costoProm) || 0),
-          obs: String(traspaso.obs),
-          usuario: String(traspaso.usuario || usuarioSesion || ""),
-          recibido: traspaso.recibido,
-          estado: traspaso.estado,
-        };
-        const ultima = prev[prev.length - 1];
-        return prev.length > 0 && !ultima?.clave
-          ? [...prev.slice(0, -1), nuevaFila]
-          : [...prev, nuevaFila];
-      });
-    });
+      if (todasLasFilas.length === 0) {
+        todasLasFilas = [{ ...emptyRow, id: Date.now() }];
+      }
 
-    setTraspasosSeleccionados([]);
-    setDialogoBuscarAbierto(false);
-  };
+      setRows(todasLasFilas);
+      setSelectedRowId(todasLasFilas[0]?.id ?? null);
+      setTraspasosSeleccionados([]);
+      setDialogoBuscarAbierto(false);
 
-  const seleccionarTraspaso = (traspaso: TraspasoBusqueda) => {
-    const clave = String(traspaso.clave).trim();
-    if (rows.some((r) => r.clave === clave)) {
       Swal.fire({
-        icon: "warning",
-        title: "Producto duplicado",
-        text: "El producto ya se encuentra en el traspaso.",
+        icon: "success",
+        title: "Traspaso cargado",
+        text: `Se cargó el traspaso con folio ${folioSeleccionado} (${todasLasFilas.filter((r) => r.clave).length} productos).`,
         confirmButtonColor: "#000000",
       });
-      return;
+    } catch (err: any) {
+      console.error("Error al cargar detalle del traspaso:", err);
+      Swal.fire({
+        icon: "error",
+        title: "Error al cargar detalle",
+        text:
+          err.response?.data?.mensaje ||
+          "No fue posible recuperar el detalle del traspaso seleccionado.",
+        confirmButtonColor: "#000000",
+      });
+    } finally {
+      setCargandoBusqueda(false);
     }
-
-    const folioSeleccionado = Number(traspaso.folio) || 0;
-    if (folioSeleccionado > 0) {
-      setFolio(folioSeleccionado);
-    }
-
-    if (traspaso.sucOrigen != null && traspaso.sucOrigen !== "") {
-      const sucOrigenNum = Number(traspaso.sucOrigen);
-      if (!isNaN(sucOrigenNum)) {
-        setSucOrigen(sucOrigenNum);
-      }
-    }
-
-    if (traspaso.sucDestino != null && traspaso.sucDestino !== "") {
-      const sucDestinoNum = Number(traspaso.sucDestino);
-      if (!isNaN(sucDestinoNum)) {
-        setSucDestino(sucDestinoNum);
-      }
-    }
-
-    const nuevaId = Date.now();
-    setRows((prev) => {
-      const ultima = prev[prev.length - 1];
-      const nuevaFila: TraspasoRow = {
-        id: nuevaId,
-        exis: Number(traspaso.exis) || 0,
-        clave: String(traspaso.clave),
-        descripcion: String(traspaso.descripcion),
-        cantidad: Number(traspaso.cantidad) || 0,
-        costoProm: Number(traspaso.costoProm) || 0,
-        importe:
-          Number(traspaso.importe) ||
-          (Number(traspaso.cantidad) || 0) *
-            (Number(traspaso.costoProm) || 0),
-        obs: String(traspaso.obs),
-        validado: false,
-        esFraccion: false,
-        recuperado: false,
-        cantidadAnterior: 0,
-        usuario: String(traspaso.usuario || usuarioSesion || ""),
-        recibido: traspaso.recibido,
-        estado: traspaso.estado,
-      };
-      if (prev.length > 0 && !ultima?.clave) {
-        return [...prev.slice(0, -1), nuevaFila];
-      }
-      return [...prev, nuevaFila];
-    });
-    setSelectedRowId(nuevaId);
-    setDialogoBuscarAbierto(false);
   };
 
   const handleAgregarRenglon = async () => {
@@ -1354,7 +1347,38 @@ export default function TraspasoMercancia() {
           </Box>
         </Box>
 
-        <Box sx={{ px: { xs: 2, md: 3 }, pb: 2.5 }} />
+        <Stack
+          direction="row"
+          spacing={1}
+          justifyContent="center"
+          flexWrap="wrap"
+          sx={{ px: 2, pb: 2.5 }}
+        >
+          <Button variant="contained" onClick={handleNuevo}>
+            Nuevo
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleGuardar}
+            disabled={guardando || traspasoCancelado || traspasoFinalizado || traspasoAceptado}
+          >
+            {guardando ? "Guardando..." : "FINALIZAR"}
+          </Button>
+          <Button variant="contained" onClick={handleVistaPrevia} disabled={traspasoPendiente}>
+            Vista previa
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleCancelarTraspaso}
+            disabled={cancelando || traspasoCancelado || traspasoPendiente}
+            sx={{ bgcolor: "#d9534f", color: "white" }}
+          >
+            {cancelando ? "Procesando..." : "Cancelar Traspaso"}
+          </Button>
+          <Button variant="contained" onClick={handleAbrirBusquedaPorFecha}>
+            Buscar por fecha
+          </Button>
+        </Stack>
       </Paper>
 
       <Paper elevation={0} sx={{ border: "1px solid #e5e7eb", borderRadius: 2, p: { xs: 2, md: 3 }, bgcolor: "#fff" }}>
@@ -1682,40 +1706,6 @@ export default function TraspasoMercancia() {
             </Button>
           </Stack>
 
-          {/* Botones */}
-          <Stack
-            direction="row"
-            spacing={1}
-            justifyContent="center"
-            flexWrap="wrap"
-            sx={{ mb: 3, pt: 2, borderTop: "1px solid #e5e7eb" }} 
-          >
-            <Button variant="contained" onClick={handleNuevo}>
-              Nuevo
-            </Button>
-            <Button
-              variant="contained"
-              onClick={handleGuardar}
-              disabled={guardando || traspasoCancelado || traspasoFinalizado || traspasoAceptado}
-            >
-              {guardando ? "Guardando..." : "FINALIZAR"}
-            </Button>
-            <Button variant="contained" onClick={handleVistaPrevia} disabled={traspasoPendiente}>
-              Vista previa
-            </Button>
-            <Button
-              variant="contained"
-              onClick={handleCancelarTraspaso}
-              disabled={cancelando || traspasoCancelado || traspasoPendiente}
-              sx={{ bgcolor: "#d9534f", color: "white" }}
-            >
-              {cancelando ? "Procesando..." : "Cancelar Traspaso"}
-            </Button>
-            <Button variant="contained" onClick={handleAbrirBusquedaPorFecha}>
-              Buscar por fecha
-            </Button>
-          </Stack>
-
           <Dialog
             open={dialogoBuscarAbierto}
             onClose={handleCerrarBusquedaPorFecha}
@@ -1763,17 +1753,18 @@ export default function TraspasoMercancia() {
                 </Button>
               </Stack>
 
-              <TableContainer component={Paper} variant="outlined" sx={{ overflowX: "hidden" }}>
+              <TableContainer component={Paper} variant="outlined" sx={{ overflowX: "hidden", maxHeight: 420 }}>
                 <Table
                   size="small"
+                  stickyHeader
                   sx={{
                     width: "100%",
                     tableLayout: "fixed",
                     minWidth: 0,
                     "& .MuiTableCell-root": {
-                      px: 0.6,
-                      py: 0.4,
-                      fontSize: "0.75rem",
+                      px: 0.8,
+                      py: 0.6,
+                      fontSize: "0.8rem",
                       whiteSpace: "normal",
                       wordBreak: "break-word",
                     },
@@ -1782,20 +1773,15 @@ export default function TraspasoMercancia() {
                   <TableHead>
                     <TableRow sx={{ bgcolor: "#f9fafb" }}>
                       {[
-                        { name: "Folio", width: "6%" },
-                        { name: "Exis", width: "5%" },
-                        { name: "Clave", width: "7%" },
-                        { name: "Descripción", width: "20%" },
-                        { name: "Cantidad", width: "6%" },
-                        { name: "Costo prom", width: "8%" },
-                        { name: "Importe", width: "8%" },
-                        { name: "OBS", width: "13%" },
-                        { name: "Destino", width: "7%" },
-                        { name: "Usuario", width: "6%" },
-                        { name: "Estado", width: "9%" },
-                        { name: "Acción", width: "5%" },
+                        { name: "Folio", width: "12%" },
+                        { name: "Destino", width: "24%" },
+                        { name: "Usuario", width: "16%" },
+                        { name: "Total Cantidad", width: "14%", align: "right" as const },
+                        { name: "Importe Total", width: "14%", align: "right" as const },
+                        { name: "Estado", width: "12%" },
+                        { name: "Acción", width: "8%", align: "center" as const },
                       ].map((col, idx) => (
-                        <TableCell key={idx} sx={{ fontWeight: "bold", width: col.width }}>
+                        <TableCell key={idx} align={col.align} sx={{ fontWeight: "bold", width: col.width }}>
                           {col.name}
                         </TableCell>
                       ))}
@@ -1804,40 +1790,61 @@ export default function TraspasoMercancia() {
                   <TableBody>
                     {resultadosBusqueda.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={12} align="center">
+                        <TableCell colSpan={7} align="center">
                           Sin resultados
                         </TableCell>
                       </TableRow>
                     ) : (
-                      resultadosBusqueda.map((t, idx) => (
-                        <TableRow key={`${t.clave}-${idx}`}>
-                          <TableCell>{t.folio || 0}</TableCell>
-                          <TableCell>{t.exis}</TableCell>
-                          <TableCell>{t.clave}</TableCell>
-                          <TableCell>{t.descripcion}</TableCell>
-                          <TableCell>{t.cantidad}</TableCell>
-                          <TableCell>{formatoMoneda(t.costoProm)}</TableCell>
-                          <TableCell>{formatoMoneda(t.importe)}</TableCell>
-                          <TableCell>{t.obs}</TableCell>
-                          <TableCell>
-                            {(() => {
-                              const val = t.sucDestino;
-                              const num = Number(val);
-                              const suc = isNaN(num) ? undefined : sucursales.find((s) => s.cve_sucursal === num);
-                              return suc ? suc.nombre : String(val ?? "");
-                            })()}
-                          </TableCell>
-                          <TableCell>{t.usuario}</TableCell>
-                          <TableCell>{t.estado || "PENDIENTE"}</TableCell>
-                          <TableCell>
-                            <Checkbox
-                              size="small"
-                              checked={traspasosSeleccionados.includes(idx)}
-                              onChange={() => toggleTraspasoSeleccionado(idx, t)}
-                            />
-                          </TableCell>
-                        </TableRow>
-                      ))
+                      resultadosBusqueda.map((t, idx) => {
+                        const seleccionado = traspasosSeleccionados.includes(idx);
+                        const sucDestinoObj = sucursales.find(
+                          (s) => s.cve_sucursal === t.sucDestino
+                        );
+                        const nombreDestino = sucDestinoObj
+                          ? sucDestinoObj.nombre
+                          : `Suc. ${t.sucDestino}`;
+
+                        return (
+                          <TableRow key={`${t.folio}-${idx}`} hover selected={seleccionado}>
+                            <TableCell sx={{ fontWeight: "bold" }}>{t.folio}</TableCell>
+                            <TableCell>{nombreDestino}</TableCell>
+                            <TableCell>{t.usuario}</TableCell>
+                            <TableCell align="right">{t.totalCantidad}</TableCell>
+                            <TableCell align="right">{formatoMoneda(t.importeTotal)}</TableCell>
+                            <TableCell>
+                              <span
+                                style={{
+                                  padding: "2px 6px",
+                                  borderRadius: "4px",
+                                  fontSize: "0.75rem",
+                                  fontWeight: "bold",
+                                  backgroundColor:
+                                    t.estado === "CANCELADO"
+                                      ? "#fee2e2"
+                                      : t.estado === "ACEPTADO"
+                                      ? "#dcfce7"
+                                      : "#fef3c7",
+                                  color:
+                                    t.estado === "CANCELADO"
+                                      ? "#991b1b"
+                                      : t.estado === "ACEPTADO"
+                                      ? "#166534"
+                                      : "#92400e",
+                                }}
+                              >
+                                {t.estado}
+                              </span>
+                            </TableCell>
+                            <TableCell align="center">
+                              <Checkbox
+                                size="small"
+                                checked={seleccionado}
+                                onChange={() => toggleTraspasoSeleccionado(idx, t)}
+                              />
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
                     )}
                   </TableBody>
                 </Table>
