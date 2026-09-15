@@ -49,6 +49,10 @@ type TraspasoRow = {
   recuperado: boolean;
   cantidadAnterior: number;
   usuario: string;
+  tasaIva?: number;
+  precioMenudeo?: number;
+  ultimoCosto?: number;
+  version?: string;
   recibido?: boolean;
   estado?: string;
 };
@@ -61,6 +65,7 @@ type Sucursal = {
 type ProductoSelector = {
   Clave: string;
   Descripcion: string;
+  esFraccion?: boolean;
 };
 
 type TraspasoBusqueda = {
@@ -69,6 +74,7 @@ type TraspasoBusqueda = {
   sucDestino: number;
   usuario: string;
   totalCantidad: number;
+  totalPartidas: number;
   importeTotal: number;
   recibido: boolean;
   cancelado: boolean;
@@ -89,11 +95,12 @@ function formatoMoneda(valor: number) {
 
 function esFraccionEnOctavos(valor: number) {
   const unidades = valor * UNIDADES_POR_ENTERO;
-  return Math.abs(unidades - Math.round(unidades)) < Number.EPSILON * 100;
+  return Math.abs(unidades - Math.round(unidades)) <= 0.000001;
 }
 
 function valorVerdadero(valor: unknown) {
-  return valor === true || valor === 1 || String(valor).toLowerCase() === "true";
+  const normalizado = String(valor).trim().toLowerCase();
+  return valor === true || valor === 1 || ["true", "1", "si", "sí"].includes(normalizado);
 }
 
 function obtenerEstadoTraspaso(item: any) {
@@ -233,11 +240,32 @@ export default function TraspasoMercancia() {
     String(row.estado || "").toUpperCase() !== "ACEPTADO" &&
     esMismoUsuario(row.usuario);
 
+  const esProductoFraccionable = (row: TraspasoRow) => {
+    const producto = productosSelector.find(
+      (item) => item.Clave?.trim().toLowerCase() === row.clave.trim().toLowerCase()
+    );
+    return (
+      row.esFraccion ||
+      valorVerdadero(
+        obtenerValor(producto, "esFraccion", "es_fraccion", "fraccion", "esFraccionado")
+      )
+    );
+  };
+
   const cantidadAnteriorRef = useRef<Record<number, number>>({});
   const obsAnteriorRef = useRef<Record<number, string>>({});
 
   const [sucursales, setSucursales] = useState<Sucursal[]>([]);
   const [productosSelector, setProductosSelector] = useState<ProductoSelector[]>([]);
+
+  const nombreSucursalPorValor = (valor: unknown) => {
+    const texto = String(valor ?? "").trim();
+    const id = Number(texto);
+    if (Number.isFinite(id) && id > 0) {
+      return sucursales.find((s) => s.cve_sucursal === id)?.nombre || texto;
+    }
+    return texto || "—";
+  };
 
   useEffect(() => {
     const fetchSucursales = async () => {
@@ -251,8 +279,14 @@ export default function TraspasoMercancia() {
         );
         setSucursales(data);
 
+        const sucursalSesionId =
+          Number((token as any)?.sucursal) ||
+          Number(userLogged?.sucursal) ||
+          Number((session as any)?.sucursal) ||
+          Number(token?.claveDepartamento) ||
+          0;
         const sucursalSesion = data.find(
-          (item: Sucursal) => item.cve_sucursal === Number(token?.claveDepartamento)
+          (item: Sucursal) => item.cve_sucursal === sucursalSesionId
         );
         if (sucursalSesion) {
           setSucOrigen(sucursalSesion.cve_sucursal);
@@ -262,7 +296,7 @@ export default function TraspasoMercancia() {
       }
     };
     fetchSucursales();
-  }, []);
+  }, [token, session]);
 
   const hoy = new Date();
   const fechaHoy = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-${String(hoy.getDate()).padStart(2, "0")}`;
@@ -595,10 +629,16 @@ export default function TraspasoMercancia() {
             ) ||
             productoEncontrado?.Descripcion?.trim() ||
             "";
-          const esFraccionVal = Boolean(
+          const esFraccionVal = valorVerdadero(
             buscarCampo(
               ["esFraccion", "es_fraccion", "fraccion", "esFraccionado"],
-              row.esFraccion
+              obtenerValor(
+                productoEncontrado,
+                "esFraccion",
+                "es_fraccion",
+                "fraccion",
+                "esFraccionado"
+              ) ?? row.esFraccion
             )
           );
           const recuperadoVal = Boolean(
@@ -613,13 +653,25 @@ export default function TraspasoMercancia() {
             ) || 0;
           const usuarioVal = String(row.usuario || usuarioSesion || "");
 
-          if (Number(folio) === 0) {
+          if (exisVal <= 0) {
+            await Swal.fire({
+              icon: "warning",
+              title: "Producto sin existencia",
+              text: `El producto ${claveVal} no tiene existencia disponible en la sucursal origen.`,
+              confirmButtonColor: "#000000",
+            });
+            eliminarFilaLocal(row);
+            return;
+          }
+
+          if (Number(folio) === 0 && cantidadInicial > 0) {
             await consumoApi.post(
               "/api/CatTraspasoSalida/sp_bw_guardar_renglon_borrador",
               {
                 cia: 1,
                 sucursal: Number(sucOrigen) || 0,
                 sucOrigen: Number(sucOrigen) || 0,
+                sucDestino: Number(sucDestino) || 0,
                 usuario: usuarioSesion,
                 claveProd: claveVal,
                 cantidad: cantidadInicial,
@@ -649,6 +701,10 @@ export default function TraspasoMercancia() {
                     recuperado: recuperadoVal,
                     cantidadAnterior: cantidadAnteriorVal,
                     usuario: usuarioVal,
+                    tasaIva: tasaIvaVal,
+                    precioMenudeo: precioMenudeoVal,
+                    ultimoCosto: ultimoCostoVal,
+                    version: versionVal,
                   }
             )
           );
@@ -665,13 +721,13 @@ export default function TraspasoMercancia() {
       }
     } catch (error: any) {
       const mensajeReal = error.response?.data?.mensaje || "Error al validar producto";
+      const detalleReal = error.response?.data?.detalle;
       await Swal.fire({
         icon: "warning",
         title: "Aviso",
-        text: mensajeReal,
+        text: detalleReal ? `${mensajeReal}\n\n${detalleReal}` : mensajeReal,
         confirmButtonColor: "#000000",
       });
-      eliminarFilaLocal(row);
       return;
     } finally {
       setValidandoClaveId(null);
@@ -980,22 +1036,41 @@ export default function TraspasoMercancia() {
     const fila = rows.find((r) => r.clave === claveProd);
     if (!fila) return;
 
+    if (Number(folio) === 0 && nuevaCantidad <= 0) return;
+
     try {
-      const response = await consumoApi.put(
-        "/api/CatTraspasoSalida/sp_bw_actualizar_traspaso_upd",
-        {
-          folio: Number(folio) || 0,
-          sucursal: Number(sucOrigen) || 0,
-          sucDestino: Number(sucDestino) || 0,
-          claveProd,
-          cantidad: Number(nuevaCantidad) || 0,
-          observaciones:
-            Number(folio) > 0
-              ? "EDITADO"
-              : nuevaObs || fila.obs || "",
-          usuario: usuarioSesion,
-        }
-      );
+      const response =
+        Number(folio) === 0
+          ? await consumoApi.post(
+              "/api/CatTraspasoSalida/sp_bw_guardar_renglon_borrador",
+              {
+                cia: 1,
+                sucursal: Number(sucOrigen) || 0,
+                sucOrigen: Number(sucOrigen) || 0,
+                sucDestino: Number(sucDestino) || 0,
+                usuario: usuarioSesion,
+                claveProd,
+                cantidad: Number(nuevaCantidad) || 0,
+                costo: Number(fila.costoProm) || 0,
+                tasaIva: Number(fila.tasaIva) || 0,
+                precioMenudeo: Number(fila.precioMenudeo) || 0,
+                posicion: Math.max(rows.findIndex((item) => item.clave === claveProd), 0),
+                ultimoCosto: Number(fila.ultimoCosto ?? fila.costoProm) || 0,
+                version: fila.version || "",
+              }
+            )
+          : await consumoApi.put(
+              "/api/CatTraspasoSalida/sp_bw_actualizar_traspaso_upd",
+              {
+                folio: Number(folio) || 0,
+                sucursal: Number(sucOrigen) || 0,
+                sucDestino: Number(sucDestino) || 0,
+                claveProd,
+                cantidad: Number(nuevaCantidad) || 0,
+                observaciones: "EDITADO",
+                usuario: usuarioSesion,
+              }
+            );
 
       const data = Array.isArray(response.data) ? response.data[0] : response.data;
       setRows((prev) =>
@@ -1117,6 +1192,9 @@ export default function TraspasoMercancia() {
         totalCantidad: Number(
           obtenerValor(item, "TotalCantidad", "totalCantidad", "total_cantidad", "cantidad", "cant", "sum_cantidad") || 0
         ),
+        totalPartidas: Number(
+          obtenerValor(item, "TotalPartidas", "totalPartidas", "total_partidas", "partidas") || 0
+        ),
         importeTotal: Number(
           obtenerValor(item, "ImporteTotal", "importeTotal", "importe_total", "importe", "total", "montoTotal") || 0
         ),
@@ -1147,7 +1225,7 @@ export default function TraspasoMercancia() {
   };
 
   const esTraspasoPendiente = (traspaso: TraspasoBusqueda) =>
-    traspaso.folio <= 0 && String(traspaso.estado || "").toUpperCase() === "PENDIENTE";
+    Number(traspaso.folio) <= 0;
 
   const toggleTraspasoSeleccionado = (
     idx: number,
@@ -1282,32 +1360,22 @@ export default function TraspasoMercancia() {
           const obs = String(obtenerValor(item, "observaciones", "obs") || "");
           let exis = Number(obtenerValor(item, "exis", "existencia", "existenciaActual") || 0);
 
-          if (exis === 0) {
-            try {
-              const respProd = await consumoApi.post(
-                "/api/CatTraspasoSalida/sp_validar_y_cargar_producto_traspaso",
-                {
-                  cia: 1,
-                  sucursal: Number(traspaso.sucOrigen || sucOrigen) || 0,
-                  sucOrigen: Number(traspaso.sucOrigen || sucOrigen) || 0,
-                  sucursalOrigen: Number(traspaso.sucOrigen || sucOrigen) || 0,
-                  sucursalDestino: Number(traspaso.sucDestino || sucDestino) || 0,
-                  usuario: usuarioSesion,
-                  claveInput: clave,
+          try {
+            const respExistencia = await consumoApi.get(
+              "/api/CatTraspasoSalida/existencia_producto",
+              {
+                params: {
+                  sucursal: sucursalOrigen,
                   claveProd: clave,
-                  cantidad,
-                  folio: Number(traspaso.folio) || 0,
-                  validarExistenciaEstricta: false,
-                }
-              );
-              const dataProd = Array.isArray(respProd.data) ? respProd.data[0] : respProd.data;
-              if (dataProd?.existencia != null) {
-                exis = Number(dataProd.existencia);
+                },
               }
-            } catch {
-              // fallback
-            }
+            );
+            exis = Number(respExistencia.data?.existencia) || 0;
+          } catch {
+            exis = 0;
           }
+
+          if (exis <= 0) continue;
 
           const existente = todasLasFilas.find(
             (r) => r.clave.trim().toUpperCase() === clave.toUpperCase()
@@ -1781,7 +1849,7 @@ export default function TraspasoMercancia() {
                         disabled={!puedeEditarFila(row)}
                         inputProps={{
                           min: 0,
-                          step: row.esFraccion ? PASO_CANTIDAD_FRACCION : 1,
+                          step: esProductoFraccionable(row) ? PASO_CANTIDAD_FRACCION : 1,
                         }}
                         onFocus={() => {
                           cantidadAnteriorRef.current[row.id] = row.cantidad;
@@ -1798,7 +1866,7 @@ export default function TraspasoMercancia() {
                           }
                           const esValida = await validarCantidad(nuevaCantidad, {
                             existencia: row.exis,
-                            esFraccion: row.esFraccion,
+                            esFraccion: esProductoFraccionable(row),
                             recuperado: row.recuperado,
                             cantidadAnterior: anterior,
                           });
@@ -1947,12 +2015,13 @@ export default function TraspasoMercancia() {
                   <TableHead>
                     <TableRow sx={{ bgcolor: "#f9fafb" }}>
                       {[
-                        { name: "Folio", width: "12%" },
-                        { name: "Destino", width: "24%" },
-                        { name: "Usuario", width: "16%" },
+                        { name: "Folio", width: "10%" },
+                        { name: "Destino", width: "20%" },
+                        { name: "Usuario", width: "14%" },
+                        { name: "Partidas", width: "10%", align: "right" as const },
                         { name: "Total Cantidad", width: "14%", align: "right" as const },
                         { name: "Importe Total", width: "14%", align: "right" as const },
-                        { name: "Estado", width: "12%" },
+                        { name: "Estado", width: "10%" },
                         { name: "Acción", width: "8%", align: "center" as const },
                       ].map((col, idx) => (
                         <TableCell key={idx} align={col.align} sx={{ fontWeight: "bold", width: col.width }}>
@@ -1964,7 +2033,7 @@ export default function TraspasoMercancia() {
                   <TableBody>
                     {resultadosBusqueda.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} align="center">
+                        <TableCell colSpan={8} align="center">
                           Sin resultados
                         </TableCell>
                       </TableRow>
@@ -1983,6 +2052,9 @@ export default function TraspasoMercancia() {
                             <TableCell sx={{ fontWeight: "bold" }}>{t.folio}</TableCell>
                             <TableCell>{nombreDestino}</TableCell>
                             <TableCell>{t.usuario}</TableCell>
+                            <TableCell align="right">
+                              {t.totalPartidas > 0 ? t.totalPartidas : "—"}
+                            </TableCell>
                             <TableCell align="right">{t.totalCantidad}</TableCell>
                             <TableCell align="right">{formatoMoneda(t.importeTotal)}</TableCell>
                             <TableCell>
@@ -2013,18 +2085,7 @@ export default function TraspasoMercancia() {
                               <Checkbox
                                 size="small"
                                 checked={seleccionado}
-                                disabled={
-                                  (!esTraspasoPendiente(t) && t.folio <= 0) ||
-                                  (Number(t.sucOrigen) || Number(sucOrigen) || 0) <= 0 ||
-                                  (esTraspasoPendiente(t) && Number(t.sucDestino) <= 0)
-                                }
-                                title={
-                                  (!esTraspasoPendiente(t) && t.folio <= 0) ||
-                                  (Number(t.sucOrigen) || Number(sucOrigen) || 0) <= 0 ||
-                                  (esTraspasoPendiente(t) && Number(t.sucDestino) <= 0)
-                                    ? "No se puede cargar: faltan sucursales o folio válido"
-                                    : "Cargar traspaso"
-                                }
+                                title="Cargar traspaso"
                                 onChange={() => toggleTraspasoSeleccionado(idx, t)}
                               />
                             </TableCell>
@@ -2095,8 +2156,30 @@ export default function TraspasoMercancia() {
                 >
                   <Typography><strong>Folio:</strong> {obtenerValor(vistaPrevia?.cabecera, "folio") || folio}</Typography>
                   <Typography><strong>Fecha:</strong> {String(obtenerValor(vistaPrevia?.cabecera, "fecha_orden", "fechaOrden") || fecha)}</Typography>
-                  <Typography><strong>Origen:</strong> {String(obtenerValor(vistaPrevia?.cabecera, "origen") || sucOrigen)}</Typography>
-                  <Typography><strong>Destino:</strong> {String(obtenerValor(vistaPrevia?.cabecera, "destino") || sucDestino)}</Typography>
+                  <Typography>
+                    <strong>Origen:</strong>{" "}
+                    {nombreSucursalPorValor(
+                      obtenerValor(
+                        vistaPrevia?.cabecera,
+                        "sucursal_origen_id",
+                        "sucursalOrigenId",
+                        "sucursalOrigen",
+                        "origen"
+                      ) || sucOrigen
+                    )}
+                  </Typography>
+                  <Typography>
+                    <strong>Destino:</strong>{" "}
+                    {nombreSucursalPorValor(
+                      obtenerValor(
+                        vistaPrevia?.cabecera,
+                        "sucursal_destino_id",
+                        "sucursalDestinoId",
+                        "sucursalDestino",
+                        "destino"
+                      ) || sucDestino
+                    )}
+                  </Typography>
                   <Typography><strong>Usuario:</strong> {String(obtenerValor(vistaPrevia?.cabecera, "nombre_usuario", "nombreUsuario", "usuario") || usuarioSesion)}</Typography>
                   <Typography><strong>Estado:</strong> {String(obtenerValor(vistaPrevia?.cabecera, "leyenda", "LEYENDA", "estado") || "")}</Typography>
                 </Box>

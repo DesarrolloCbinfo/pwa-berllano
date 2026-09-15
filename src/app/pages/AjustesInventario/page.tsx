@@ -66,6 +66,7 @@ type RenglonAjuste = {
 
 type AjusteHistorial = {
   folio: number;
+  sucursal?: number;
   fecha: string;
   usuario: string;
   total: number;
@@ -74,12 +75,15 @@ type AjusteHistorial = {
 
 type AjusteBusquedaRow = {
   folio: number;
+  sucursal?: number;
   fecha: string;
   usuario: string;
   entradas: number;
   salidas: number;
   costo: number;
   total?: number;
+  totalPartidas?: number;
+  detalle?: AjusteBusquedaRow[];
   estado?: string;
   clave_prod?: string;
   descripcion?: string;
@@ -982,7 +986,11 @@ export default function AjustesInventario() {
       };
     }
 
-    seleccionarAjuste(ajuste, selectedRows);
+    const selectedDetails = selectedRows.flatMap((row) =>
+      row.detalle && row.detalle.length > 0 ? row.detalle : [row]
+    );
+
+    seleccionarAjuste(ajuste, selectedDetails);
   };
 
   const handleBuscarHistorial = async () => {
@@ -998,20 +1006,61 @@ export default function AjustesInventario() {
 
     setCargandoHistorial(true);
     try {
-      const response = await consumoApi.get(
-        "/api/CatAjustes/sp_fw_buscar_ajustes_por_fechas",
-        {
-          params: {
-            sucursal: sucursalSesion,
-            usuario: usuarioSesion,
-            fechaInicio: fechaInicioBuscar,
-            fechaFin: fechaFinBuscar,
-          },
-        }
-      );
+      const params = {
+        sucursal: sucursalSesion,
+        tipoMovtoMin: 51,
+        fechaInicio: fechaInicioBuscar,
+        fechaFin: fechaFinBuscar,
+      };
+
+      let response;
+      try {
+        response = await consumoApi.get(
+          "/api/CatAjustes/sp_bw_buscar_ajustes_por_fecha",
+          { params }
+        );
+      } catch (error: any) {
+        if (error.response?.status !== 404) throw error;
+
+        response = await consumoApi.get(
+          "/api/CatAjustes/sp_fw_buscar_ajustes_por_fechas",
+          {
+            params: {
+              sucursal: sucursalSesion,
+              fechaInicio: fechaInicioBuscar,
+              fechaFin: fechaFinBuscar,
+            },
+          }
+        );
+      }
 
       const rawResponse: AjusteBusquedaRow[] = Array.isArray(response.data)
-        ? response.data
+        ? response.data.map((item: any) => {
+            const entradas = Number(
+              obtenerValor(item, "entradas", "total_entradas") || 0
+            );
+            const salidas = Number(
+              obtenerValor(item, "salidas", "total_salidas") || 0
+            );
+            const costo = Number(obtenerValor(item, "costo", "subtotal") || 0);
+            const tasaRaw = Number(
+              obtenerValor(item, "tasa_iva", "tasaIva", "iva") || 0
+            );
+            const tasa = tasaRaw > 1 ? tasaRaw / 100 : tasaRaw;
+            const totalGeneral = obtenerValor(item, "total_general");
+            const total =
+              totalGeneral !== undefined
+                ? Number(totalGeneral) || 0
+                : (entradas - salidas) * costo * (1 + tasa);
+
+            return {
+              ...item,
+              entradas,
+              salidas,
+              total,
+              costo,
+            };
+          })
         : [];
 
       const folioNum = folioBuscar.trim() !== "" ? Number(folioBuscar.trim()) : null;
@@ -1020,37 +1069,76 @@ export default function AjustesInventario() {
           ? rawResponse.filter((r) => Number(r.folio) === folioNum)
           : rawResponse;
 
-      const agrupados = raw.reduce<Record<number, AjusteHistorial>>(
-        (acc, row) => {
-          const folioNum = Number(row.folio) || 0;
-          const movimiento =
-            (Number(row.entradas) || 0) - (Number(row.salidas) || 0);
-          const importe =
-            Number(row.total) || Math.abs(movimiento) * (Number(row.costo) || 0);
+      const agrupados = new Map<string, AjusteBusquedaRow>();
 
-          if (acc[folioNum]) {
-            acc[folioNum].total += importe;
-          } else {
-            acc[folioNum] = {
-              folio: folioNum,
-              fecha: row.fecha,
-              usuario: row.usuario,
-              total: importe,
-              estado: row.estado || "",
-            };
-          }
-          return acc;
-        },
-        {}
-      );
+      raw.forEach((row) => {
+        const folioAgrupado = Number(row.folio) || 0;
+        const sucursalAgrupada = Number(
+          obtenerValor(row, "sucursal", "sucursal_origen") || sucursalSesion
+        );
+        const key = `${folioAgrupado}:${sucursalAgrupada}`;
+        const existente = agrupados.get(key);
+        const entradas = Number(row.entradas) || 0;
+        const salidas = Number(row.salidas) || 0;
+        const total = Number(row.total) || 0;
 
-      setHistorialAjustesRaw(raw);
-      setHistorialAjustes(Object.values(agrupados));
+        if (existente) {
+          existente.entradas = (Number(existente.entradas) || 0) + entradas;
+          existente.salidas = (Number(existente.salidas) || 0) + salidas;
+          existente.total = (Number(existente.total) || 0) + total;
+          existente.detalle = [...(existente.detalle || []), row];
+          existente.totalPartidas = Math.max(
+            Number(existente.totalPartidas) || 0,
+            existente.detalle.length
+          );
+          existente.descripcion = `${existente.totalPartidas} ${
+            existente.totalPartidas === 1 ? "producto" : "productos"
+          }`;
+        } else {
+          const totalPartidas = Math.max(
+            Number(obtenerValor(row, "total_partidas", "totalPartidas") || 0),
+            1
+          );
+          agrupados.set(key, {
+            ...row,
+            sucursal: sucursalAgrupada,
+            entradas,
+            salidas,
+            total,
+            totalPartidas,
+            descripcion: `${totalPartidas} ${
+              totalPartidas === 1 ? "producto" : "productos"
+            }`,
+            detalle: [row],
+          });
+        }
+      });
+
+      const rawAgrupado = Array.from(agrupados.values());
+      const historialAgrupado: AjusteHistorial[] = rawAgrupado.map((row) => ({
+        folio: Number(row.folio) || 0,
+        sucursal: row.sucursal,
+        fecha: row.fecha,
+        usuario: row.usuario,
+        total: Number(row.total) || 0,
+        estado: row.estado || "",
+      }));
+
+      setHistorialAjustesRaw(rawAgrupado);
+      setHistorialAjustes(historialAgrupado);
       setSelectedRawIndexes(new Set());
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error al buscar historial de ajustes:", err);
       setHistorialAjustes([]);
       setHistorialAjustesRaw([]);
+      await Swal.fire({
+        icon: "error",
+        title: "Error al buscar ajustes",
+        text:
+          err.response?.data?.mensaje ||
+          "No fue posible consultar el historial de ajustes. Verifica que la API esté reiniciada.",
+        confirmButtonColor: "#000000",
+      });
     } finally {
       setCargandoHistorial(false);
     }
@@ -1256,13 +1344,75 @@ export default function AjustesInventario() {
             >
               Ajustes al Inventario
             </Typography>
+
+            <Stack
+              direction="row"
+              spacing={1}
+              justifyContent="center"
+              flexWrap="wrap"
+              useFlexGap
+              sx={{ mt: 2 }}
+            >
+              <Button variant="contained" onClick={handleNuevo}>
+                Nuevo
+              </Button>
+              <Button
+                variant="contained"
+                onClick={handleGuardar}
+                disabled={guardando || ajusteBloqueado}
+              >
+                {guardando ? <CircularProgress size={18} color="inherit" /> : "Guardar"}
+              </Button>
+              <Button
+                variant="contained"
+                onClick={handleCancelar}
+                disabled={
+                  guardando ||
+                  estadoAjuste.toLowerCase() === "cancelado" ||
+                  estadoAjuste.toLowerCase() === "edición" ||
+                  (usuarioAjuste && usuarioAjuste !== usuarioSesion)
+                }
+                sx={{ bgcolor: "#d32f2f", color: "white", "&:hover": { bgcolor: "#b71c1c" } }}
+              >
+                Cancelar
+              </Button>
+              <Button variant="contained" onClick={handleVistaPrevia}>
+                Vista previa
+              </Button>
+              <Button variant="contained" onClick={handleBuscar} disabled={buscando}>
+                Buscar
+              </Button>
+              <Button variant="contained" onClick={handleSalir}>
+                Salir
+              </Button>
+            </Stack>
           </Box>
           <Box sx={{ height: 6, bgcolor: "#000" }} />
 
           <Box sx={{ p: { xs: 2, md: 3 } }}>
-            <Typography sx={{ fontWeight: "bold", mb: 1.5 }}>
-              Datos del origen del ajuste:
-            </Typography>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: 2,
+                mb: 1.5,
+              }}
+            >
+              <Typography sx={{ fontWeight: "bold" }}>
+                Datos del origen del ajuste:
+              </Typography>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Typography sx={{ fontWeight: "bold" }}>Total:</Typography>
+                <TextField
+                  size="small"
+                  value={formatoMoneda(total)}
+                  InputProps={{ readOnly: true }}
+                  sx={{ width: 140 }}
+                />
+              </Stack>
+            </Box>
 
             {/* Fila: Folio / Tipo de movimiento */}
             <Stack
@@ -1537,118 +1687,6 @@ export default function AjustesInventario() {
               </Button>
             </Stack>
 
-            {/* Botonera */}
-            <Stack
-              direction={{ xs: "column", sm: "row" }}
-              spacing={1.5}
-              justifyContent="center"
-              flexWrap="wrap"
-              useFlexGap
-              sx={{ mb: 2 }}
-            >
-              <Button
-                variant="contained"
-                onClick={handleNuevo}
-                sx={{
-                  bgcolor: "#000000",
-                  color: "#fff",
-                  fontWeight: "bold",
-                  boxShadow: "none",
-                  minWidth: 100,
-                  "&:hover": { bgcolor: "#424242", boxShadow: "none" },
-                }}
-              >
-                Nuevo
-              </Button>
-              <Button
-                variant="contained"
-                onClick={handleGuardar}
-                disabled={guardando || ajusteBloqueado}
-                sx={{
-                  bgcolor: "#000000",
-                  color: "#fff",
-                  fontWeight: "bold",
-                  boxShadow: "none",
-                  minWidth: 100,
-                  "&:hover": { bgcolor: "#424242", boxShadow: "none" },
-                }}
-              >
-                {guardando ? <CircularProgress size={18} color="inherit" /> : "Guardar"}
-              </Button>
-              <Button
-                variant="contained"
-                onClick={handleCancelar}
-                disabled={
-                  guardando ||
-                  estadoAjuste.toLowerCase() === "cancelado" ||
-                  estadoAjuste.toLowerCase() === "edición" ||
-                  (usuarioAjuste && usuarioAjuste !== usuarioSesion)
-                }
-                sx={{
-                  bgcolor: "#d32f2f",
-                  color: "#fff",
-                  fontWeight: "bold",
-                  boxShadow: "none",
-                  minWidth: 100,
-                  "&:hover": { bgcolor: "#b71c1c", boxShadow: "none" },
-                }}
-              >
-                Cancelar
-              </Button>
-              <Button
-                variant="contained"
-                onClick={handleVistaPrevia}
-                sx={{
-                  bgcolor: "#000000",
-                  color: "#fff",
-                  fontWeight: "bold",
-                  boxShadow: "none",
-                  minWidth: 100,
-                  "&:hover": { bgcolor: "#424242", boxShadow: "none" },
-                }}
-              >
-                Vista previa
-              </Button>
-              <Button
-                variant="contained"
-                onClick={handleBuscar}
-                disabled={buscando}
-                sx={{
-                  bgcolor: "#000000",
-                  color: "#fff",
-                  fontWeight: "bold",
-                  boxShadow: "none",
-                  minWidth: 100,
-                  "&:hover": { bgcolor: "#424242", boxShadow: "none" },
-                }}
-              >
-                Buscar
-              </Button>
-              <Button
-                variant="contained"
-                onClick={handleSalir}
-                sx={{
-                  bgcolor: "#000000",
-                  color: "#fff",
-                  fontWeight: "bold",
-                  boxShadow: "none",
-                  minWidth: 100,
-                  "&:hover": { bgcolor: "#424242", boxShadow: "none" },
-                }}
-              >
-                Salir
-              </Button>
-            </Stack>
-
-            <Stack direction="row" spacing={1} justifyContent="center" alignItems="center">
-              <Typography sx={{ fontWeight: "bold" }}>Total:</Typography>
-              <TextField
-                size="small"
-                value={formatoMoneda(total)}
-                InputProps={{ readOnly: true }}
-                sx={{ width: 140 }}
-              />
-            </Stack>
           </Box>
         </Paper>
       </Box>
@@ -1761,53 +1799,7 @@ export default function AjustesInventario() {
                         whiteSpace: "nowrap",
                       }}
                     >
-                      {idx === 0 ? (
-                        <Checkbox
-                          size="small"
-                          sx={{ p: 0 }}
-                          checked={(() => {
-                            const seleccionables = historialAjustesRaw
-                              .map((row, i) => ({ row, i }))
-                              .filter(({ row }) => !isRowDisabled(row));
-                            return (
-                              seleccionables.length > 0 &&
-                              seleccionables.every(({ i }) =>
-                                selectedRawIndexes.has(i)
-                              )
-                            );
-                          })()}
-                          indeterminate={(() => {
-                            const seleccionables = historialAjustesRaw
-                              .map((row, i) => ({ row, i }))
-                              .filter(({ row }) => !isRowDisabled(row));
-                            return (
-                              seleccionables.some(({ i }) =>
-                                selectedRawIndexes.has(i)
-                              ) &&
-                              !seleccionables.every(({ i }) =>
-                                selectedRawIndexes.has(i)
-                              )
-                            );
-                          })()}
-                          onChange={() => {
-                            const seleccionables = historialAjustesRaw
-                              .map((row, i) => ({ row, i }))
-                              .filter(({ row }) => !isRowDisabled(row));
-                            const todos = seleccionables.every(({ i }) =>
-                              selectedRawIndexes.has(i)
-                            );
-                            const next = new Set(selectedRawIndexes);
-                            if (todos) {
-                              seleccionables.forEach(({ i }) => next.delete(i));
-                            } else {
-                              seleccionables.forEach(({ i }) => next.add(i));
-                            }
-                            setSelectedRawIndexes(next);
-                          }}
-                        />
-                      ) : (
-                        h.label
-                      )}
+                      {h.label}
                     </TableCell>
                   ))}
                 </TableRow>
@@ -2016,12 +2008,6 @@ export default function AjustesInventario() {
                 {tiposMovimiento
                   .find((t) => t.tipo_movto === Number(tipoMovimiento))
                   ?.descripcion?.toUpperCase() || "—"}
-              </Typography>
-              <Typography>
-                <strong>Origen del ajuste:</strong> {nombreSucursalSesion}
-              </Typography>
-              <Typography sx={{ textAlign: "right" }}>
-                <strong>Documento:</strong> {folioDocumento.trim() || "—"}
               </Typography>
             </Box>
             <Box sx={{ borderTop: "1px dashed #bdbdbd", my: 1 }} />
