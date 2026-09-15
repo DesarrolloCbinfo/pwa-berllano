@@ -69,6 +69,8 @@ export const routes = {
 
   //Inventario
   inventario: "/inventario",
+  //Reportes
+  reportes: "/reportes",
   traspasoMercancia: "/traspaso-mercancia",
   recepcionTraspasos: "/recepcion-traspasos",
   ajustesInventario: "/ajustes-inventario",

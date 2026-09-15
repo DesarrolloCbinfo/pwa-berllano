@@ -28,6 +28,7 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/Delete";
+import PrintIcon from "@mui/icons-material/Print";
 import { useNavigate } from "react-router-dom";
 import useConsumoApi from "../../../hooks/useConsumoApi";
 import { useAuth } from "../../../context/AuthContext";
@@ -74,17 +75,21 @@ type TraspasoBusqueda = {
   estado: string;
 };
 
+type VistaPreviaTraspaso = {
+  cabecera: Record<string, unknown>;
+  detalle: Record<string, unknown>[];
+};
+
+const PASO_CANTIDAD_FRACCION = 0.125;
+const UNIDADES_POR_ENTERO = 1 / PASO_CANTIDAD_FRACCION;
+
 function formatoMoneda(valor: number) {
   return `$${valor.toFixed(2)}`;
 }
 
-function escaparHtml(valor: unknown) {
-  return String(valor ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/\"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+function esFraccionEnOctavos(valor: number) {
+  const unidades = valor * UNIDADES_POR_ENTERO;
+  return Math.abs(unidades - Math.round(unidades)) < Number.EPSILON * 100;
 }
 
 function valorVerdadero(valor: unknown) {
@@ -153,7 +158,17 @@ const validarCantidad = async (nuevaCantidad: number, producto: any) => {
     await Swal.fire({
       icon: "warning",
       title: "Cantidad no válida",
-      text: "Valor no válido para este producto. No se aceptan valores decimales.",
+      text: "Este producto solo permite cantidades enteras.",
+      confirmButtonColor: "#1f2937",
+    });
+    return false;
+  }
+
+  if (producto.esFraccion && !esFraccionEnOctavos(nuevaCantidad)) {
+    await Swal.fire({
+      icon: "warning",
+      title: "Cantidad no válida",
+      text: "Las fracciones permitidas son .125, .250, .375, .500, .625, .750 y .875.",
       confirmButtonColor: "#1f2937",
     });
     return false;
@@ -333,8 +348,10 @@ export default function TraspasoMercancia() {
   const [verNoValidados, setVerNoValidados] = useState(false);
   const [traspasoGuardado, setTraspasoGuardado] = useState(false);
   const [dialogoBuscarAbierto, setDialogoBuscarAbierto] = useState(false);
+  const [vistaPrevia, setVistaPrevia] = useState<VistaPreviaTraspaso | null>(null);
   const [unidad, setUnidad] = useState<string>("");
   const [guardando, setGuardando] = useState(false);
+  const [actualizandoSucursal, setActualizandoSucursal] = useState(false);
   const [cancelando, setCancelando] = useState(false);
   const [fecha1, setFecha1] = useState<string>(fechaHoy);
   const [fecha2, setFecha2] = useState<string>(fechaHoy);
@@ -377,6 +394,17 @@ export default function TraspasoMercancia() {
     const ivaCalc = sub * 0.16;
     return { subtotal: sub, iva: ivaCalc, total: sub + ivaCalc };
   }, [rows]);
+
+  const totalesVistaPrevia = useMemo(() => {
+    const sub = vistaPrevia?.detalle.reduce((sum, item) => {
+      const cantidad = Number(obtenerValor(item, "cantidad", "cant") || 0);
+      const costo = Number(obtenerValor(item, "costo", "costoProm") || 0);
+      const importe = Number(obtenerValor(item, "importe") || 0);
+      return sum + (importe || cantidad * costo);
+    }, 0) || 0;
+    const ivaCalc = sub * 0.16;
+    return { subtotal: sub, iva: ivaCalc, total: sub + ivaCalc };
+  }, [vistaPrevia]);
 
   const traspasoCancelado = useMemo(
     () => rows.some((r) => String(r.estado || "").toUpperCase() === "CANCELADO"),
@@ -540,6 +568,12 @@ export default function TraspasoMercancia() {
                 row.costoProm
               )
             ) || 0;
+          const tasaIvaVal = Number(buscarCampo(["tasaIva", "tasa_iva", "iva"], 0)) || 0;
+          const precioMenudeoVal =
+            Number(buscarCampo(["precioMenudeo", "precio_menudeo", "precio"], 0)) || 0;
+          const ultimoCostoVal =
+            Number(buscarCampo(["ultimoCosto", "ultimo_costo"], costoVal)) || costoVal;
+          const versionVal = String(buscarCampo(["version"], "") ?? "");
           const exisVal =
             Number(
               buscarCampo(
@@ -578,6 +612,27 @@ export default function TraspasoMercancia() {
               )
             ) || 0;
           const usuarioVal = String(row.usuario || usuarioSesion || "");
+
+          if (Number(folio) === 0) {
+            await consumoApi.post(
+              "/api/CatTraspasoSalida/sp_bw_guardar_renglon_borrador",
+              {
+                cia: 1,
+                sucursal: Number(sucOrigen) || 0,
+                sucOrigen: Number(sucOrigen) || 0,
+                usuario: usuarioSesion,
+                claveProd: claveVal,
+                cantidad: cantidadInicial,
+                costo: costoVal,
+                tasaIva: tasaIvaVal,
+                precioMenudeo: precioMenudeoVal,
+                posicion: Math.max(rows.findIndex((item) => item.id === row.id), 0),
+                ultimoCosto: ultimoCostoVal,
+                version: versionVal,
+              }
+            );
+          }
+
           setRows((prev) =>
             prev.map((r) =>
               r.id !== row.id
@@ -635,17 +690,57 @@ export default function TraspasoMercancia() {
     setTraspasoGuardado(false);
   };
 
-  const handleCambioSucDestino = (valor: number | "") => {
-    setFolio(0);
-    setFecha(fechaHoy);
-    setSucDestino(valor);
-    setUnidad("");
-    const newRow = { ...emptyRow, id: Date.now() };
-    setRows([newRow]);
-    setSelectedRowId(newRow.id);
-    setVerNoValidados(false);
-    setTraspasoGuardado(false);
-    setTraspasosSeleccionados([]);
+  const handleCambioSucDestino = async (valor: number | "") => {
+    const esBorradorCargado =
+      Number(folio) === 0 && rows.some((row) => row.clave.trim());
+
+    if (!esBorradorCargado) {
+      setFolio(0);
+      setFecha(fechaHoy);
+      setSucDestino(valor);
+      setUnidad("");
+      const newRow = { ...emptyRow, id: Date.now() };
+      setRows([newRow]);
+      setSelectedRowId(newRow.id);
+      setVerNoValidados(false);
+      setTraspasoGuardado(false);
+      setTraspasosSeleccionados([]);
+      return;
+    }
+
+    if (valor === "" || Number(valor) === Number(sucOrigen)) return;
+
+    if (await verificarSucDestinoOcupada(Number(valor))) {
+      await Swal.fire({
+        icon: "warning",
+        title: "Sucursal destino ocupada",
+        text: "Otro usuario ya está trabajando un traspaso a esta sucursal destino.",
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
+
+    setActualizandoSucursal(true);
+    try {
+      await consumoApi.put(
+        "/api/CatTraspasoSalida/sp_bw_actualizar_sucursal_borrador",
+        {
+          sucursal: Number(sucOrigen) || 0,
+          sucDestino: Number(valor),
+          usuario: usuarioSesion,
+        }
+      );
+      setSucDestino(valor);
+    } catch (error: any) {
+      await Swal.fire({
+        icon: "error",
+        title: "No se pudo cambiar la sucursal",
+        text: error.response?.data?.mensaje || "No fue posible actualizar el borrador.",
+        confirmButtonColor: "#000000",
+      });
+    } finally {
+      setActualizandoSucursal(false);
+    }
   };
 
   const handleGuardar = async () => {
@@ -696,15 +791,40 @@ export default function TraspasoMercancia() {
 
       const folioGenerado = response.data?.folio || response.data?.Folio;
       const mensaje = response.data?.mensaje || response.data?.message || "Traspaso guardado";
+      const detalleFinalizado: Record<string, unknown>[] = renglonesConProducto.map((row) => ({
+        clave_prod: row.clave,
+        descripcion: row.descripcion,
+        cantidad: row.cantidad,
+        costo: row.costoProm,
+        importe: row.importe,
+      }));
 
-      Swal.fire({
+      const resultadoImpresion = await Swal.fire({
         icon: "success",
         title: "Éxito",
         text: `${mensaje} Folio asignado: ${folioGenerado}`,
+        showCancelButton: true,
+        confirmButtonText: "Imprimir",
+        cancelButtonText: "Cerrar",
         confirmButtonColor: "#000000",
+        cancelButtonColor: "#6b7280",
       });
 
       handleNuevo();
+
+      if (resultadoImpresion.isConfirmed) {
+        setVistaPrevia({
+          cabecera: {
+            folio: folioGenerado,
+            fecha_orden: fecha,
+            origen: sucOrigen,
+            destino: sucDestino,
+            nombre_usuario: usuarioSesion,
+            leyenda: "FINALIZADO",
+          },
+          detalle: detalleFinalizado,
+        });
+      }
     } catch (error: any) {
       Swal.fire({
         icon: "error",
@@ -982,7 +1102,16 @@ export default function TraspasoMercancia() {
       console.log("Respuesta de sp_bw_buscar_traspasos_por_fecha (primer item):", data[0]);
       const mapeados: TraspasoBusqueda[] = data.map((item: any) => ({
         folio: Number(obtenerValor(item, "Folio", "folio") || 0),
-        sucOrigen: Number(obtenerValor(item, "SucOrigen", "suc_origen", "sucOrigen") || sucOrigen || 0),
+        sucOrigen: Number(
+          obtenerValor(
+            item,
+            "SucOrigen",
+            "suc_origen",
+            "sucOrigen",
+            "sucursalOrigen",
+            "sucursal"
+          ) || sucOrigen || 0
+        ),
         sucDestino: Number(obtenerValor(item, "SucDestino", "suc_destino", "sucDestino") || 0),
         usuario: String(obtenerValor(item, "Usuario", "usuario") || ""),
         totalCantidad: Number(
@@ -1017,10 +1146,26 @@ export default function TraspasoMercancia() {
     }
   };
 
+  const esTraspasoPendiente = (traspaso: TraspasoBusqueda) =>
+    traspaso.folio <= 0 && String(traspaso.estado || "").toUpperCase() === "PENDIENTE";
+
   const toggleTraspasoSeleccionado = (
     idx: number,
     traspaso: TraspasoBusqueda
   ) => {
+    const sucursalOrigen = Number(traspaso.sucOrigen) || Number(sucOrigen) || 0;
+    const pendiente = esTraspasoPendiente(traspaso);
+    const sucursalDestino = Number(traspaso.sucDestino) || 0;
+    if ((!pendiente && traspaso.folio <= 0) || sucursalOrigen <= 0 || (pendiente && sucursalDestino <= 0)) {
+      Swal.fire({
+        icon: "warning",
+        title: "Registro no disponible",
+        text: "Este registro no tiene un folio o sucursal de origen válidos para cargar el detalle.",
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
+
     setTraspasosSeleccionados((prev) => {
       if (prev.includes(idx)) {
         return prev.filter((selected) => selected !== idx);
@@ -1065,6 +1210,26 @@ export default function TraspasoMercancia() {
       return;
     }
 
+    const registroInvalido = seleccionados.find((traspaso) => {
+      const pendiente = esTraspasoPendiente(traspaso);
+      const origen = Number(traspaso.sucOrigen) || Number(sucOrigen) || 0;
+      const destino = Number(traspaso.sucDestino) || 0;
+      return (
+        (!pendiente && traspaso.folio <= 0) ||
+        origen <= 0 ||
+        (pendiente && destino <= 0)
+      );
+    });
+    if (registroInvalido) {
+      Swal.fire({
+        icon: "warning",
+        title: "Registro no disponible",
+        text: "El detalle solo puede cargarse para registros con folio y sucursal de origen válidos.",
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
+
     setCargandoBusqueda(true);
     try {
       const primerTraspaso = seleccionados[0];
@@ -1076,17 +1241,32 @@ export default function TraspasoMercancia() {
       let todasLasFilas: TraspasoRow[] = [];
 
       for (const traspaso of seleccionados) {
+        const pendiente = esTraspasoPendiente(traspaso);
+        const sucursalOrigen = Number(traspaso.sucOrigen) || Number(sucOrigen) || 0;
+        const sucursalDestino = Number(traspaso.sucDestino) || 0;
         const response = await consumoApi.get(
-          "/api/CatTraspasoSalida/sp_bw_reporte_traspaso",
+          pendiente
+            ? "/api/CatTraspasoSalida/sp_bw_obtener_traspaso_borrador"
+            : "/api/CatTraspasoSalida/sp_bw_reporte_traspaso",
           {
-            params: {
-              sucursal: Number(traspaso.sucOrigen || sucOrigen),
-              folio: Number(traspaso.folio),
-            },
+            params: pendiente
+              ? {
+                  sucursal: sucursalOrigen,
+                  sucDestino: sucursalDestino,
+                  usuario: String(traspaso.usuario || usuarioSesion),
+                }
+              : {
+                  sucursal: sucursalOrigen,
+                  folio: Number(traspaso.folio),
+                },
           }
         );
 
-        const detalle = Array.isArray(response.data?.detalle)
+        const detalle = pendiente
+          ? Array.isArray(response.data)
+            ? response.data
+            : []
+          : Array.isArray(response.data?.detalle)
           ? response.data.detalle
           : Array.isArray(response.data)
           ? response.data
@@ -1145,7 +1325,7 @@ export default function TraspasoMercancia() {
               costoProm,
               importe,
               obs,
-              validado: true,
+              validado: !pendiente,
               esFraccion: false,
               recuperado: true,
               cantidadAnterior: cantidad,
@@ -1233,55 +1413,14 @@ export default function TraspasoMercancia() {
       const detalle = Array.isArray(response.data?.detalle)
         ? response.data.detalle
         : [];
-      const fechaOrden = obtenerValor(cabecera, "fecha_orden", "fechaOrden");
-      const fechaTexto = fechaOrden
-        ? new Date(fechaOrden).toLocaleString("es-MX")
-        : "";
+      const detalleNormalizado = detalle.filter(
+        (item: unknown): item is Record<string, unknown> =>
+          typeof item === "object" && item !== null
+      );
 
-      const filas = detalle
-        .map((item: any) => {
-          const cantidad = Number(obtenerValor(item, "cantidad") || 0);
-          const costo = Number(obtenerValor(item, "costo") || 0);
-          const importe = cantidad * costo;
-          return `
-            <tr>
-              <td>${escaparHtml(obtenerValor(item, "clave_prod", "claveProd"))}</td>
-              <td>${escaparHtml(obtenerValor(item, "descripcion"))}</td>
-              <td style="text-align:right">${cantidad}</td>
-              <td style="text-align:right">${formatoMoneda(costo)}</td>
-              <td style="text-align:right">${formatoMoneda(importe)}</td>
-            </tr>`;
-        })
-        .join("");
-
-      await Swal.fire({
-        title: `Vista previa - Folio ${escaparHtml(obtenerValor(cabecera, "folio") || folio)}`,
-        html: `
-          <div style="text-align:left;font-size:13px;margin-bottom:12px;">
-            <strong>Origen:</strong> ${escaparHtml(obtenerValor(cabecera, "origen"))}<br />
-            <strong>Destino:</strong> ${escaparHtml(obtenerValor(cabecera, "destino"))}<br />
-            <strong>Fecha:</strong> ${escaparHtml(fechaTexto)}<br />
-            <strong>Usuario:</strong> ${escaparHtml(obtenerValor(cabecera, "nombre_usuario", "nombreUsuario", "usuario"))}<br />
-            <strong>Estado:</strong> ${escaparHtml(obtenerValor(cabecera, "leyenda", "LEYENDA"))}
-          </div>
-          <div style="max-height:360px;overflow:auto;text-align:left;">
-            <table style="width:100%;border-collapse:collapse;font-size:12px;">
-              <thead>
-                <tr style="background:#f0f0f0;">
-                  <th style="padding:6px;border:1px solid #ddd;text-align:left">Clave</th>
-                  <th style="padding:6px;border:1px solid #ddd;text-align:left">Descripción</th>
-                  <th style="padding:6px;border:1px solid #ddd;text-align:right">Cantidad</th>
-                  <th style="padding:6px;border:1px solid #ddd;text-align:right">Costo</th>
-                  <th style="padding:6px;border:1px solid #ddd;text-align:right">Importe</th>
-                </tr>
-              </thead>
-              <tbody>${filas || "<tr><td colspan=5>Sin productos</td></tr>"}</tbody>
-            </table>
-          </div>
-        `,
-        confirmButtonText: "Cerrar",
-        confirmButtonColor: "#000000",
-        width: "min(95vw, 900px)",
+      setVistaPrevia({
+        cabecera: cabecera as Record<string, unknown>,
+        detalle: detalleNormalizado,
       });
     } catch (err: any) {
       Swal.fire({
@@ -1303,6 +1442,37 @@ export default function TraspasoMercancia() {
 
   return (
     <Box sx={{ p: { xs: 2, md: 3 }, bgcolor: "#f3f4f6", minHeight: "100vh" }}>
+      <style>{`
+        @page {
+          size: Letter;
+          margin: 12mm;
+        }
+
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+
+          #seccion-impresion-traspaso,
+          #seccion-impresion-traspaso * {
+            visibility: visible;
+          }
+
+          #seccion-impresion-traspaso {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            padding: 0;
+            margin: 0;
+            background: #fff;
+          }
+
+          .no-imprimir-traspaso {
+            display: none !important;
+          }
+        }
+      `}</style>
       <Box sx={{ width: "100%", maxWidth: 1100, mx: "auto" }}>
       <Paper
         elevation={0}
@@ -1439,9 +1609,10 @@ export default function TraspasoMercancia() {
                   labelId="destino-label"
                   value={sucDestino}
                   label="Sucursal destino"
+                  disabled={Number(folio) > 0 || actualizandoSucursal}
                   onChange={(e) => {
                     const nuevoDestino = e.target.value === "" ? "" : Number(e.target.value);
-                    handleCambioSucDestino(nuevoDestino);
+                    void handleCambioSucDestino(nuevoDestino);
                   }}
                 >
                   {sucursales
@@ -1608,7 +1779,10 @@ export default function TraspasoMercancia() {
                         type="number"
                         value={row.cantidad}
                         disabled={!puedeEditarFila(row)}
-                        inputProps={{ min: 0 }}
+                        inputProps={{
+                          min: 0,
+                          step: row.esFraccion ? PASO_CANTIDAD_FRACCION : 1,
+                        }}
                         onFocus={() => {
                           cantidadAnteriorRef.current[row.id] = row.cantidad;
                         }}
@@ -1839,6 +2013,18 @@ export default function TraspasoMercancia() {
                               <Checkbox
                                 size="small"
                                 checked={seleccionado}
+                                disabled={
+                                  (!esTraspasoPendiente(t) && t.folio <= 0) ||
+                                  (Number(t.sucOrigen) || Number(sucOrigen) || 0) <= 0 ||
+                                  (esTraspasoPendiente(t) && Number(t.sucDestino) <= 0)
+                                }
+                                title={
+                                  (!esTraspasoPendiente(t) && t.folio <= 0) ||
+                                  (Number(t.sucOrigen) || Number(sucOrigen) || 0) <= 0 ||
+                                  (esTraspasoPendiente(t) && Number(t.sucDestino) <= 0)
+                                    ? "No se puede cargar: faltan sucursales o folio válido"
+                                    : "Cargar traspaso"
+                                }
                                 onChange={() => toggleTraspasoSeleccionado(idx, t)}
                               />
                             </TableCell>
@@ -1860,6 +2046,124 @@ export default function TraspasoMercancia() {
                 disabled={traspasosSeleccionados.length === 0}
               >
                 Cargar seleccionados ({traspasosSeleccionados.length})
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          <Dialog
+            open={vistaPrevia !== null}
+            onClose={() => setVistaPrevia(null)}
+            maxWidth="md"
+            fullWidth
+          >
+            <DialogTitle
+              className="no-imprimir-traspaso"
+              sx={{
+                m: 0,
+                p: 2,
+                bgcolor: "#000000",
+                color: "#fff",
+                fontWeight: "bold",
+              }}
+            >
+              Vista previa de traspaso de mercancía (Formato Carta)
+              <IconButton
+                aria-label="Cerrar vista previa"
+                onClick={() => setVistaPrevia(null)}
+                sx={{ position: "absolute", right: 8, top: 8, color: "#fff" }}
+              >
+                <CloseIcon />
+              </IconButton>
+            </DialogTitle>
+            <DialogContent dividers>
+              <Box id="seccion-impresion-traspaso" sx={{ p: { xs: 1, sm: 2 }, bgcolor: "#fff" }}>
+                <Typography variant="h5" align="center" sx={{ fontWeight: "bold", letterSpacing: 1 }}>
+                  BERLLANO
+                </Typography>
+                <Typography variant="subtitle1" align="center" sx={{ fontWeight: "bold", mb: 2 }}>
+                  TRASPASO DE MERCANCÍA
+                </Typography>
+
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                    gap: 1,
+                    mb: 2,
+                    fontSize: "0.85rem",
+                  }}
+                >
+                  <Typography><strong>Folio:</strong> {obtenerValor(vistaPrevia?.cabecera, "folio") || folio}</Typography>
+                  <Typography><strong>Fecha:</strong> {String(obtenerValor(vistaPrevia?.cabecera, "fecha_orden", "fechaOrden") || fecha)}</Typography>
+                  <Typography><strong>Origen:</strong> {String(obtenerValor(vistaPrevia?.cabecera, "origen") || sucOrigen)}</Typography>
+                  <Typography><strong>Destino:</strong> {String(obtenerValor(vistaPrevia?.cabecera, "destino") || sucDestino)}</Typography>
+                  <Typography><strong>Usuario:</strong> {String(obtenerValor(vistaPrevia?.cabecera, "nombre_usuario", "nombreUsuario", "usuario") || usuarioSesion)}</Typography>
+                  <Typography><strong>Estado:</strong> {String(obtenerValor(vistaPrevia?.cabecera, "leyenda", "LEYENDA", "estado") || "")}</Typography>
+                </Box>
+
+                <TableContainer component={Paper} variant="outlined">
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow sx={{ bgcolor: "#f0f0f0" }}>
+                        <TableCell sx={{ fontWeight: "bold" }}>Clave</TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>Descripción</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: "bold" }}>Cantidad</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: "bold" }}>Costo</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: "bold" }}>Importe</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {vistaPrevia?.detalle.length ? (
+                        vistaPrevia.detalle.map((item, index) => {
+                          const cantidad = Number(obtenerValor(item, "cantidad", "cant") || 0);
+                          const costo = Number(obtenerValor(item, "costo", "costoProm") || 0);
+                          const importe = Number(obtenerValor(item, "importe") || 0) || cantidad * costo;
+                          return (
+                            <TableRow key={`${String(obtenerValor(item, "clave_prod", "claveProd", "clave") || "item")}-${index}`}>
+                              <TableCell>{String(obtenerValor(item, "clave_prod", "claveProd", "clave") || "")}</TableCell>
+                              <TableCell>{String(obtenerValor(item, "descripcion", "descrip") || "")}</TableCell>
+                              <TableCell align="right">{cantidad}</TableCell>
+                              <TableCell align="right">{formatoMoneda(costo)}</TableCell>
+                              <TableCell align="right">{formatoMoneda(importe)}</TableCell>
+                            </TableRow>
+                          );
+                        })
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={5} align="center">Sin productos</TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+
+                <Stack spacing={0.5} sx={{ width: 240, ml: "auto", mt: 2 }}>
+                  <Stack direction="row" justifyContent="space-between">
+                    <Typography sx={{ fontWeight: "bold" }}>Subtotal:</Typography>
+                    <Typography>{formatoMoneda(totalesVistaPrevia.subtotal)}</Typography>
+                  </Stack>
+                  <Stack direction="row" justifyContent="space-between">
+                    <Typography sx={{ fontWeight: "bold" }}>IVA:</Typography>
+                    <Typography>{formatoMoneda(totalesVistaPrevia.iva)}</Typography>
+                  </Stack>
+                  <Stack direction="row" justifyContent="space-between">
+                    <Typography sx={{ fontWeight: "bold" }}>Total:</Typography>
+                    <Typography>{formatoMoneda(totalesVistaPrevia.total)}</Typography>
+                  </Stack>
+                </Stack>
+              </Box>
+            </DialogContent>
+            <DialogActions className="no-imprimir-traspaso" sx={{ p: 2 }}>
+              <Button onClick={() => setVistaPrevia(null)} variant="outlined">
+                Cerrar
+              </Button>
+              <Button
+                onClick={() => window.print()}
+                variant="contained"
+                startIcon={<PrintIcon />}
+                sx={{ bgcolor: "#000000", color: "#fff", fontWeight: "bold", "&:hover": { bgcolor: "#333333" } }}
+              >
+                Imprimir Formato Carta
               </Button>
             </DialogActions>
           </Dialog>

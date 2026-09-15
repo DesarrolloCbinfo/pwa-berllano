@@ -100,6 +100,14 @@ const Home: React.FC = () => {
       color: '#6c757d', 
       path: routes.demoStepper 
     },
+    { 
+      id: 'reportes', 
+      title: 'Reportes', 
+      description: 'Consulta de reportes', 
+      icon: Assessment, 
+      color: '#7952b3', 
+      path: routes.reportes 
+    },
   ];
 
   const visibleActions = mainActions.filter((action) =>{

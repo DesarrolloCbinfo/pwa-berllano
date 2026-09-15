@@ -455,10 +455,9 @@ export default function RecepcionTraspasos() {
       const item = resultadosBusqueda[idx];
       return {
         folio: String(obtenerValor(item, "folio") || "").trim(),
-        clave: String(obtenerValor(item, "clave", "clave_prod", "claveProd") || "").trim(),
         suc_origen: Number(obtenerValor(item, "suc_origen", "sucOrigen") || sucOrigen),
       };
-    }).filter((x) => x.folio && x.clave);
+    }).filter((x) => x.folio && x.suc_origen > 0);
 
     setDialogoBuscarAbierto(false);
     setSeleccionadosDialogo([]);
@@ -469,14 +468,6 @@ export default function RecepcionTraspasos() {
     setSeleccionadosDialogo((prev) =>
       prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]
     );
-  };
-
-  const toggleSeleccionarTodosDialogo = () => {
-    if (seleccionadosDialogo.length === resultadosBusqueda.length) {
-      setSeleccionadosDialogo([]);
-    } else {
-      setSeleccionadosDialogo(resultadosBusqueda.map((_, i) => i));
-    }
   };
 
   const handleRecuperarSeleccionados = async (traspasos: any[]) => {
@@ -512,32 +503,25 @@ export default function RecepcionTraspasos() {
     try {
       const renglonesTotal: RenglonTraspaso[] = [];
 
-      const foliosMap = new Map<
-        string,
-        { folio: string; sucOrigen: number; claves: Set<string> }
-      >();
+      const foliosMap = new Map<string, { folio: string; sucOrigen: number }>();
       for (const t of traspasos) {
         const folio = String(obtenerValor(t, "folio") || "").trim();
-        const sucOrigen = Number(
-          obtenerValor(t, "suc_origen", "sucOrigen") || 0
-        );
-        const clave = String(obtenerValor(t, "clave", "clave_prod") || "").trim();
-        if (!folio || !sucOrigen || !clave) continue;
-        const key = `${folio}-${sucOrigen}`;
+        const sucOrigenT = Number(obtenerValor(t, "suc_origen", "sucOrigen") || 0);
+        if (!folio || sucOrigenT <= 0) continue;
+        const key = `${folio}-${sucOrigenT}`;
         if (!foliosMap.has(key)) {
-          foliosMap.set(key, { folio, sucOrigen, claves: new Set() });
+          foliosMap.set(key, { folio, sucOrigen: sucOrigenT });
         }
-        foliosMap.get(key)!.claves.add(clave);
       }
 
-      for (const { folio, sucOrigen, claves } of foliosMap.values()) {
+      for (const { folio, sucOrigen: sucOrigenItem } of foliosMap.values()) {
         const response = await consumoApi.get(
           "/api/Catrecepciontraspasos/sp_bw_obtener_detalle_recepcion_traspaso",
           {
             params: {
               cia,
               sucursalDestino,
-              sucOrigen,
+              sucOrigen: sucOrigenItem,
               folio,
             },
           }
@@ -545,35 +529,20 @@ export default function RecepcionTraspasos() {
 
         const data = Array.isArray(response.data) ? response.data : [];
 
-        const mapeados: RenglonTraspaso[] = data
-          .filter((item: any) => {
-            const claveItem = String(
-              obtenerValor(item, "clave", "clave_prod") || ""
-            ).trim();
-            return claveItem !== "" && claves.has(claveItem);
-          })
-          .map((item: any) => {
-            const cantidad = Number(obtenerValor(item, "cantidad", "cant") || 0);
-            const costo = Number(
-              obtenerValor(item, "costo", "ultimo_costo", "ultimoCosto", "costoProm") || 0
-            );
-            const tasaIva = Number(
-              obtenerValor(item, "tasaIva", "tasa_iva", "iva") || 0
-            );
-            const importe =
-              Number(obtenerValor(item, "importe", "total_general", "totalGeneral") || 0) ||
-              cantidad * costo;
-            return {
-              clave: String(obtenerValor(item, "clave", "clave_prod") || ""),
-              descripcion: String(
-                obtenerValor(item, "descripcion", "descrip", "nombre", "desc") || ""
-              ),
-              cantidad,
-              costo,
-              tasaIva,
-              importe,
-            };
-          });
+        const mapeados: RenglonTraspaso[] = data.map((item: any) => {
+          const cantidad = Number(obtenerValor(item, "cantidad", "cant") || 0);
+          const costo = Number(obtenerValor(item, "costo", "ultimo_costo", "ultimoCosto", "costoProm") || 0);
+          const tasaIva = Number(obtenerValor(item, "tasaIva", "tasa_iva", "iva") || 0);
+          const importe = Number(obtenerValor(item, "importe") || 0) || cantidad * costo;
+          return {
+            clave: String(obtenerValor(item, "clave", "clave_prod") || ""),
+            descripcion: String(obtenerValor(item, "descripcion", "descrip", "nombre", "desc") || ""),
+            cantidad,
+            costo,
+            tasaIva,
+            importe,
+          };
+        });
 
         renglonesTotal.push(...mapeados);
       }
@@ -1021,36 +990,21 @@ export default function RecepcionTraspasos() {
             <Table size="small" stickyHeader sx={{ width: "100%", minWidth: 800 }}>
               <TableHead>
                 <TableRow sx={{ bgcolor: "#f9fafb" }}>
-                  <TableCell sx={{ fontWeight: "bold", width: 50, textAlign: "center" }}>
-                    <Checkbox
-                      size="small"
-                      checked={
-                        resultadosBusqueda.length > 0 &&
-                        seleccionadosDialogo.length === resultadosBusqueda.length
-                      }
-                      indeterminate={
-                        seleccionadosDialogo.length > 0 &&
-                        seleccionadosDialogo.length < resultadosBusqueda.length
-                      }
-                      onChange={toggleSeleccionarTodosDialogo}
-                    />
-                  </TableCell>
+                  <TableCell sx={{ width: 50 }} />
                   <TableCell sx={{ fontWeight: "bold", width: 70 }}>Folio</TableCell>
                   <TableCell sx={{ fontWeight: "bold", width: 90 }}>Fecha</TableCell>
-                  <TableCell sx={{ fontWeight: "bold", width: 100 }}>Origen</TableCell>
-                  <TableCell sx={{ fontWeight: "bold", width: 100 }}>Destino</TableCell>
-                  <TableCell sx={{ fontWeight: "bold", width: 85 }}>Clave</TableCell>
-                  <TableCell sx={{ fontWeight: "bold", width: 220 }}>Descripción</TableCell>
-                  <TableCell sx={{ fontWeight: "bold", width: 70, textAlign: "center" }}>Cantidad</TableCell>
-                  <TableCell sx={{ fontWeight: "bold", width: 85, textAlign: "right" }}>Costo</TableCell>
-                  <TableCell sx={{ fontWeight: "bold", width: 65, textAlign: "center" }}>Tasa I</TableCell>
-                  <TableCell sx={{ fontWeight: "bold", width: 90, textAlign: "right" }}>Importe</TableCell>
+                  <TableCell sx={{ fontWeight: "bold", width: 120 }}>Origen</TableCell>
+                  <TableCell sx={{ fontWeight: "bold", width: 120 }}>Destino</TableCell>
+                  <TableCell sx={{ fontWeight: "bold", width: 80, textAlign: "center" }}>Partidas</TableCell>
+                  <TableCell sx={{ fontWeight: "bold", width: 100, textAlign: "right" }}>Subtotal</TableCell>
+                  <TableCell sx={{ fontWeight: "bold", width: 80, textAlign: "right" }}>IVA</TableCell>
+                  <TableCell sx={{ fontWeight: "bold", width: 100, textAlign: "right" }}>Importe</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {resultadosBusqueda.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={11} align="center" sx={{ py: 3 }}>
+                    <TableCell colSpan={9} align="center" sx={{ py: 3 }}>
                       {cargandoBuscar ? "Buscando..." : "Sin resultados"}
                     </TableCell>
                   </TableRow>
@@ -1069,28 +1023,14 @@ export default function RecepcionTraspasos() {
                     const nombreDestino =
                       sucursales.find((s) => s.cve_sucursal === Number(sucDestinoResultado))?.nombre ||
                       String(sucDestinoResultado);
-                    const claveProdResultado = String(
-                      obtenerValor(item, "clave", "clave_prod", "claveProd") || ""
+                    const partidasResultado = Number(
+                      obtenerValor(item, "total_partidas", "partidas", "totalPartidas") || 0
                     );
-                    const descripcionResultado = String(
-                      obtenerValor(item, "descripcion", "descrip", "nombre", "desc") || ""
-                    );
-                    const cantidadResultado = Number(
-                      obtenerValor(item, "cantidad", "cant") || 0
-                    );
-                    const costoResultado = Number(
-                      obtenerValor(item, "costo", "ultimo_costo", "ultimoCosto", "costoProm") || 0
-                    );
-                    const tasaIvaResultado = Number(
-                      obtenerValor(item, "tasaIva", "tasa_iva", "iva") || 0
-                    );
-                    const tasaIvaDecimal =
-                      tasaIvaResultado > 1 ? tasaIvaResultado / 100 : tasaIvaResultado;
+                    const subtotalResultado = Number(obtenerValor(item, "subtotal") || 0);
+                    const ivaResultado = Number(obtenerValor(item, "total_iva", "iva") || 0);
                     const importeResultado =
-                      Number(
-                        obtenerValor(item, "importe", "total_general", "totalGeneral") || 0
-                      ) ||
-                      (cantidadResultado * costoResultado * (1 + tasaIvaDecimal));
+                      Number(obtenerValor(item, "total_general", "totalGeneral", "importe") || 0) ||
+                      (subtotalResultado + ivaResultado);
 
                     return (
                       <TableRow key={idx} hover>
@@ -1105,13 +1045,9 @@ export default function RecepcionTraspasos() {
                         <TableCell>{fechaTexto}</TableCell>
                         <TableCell>{nombreOrigen}</TableCell>
                         <TableCell>{nombreDestino}</TableCell>
-                        <TableCell>{claveProdResultado}</TableCell>
-                        <TableCell sx={{ maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={descripcionResultado}>
-                          {descripcionResultado}
-                        </TableCell>
-                        <TableCell sx={{ textAlign: "center" }}>{cantidadResultado}</TableCell>
-                        <TableCell sx={{ textAlign: "right" }}>{formatoMoneda(costoResultado)}</TableCell>
-                        <TableCell sx={{ textAlign: "center" }}>{tasaIvaResultado}%</TableCell>
+                        <TableCell sx={{ textAlign: "center" }}>{partidasResultado}</TableCell>
+                        <TableCell sx={{ textAlign: "right" }}>{formatoMoneda(subtotalResultado)}</TableCell>
+                        <TableCell sx={{ textAlign: "right" }}>{formatoMoneda(ivaResultado)}</TableCell>
                         <TableCell sx={{ textAlign: "right" }}>{formatoMoneda(importeResultado)}</TableCell>
                       </TableRow>
                     );
