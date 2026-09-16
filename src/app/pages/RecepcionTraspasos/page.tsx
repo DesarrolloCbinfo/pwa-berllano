@@ -62,6 +62,11 @@ function formatoMoneda(valor: number) {
   return `$${(valor || 0).toFixed(2)}`;
 }
 
+function valorVerdadero(valor: unknown) {
+  const normalizado = String(valor ?? "").trim().toLowerCase();
+  return valor === true || valor === 1 || ["true", "1", "si", "sí"].includes(normalizado);
+}
+
 function escaparHtml(valor: unknown) {
   return String(valor ?? "")
     .replace(/&/g, "&amp;")
@@ -113,6 +118,7 @@ export default function RecepcionTraspasos() {
   const [cargandoRecuperar, setCargandoRecuperar] = useState(false);
   const [cargandoBuscar, setCargandoBuscar] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  const [registroAceptado, setRegistroAceptado] = useState(false);
   const [formatoSalida, setFormatoSalida] = useState<"ticket" | "carta">("ticket");
   const [registroActual, setRegistroActual] = useState(0);
   const sucursalDestino = useMemo(() => {
@@ -292,6 +298,16 @@ export default function RecepcionTraspasos() {
   const handleGuardar = async () => {
     if (guardando) return;
 
+    if (registroAceptado) {
+      Swal.fire({
+        icon: "info",
+        title: "Recepción ya aceptada",
+        text: "Este folio solo puede consultarse o imprimirse; no se puede guardar nuevamente.",
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
+
     if (cia <= 0) {
       Swal.fire({
         icon: "warning",
@@ -400,6 +416,7 @@ export default function RecepcionTraspasos() {
 
     setResultadosBusqueda([]);
     setSeleccionadosDialogo([]);
+    setRegistroAceptado(false);
     setDialogoBuscarAbierto(true);
     ejecutarBusquedaPendientes();
   };
@@ -407,23 +424,34 @@ export default function RecepcionTraspasos() {
   const ejecutarBusquedaPendientes = async () => {
     setCargandoBuscar(true);
     try {
-      const response = await consumoApi.get(
-        "/api/Catrecepciontraspasos/sp_bw_buscar_recepcion_por_fecha",
-        {
-          params: {
-            cia,
-            sucursalDestino,
-            sucOrigen: Number(sucOrigen),
-            fechaInicio: `${fechaInicio}T00:00:00`,
-            fechaFin: `${fechaFin}T00:00:00`,
-            recibido: false,
-          },
-        }
-      );
+      const requestParams = (recibido: boolean) => ({
+        cia,
+        sucursalDestino,
+        sucOrigen: Number(sucOrigen),
+        fechaInicio: `${fechaInicio}T00:00:00`,
+        fechaFin: `${fechaFin}T00:00:00`,
+        recibido,
+      });
 
-      const todosResultados = (Array.isArray(response.data) ? response.data : []).filter(
-        (item: any) => Number(obtenerValor(item, "folio") || 0) > 0
-      );
+      const responses = await Promise.all([
+        consumoApi.get("/api/Catrecepciontraspasos/sp_bw_buscar_recepcion_por_fecha", {
+          params: requestParams(false),
+        }),
+        consumoApi.get("/api/Catrecepciontraspasos/sp_bw_buscar_recepcion_por_fecha", {
+          params: requestParams(true),
+        }),
+      ]);
+
+      const vistos = new Set<string>();
+      const todosResultados = responses
+        .flatMap((response) => (Array.isArray(response.data) ? response.data : []))
+        .filter((item: any) => Number(obtenerValor(item, "folio") || 0) > 0)
+        .filter((item: any) => {
+          const key = `${obtenerValor(item, "folio")}-${obtenerValor(item, "suc_origen", "sucOrigen") || 0}`;
+          if (vistos.has(key)) return false;
+          vistos.add(key);
+          return true;
+        });
 
       const folioNum = folioBuscar.trim() !== "" ? Number(folioBuscar.trim()) : null;
       const resultados =
@@ -456,6 +484,8 @@ export default function RecepcionTraspasos() {
       return {
         folio: String(obtenerValor(item, "folio") || "").trim(),
         suc_origen: Number(obtenerValor(item, "suc_origen", "sucOrigen") || sucOrigen),
+        recibido: valorVerdadero(obtenerValor(item, "recibido", "Recibido")),
+        estado: String(obtenerValor(item, "estado", "Estado") || ""),
       };
     }).filter((x) => x.folio && x.suc_origen > 0);
 
@@ -498,6 +528,14 @@ export default function RecepcionTraspasos() {
       });
       return;
     }
+
+    setRegistroAceptado(
+      traspasos.some(
+        (traspaso) =>
+          traspaso.recibido ||
+          String(traspaso.estado || "").trim().toUpperCase() === "ACEPTADO"
+      )
+    );
 
     setCargandoRecuperar(true);
     try {
@@ -810,6 +848,7 @@ export default function RecepcionTraspasos() {
                             size="small"
                             type="number"
                             value={row.cantidad}
+                            disabled={registroAceptado}
                             InputProps={{ disableUnderline: true }}
                             onChange={(e) => {
                               const nuevaCantidad = Number(e.target.value) || 0;
@@ -849,7 +888,13 @@ export default function RecepcionTraspasos() {
                 <Button
                   variant="contained"
                   onClick={handleGuardar}
-                  disabled={guardando || cargandoRecuperar || cargandoBuscar || renglones.length === 0}
+                  disabled={
+                    registroAceptado ||
+                    guardando ||
+                    cargandoRecuperar ||
+                    cargandoBuscar ||
+                    renglones.length === 0
+                  }
                   sx={{
                     bgcolor: "#d9d9d9",
                     color: "#000",
@@ -995,6 +1040,7 @@ export default function RecepcionTraspasos() {
                   <TableCell sx={{ fontWeight: "bold", width: 90 }}>Fecha</TableCell>
                   <TableCell sx={{ fontWeight: "bold", width: 120 }}>Origen</TableCell>
                   <TableCell sx={{ fontWeight: "bold", width: 120 }}>Destino</TableCell>
+                  <TableCell sx={{ fontWeight: "bold", width: 90, textAlign: "center" }}>Estado</TableCell>
                   <TableCell sx={{ fontWeight: "bold", width: 80, textAlign: "center" }}>Partidas</TableCell>
                   <TableCell sx={{ fontWeight: "bold", width: 100, textAlign: "right" }}>Subtotal</TableCell>
                   <TableCell sx={{ fontWeight: "bold", width: 80, textAlign: "right" }}>IVA</TableCell>
@@ -1004,7 +1050,7 @@ export default function RecepcionTraspasos() {
               <TableBody>
                 {resultadosBusqueda.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} align="center" sx={{ py: 3 }}>
+                    <TableCell colSpan={10} align="center" sx={{ py: 3 }}>
                       {cargandoBuscar ? "Buscando..." : "Sin resultados"}
                     </TableCell>
                   </TableRow>
@@ -1026,6 +1072,11 @@ export default function RecepcionTraspasos() {
                     const partidasResultado = Number(
                       obtenerValor(item, "total_partidas", "partidas", "totalPartidas") || 0
                     );
+                    const estadoResultado = valorVerdadero(
+                      obtenerValor(item, "recibido", "Recibido")
+                    )
+                      ? "ACEPTADO"
+                      : "PENDIENTE";
                     const subtotalResultado = Number(obtenerValor(item, "subtotal") || 0);
                     const ivaResultado = Number(obtenerValor(item, "total_iva", "iva") || 0);
                     const importeResultado =
@@ -1045,6 +1096,9 @@ export default function RecepcionTraspasos() {
                         <TableCell>{fechaTexto}</TableCell>
                         <TableCell>{nombreOrigen}</TableCell>
                         <TableCell>{nombreDestino}</TableCell>
+                        <TableCell sx={{ textAlign: "center", fontWeight: "bold" }}>
+                          {estadoResultado}
+                        </TableCell>
                         <TableCell sx={{ textAlign: "center" }}>{partidasResultado}</TableCell>
                         <TableCell sx={{ textAlign: "right" }}>{formatoMoneda(subtotalResultado)}</TableCell>
                         <TableCell sx={{ textAlign: "right" }}>{formatoMoneda(ivaResultado)}</TableCell>
