@@ -616,7 +616,7 @@ export default function RecepcionTraspasos() {
     }
   };
 
-  const handleImprimir = () => {
+  const handleImprimir = async () => {
     if (renglones.length === 0) {
       Swal.fire({
         icon: "warning",
@@ -628,8 +628,163 @@ export default function RecepcionTraspasos() {
     }
     if (formatoSalida === "carta") {
       setAbrirVistaPreviaCarta(true);
-    } else {
-      window.print();
+      return;
+    }
+
+    const idUsuario = Number(
+      (token as any)?.claveEmpleado ||
+      (token as any)?.idUsuario ||
+      (token as any)?.id ||
+      0
+    );
+
+    if (idUsuario <= 0) {
+      Swal.fire({
+        icon: "warning",
+        title: "Usuario no identificado",
+        text: "No se pudo obtener la clave del empleado para enviar el ticket a impresión.",
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
+
+    try {
+      const response = await consumoApi.post(
+        "/api/Catrecepciontraspasos/sp_bw_encolar_ticket_recepcion",
+        {
+          idUsuario,
+          idSucursal: sucursalDestino,
+          sucursalDestino,
+          sucOrigen: Number(sucOrigen),
+          folio: Number(folio),
+        }
+      );
+
+      await Swal.fire({
+        icon: "success",
+        title: "Ticket enviado",
+        text: response.data?.mensaje || "El ticket quedó en la cola de impresión.",
+        confirmButtonColor: "#000000",
+      });
+    } catch (err: any) {
+      Swal.fire({
+        icon: "error",
+        title: "Error al enviar ticket",
+        text:
+          err.response?.data?.mensaje ||
+          "No fue posible enviar el ticket a la cola de impresión.",
+        confirmButtonColor: "#000000",
+      });
+    }
+    return;
+
+    const ventana = window.open("", "_blank", "width=420,height=700");
+    if (!ventana) {
+      Swal.fire({
+        icon: "warning",
+        title: "Ventana bloqueada",
+        text: "Permite las ventanas emergentes para imprimir el ticket.",
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
+
+    try {
+      const response = await consumoApi.get(
+        "/api/Catrecepciontraspasos/sp_bw_ticket_recepcion_traspaso",
+        {
+          params: {
+            sucursalDestino,
+            sucOrigen: Number(sucOrigen),
+            folio: Number(folio),
+          },
+        }
+      );
+      const detalle = Array.isArray(response.data) ? response.data : [];
+      const cabecera = detalle[0] || {};
+      const fecha = new Date(obtenerValor(cabecera, "fecha") || Date.now());
+      const subtotalTicket = detalle.reduce(
+        (sum: number, item: any) => sum + Number(obtenerValor(item, "subtotal_renglon") || 0),
+        0
+      );
+      const ivaTicket = detalle.reduce(
+        (sum: number, item: any) => sum + Number(obtenerValor(item, "iva_renglon") || 0),
+        0
+      );
+      const totalTicket = detalle.reduce(
+        (sum: number, item: any) => sum + Number(obtenerValor(item, "total_renglon") || 0),
+        0
+      );
+      const productosHtml = detalle
+        .map((item: any) => `
+          <div class="producto">
+            <div><strong>${escaparHtml(obtenerValor(item, "clave_prod", "clave"))}</strong></div>
+            <div>${escaparHtml(obtenerValor(item, "descripcion"))}</div>
+            <div class="producto-total">
+              <span>Cant: ${escaparHtml(obtenerValor(item, "cantidad"))}</span>
+              <span>${escaparHtml(formatoMoneda(Number(obtenerValor(item, "total_renglon") || 0)))}</span>
+            </div>
+          </div>`)
+        .join("");
+
+      ventana.document.open();
+      ventana.document.write(`<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Ticket recepción ${escaparHtml(folio)}</title>
+  <style>
+    @page { size: 80mm auto; margin: 4mm; }
+    * { box-sizing: border-box; }
+    body { width: 72mm; margin: 0 auto; color: #000; background: #fff; font-family: "Courier New", monospace; font-size: 11px; }
+    .empresa { text-align: center; font-family: Georgia, serif; font-size: 22px; font-weight: 900; letter-spacing: 2px; }
+    .titulo { text-align: center; margin: 14px 0 8px; font-weight: bold; font-size: 13px; }
+    .linea { border-top: 1px dashed #000; margin: 7px 0; }
+    .datos div { display: flex; justify-content: space-between; gap: 8px; }
+    .producto { padding: 6px 0; border-bottom: 1px dotted #777; }
+    .producto-total, .total { display: flex; justify-content: space-between; gap: 8px; }
+    .totales { margin-top: 8px; }
+    .total-final { font-size: 13px; font-weight: bold; border-top: 1px solid #000; padding-top: 4px; }
+    .recibio { margin-top: 15px; text-align: center; }
+    .pie { margin-top: 14px; text-align: center; font-family: Georgia, serif; font-weight: bold; }
+    @media print { body { width: 72mm; } }
+  </style>
+</head>
+<body>
+  <div class="empresa">BERLLANO</div>
+  <div class="titulo">RECEPCIÓN DE MERCANCÍAS</div>
+  <div class="linea"></div>
+  <div class="datos">
+    <div><span>Fecha:</span><strong>${escaparHtml(fecha.toLocaleDateString("es-MX"))}</strong></div>
+    <div><span>Hora:</span><strong>${escaparHtml(fecha.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" }))}</strong></div>
+    <div><span>Folio:</span><strong>${escaparHtml(folio)}</strong></div>
+    <div><span>Origen:</span><strong>${escaparHtml(nombreSucursalOrigen)}</strong></div>
+    <div><span>Destino:</span><strong>${escaparHtml(nombreSucursal)}</strong></div>
+  </div>
+  <div class="linea"></div>
+  <div><strong>PRODUCTOS A RECIBIR</strong></div>
+  ${productosHtml}
+  <div class="totales">
+    <div class="total"><span>Subtotal:</span><span>${escaparHtml(formatoMoneda(subtotalTicket))}</span></div>
+    <div class="total"><span>IVA:</span><span>${escaparHtml(formatoMoneda(ivaTicket))}</span></div>
+    <div class="total total-final"><span>Total:</span><span>${escaparHtml(formatoMoneda(totalTicket))}</span></div>
+  </div>
+  <div class="recibio">Recibió: <strong>${escaparHtml(usuarioSesion)}</strong></div>
+  <div class="pie">BERLLANO</div>
+</body>
+</html>`);
+      ventana.document.close();
+      ventana.focus();
+      ventana.onafterprint = () => ventana.close();
+      ventana.setTimeout(() => ventana.print(), 700);
+    } catch (err: any) {
+      ventana.close();
+      Swal.fire({
+        icon: "error",
+        title: "Error al imprimir",
+        text: err.response?.data?.mensaje || "No fue posible generar el ticket de recepción.",
+        confirmButtonColor: "#000000",
+      });
     }
   };
 
@@ -641,6 +796,17 @@ export default function RecepcionTraspasos() {
     setFolio("");
     setRenglones([]);
     setRegistroActual(0);
+    setRegistroAceptado(false);
+  };
+
+  const handleCambioSucursalOrigen = (value: number | "") => {
+    setSucOrigen(value);
+    setFolio("");
+    setRenglones([]);
+    setRegistroActual(0);
+    setRegistroAceptado(false);
+    setResultadosBusqueda([]);
+    setSeleccionadosDialogo([]);
   };
 
   const cellSx = {
@@ -736,7 +902,9 @@ export default function RecepcionTraspasos() {
                     displayEmpty
                     value={sucOrigen}
                     onChange={(e) =>
-                      setSucOrigen(e.target.value === "" ? "" : Number(e.target.value))
+                      handleCambioSucursalOrigen(
+                        e.target.value === "" ? "" : Number(e.target.value)
+                      )
                     }
                     renderValue={(value) =>
                       value === "" ? (

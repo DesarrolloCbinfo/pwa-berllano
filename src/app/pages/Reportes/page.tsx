@@ -2,12 +2,15 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Accordion,
+  Autocomplete,
   AccordionDetails,
   AccordionSummary,
   Box,
   Button,
+  Checkbox,
   CircularProgress,
   Divider,
+  FormControlLabel,
   IconButton,
   MenuItem,
   Paper,
@@ -22,7 +25,6 @@ import {
   Download,
   ExpandMore,
   FilterAlt,
-  InfoOutlined,
   Search,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -31,6 +33,7 @@ import * as XLSX from 'xlsx';
 import useConsumoApi from '../../../hooks/useConsumoApi';
 import { ReportesApis } from './apis/ReportesApis';
 import { routes } from '../../../utils/Routes';
+import { useSessionContext } from '../../../context/SessionProvider';
 
 type FilterName =
   | 'fechaInicial'
@@ -56,7 +59,10 @@ type FilterName =
   | 'depto'
   | 'cadena_areas'
   | 'año'
-  | 'mes';
+  | 'mes'
+  | 'fechaCorte'
+  | 'obsoleto'
+  | 'todo';
 
 type ReportFilters = Record<FilterName, string>;
 type ReportRow = Record<string, unknown>;
@@ -79,16 +85,45 @@ type ProveedorOption = {
   label: string;
 };
 
+type EstilistaOption = {
+  value: string;
+  label: string;
+};
+
+type MarcaOption = {
+  id: number;
+  value: string;
+  label: string;
+};
+
+type FamiliaMarcaOption = {
+  idMarca: number;
+  value: string;
+  label: string;
+  marca: string;
+};
+
+type AreaOption = {
+  value: string;
+  label: string;
+};
+
+type ProductoOption = {
+  value: string;
+  label: string;
+  esServicio: boolean;
+};
+
 type FilterDefinition = {
   key: FilterName;
   label: string;
-  type?: 'text' | 'date' | 'select';
+  type?: 'text' | 'date' | 'select' | 'checkbox';
   placeholder?: string;
 };
 
 const initialFilters: ReportFilters = {
-  fechaInicial: '',
-  fechaFinal: '',
+  fechaInicial: today,
+  fechaFinal: today,
   sucursal: '',
   cliente: '',
   estilista: '',
@@ -111,6 +146,9 @@ const initialFilters: ReportFilters = {
   cadena_areas: '',
   año: '',
   mes: '',
+  fechaCorte: '',
+  obsoleto: '0',
+  todo: '0',
 };
 
 const filterDefinitions: FilterDefinition[] = [
@@ -138,6 +176,9 @@ const filterDefinitions: FilterDefinition[] = [
   { key: 'cadena_areas', label: 'Cadena de áreas', placeholder: 'Ejemplo: 1,2,3' },
   { key: 'año', label: 'Año', type: 'select' },
   { key: 'mes', label: 'Mes', type: 'select' },
+  { key: 'fechaCorte', label: 'Fecha de corte', type: 'date' },
+  { key: 'obsoleto', label: 'Obsoleto', type: 'checkbox' },
+  { key: 'todo', label: 'Ver exist=0', type: 'checkbox' },
 ];
 
 const knownReportFilters: Record<string, FilterName[]> = {
@@ -155,6 +196,12 @@ const knownReportFilters: Record<string, FilterName[]> = {
   ],
   sp_reporte_medios_pagos: ['fechaInicial', 'fechaFinal', 'sucursal'],
   sp_reporte_medios_pagos_folios: ['fechaInicial', 'fechaFinal', 'sucursal'],
+  sp_reporte_clientes_atendidos_periodo: ['fechaInicial', 'fechaFinal', 'sucursal'],
+  sp_reporte_visitas: ['fechaInicial', 'fechaFinal', 'sucursal'],
+  sp_reporte_saldo_puntos: [],
+  sp_reporte_inventario: ['fechaInicial', 'fechaFinal', 'sucursal'],
+  sp_reporte_ajuste_inventario: ['fechaInicial', 'fechaFinal', 'sucursal'],
+  sp_reporte_traspasos_sucursales: ['fechaInicial', 'fechaFinal', 'sucursal'],
   sp_repoComisiones1: ['fechaInicial', 'fechaFinal', 'sucursal', 'estilista'],
   sp_reporte4_Estilistas: [
     'fechaInicial',
@@ -181,6 +228,14 @@ const knownReportFilters: Record<string, FilterName[]> = {
     'clave_prod',
     'cadena_areas',
     'proveedor',
+  ],
+  sp_reporte_inventario_ERP: ['fechaCorte', 'obsoleto', 'todo'],
+  sp_reporte_rentabilidad_insumos: [
+    'sucursal',
+    'fechaInicial',
+    'fechaFinal',
+    'estilista',
+    'area',
   ],
   TicketInsumosEstilsta: [
     'fechaInicial',
@@ -224,6 +279,8 @@ const metadataFilterAliases: Partial<Record<FilterName, string[]>> = {
   año: ['año', 'anio'],
   mes: ['mes'],
 };
+
+const today = new Date().toISOString().split('T')[0];
 
 const monthOptions = [
   ['1', 'Enero'],
@@ -293,6 +350,99 @@ function normalizeSucursales(data: unknown): SucursalOption[] {
       };
     })
     .filter((item): item is SucursalOption => item !== null);
+}
+
+function normalizeEstilistas(data: unknown): EstilistaOption[] {
+  if (!Array.isArray(data)) return [];
+
+  return data
+    .filter((item): item is ReportRaw => typeof item === 'object' && item !== null)
+    .map((item) => {
+      const clave = String(readProperty(item, ['clave_empleado', 'claveEmpleado']) ?? '').trim();
+      const nombre = String(readProperty(item, ['nombre']) ?? '').trim();
+
+      if (!clave || !nombre) return null;
+
+      return { value: clave, label: nombre };
+    })
+    .filter((item): item is EstilistaOption => item !== null);
+}
+
+function normalizeMarcas(data: unknown): MarcaOption[] {
+  if (!Array.isArray(data)) return [];
+
+  return data
+    .filter((item): item is ReportRaw => typeof item === 'object' && item !== null)
+    .map((item) => {
+      const id = Number(readProperty(item, ['id']));
+      const marca = String(readProperty(item, ['marca']) ?? '').trim();
+
+      if (!Number.isFinite(id) || !marca) return null;
+
+      return {
+        id,
+        value: id === 0 ? '' : marca,
+        label: marca,
+      };
+    })
+    .filter((item): item is MarcaOption => item !== null);
+}
+
+function normalizeFamiliasMarca(data: unknown): FamiliaMarcaOption[] {
+  if (!Array.isArray(data)) return [];
+
+  return data
+    .filter((item): item is ReportRaw => typeof item === 'object' && item !== null)
+    .map((item) => {
+      const idFamilia = readProperty(item, ['id_familia', 'idFamilia']);
+      const idMarca = Number(readProperty(item, ['id_marca', 'idMarca']));
+      const familia = String(readProperty(item, ['familia', 'descripcion']) ?? '').trim();
+      const marca = String(readProperty(item, ['marca_desc', 'marcaDesc', 'marca']) ?? '').trim();
+
+      if (idFamilia === undefined || idFamilia === null || !Number.isFinite(idMarca) || !familia) {
+        return null;
+      }
+
+      return {
+        idMarca,
+        value: String(idFamilia),
+        label: familia,
+        marca,
+      };
+    })
+    .filter((item): item is FamiliaMarcaOption => item !== null);
+}
+
+function normalizeAreas(data: unknown): AreaOption[] {
+  if (!Array.isArray(data)) return [];
+
+  return data
+    .filter((item): item is ReportRaw => typeof item === 'object' && item !== null)
+    .map((item) => {
+      const area = readProperty(item, ['area']);
+      const descripcion = String(readProperty(item, ['descripcion']) ?? '').trim();
+      if (area === undefined || area === null || !descripcion) return null;
+      return { value: String(area), label: descripcion };
+    })
+    .filter((item): item is AreaOption => item !== null);
+}
+
+function normalizeProductos(data: unknown): ProductoOption[] {
+  if (!Array.isArray(data)) return [];
+
+  return data
+    .filter((item): item is ReportRaw => typeof item === 'object' && item !== null)
+    .map((item) => {
+      const clave = String(readProperty(item, ['clave_prod', 'claveProd', 'clave']) ?? '').trim();
+      const descripcion = String(readProperty(item, ['descripcion']) ?? '').trim();
+      if (!clave) return null;
+      return {
+        value: clave,
+        label: descripcion,
+        esServicio: toBoolean(readProperty(item, ['es_servicio', 'esServicio'])) === true,
+      };
+    })
+    .filter((item): item is ProductoOption => item !== null);
 }
 
 function normalizeProveedores(data: unknown): ProveedorOption[] {
@@ -374,14 +524,31 @@ function getRowsFromResponse(data: unknown): ReportRow[] {
 export default function ReportesPage() {
   const navigate = useNavigate();
   const { consumoApi } = useConsumoApi();
+  const { session } = useSessionContext();
   const apiRef = useRef(consumoApi);
   const [reports, setReports] = useState<ReportCatalogItem[]>([]);
   const [sucursales, setSucursales] = useState<SucursalOption[]>([]);
   const [sucursalesLoading, setSucursalesLoading] = useState(true);
   const [sucursalesError, setSucursalesError] = useState('');
+  const [marcas, setMarcas] = useState<MarcaOption[]>([]);
+  const [marcasLoading, setMarcasLoading] = useState(true);
+  const [marcasError, setMarcasError] = useState('');
+  const [familiasMarca, setFamiliasMarca] = useState<FamiliaMarcaOption[]>([]);
+  const [familiasMarcaLoading, setFamiliasMarcaLoading] = useState(true);
+  const [familiasMarcaError, setFamiliasMarcaError] = useState('');
+  const [areas, setAreas] = useState<AreaOption[]>([]);
+  const [areasLoading, setAreasLoading] = useState(true);
+  const [areasError, setAreasError] = useState('');
+  const [productos, setProductos] = useState<ProductoOption[]>([]);
+  const [productosLoading, setProductosLoading] = useState(false);
+  const [productosError, setProductosError] = useState('');
+  const [productoBusqueda, setProductoBusqueda] = useState('');
   const [proveedores, setProveedores] = useState<ProveedorOption[]>([]);
   const [proveedoresLoading, setProveedoresLoading] = useState(true);
   const [proveedoresError, setProveedoresError] = useState('');
+  const [estilistas, setEstilistas] = useState<EstilistaOption[]>([]);
+  const [estilistasLoading, setEstilistasLoading] = useState(true);
+  const [estilistasError, setEstilistasError] = useState('');
   const [selectedReportKey, setSelectedReportKey] = useState('');
   const [filters, setFilters] = useState<ReportFilters>(initialFilters);
   const [reportRows, setReportRows] = useState<ReportRow[]>([]);
@@ -454,6 +621,154 @@ export default function ReportesPage() {
   useEffect(() => {
     let active = true;
 
+    const loadEstilistas = async () => {
+      setEstilistasLoading(true);
+      setEstilistasError('');
+
+      try {
+        const response = await apiRef.current.get(ReportesApis.estilistas, {
+          params: { sucursal: 0 },
+        });
+        if (active) setEstilistas(normalizeEstilistas(response.data));
+      } catch (error) {
+        if (active) {
+          setEstilistasError(
+            error instanceof Error ? error.message : 'No fue posible cargar los estilistas.',
+          );
+        }
+      } finally {
+        if (active) setEstilistasLoading(false);
+      }
+    };
+
+    loadEstilistas();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadMarcas = async () => {
+      setMarcasLoading(true);
+      setMarcasError('');
+
+      try {
+        const response = await apiRef.current.get(ReportesApis.marcas, {
+          params: { id: 0 },
+        });
+        if (active) setMarcas(normalizeMarcas(response.data));
+      } catch (error) {
+        if (active) {
+          setMarcasError(
+            error instanceof Error ? error.message : 'No fue posible cargar las marcas.',
+          );
+        }
+      } finally {
+        if (active) setMarcasLoading(false);
+      }
+    };
+
+    loadMarcas();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadFamiliasMarca = async () => {
+      setFamiliasMarcaLoading(true);
+      setFamiliasMarcaError('');
+
+      try {
+        const response = await apiRef.current.get(ReportesApis.familiasMarca);
+        if (active) setFamiliasMarca(normalizeFamiliasMarca(response.data));
+      } catch (error) {
+        if (active) {
+          setFamiliasMarcaError(
+            error instanceof Error
+              ? error.message
+              : 'No fue posible cargar las familias de marcas.',
+          );
+        }
+      } finally {
+        if (active) setFamiliasMarcaLoading(false);
+      }
+    };
+
+    loadFamiliasMarca();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadAreas = async () => {
+      setAreasLoading(true);
+      setAreasError('');
+
+      try {
+        const response = await apiRef.current.get(ReportesApis.areas, {
+          params: { area: '0' },
+        });
+        if (active) setAreas(normalizeAreas(response.data));
+      } catch (error) {
+        if (active) {
+          setAreasError(
+            error instanceof Error ? error.message : 'No fue posible cargar las áreas.',
+          );
+        }
+      } finally {
+        if (active) setAreasLoading(false);
+      }
+    };
+
+    loadAreas();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const timer = window.setTimeout(async () => {
+      setProductosLoading(true);
+      setProductosError('');
+
+      try {
+        const response = await apiRef.current.get(ReportesApis.productos, {
+          params: {
+            busqueda: productoBusqueda.trim() || undefined,
+            pagina: 1,
+            tamanoPagina: 50,
+          },
+        });
+        if (active) setProductos(normalizeProductos(response.data));
+      } catch (error) {
+        if (active) {
+          setProductosError(
+            error instanceof Error ? error.message : 'No fue posible cargar los productos.',
+          );
+        }
+      } finally {
+        if (active) setProductosLoading(false);
+      }
+    }, 300);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [productoBusqueda]);
+
+  useEffect(() => {
+    let active = true;
+
     const loadProveedores = async () => {
       setProveedoresLoading(true);
       setProveedoresError('');
@@ -519,7 +834,11 @@ export default function ReportesPage() {
   };
 
   const handleFilterChange = (key: FilterName, value: string) => {
-    setFilters((current) => ({ ...current, [key]: value }));
+    setFilters((current) => ({
+      ...current,
+      [key]: value,
+      ...(key === 'marca' ? { familia: '' } : {}),
+    }));
     setQueryError(false);
     setQueryMessage('');
   };
@@ -538,9 +857,25 @@ export default function ReportesPage() {
         ? ReportesApis.mediosPagos
         : selectedReport.metodoApi === 'sp_reporte_medios_pagos_folios'
           ? ReportesApis.mediosPagosFolios
-          : selectedReport.metodoApi === 'sp_reporte_inventario_compras'
-            ? ReportesApis.inventarioCompras
-            : null;
+          : selectedReport.metodoApi === 'sp_reporte_clientes_atendidos_periodo'
+            ? ReportesApis.clientesAtendidosPeriodo
+            : selectedReport.metodoApi === 'sp_reporte_visitas'
+              ? ReportesApis.visitas
+              : selectedReport.metodoApi === 'sp_reporte_saldo_puntos'
+                ? ReportesApis.saldoPuntos
+                : selectedReport.metodoApi === 'sp_reporte_inventario'
+                  ? ReportesApis.inventario
+                  : selectedReport.metodoApi === 'sp_reporte_ajuste_inventario'
+                    ? ReportesApis.ajusteInventario
+                    : selectedReport.metodoApi === 'sp_reporte_traspasos_sucursales'
+                      ? ReportesApis.traspasosSucursales
+                      : selectedReport.metodoApi === 'sp_reporte_inventario_compras'
+                        ? ReportesApis.inventarioCompras
+                        : selectedReport.metodoApi === 'sp_reporte_inventario_ERP'
+                          ? ReportesApis.inventarioErp
+                          : selectedReport.metodoApi === 'sp_reporte_rentabilidad_insumos'
+                            ? ReportesApis.rentabilidadInsumos
+                            : null;
 
     if (!reportEndpoint) {
       setReportRows([]);
@@ -550,18 +885,61 @@ export default function ReportesPage() {
       return;
     }
 
-    if (!filters.fechaInicial || !filters.fechaFinal) {
+    const requiereFechas =
+      visibleFilters.has('fechaInicial') || visibleFilters.has('fechaFinal');
+    if (requiereFechas && (!filters.fechaInicial || !filters.fechaFinal)) {
       setQueryError(true);
       setQueryMessage('Selecciona la fecha inicial y la fecha final para consultar el reporte.');
+      return;
+    }
+    const requiereFechaCorte = visibleFilters.has('fechaCorte');
+    if (requiereFechaCorte && !filters.fechaCorte) {
+      setQueryError(true);
+      setQueryMessage('Selecciona la fecha de corte para consultar el reporte.');
+      return;
+    }
+    if (
+      ['sp_reporte_inventario', 'sp_reporte_ajuste_inventario', 'sp_reporte_traspasos_sucursales'].includes(
+        selectedReport.metodoApi,
+      ) &&
+      !filters.sucursal
+    ) {
+      setQueryError(true);
+      setQueryMessage('Selecciona una sucursal para consultar el reporte.');
+      return;
+    }
+    if (selectedReport.metodoApi === 'sp_reporte_inventario_ERP' && (session?.sucursal ?? 0) <= 0) {
+      setQueryError(true);
+      setQueryMessage('No se encontró la sucursal de la sesión.');
       return;
     }
 
     setQueryLoading(true);
     setQueryMessage('');
-    const params = {
-      suc: filters.sucursal.trim() || '%',
-      f1: filters.fechaInicial,
-      f2: filters.fechaFinal,
+    const params: Record<string, unknown> = {
+      ...(requiereFechas
+        ? {
+            f1: filters.fechaInicial,
+            f2: filters.fechaFinal,
+          }
+        : {}),
+      ...(selectedReport.metodoApi === 'sp_reporte_inventario_ERP'
+        ? { suc: session?.sucursal ?? 0 }
+        : selectedReport.metodoApi === 'sp_reporte_inventario' ||
+            selectedReport.metodoApi === 'sp_reporte_ajuste_inventario'
+          ? { s: Number(filters.sucursal) }
+          : selectedReport.metodoApi === 'sp_reporte_traspasos_sucursales'
+            ? { s: filters.sucursal.trim() }
+            : requiereFechas
+              ? { suc: filters.sucursal.trim() || '%' }
+              : {}),
+      ...(selectedReport.metodoApi === 'sp_reporte_inventario_ERP'
+        ? {
+            fechaCorte: filters.fechaCorte,
+            obsoleto: filters.obsoleto === '1',
+            todo: filters.todo === '1',
+          }
+        : {}),
       ...(selectedReport.metodoApi === 'sp_reporte_inventario_compras'
         ? {
             marca: filters.marca.trim() || '%',
@@ -569,6 +947,16 @@ export default function ReportesPage() {
             clave_prod: filters.clave_prod.trim() || '%',
             cadena_areas: filters.cadena_areas.trim() || '%',
             proveedor: filters.proveedor.trim() || '%',
+          }
+        : {}),
+      ...(selectedReport.metodoApi === 'sp_reporte_rentabilidad_insumos'
+        ? {
+            suc: filters.sucursal.trim() || '%',
+            fechaI: filters.fechaInicial,
+            fechaF: filters.fechaFinal,
+            usr: filters.estilista.trim() || '%',
+            area: filters.area.trim() || '%',
+            cliente: '%',
           }
         : {}),
     };
@@ -653,6 +1041,151 @@ export default function ReportesPage() {
       );
     }
 
+    if (definition.key === 'marca') {
+      return (
+        <TextField
+          key={definition.key}
+          select
+          fullWidth
+          size="small"
+          label={definition.label}
+          value={value}
+          onChange={(event) => handleFilterChange(definition.key, event.target.value)}
+          disabled={marcasLoading || metadataValue === false}
+          error={Boolean(marcasError)}
+          helperText={marcasError || (marcasLoading ? 'Cargando marcas...' : undefined)}
+        >
+          {marcas.map((marca) => (
+            <MenuItem key={`${marca.id}-${marca.label}`} value={marca.value}>
+              {marca.label}
+            </MenuItem>
+          ))}
+        </TextField>
+      );
+    }
+
+    if (definition.key === 'familia') {
+      const marcaSeleccionada = marcas.find((marca) => marca.value === filters.marca);
+      const familiasDisponibles = marcaSeleccionada
+        ? familiasMarca.filter((familia) => familia.idMarca === marcaSeleccionada.id)
+        : familiasMarca;
+
+      return (
+        <TextField
+          key={definition.key}
+          select
+          fullWidth
+          size="small"
+          label={definition.label}
+          value={value}
+          onChange={(event) => handleFilterChange(definition.key, event.target.value)}
+          disabled={familiasMarcaLoading || metadataValue === false}
+          error={Boolean(familiasMarcaError)}
+          helperText={
+            familiasMarcaError ||
+            (familiasMarcaLoading ? 'Cargando familias...' : undefined)
+          }
+        >
+          {familiasDisponibles.map((familia) => (
+            <MenuItem
+              key={`${familia.idMarca}-${familia.value}`}
+              value={familia.value}
+            >
+              {marcaSeleccionada ? familia.label : `${familia.marca} - ${familia.label}`}
+            </MenuItem>
+          ))}
+        </TextField>
+      );
+    }
+
+    if (definition.key === 'producto' || definition.key === 'clave_prod') {
+      const productoSeleccionado = productos.find((producto) => producto.value === value) ?? null;
+
+      return (
+        <Autocomplete
+          key={definition.key}
+          fullWidth
+          size="small"
+          options={productos}
+          value={productoSeleccionado}
+          inputValue={productoBusqueda}
+          loading={productosLoading}
+          filterOptions={(options) => options}
+          getOptionLabel={(producto) => `${producto.value} - ${producto.label}`}
+          isOptionEqualToValue={(option, selected) => option.value === selected.value}
+          onInputChange={(_, inputValue, reason) => {
+            if (reason === 'input' || reason === 'clear') setProductoBusqueda(inputValue);
+          }}
+          onChange={(_, producto) => {
+            handleFilterChange(definition.key, producto?.value ?? '');
+            setProductoBusqueda(producto ? `${producto.value} - ${producto.label}` : '');
+          }}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label={definition.label}
+              error={Boolean(productosError)}
+              helperText={
+                productosError ||
+                (productosLoading ? 'Buscando productos...' : 'Escribe una clave o descripción')
+              }
+              InputProps={{
+                ...params.InputProps,
+                endAdornment: (
+                  <>
+                    {productosLoading ? <CircularProgress size={16} /> : null}
+                    {params.InputProps.endAdornment}
+                  </>
+                ),
+              }}
+            />
+          )}
+        />
+      );
+    }
+
+    if (definition.key === 'cadena_areas' || definition.key === 'area') {
+      const selectedAreas = value ? value.split(',').filter(Boolean) : [];
+
+      return (
+        <TextField
+          key={definition.key}
+          select
+          fullWidth
+          size="small"
+          label={definition.label}
+          value={selectedAreas}
+          onChange={(event) => {
+            const selected = event.target.value;
+            handleFilterChange(
+              definition.key,
+              (typeof selected === 'string' ? selected.split(',') : selected).join(','),
+            );
+          }}
+          disabled={areasLoading || metadataValue === false}
+          error={Boolean(areasError)}
+          helperText={areasError || (areasLoading ? 'Cargando áreas...' : undefined)}
+          SelectProps={{
+            multiple: true,
+            renderValue: (selected) => {
+              const values = selected as string[];
+              if (values.length === 0) return 'Todas las áreas';
+              return values
+                .map((area) => areas.find((option) => option.value === area)?.label ?? area)
+                .join(', ');
+            },
+          }}
+        >
+          {areas.map((area) => (
+            <MenuItem key={area.value} value={area.value}>
+              <Checkbox checked={selectedAreas.includes(area.value)} size="small" />
+              {area.label}
+            </MenuItem>
+          ))}
+        </TextField>
+      );
+    }
+
     if (definition.key === 'proveedor') {
       return (
         <TextField
@@ -667,10 +1200,32 @@ export default function ReportesPage() {
           error={Boolean(proveedoresError)}
           helperText={proveedoresError || (proveedoresLoading ? 'Cargando proveedores...' : undefined)}
         >
-          <MenuItem value="">Todos los proveedores</MenuItem>
           {proveedores.map((proveedor) => (
             <MenuItem key={`${proveedor.value}-${proveedor.label}`} value={proveedor.value}>
               {proveedor.label}
+            </MenuItem>
+          ))}
+        </TextField>
+      );
+    }
+
+    if (definition.key === 'estilista') {
+      return (
+        <TextField
+          key={definition.key}
+          select
+          fullWidth
+          size="small"
+          label={definition.label}
+          value={value}
+          onChange={(event) => handleFilterChange(definition.key, event.target.value)}
+          disabled={estilistasLoading || metadataValue === false}
+          error={Boolean(estilistasError)}
+          helperText={estilistasError || (estilistasLoading ? 'Cargando estilistas...' : undefined)}
+        >
+          {estilistas.map((estilista) => (
+            <MenuItem key={`${estilista.value}-${estilista.label}`} value={estilista.value}>
+              {estilista.label}
             </MenuItem>
           ))}
         </TextField>
@@ -720,6 +1275,24 @@ export default function ReportesPage() {
       );
     }
 
+    if (definition.type === 'checkbox') {
+      return (
+        <FormControlLabel
+          key={definition.key}
+          control={
+            <Checkbox
+              checked={value === '1'}
+              onChange={(event) =>
+                handleFilterChange(definition.key, event.target.checked ? '1' : '0')
+              }
+              size="small"
+            />
+          }
+          label={definition.label}
+        />
+      );
+    }
+
     return (
       <TextField
         key={definition.key}
@@ -750,10 +1323,6 @@ export default function ReportesPage() {
           </Typography>
         </Box>
       </Stack>
-
-      <Alert severity="info" icon={<InfoOutlined />} sx={{ mb: 2 }}>
-        El selector se carga desde <strong>sp_cat_reportesSel2</strong>. Los reportes de medios de pagos e inventario de compras ya están conectados; las demás consultas se agregarán conforme se proporcionen sus APIs de Berllano.
-      </Alert>
 
       {catalogError && (
         <Alert severity="error" sx={{ mb: 2 }}>
