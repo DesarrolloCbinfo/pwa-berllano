@@ -6,6 +6,7 @@ export const ReportesApis = {
   familiasMarca: '/api/CatReportes/sp_bw_cat_marcasfamilias_sel',
   areas: '/api/CatReportes/sp_bw_cat_areas_sel',
   productos: '/api/CatReportes/sp_bw_cat_productos_sel',
+  clientes: '/api/CatReportes/sp_bw_cat_clientes_sel',
   proveedores: '/api/CatReportes/sp_bw_cat_combo_proveedores',
   mediosPagos: '/api/CatReportes/sp_reporte_medios_pagos',
   mediosPagosFolios: '/api/CatReportes/sp_reporte_medios_pagos_folios',
@@ -18,4 +19,6 @@ export const ReportesApis = {
   inventarioCompras: '/api/CatReportes/sp_reporte_inventario_compras',
   inventarioErp: '/api/CatReportes/sp_reporte_inventario_ERP',
   rentabilidadInsumos: '/api/CatReportes/sp_reporte_rentabilidad_insumos',
+  validacionesInsumos: '/api/CatReportes/sp_reporte_validaciones_insumos',
+  puntosCliente: '/api/CatReportes/sp_reporte_puntos_cliente',
 };

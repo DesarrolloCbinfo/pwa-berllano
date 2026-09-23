@@ -40,6 +40,7 @@ type FilterName =
   | 'fechaFinal'
   | 'sucursal'
   | 'cliente'
+  | 'tarjeta'
   | 'estilista'
   | 'producto'
   | 'marca'
@@ -114,6 +115,12 @@ type ProductoOption = {
   esServicio: boolean;
 };
 
+type ClienteOption = {
+  value: string;
+  label: string;
+  tarjeta: string;
+};
+
 type FilterDefinition = {
   key: FilterName;
   label: string;
@@ -121,11 +128,14 @@ type FilterDefinition = {
   placeholder?: string;
 };
 
+const today = new Date().toISOString().split('T')[0];
+
 const initialFilters: ReportFilters = {
   fechaInicial: today,
   fechaFinal: today,
   sucursal: '',
   cliente: '',
+  tarjeta: '',
   estilista: '',
   producto: '',
   marca: '',
@@ -156,6 +166,7 @@ const filterDefinitions: FilterDefinition[] = [
   { key: 'fechaFinal', label: 'Fecha final', type: 'date' },
   { key: 'sucursal', label: 'Sucursal', placeholder: 'Clave de sucursal' },
   { key: 'cliente', label: 'Cliente', placeholder: 'Clave o nombre del cliente' },
+  { key: 'tarjeta', label: 'Tarjeta', placeholder: 'Número de tarjeta' },
   { key: 'estilista', label: 'Trabajador', placeholder: 'Clave o nombre del trabajador' },
   { key: 'producto', label: 'Producto', placeholder: 'Clave del producto' },
   { key: 'marca', label: 'Marca', placeholder: 'Clave o nombre de marca' },
@@ -237,6 +248,8 @@ const knownReportFilters: Record<string, FilterName[]> = {
     'estilista',
     'area',
   ],
+  sp_reporte_validaciones_insumos: ['fechaInicial', 'fechaFinal', 'sucursal'],
+  sp_reporte_puntos_cliente: ['cliente', 'tarjeta', 'fechaInicial', 'fechaFinal'],
   TicketInsumosEstilsta: [
     'fechaInicial',
     'fechaFinal',
@@ -279,8 +292,6 @@ const metadataFilterAliases: Partial<Record<FilterName, string[]>> = {
   año: ['año', 'anio'],
   mes: ['mes'],
 };
-
-const today = new Date().toISOString().split('T')[0];
 
 const monthOptions = [
   ['1', 'Enero'],
@@ -445,6 +456,31 @@ function normalizeProductos(data: unknown): ProductoOption[] {
     .filter((item): item is ProductoOption => item !== null);
 }
 
+function normalizeClientes(data: unknown): ClienteOption[] {
+  if (!Array.isArray(data)) return [];
+
+  return data
+    .filter((item): item is ReportRaw => typeof item === 'object' && item !== null)
+    .map((item) => {
+      const id = readProperty(item, ['id', 'No_cliente', 'no_cliente', 'NoCliente']);
+      const nombre = String(
+        readProperty(item, ['nombre_completo', 'nombreCompleto', 'nombre']) ?? '',
+      ).trim();
+      const tarjeta = String(
+        readProperty(item, ['num_plastico', 'numPlastico', 'tarjeta']) ?? '',
+      ).trim();
+
+      if (id === undefined || id === null) return null;
+
+      return {
+        value: String(id),
+        label: nombre,
+        tarjeta,
+      };
+    })
+    .filter((item): item is ClienteOption => item !== null);
+}
+
 function normalizeProveedores(data: unknown): ProveedorOption[] {
   if (!Array.isArray(data)) return [];
 
@@ -543,6 +579,11 @@ export default function ReportesPage() {
   const [productosLoading, setProductosLoading] = useState(false);
   const [productosError, setProductosError] = useState('');
   const [productoBusqueda, setProductoBusqueda] = useState('');
+  const [clientes, setClientes] = useState<ClienteOption[]>([]);
+  const [clientesLoading, setClientesLoading] = useState(false);
+  const [clientesError, setClientesError] = useState('');
+  const [clienteBusqueda, setClienteBusqueda] = useState('');
+  const [tarjetaBusqueda, setTarjetaBusqueda] = useState('');
   const [proveedores, setProveedores] = useState<ProveedorOption[]>([]);
   const [proveedoresLoading, setProveedoresLoading] = useState(true);
   const [proveedoresError, setProveedoresError] = useState('');
@@ -768,6 +809,70 @@ export default function ReportesPage() {
 
   useEffect(() => {
     let active = true;
+    const timer = window.setTimeout(async () => {
+      setClientesLoading(true);
+      setClientesError('');
+
+      try {
+        const response = await apiRef.current.get(ReportesApis.clientes, {
+          params: {
+            pageNumber: 1,
+            pageSize: 50,
+            busqueda: clienteBusqueda.trim() || undefined,
+          },
+        });
+        if (active) setClientes(normalizeClientes(response.data));
+      } catch (error) {
+        if (active) {
+          setClientesError(
+            error instanceof Error ? error.message : 'No fue posible cargar los clientes.',
+          );
+        }
+      } finally {
+        if (active) setClientesLoading(false);
+      }
+    }, 300);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [clienteBusqueda]);
+
+  useEffect(() => {
+    let active = true;
+    const timer = window.setTimeout(async () => {
+      setClientesLoading(true);
+      setClientesError('');
+
+      try {
+        const response = await apiRef.current.get(ReportesApis.clientes, {
+          params: {
+            pageNumber: 1,
+            pageSize: 50,
+            busqueda: tarjetaBusqueda.trim() || undefined,
+          },
+        });
+        if (active) setClientes(normalizeClientes(response.data));
+      } catch (error) {
+        if (active) {
+          setClientesError(
+            error instanceof Error ? error.message : 'No fue posible cargar los clientes.',
+          );
+        }
+      } finally {
+        if (active) setClientesLoading(false);
+      }
+    }, 300);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [tarjetaBusqueda]);
+
+  useEffect(() => {
+    let active = true;
 
     const loadProveedores = async () => {
       setProveedoresLoading(true);
@@ -875,7 +980,11 @@ export default function ReportesPage() {
                           ? ReportesApis.inventarioErp
                           : selectedReport.metodoApi === 'sp_reporte_rentabilidad_insumos'
                             ? ReportesApis.rentabilidadInsumos
-                            : null;
+                            : selectedReport.metodoApi === 'sp_reporte_validaciones_insumos'
+                              ? ReportesApis.validacionesInsumos
+                              : selectedReport.metodoApi === 'sp_reporte_puntos_cliente'
+                                ? ReportesApis.puntosCliente
+                                : null;
 
     if (!reportEndpoint) {
       setReportRows([]);
@@ -899,6 +1008,14 @@ export default function ReportesPage() {
       return;
     }
     if (
+      selectedReport.metodoApi === 'sp_reporte_puntos_cliente' &&
+      !filters.cliente.trim()
+    ) {
+      setQueryError(true);
+      setQueryMessage('Ingresa la clave o nombre del cliente para consultar el reporte.');
+      return;
+    }
+    if (
       ['sp_reporte_inventario', 'sp_reporte_ajuste_inventario', 'sp_reporte_traspasos_sucursales'].includes(
         selectedReport.metodoApi,
       ) &&
@@ -917,7 +1034,7 @@ export default function ReportesPage() {
     setQueryLoading(true);
     setQueryMessage('');
     const params: Record<string, unknown> = {
-      ...(requiereFechas
+      ...(requiereFechas && selectedReport.metodoApi !== 'sp_reporte_puntos_cliente'
         ? {
             f1: filters.fechaInicial,
             f2: filters.fechaFinal,
@@ -930,9 +1047,11 @@ export default function ReportesPage() {
           ? { s: Number(filters.sucursal) }
           : selectedReport.metodoApi === 'sp_reporte_traspasos_sucursales'
             ? { s: filters.sucursal.trim() }
-            : requiereFechas
-              ? { suc: filters.sucursal.trim() || '%' }
-              : {}),
+            : selectedReport.metodoApi === 'sp_reporte_validaciones_insumos'
+              ? { suc: filters.sucursal.trim() || '0' }
+              : requiereFechas
+                ? { suc: filters.sucursal.trim() || '%' }
+                : {}),
       ...(selectedReport.metodoApi === 'sp_reporte_inventario_ERP'
         ? {
             fechaCorte: filters.fechaCorte,
@@ -957,6 +1076,14 @@ export default function ReportesPage() {
             usr: filters.estilista.trim() || '%',
             area: filters.area.trim() || '%',
             cliente: '%',
+          }
+        : {}),
+      ...(selectedReport.metodoApi === 'sp_reporte_puntos_cliente'
+        ? {
+            cliente: filters.cliente.trim(),
+            tarjeta: filters.tarjeta.trim(),
+            fechaI: filters.fechaInicial.replace(/-/g, ''),
+            fechaF: filters.fechaFinal.replace(/-/g, ''),
           }
         : {}),
     };
@@ -1229,6 +1356,139 @@ export default function ReportesPage() {
             </MenuItem>
           ))}
         </TextField>
+      );
+    }
+
+    if (definition.key === 'cliente') {
+      const clienteSeleccionado = clientes.find((cliente) => cliente.value === value) ?? null;
+
+      return (
+        <Autocomplete
+          key={definition.key}
+          freeSolo
+          fullWidth
+          size="small"
+          options={clientes}
+          value={clienteSeleccionado}
+          inputValue={clienteBusqueda}
+          loading={clientesLoading}
+          filterOptions={(options) => options}
+          getOptionLabel={(option) =>
+            typeof option === 'string' ? option : `${option.value} - ${option.label}`
+          }
+          isOptionEqualToValue={(option, selected) =>
+            typeof option === 'string' || typeof selected === 'string'
+              ? option === selected
+              : option.value === selected.value
+          }
+          onInputChange={(_, inputValue, reason) => {
+            if (reason === 'input' || reason === 'clear') setClienteBusqueda(inputValue);
+          }}
+          onChange={(_, newValue) => {
+            const selected =
+              typeof newValue === 'string' ? newValue : newValue?.value ?? '';
+            handleFilterChange(definition.key, selected);
+            setClienteBusqueda(
+              typeof newValue === 'string'
+                ? newValue
+                : newValue
+                  ? `${newValue.value} - ${newValue.label}`
+                  : '',
+            );
+            if (typeof newValue !== 'string' && newValue) {
+              handleFilterChange('tarjeta', newValue.tarjeta ?? '');
+              setTarjetaBusqueda(newValue.tarjeta ?? '');
+            } else if (!newValue) {
+              handleFilterChange('tarjeta', '');
+              setTarjetaBusqueda('');
+            }
+          }}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label={definition.label}
+              error={Boolean(clientesError)}
+              helperText={
+                clientesError ||
+                (clientesLoading ? 'Buscando clientes...' : 'Escribe clave, nombre o selecciona')
+              }
+              InputProps={{
+                ...params.InputProps,
+                endAdornment: (
+                  <>
+                    {clientesLoading ? <CircularProgress size={16} /> : null}
+                    {params.InputProps.endAdornment}
+                  </>
+                ),
+              }}
+            />
+          )}
+        />
+      );
+    }
+
+    if (definition.key === 'tarjeta') {
+      const tarjetaSeleccionada =
+        clientes.find((cliente) => cliente.tarjeta === value) ?? null;
+
+      return (
+        <Autocomplete
+          key={definition.key}
+          freeSolo
+          fullWidth
+          size="small"
+          options={clientes}
+          value={tarjetaSeleccionada}
+          inputValue={tarjetaBusqueda}
+          loading={clientesLoading}
+          filterOptions={(options) => options}
+          getOptionLabel={(option) =>
+            typeof option === 'string' ? option : option.tarjeta
+          }
+          isOptionEqualToValue={(option, selected) =>
+            typeof option === 'string' || typeof selected === 'string'
+              ? option === selected
+              : option.tarjeta === selected.tarjeta
+          }
+          onInputChange={(_, inputValue, reason) => {
+            if (reason === 'input' || reason === 'clear') setTarjetaBusqueda(inputValue);
+          }}
+          onChange={(_, newValue) => {
+            const selected =
+              typeof newValue === 'string' ? newValue : newValue?.tarjeta ?? '';
+            handleFilterChange(definition.key, selected);
+            setTarjetaBusqueda(
+              typeof newValue === 'string' ? newValue : newValue?.tarjeta ?? '',
+            );
+            if (typeof newValue !== 'string' && newValue) {
+              handleFilterChange('cliente', newValue.value);
+              setClienteBusqueda(`${newValue.value} - ${newValue.label}`);
+            } else if (!newValue) {
+              handleFilterChange('cliente', '');
+              setClienteBusqueda('');
+            }
+          }}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label={definition.label}
+              error={Boolean(clientesError)}
+              helperText={
+                clientesError ||
+                (clientesLoading ? 'Buscando tarjetas...' : 'Escribe número de tarjeta o selecciona')
+              }
+              InputProps={{
+                ...params.InputProps,
+                endAdornment: (
+                  <>
+                    {clientesLoading ? <CircularProgress size={16} /> : null}
+                    {params.InputProps.endAdornment}
+                  </>
+                ),
+              }}
+            />
+          )}
+        />
       );
     }
 
