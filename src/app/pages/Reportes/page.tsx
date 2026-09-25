@@ -562,6 +562,7 @@ export default function ReportesPage() {
   const { consumoApi } = useConsumoApi();
   const { session } = useSessionContext();
   const apiRef = useRef(consumoApi);
+  const queryIdRef = useRef(0);
   const [reports, setReports] = useState<ReportCatalogItem[]>([]);
   const [sucursales, setSucursales] = useState<SucursalOption[]>([]);
   const [sucursalesLoading, setSucursalesLoading] = useState(true);
@@ -593,6 +594,7 @@ export default function ReportesPage() {
   const [selectedReportKey, setSelectedReportKey] = useState('');
   const [filters, setFilters] = useState<ReportFilters>(initialFilters);
   const [reportRows, setReportRows] = useState<ReportRow[]>([]);
+  const [resultToken, setResultToken] = useState(0);
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogError, setCatalogError] = useState('');
   const [queryLoading, setQueryLoading] = useState(false);
@@ -934,6 +936,7 @@ export default function ReportesPage() {
     setSelectedReportKey(metodoApi);
     setFilters({ ...initialFilters });
     setReportRows([]);
+    setResultToken((current) => current + 1);
     setQueryError(false);
     setQueryMessage('');
   };
@@ -988,6 +991,7 @@ export default function ReportesPage() {
 
     if (!reportEndpoint) {
       setReportRows([]);
+      setResultToken((current) => current + 1);
       setQueryMessage(
         `El reporte «${selectedReport.descripcion}» aún no tiene conectada su API de consulta en Berllano.`,
       );
@@ -1033,6 +1037,8 @@ export default function ReportesPage() {
 
     setQueryLoading(true);
     setQueryMessage('');
+    queryIdRef.current += 1;
+    const queryId = queryIdRef.current;
     const params: Record<string, unknown> = {
       ...(requiereFechas && selectedReport.metodoApi !== 'sp_reporte_puntos_cliente'
         ? {
@@ -1093,15 +1099,19 @@ export default function ReportesPage() {
         params,
         timeout: 120000,
       });
+      if (queryId !== queryIdRef.current) return;
       const rows = getRowsFromResponse(response.data);
       setReportRows(rows);
+      setResultToken((current) => current + 1);
       setQueryMessage(
         rows.length > 0
           ? `Consulta realizada correctamente: ${rows.length} registro(s).`
           : 'La consulta se realizó correctamente, pero no devolvió registros.',
       );
     } catch (error) {
+      if (queryId !== queryIdRef.current) return;
       setReportRows([]);
+      setResultToken((current) => current + 1);
       setQueryError(true);
       setQueryMessage(
         error instanceof Error
@@ -1109,7 +1119,7 @@ export default function ReportesPage() {
           : 'No fue posible consultar el reporte de medios de pagos.',
       );
     } finally {
-      setQueryLoading(false);
+      if (queryId === queryIdRef.current) setQueryLoading(false);
     }
   };
 
@@ -1682,8 +1692,10 @@ export default function ReportesPage() {
 
         {reportRows.length > 0 ? (
           <MaterialReactTable
+            key={resultToken}
             columns={columns}
             data={reportRows}
+            getRowId={(_row, index) => `${resultToken}-${index}`}
             enableStickyHeader
             enableColumnResizing
             enableRowSelection={false}
