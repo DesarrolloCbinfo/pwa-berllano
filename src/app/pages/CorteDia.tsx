@@ -84,7 +84,7 @@ export default function CorteDia() {
         caja: 1,
         monto: 0, // El SP calculará el monto internamente
         corteFinal: true, // Corte de día es corte final
-        usr: session?.user?.id || session?.id || "",
+        usr: session?.id || "",
         cia: 1,
         ultimoRetiro: 0
       };
@@ -102,12 +102,19 @@ export default function CorteDia() {
       if (data?.corteProcesado || data?.mensaje) {
         Swal.fire({
           title: "Corte de día realizado",
-          text: data?.mensaje || "El corte se ha cerrado y procesado en tesorería de forma exitosa.",
+          text: "El corte se ha cerrado. ¿Desea imprimir el reporte de las ventas de hoy?",
           icon: "success",
+          showCancelButton: true,
+          confirmButtonText: "Sí",
+          cancelButtonText: "No",
           allowOutsideClick: false,
-        }).then(() => {
-          logout();
-          navigate(routes.login);
+        }).then((result) => {
+          if (result.isConfirmed) {
+            imprimirReporteVentas();
+          } else {
+            logout();
+            navigate(routes.login);
+          }
         });
       } else {
         Swal.fire(
@@ -135,6 +142,223 @@ export default function CorteDia() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const formatearFechaReporte = (fecha: Date) => {
+    const meses = [
+      "ene", "feb", "mar", "abr", "may", "jun",
+      "jul", "ago", "sep", "oct", "nov", "dic",
+    ];
+    const dia = String(fecha.getDate()).padStart(2, "0");
+    const mes = meses[fecha.getMonth()];
+    const anio = String(fecha.getFullYear()).slice(-2);
+    return `${dia}-${mes}-${anio}`;
+  };
+
+  const formatoMoneda = (valor: unknown) => {
+    const num = Number(valor);
+    if (Number.isNaN(num)) return "-";
+    return num.toLocaleString("es-MX", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
+  const escaparHtml = (texto: string) => {
+    const div = document.createElement("div");
+    div.textContent = texto;
+    return div.innerHTML;
+  };
+
+  const construirHtmlReporte = (rows: Array<Record<string, unknown>>) => {
+    const fechaInicio = formatearFechaReporte(new Date());
+    const fechaFin = fechaInicio;
+
+    let html = `
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>Detalle de Ventas por Estilista</title>
+          <style>
+            @page { size: letter portrait; margin: 1cm; }
+            body { font-family: Arial, sans-serif; font-size: 9pt; color: #000; }
+            .header { text-align: left; margin-bottom: 10px; }
+            .header h2 { margin: 0 0 4px 0; font-size: 12pt; font-weight: bold; }
+            .header .sub { font-size: 9pt; }
+            .sucursal, .estilista { font-weight: bold; margin-top: 8px; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+            th, td { padding: 3px 5px; text-align: left; vertical-align: top; }
+            th { border-bottom: 1px solid #000; font-weight: bold; }
+            .num { text-align: right; }
+            .total { font-weight: bold; border-top: 1px solid #000; }
+            .total-dia { font-weight: bold; border-top: 2px solid #000; font-size: 10pt; }
+            .section { page-break-inside: avoid; }
+          </style>
+        </head>
+        <body onafterprint="window.close()">
+          <div class="header">
+            <h2>Detalle de Ventas por Estilista</h2>
+            <div class="sub">Desde ${fechaInicio} hasta ${fechaFin}</div>
+          </div>
+    `;
+
+    let currentSucursal = "";
+    let currentEstilista = "";
+
+    for (const row of rows) {
+      const sucursal = String(row.Sucursal ?? "");
+      const estilista = String(row.Estilista ?? "");
+      const cliente = String(row.Cliente ?? "");
+
+      if (cliente === "Total del día") {
+        if (currentEstilista) {
+          html += `</tbody></table></div>`;
+          currentEstilista = "";
+        }
+        html += `
+          <table>
+            <tr class="total-dia">
+              <td colspan="5"></td>
+              <td class="num">Total del día</td>
+              <td class="num">${formatoMoneda(row.Importe)}</td>
+            </tr>
+          </table>
+        `;
+        continue;
+      }
+
+      if (cliente === "Total") {
+        html += `
+          <tr class="total">
+            <td colspan="5"></td>
+            <td class="num">Total</td>
+            <td class="num">${formatoMoneda(row.Importe)}</td>
+          </tr>
+        `;
+        continue;
+      }
+
+      if (sucursal && sucursal !== currentSucursal) {
+        currentSucursal = sucursal;
+        html += `<div class="sucursal">${escaparHtml(sucursal)}</div>`;
+      }
+
+      if (estilista && estilista !== currentEstilista) {
+        if (currentEstilista) {
+          html += `</tbody></table></div>`;
+        }
+        currentEstilista = estilista;
+        html += `<div class="section"><div class="estilista">${escaparHtml(estilista)}</div>`;
+        html += `
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Nombre</th>
+                <th>Descripción</th>
+                <th class="num">Cant</th>
+                <th class="num">Importe</th>
+                <th class="num">Total</th>
+                <th class="num">Visitas</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+      }
+
+      html += `
+        <tr>
+          <td>${escaparHtml(String(row.Fecha ?? "").split("T")[0])}</td>
+          <td>${escaparHtml(String(row.Cliente ?? ""))}</td>
+          <td>${escaparHtml(String(row.Descripcion ?? ""))}</td>
+          <td class="num">${escaparHtml(String(row.Cant ?? ""))}</td>
+          <td class="num">${formatoMoneda(row.Importe)}</td>
+          <td class="num">${formatoMoneda(row.Importe)}</td>
+          <td class="num">${escaparHtml(String(row.Visitas ?? ""))}</td>
+        </tr>
+      `;
+    }
+
+    if (currentEstilista) {
+      html += `</tbody></table></div>`;
+    }
+
+    html += `
+        <script>
+          window.addEventListener('afterprint', function () { window.close(); });
+        </script>
+      </body>
+      </html>
+    `;
+
+    return html;
+  };
+
+  const imprimirReporteVentas = async () => {
+    if (!session?.sucursal) {
+      Swal.fire("Error", "No se encontró la sucursal de la sesión.", "error");
+      logout();
+      navigate(routes.login);
+      return;
+    }
+
+    const hoy = new Date();
+    const hoyFormateado = formatearFechaReporte(hoy);
+
+    // Se abre inmediatamente para evitar el bloqueo de ventanas emergentes.
+    const ventana = window.open("", "_blank");
+    if (!ventana) {
+      Swal.fire("Aviso", "Permite las ventanas emergentes para imprimir el reporte.", "warning");
+      logout();
+      navigate(routes.login);
+      return;
+    }
+
+    ventana.document.open();
+    ventana.document.write(`
+      <html>
+        <head><meta charset="utf-8" /><title>Cargando reporte...</title></head>
+        <body><p>Cargando reporte de ventas...</p></body>
+      </html>
+    `);
+    ventana.document.close();
+
+    try {
+      const res = await consumoApi.get(
+        "/api/CatReportes/sp_ventas_estilista_corte_dia",
+        {
+          params: {
+            sucursal: session.sucursal,
+            fecha_inicio: hoyFormateado,
+            fecha_fin: hoyFormateado,
+          },
+        }
+      );
+
+      const rows = Array.isArray(res.data) ? (res.data as Array<Record<string, unknown>>) : [];
+
+      ventana.document.open();
+      ventana.document.write(construirHtmlReporte(rows));
+      ventana.document.close();
+      ventana.focus();
+      ventana.print();
+
+      ventana.onafterprint = () => {
+        ventana.close();
+        logout();
+        navigate(routes.login);
+      };
+    } catch (err: any) {
+      ventana.close();
+      console.error("Error al consultar reporte de ventas:", err);
+      Swal.fire(
+        "Error",
+        err.response?.data?.mensaje || "No fue posible obtener el reporte de ventas.",
+        "error"
+      );
+      logout();
+      navigate(routes.login);
     }
   };
 

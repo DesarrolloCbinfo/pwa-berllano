@@ -21,4 +21,6 @@ export const ReportesApis = {
   rentabilidadInsumos: '/api/CatReportes/sp_reporte_rentabilidad_insumos',
   validacionesInsumos: '/api/CatReportes/sp_reporte_validaciones_insumos',
   puntosCliente: '/api/CatReportes/sp_reporte_puntos_cliente',
+  ventasCfds: '/api/CatReportes/sp_reporte_ventas_cfds',
+  ventasEstilista: '/api/CatReportes/sp_reporte_ventas_estilista',
 };

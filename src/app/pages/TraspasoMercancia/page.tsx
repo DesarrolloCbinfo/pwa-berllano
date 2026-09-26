@@ -90,7 +90,10 @@ const PASO_CANTIDAD_FRACCION = 0.125;
 const UNIDADES_POR_ENTERO = 1 / PASO_CANTIDAD_FRACCION;
 
 function formatoMoneda(valor: number) {
-  return `$${valor.toFixed(2)}`;
+  return Number(valor || 0).toLocaleString('es-MX', {
+    style: 'currency',
+    currency: 'MXN',
+  });
 }
 
 function esFraccionEnOctavos(valor: number) {

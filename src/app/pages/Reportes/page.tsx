@@ -128,6 +128,15 @@ type FilterDefinition = {
   placeholder?: string;
 };
 
+const formatearFechaReporte = (fechaIso: string) => {
+  const [anio, mes, dia] = fechaIso.split('-').map(Number);
+  const meses = [
+    'ene', 'feb', 'mar', 'abr', 'may', 'jun',
+    'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
+  ];
+  return `${String(dia).padStart(2, '0')}-${meses[mes - 1]}-${String(anio).slice(-2)}`;
+};
+
 const today = new Date().toISOString().split('T')[0];
 
 const initialFilters: ReportFilters = {
@@ -250,6 +259,8 @@ const knownReportFilters: Record<string, FilterName[]> = {
   ],
   sp_reporte_validaciones_insumos: ['fechaInicial', 'fechaFinal', 'sucursal'],
   sp_reporte_puntos_cliente: ['cliente', 'tarjeta', 'fechaInicial', 'fechaFinal'],
+  sp_reporte_ventas_cfds: ['fechaInicial', 'fechaFinal', 'sucursal'],
+  sp_reporte_ventas_estilista: ['fechaInicial', 'fechaFinal', 'sucursal'],
   TicketInsumosEstilsta: [
     'fechaInicial',
     'fechaFinal',
@@ -532,7 +543,26 @@ function formatCellValue(value: unknown, key?: string): string | number {
   if (key?.toLowerCase().includes('fecha')) return formatDateValue(value);
 
   const normalizedKey = key?.toLowerCase();
-  if (normalizedKey && ['total', 'importe', 'precio'].includes(normalizedKey)) {
+  const moneyKeys = [
+    'total',
+    'importe',
+    'precio',
+    'subtotal',
+    'iva',
+    'costo',
+    'saldo',
+    'saldoinicial',
+    'saldocompras',
+    'saldopagos',
+    'saldofinal',
+    'monto',
+    'cargo',
+    'abono',
+    'venta',
+    'utilidad',
+    'ganancia',
+  ];
+  if (normalizedKey && moneyKeys.includes(normalizedKey)) {
     const numberValue = Number(value);
     if (!Number.isNaN(numberValue)) {
       return numberValue.toLocaleString('es-MX', {
@@ -911,11 +941,16 @@ export default function ReportesPage() {
     const keys = reportRows.length > 0 ? Object.keys(reportRows[0]) : [];
     return keys
       .filter((key) => key.toLowerCase() !== 'id')
-      .map((key) => ({
-        accessorKey: key,
-        header: key,
-        Cell: ({ cell }) => formatCellValue(cell.getValue(), key),
-      }));
+      .map((key) => {
+        const narrowColumns = ['cant_producto', 'visitas'];
+        const isNarrow = narrowColumns.includes(key.toLowerCase());
+        return {
+          accessorKey: key,
+          header: key,
+          Cell: ({ cell }: { cell: any }) => formatCellValue(cell.getValue(), key),
+          ...(isNarrow ? { size: 80, maxSize: 100 } : {}),
+        };
+      });
   }, [reportRows]);
 
   const summary = useMemo(() => {
@@ -929,6 +964,106 @@ export default function ReportesPage() {
     });
     return result;
   }, [reportRows]);
+
+  const puntosResumen = useMemo(() => {
+    if (selectedReport?.metodoApi !== 'sp_reporte_puntos_cliente') return null;
+
+    const puntosGenerados = reportRows.reduce(
+      (total, row) =>
+        total + Number(
+          readProperty(row, [
+            'puntosGenerados',
+            'puntos_generados',
+            'puntosGeneradosTotal',
+            'generados',
+            'puntos',
+          ]) ?? 0
+        ),
+      0
+    );
+    const puntosUtilizados = reportRows.reduce(
+      (total, row) =>
+        total + Number(
+          readProperty(row, [
+            'puntosUtilizados',
+            'puntos_utilizados',
+            'puntosUsados',
+            'puntos_usados',
+            'utilizados',
+            'canjeados',
+          ]) ?? 0
+        ),
+      0
+    );
+
+    return {
+      puntosGenerados,
+      puntosUtilizados,
+      saldo: puntosGenerados - puntosUtilizados,
+    };
+  }, [reportRows, selectedReport]);
+
+  const saldoPuntosResumen = useMemo(() => {
+    if (selectedReport?.metodoApi !== 'sp_reporte_saldo_puntos') return null;
+
+    const puntosGenerados = reportRows.reduce(
+      (total, row) =>
+        total +
+        Number(
+          readProperty(row, [
+            'PuntosGen',
+            'puntosGenerados',
+            'puntos_generados',
+            'puntosGeneradosTotal',
+            'generados',
+            'puntos',
+          ]) ?? 0,
+        ),
+      0,
+    );
+    const puntosUtilizados = reportRows.reduce(
+      (total, row) =>
+        total +
+        Number(
+          readProperty(row, [
+            'puntosUtilizados',
+            'puntos_utilizados',
+            'puntosUsados',
+            'puntos_usados',
+            'utilizados',
+            'canjeados',
+          ]) ?? 0,
+        ),
+      0,
+    );
+
+    return {
+      puntosGenerados,
+      puntosUtilizados,
+      saldo: puntosGenerados - puntosUtilizados,
+    };
+  }, [reportRows, selectedReport]);
+
+  const rentabilidadResumen = useMemo(() => {
+    if (selectedReport?.metodoApi !== 'sp_reporte_rentabilidad_insumos') return null;
+
+    const venta = reportRows.reduce(
+      (total, row) =>
+        total + Number(readProperty(row, ['venta', 'ventas', 'totalVenta', 'total_venta']) ?? 0),
+      0
+    );
+    const costo = reportRows.reduce(
+      (total, row) =>
+        total + Number(readProperty(row, ['costo', 'costos', 'totalCosto', 'total_costo']) ?? 0),
+      0
+    );
+
+    return {
+      venta,
+      costo,
+      rentabilidad: venta !== 0 ? (venta - costo) / venta : 0,
+    };
+  }, [reportRows, selectedReport]);
 
   const handleReportChange = (metodoApi: string) => {
     setSelectedReportKey(metodoApi);
@@ -984,7 +1119,11 @@ export default function ReportesPage() {
                               ? ReportesApis.validacionesInsumos
                               : selectedReport.metodoApi === 'sp_reporte_puntos_cliente'
                                 ? ReportesApis.puntosCliente
-                                : null;
+                                : selectedReport.metodoApi === 'sp_reporte_ventas_estilista'
+                                  ? ReportesApis.ventasEstilista
+                                  : selectedReport.metodoApi === 'sp_reporte_ventas_cfds'
+                                    ? ReportesApis.ventasCfds
+                                    : null;
 
     if (!reportEndpoint) {
       setReportRows([]);
@@ -1016,7 +1155,7 @@ export default function ReportesPage() {
       return;
     }
     if (
-      ['sp_reporte_inventario', 'sp_reporte_ajuste_inventario', 'sp_reporte_traspasos_sucursales'].includes(
+      ['sp_reporte_inventario', 'sp_reporte_ajuste_inventario', 'sp_reporte_traspasos_sucursales', 'sp_reporte_ventas_estilista'].includes(
         selectedReport.metodoApi,
       ) &&
       !filters.sucursal
@@ -1034,7 +1173,10 @@ export default function ReportesPage() {
     setQueryLoading(true);
     setQueryMessage('');
     const params: Record<string, unknown> = {
-      ...(requiereFechas && selectedReport.metodoApi !== 'sp_reporte_puntos_cliente'
+      ...(requiereFechas &&
+      !['sp_reporte_puntos_cliente', 'sp_reporte_ventas_cfds', 'sp_reporte_ventas_estilista'].includes(
+        selectedReport.metodoApi,
+      )
         ? {
             f1: filters.fechaInicial,
             f2: filters.fechaFinal,
@@ -1049,9 +1191,12 @@ export default function ReportesPage() {
             ? { s: filters.sucursal.trim() }
             : selectedReport.metodoApi === 'sp_reporte_validaciones_insumos'
               ? { suc: filters.sucursal.trim() || '0' }
-              : requiereFechas
-                ? { suc: filters.sucursal.trim() || '%' }
-                : {}),
+              : selectedReport.metodoApi === 'sp_reporte_ventas_cfds' ||
+                  selectedReport.metodoApi === 'sp_reporte_ventas_estilista'
+                ? {}
+                : requiereFechas
+                  ? { suc: filters.sucursal.trim() || '%' }
+                  : {}),
       ...(selectedReport.metodoApi === 'sp_reporte_inventario_ERP'
         ? {
             fechaCorte: filters.fechaCorte,
@@ -1086,6 +1231,19 @@ export default function ReportesPage() {
             fechaF: filters.fechaFinal.replace(/-/g, ''),
           }
         : {}),
+      ...(selectedReport.metodoApi === 'sp_reporte_ventas_estilista'
+        ? {
+            fecha_inicio: formatearFechaReporte(filters.fechaInicial),
+            fecha_fin: formatearFechaReporte(filters.fechaFinal),
+            sucursal: Number(filters.sucursal),
+          }
+        : selectedReport.metodoApi === 'sp_reporte_ventas_cfds'
+          ? {
+              fecha1: filters.fechaInicial,
+              fecha2: filters.fechaFinal,
+              sucursal: filters.sucursal.trim() || '%',
+            }
+          : {}),
     };
 
     try {
@@ -1706,7 +1864,8 @@ export default function ReportesPage() {
           </Stack>
         )}
 
-        {Object.keys(summary).some((key) => ['total', 'importe', 'saldoinicial', 'saldocompras', 'saldopagos', 'saldofinal'].includes(key.toLowerCase())) && (
+        {selectedReport?.metodoApi !== 'sp_reporte_ventas_cfds' &&
+          Object.keys(summary).some((key) => ['total', 'importe', 'saldoinicial', 'saldocompras', 'saldopagos', 'saldofinal'].includes(key.toLowerCase())) && (
           <Stack direction="row" flexWrap="wrap" gap={1} sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
             {Object.entries(summary)
               .filter(([key]) => ['total', 'importe', 'saldoinicial', 'saldocompras', 'saldopagos', 'saldofinal'].includes(key.toLowerCase()))
@@ -1721,6 +1880,118 @@ export default function ReportesPage() {
           </Stack>
         )}
       </Paper>
+
+      {puntosResumen && (
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          flexWrap="wrap"
+          gap={1}
+          sx={{ mt: 1.5 }}
+        >
+          <Paper variant="outlined" sx={{ flex: '1 1 180px', px: 1.5, py: 1, bgcolor: '#f8fafc' }}>
+            <Typography variant="caption" color="text.secondary" fontWeight={600}>
+              Puntos generados
+            </Typography>
+            <Typography
+              sx={{ fontSize: '1.35rem', fontWeight: 700, lineHeight: 1.2, fontVariantNumeric: 'tabular-nums' }}
+            >
+              {puntosResumen.puntosGenerados.toLocaleString('es-MX')}
+            </Typography>
+          </Paper>
+          <Paper variant="outlined" sx={{ flex: '1 1 180px', px: 1.5, py: 1, bgcolor: '#f8fafc' }}>
+            <Typography variant="caption" color="text.secondary" fontWeight={600}>
+              Puntos utilizados
+            </Typography>
+            <Typography
+              sx={{ fontSize: '1.35rem', fontWeight: 700, lineHeight: 1.2, fontVariantNumeric: 'tabular-nums' }}
+            >
+              {puntosResumen.puntosUtilizados.toLocaleString('es-MX')}
+            </Typography>
+          </Paper>
+          <Paper variant="outlined" sx={{ flex: '1 1 180px', px: 1.5, py: 1, bgcolor: '#f8fafc' }}>
+            
+            <Typography
+              sx={{ fontSize: '1.35rem', fontWeight: 700, lineHeight: 1.2, fontVariantNumeric: 'tabular-nums' }}
+            >
+              {puntosResumen.saldo.toLocaleString('es-MX')}
+            </Typography>
+          </Paper>
+        </Stack>
+      )}
+
+      {saldoPuntosResumen && (
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          flexWrap="wrap"
+          gap={1}
+          sx={{ mt: 1.5 }}
+        >
+          <Paper variant="outlined" sx={{ flex: '1 1 180px', px: 1.5, py: 1, bgcolor: '#f8fafc' }}>
+            <Typography variant="caption" color="text.secondary" fontWeight={600}>
+              Puntos generados
+            </Typography>
+            <Typography
+              sx={{ fontSize: '1.35rem', fontWeight: 700, lineHeight: 1.2, fontVariantNumeric: 'tabular-nums' }}
+            >
+              {saldoPuntosResumen.puntosGenerados.toLocaleString('es-MX')}
+            </Typography>
+          </Paper>
+          <Paper variant="outlined" sx={{ flex: '1 1 180px', px: 1.5, py: 1, bgcolor: '#f8fafc' }}>
+            <Typography variant="caption" color="text.secondary" fontWeight={600}>
+              Puntos utilizados
+            </Typography>
+            <Typography
+              sx={{ fontSize: '1.35rem', fontWeight: 700, lineHeight: 1.2, fontVariantNumeric: 'tabular-nums' }}
+            >
+              {saldoPuntosResumen.puntosUtilizados.toLocaleString('es-MX')}
+            </Typography>
+          </Paper>
+          <Paper variant="outlined" sx={{ flex: '1 1 180px', px: 1.5, py: 1, bgcolor: '#f8fafc' }}>
+           
+            <Typography
+              sx={{ fontSize: '1.35rem', fontWeight: 700, lineHeight: 1.2, fontVariantNumeric: 'tabular-nums' }}
+            >
+              {saldoPuntosResumen.saldo.toLocaleString('es-MX')}
+            </Typography>
+          </Paper>
+        </Stack>
+      )}
+
+      {rentabilidadResumen && (
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          flexWrap="wrap"
+          gap={1}
+          sx={{ mt: 1.5 }}
+        >
+          <Paper variant="outlined" sx={{ flex: '1 1 180px', px: 1.5, py: 1, bgcolor: '#f8fafc' }}>
+            <Typography variant="caption" color="text.secondary" fontWeight={600}>
+              Suma de venta
+            </Typography>
+            <Typography sx={{ fontSize: '1.35rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+              {rentabilidadResumen.venta.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}
+            </Typography>
+          </Paper>
+          <Paper variant="outlined" sx={{ flex: '1 1 180px', px: 1.5, py: 1, bgcolor: '#f8fafc' }}>
+            <Typography variant="caption" color="text.secondary" fontWeight={600}>
+              Suma de costo
+            </Typography>
+            <Typography sx={{ fontSize: '1.35rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+              {rentabilidadResumen.costo.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}
+            </Typography>
+          </Paper>
+          <Paper variant="outlined" sx={{ flex: '1 1 180px', px: 1.5, py: 1, bgcolor: '#f8fafc' }}>
+            
+            <Typography sx={{ fontSize: '1.35rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+              {rentabilidadResumen.rentabilidad.toLocaleString('es-MX', {
+                style: 'percent',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </Typography>
+          </Paper>
+        </Stack>
+      )}
     </Box>
   );
 }

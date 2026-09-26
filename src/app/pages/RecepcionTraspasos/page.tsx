@@ -59,7 +59,10 @@ const obtenerValor = (obj: any, ...nombres: string[]) => {
 };
 
 function formatoMoneda(valor: number) {
-  return `$${(valor || 0).toFixed(2)}`;
+  return Number(valor || 0).toLocaleString('es-MX', {
+    style: 'currency',
+    currency: 'MXN',
+  });
 }
 
 function valorVerdadero(valor: unknown) {
