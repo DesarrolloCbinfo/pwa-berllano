@@ -1044,6 +1044,16 @@ export default function ReportesPage() {
     };
   }, [reportRows, selectedReport]);
 
+  const ventasEstilistaTotalDia = useMemo(() => {
+    if (selectedReport?.metodoApi !== 'sp_reporte_ventas_estilista') return null;
+
+    const totalDia = reportRows.find(
+      (row) => String(readProperty(row, ['Cliente']) ?? '').trim().toLowerCase() === 'total del día',
+    );
+
+    return totalDia ? Number(readProperty(totalDia, ['Importe']) ?? 0) : 0;
+  }, [reportRows, selectedReport]);
+
   const rentabilidadResumen = useMemo(() => {
     if (selectedReport?.metodoApi !== 'sp_reporte_rentabilidad_insumos') return null;
 
@@ -1864,7 +1874,9 @@ export default function ReportesPage() {
           </Stack>
         )}
 
-        {selectedReport?.metodoApi !== 'sp_reporte_ventas_cfds' &&
+        {!['sp_reporte_ventas_cfds', 'sp_reporte_ventas_estilista'].includes(
+          selectedReport?.metodoApi ?? '',
+        ) &&
           Object.keys(summary).some((key) => ['total', 'importe', 'saldoinicial', 'saldocompras', 'saldopagos', 'saldofinal'].includes(key.toLowerCase())) && (
           <Stack direction="row" flexWrap="wrap" gap={1} sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
             {Object.entries(summary)
@@ -1877,6 +1889,19 @@ export default function ReportesPage() {
                   <Typography fontWeight={600}>{formatCellValue(value, key)}</Typography>
                 </Paper>
               ))}
+          </Stack>
+        )}
+
+        {ventasEstilistaTotalDia !== null && reportRows.length > 0 && (
+          <Stack direction="row" sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+            <Paper variant="outlined" sx={{ px: 2, py: 1, minWidth: 180 }}>
+              <Typography variant="caption" color="text.secondary">
+                Total del día
+              </Typography>
+              <Typography fontWeight={600}>
+                {formatCellValue(ventasEstilistaTotalDia, 'importe')}
+              </Typography>
+            </Paper>
           </Stack>
         )}
       </Paper>

@@ -100,6 +100,7 @@ export default function CorteDia() {
       const data = res.data;
 
       if (data?.corteProcesado || data?.mensaje) {
+        const reportePromise = consultarReporteVentas();
         Swal.fire({
           title: "Corte de día realizado",
           text: "El corte se ha cerrado. ¿Desea imprimir el reporte de las ventas de hoy?",
@@ -110,7 +111,7 @@ export default function CorteDia() {
           allowOutsideClick: false,
         }).then((result) => {
           if (result.isConfirmed) {
-            imprimirReporteVentas();
+            imprimirReporteVentas(reportePromise);
           } else {
             logout();
             navigate(routes.login);
@@ -203,6 +204,16 @@ export default function CorteDia() {
           </div>
     `;
 
+    const totalesPorCliente = rows.reduce<Record<string, number>>((totales, row) => {
+      const cliente = String(row.Cliente ?? "");
+      if (cliente === "Total" || cliente === "Total del día") return totales;
+
+      const fecha = String(row.Fecha ?? "").split("T")[0];
+      const llave = `${cliente}::${fecha}`;
+      totales[llave] = (totales[llave] ?? 0) + (Number(row.Importe) || 0);
+      return totales;
+    }, {});
+
     let currentSucursal = "";
     let currentEstilista = "";
 
@@ -219,7 +230,7 @@ export default function CorteDia() {
         html += `
           <table>
             <tr class="total-dia">
-              <td colspan="5"></td>
+              <td colspan="6"></td>
               <td class="num">Total del día</td>
               <td class="num">${formatoMoneda(row.Importe)}</td>
             </tr>
@@ -231,7 +242,7 @@ export default function CorteDia() {
       if (cliente === "Total") {
         html += `
           <tr class="total">
-            <td colspan="5"></td>
+            <td colspan="6"></td>
             <td class="num">Total</td>
             <td class="num">${formatoMoneda(row.Importe)}</td>
           </tr>
@@ -259,6 +270,7 @@ export default function CorteDia() {
                 <th>Descripción</th>
                 <th class="num">Cant</th>
                 <th class="num">Importe</th>
+                <th>Forma de pago</th>
                 <th class="num">Total</th>
                 <th class="num">Visitas</th>
               </tr>
@@ -267,14 +279,18 @@ export default function CorteDia() {
         `;
       }
 
+      const fecha = String(row.Fecha ?? "").split("T")[0];
+      const llaveCliente = `${cliente}::${fecha}`;
+
       html += `
         <tr>
-          <td>${escaparHtml(String(row.Fecha ?? "").split("T")[0])}</td>
-          <td>${escaparHtml(String(row.Cliente ?? ""))}</td>
+          <td>${escaparHtml(fecha)}</td>
+          <td>${escaparHtml(cliente)}</td>
           <td>${escaparHtml(String(row.Descripcion ?? ""))}</td>
           <td class="num">${escaparHtml(String(row.Cant ?? ""))}</td>
           <td class="num">${formatoMoneda(row.Importe)}</td>
-          <td class="num">${formatoMoneda(row.Importe)}</td>
+          <td>${escaparHtml(String(row.forma_pago ?? ""))}</td>
+          <td class="num">${formatoMoneda(totalesPorCliente[llaveCliente])}</td>
           <td class="num">${escaparHtml(String(row.Visitas ?? ""))}</td>
         </tr>
       `;
@@ -295,17 +311,34 @@ export default function CorteDia() {
     return html;
   };
 
-  const imprimirReporteVentas = async () => {
+  const consultarReporteVentas = async () => {
     if (!session?.sucursal) {
-      Swal.fire("Error", "No se encontró la sucursal de la sesión.", "error");
-      logout();
-      navigate(routes.login);
-      return;
+      return { rows: [] as Array<Record<string, unknown>>, error: new Error("No se encontró la sucursal de la sesión.") };
     }
 
-    const hoy = new Date();
-    const hoyFormateado = formatearFechaReporte(hoy);
+    const hoyFormateado = formatearFechaReporte(new Date());
 
+    try {
+      const res = await consumoApi.get(
+        "/api/CatReportes/sp_ventas_estilista_corte_dia",
+        {
+          params: {
+            sucursal: session.sucursal,
+            fecha_inicio: hoyFormateado,
+            fecha_fin: hoyFormateado,
+          },
+        }
+      );
+      const rows = Array.isArray(res.data) ? (res.data as Array<Record<string, unknown>>) : [];
+      return { rows, error: null };
+    } catch (error) {
+      return { rows: [] as Array<Record<string, unknown>>, error };
+    }
+  };
+
+  const imprimirReporteVentas = async (
+    reportePromise: ReturnType<typeof consultarReporteVentas> = consultarReporteVentas()
+  ) => {
     // Se abre inmediatamente para evitar el bloqueo de ventanas emergentes.
     const ventana = window.open("", "_blank");
     if (!ventana) {
@@ -325,18 +358,8 @@ export default function CorteDia() {
     ventana.document.close();
 
     try {
-      const res = await consumoApi.get(
-        "/api/CatReportes/sp_ventas_estilista_corte_dia",
-        {
-          params: {
-            sucursal: session.sucursal,
-            fecha_inicio: hoyFormateado,
-            fecha_fin: hoyFormateado,
-          },
-        }
-      );
-
-      const rows = Array.isArray(res.data) ? (res.data as Array<Record<string, unknown>>) : [];
+      const { rows, error } = await reportePromise;
+      if (error) throw error;
 
       ventana.document.open();
       ventana.document.write(construirHtmlReporte(rows));
