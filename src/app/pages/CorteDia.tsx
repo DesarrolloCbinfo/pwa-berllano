@@ -181,7 +181,7 @@ export default function CorteDia() {
           <meta charset="utf-8" />
           <title>Detalle de Ventas por Estilista</title>
           <style>
-            @page { size: letter portrait; margin: 1cm; }
+            @page { size: letter landscape; margin: 1cm; }
             body { font-family: Arial, sans-serif; font-size: 9pt; color: #000; }
             .header { text-align: left; margin-bottom: 10px; }
             .header h2 { margin: 0 0 4px 0; font-size: 12pt; font-weight: bold; }
@@ -341,14 +341,15 @@ export default function CorteDia() {
       ventana.document.open();
       ventana.document.write(construirHtmlReporte(rows));
       ventana.document.close();
-      ventana.focus();
-      ventana.print();
 
       ventana.onafterprint = () => {
         ventana.close();
         logout();
         navigate(routes.login);
       };
+
+      ventana.focus();
+      ventana.print();
     } catch (err: any) {
       ventana.close();
       console.error("Error al consultar reporte de ventas:", err);
