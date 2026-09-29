@@ -1320,11 +1320,12 @@ export default function ReportesPage() {
       return;
     }
     if (
-      ['sp_reporte_inventario', 'sp_reporte_ajuste_inventario', 'sp_reporte_traspasos_sucursales', 'sp_reporte_ventas_estilista'].includes(
+      ['sp_reporte_inventario', 'sp_reporte_ajuste_inventario', 'sp_reporte_ventas_estilista'].includes(
         selectedReport.metodoApi,
       ) &&
       !filters.sucursal
     ) {
+      setReportRows([]);
       setQueryError(true);
       setQueryMessage('Selecciona una sucursal para consultar el reporte.');
       return;
@@ -1353,7 +1354,7 @@ export default function ReportesPage() {
             selectedReport.metodoApi === 'sp_reporte_ajuste_inventario'
           ? { s: Number(filters.sucursal) }
           : selectedReport.metodoApi === 'sp_reporte_traspasos_sucursales'
-            ? { s: filters.sucursal.trim() }
+            ? { s: filters.sucursal.trim() || '0' }
             : selectedReport.metodoApi === 'sp_reporte_validaciones_insumos'
               ? { suc: filters.sucursal.trim() || '0' }
               : selectedReport.metodoApi === 'sp_reporte_ventas_cfds' ||
@@ -1502,6 +1503,16 @@ export default function ReportesPage() {
           disabled={sucursalesLoading || metadataValue === false}
           error={Boolean(sucursalesError)}
           helperText={sucursalesError || (sucursalesLoading ? 'Cargando sucursales...' : undefined)}
+          SelectProps={{
+            displayEmpty: true,
+            renderValue: (selected) => {
+              const selectedValue = String(selected ?? '');
+              return (
+                sucursales.find((sucursal) => sucursal.value === selectedValue)?.label ||
+                (selectedValue === '' ? 'TODAS' : selectedValue)
+              );
+            },
+          }}
         >
           {sucursales.map((sucursal) => (
             <MenuItem key={`${sucursal.value || 'todas'}-${sucursal.label}`} value={sucursal.value}>
