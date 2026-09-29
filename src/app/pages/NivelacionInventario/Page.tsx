@@ -380,6 +380,61 @@ const handleGenerarTraspasos = async () => {
     }
 };
 
+const exportToExcel = async (data: any[], fileName: string, sheetName: string) => {
+    if (data.length === 0) {
+        Swal.fire({
+            icon: "warning",
+            title: "Sin datos",
+            text: "No hay datos para exportar.",
+            confirmButtonColor: "#1f2937",
+        });
+        return;
+    }
+
+    try {
+        const XLSX = await import('xlsx-js-style');
+
+        const worksheet = XLSX.utils.json_to_sheet(data);
+
+        // Estilo gris para encabezados
+        const range = XLSX.utils.decode_range(worksheet['!ref'] || "A1");
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+            const address = XLSX.utils.encode_cell({ r: 0, c: C });
+            if (!worksheet[address]) continue;
+            worksheet[address].s = {
+                fill: {
+                    patternType: "solid",
+                    fgColor: { rgb: "D9D9D9" }
+                },
+                font: {
+                    bold: true,
+                    color: { rgb: "000000" }
+                }
+            };
+        }
+
+        // Ajustar ancho de columnas
+        const keys = Object.keys(data[0]);
+        worksheet['!cols'] = keys.map(key => ({
+            wch: Math.max(key.length + 2, 12)
+        }));
+
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+
+        const fecha = new Date().toISOString().split('T')[0];
+        XLSX.writeFile(workbook, `${fileName}_${fecha}.xlsx`);
+    } catch (error) {
+        console.error("Error al exportar a Excel:", error);
+        Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: "No se pudo generar el archivo Excel.",
+            confirmButtonColor: "#1f2937",
+        });
+    }
+};
+
     return (
         <main className="nivelacion">
 
@@ -396,28 +451,7 @@ const handleGenerarTraspasos = async () => {
                     </h1>
                 </div>
 
-                <div className="nivelacion__folio">
 
-                    <label htmlFor="folio">
-                        Folio
-                    </label>
-
-                    <div className="folio__control">
-
-                        <input
-                            id="folio"
-                            type="text"
-                            value={folio}
-                            onChange={(e) => setFolio(e.target.value)}
-                        />
-
-                        <button onClick={handleBuscar}>
-                            Buscar
-                        </button>
-
-                    </div>
-
-                </div>
 
             </header>
 
@@ -625,13 +659,23 @@ const handleGenerarTraspasos = async () => {
                         {tabValue === 0 && (
                             dataResumen01.length > 0
                                 ? (
-                                    <MaterialReactTable
-                                        columns={columnsResumen01}
-                                        data={dataResumen01}
-                                        enableStickyHeader
-                                        initialState={{ density: 'compact' }}
-                                        muiTablePaperProps={{ sx: { maxWidth: '100%', overflowX: 'auto' } }}
-                                    />
+                                    <>
+                                        <div className="export-btn-container">
+                                            <button
+                                                className="btn btn--export"
+                                                onClick={() => exportToExcel(dataResumen01, 'Resumen_Nivelacion_01', 'Resumen01')}
+                                            >
+                                                Exportar a Excel
+                                            </button>
+                                        </div>
+                                        <MaterialReactTable
+                                            columns={columnsResumen01}
+                                            data={dataResumen01}
+                                            enableStickyHeader
+                                            initialState={{ density: 'compact' }}
+                                            muiTablePaperProps={{ sx: { maxWidth: '100%', overflowX: 'auto' } }}
+                                        />
+                                    </>
                                 )
                                 : (
                                     <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
@@ -643,13 +687,23 @@ const handleGenerarTraspasos = async () => {
                         {tabValue === 1 && (
                             dataResumen02.length > 0
                                 ? (
-                                    <MaterialReactTable
-                                        columns={columnsResumen02}
-                                        data={dataResumen02}
-                                        enableStickyHeader
-                                        initialState={{ density: 'compact' }}
-                                        muiTablePaperProps={{ sx: { maxWidth: '100%', overflowX: 'auto' } }}
-                                    />
+                                    <>
+                                        <div className="export-btn-container">
+                                            <button
+                                                className="btn btn--export"
+                                                onClick={() => exportToExcel(dataResumen02, 'Resumen_Nivelacion_02', 'Resumen02')}
+                                            >
+                                                Exportar a Excel
+                                            </button>
+                                        </div>
+                                        <MaterialReactTable
+                                            columns={columnsResumen02}
+                                            data={dataResumen02}
+                                            enableStickyHeader
+                                            initialState={{ density: 'compact' }}
+                                            muiTablePaperProps={{ sx: { maxWidth: '100%', overflowX: 'auto' } }}
+                                        />
+                                    </>
                                 )
                                 : (
                                     <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
@@ -661,13 +715,23 @@ const handleGenerarTraspasos = async () => {
                         {tabValue === 2 && (
                             dataResumen03.length > 0
                                 ? (
-                                    <MaterialReactTable
-                                        columns={columnsResumen03}
-                                        data={dataResumen03}
-                                        enableStickyHeader
-                                        initialState={{ density: 'compact' }}
-                                        muiTablePaperProps={{ sx: { maxWidth: '100%', overflowX: 'auto' } }}
-                                    />
+                                    <>
+                                        <div className="export-btn-container">
+                                            <button
+                                                className="btn btn--export"
+                                                onClick={() => exportToExcel(dataResumen03, 'Resumen_Nivelacion_03', 'Resumen03')}
+                                            >
+                                                Exportar a Excel
+                                            </button>
+                                        </div>
+                                        <MaterialReactTable
+                                            columns={columnsResumen03}
+                                            data={dataResumen03}
+                                            enableStickyHeader
+                                            initialState={{ density: 'compact' }}
+                                            muiTablePaperProps={{ sx: { maxWidth: '100%', overflowX: 'auto' } }}
+                                        />
+                                    </>
                                 )
                                 : (
                                     <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
@@ -766,6 +830,24 @@ const handleGenerarTraspasos = async () => {
                         </div>
 
                         <div className="modal-footer">
+                            {modalPaso === 'info' && infoTraspasos.length > 0 && (
+                                <button
+                                    className="btn btn--export"
+                                    onClick={() => exportToExcel(infoTraspasos, 'Info_Traspasos', 'InfoTraspasos')}
+                                    disabled={loadingModal}
+                                >
+                                    Exportar a Excel
+                                </button>
+                            )}
+                            {modalPaso === 'resultado' && traspasosGenerados.length > 0 && (
+                                <button
+                                    className="btn btn--export"
+                                    onClick={() => exportToExcel(traspasosGenerados, 'Traspasos_Generados', 'Traspasos')}
+                                    disabled={loadingModal}
+                                >
+                                    Exportar a Excel
+                                </button>
+                            )}
                             <button
                                 className="btn btn--secondary"
                                 onClick={() => setModalOpen(false)}

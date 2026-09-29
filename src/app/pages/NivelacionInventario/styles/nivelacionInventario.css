@@ -433,3 +433,18 @@
     opacity: 0.5;
     cursor: not-allowed;
 }
+
+.btn--export {
+    background: #2e7d32;
+    color: white;
+}
+
+.btn--export:hover {
+    background: #1b5e20;
+}
+
+.export-btn-container {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 12px;
+}
