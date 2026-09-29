@@ -127,8 +127,16 @@ const asNumber = (raw: any): number | undefined => {
   return Number.isNaN(n) ? undefined : n;
 };
 
+const formatoMonedaNumero = new Intl.NumberFormat("es-MX", {
+  style: "currency",
+  currency: "MXN",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
 function formatoMoneda(valor: number) {
-  return `$${(valor || 0).toFixed(2)}`;
+  const numero = Number(valor);
+  return formatoMonedaNumero.format(Number.isFinite(numero) ? numero : 0);
 }
 
 const normalizarCosto = (valor: number) => Number((Number(valor) || 0).toFixed(2));
@@ -766,7 +774,7 @@ export default function AjustesInventario() {
     ajuste: AjusteHistorial,
     renglonesAjusteOverride?: AjusteBusquedaRow[]
   ) => {
-    const renglonesAjuste =
+    let renglonesAjuste =
       renglonesAjusteOverride && renglonesAjusteOverride.length > 0
         ? renglonesAjusteOverride
         : historialAjustesRaw.filter(
@@ -798,6 +806,39 @@ export default function AjustesInventario() {
         icon: "warning",
         title: "Ajuste cancelado",
         text: "No puedes editar un ajuste cancelado.",
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
+
+    try {
+      const tipoMovtoDetalle = Number(
+        obtenerValor(renglonesAjuste[0], "tipo_movto", "tipo_movimiento")
+      );
+      const response = await consumoApi.get(
+        "/api/CatAjustes/sp_bw_obtener_detalle_ajuste_por_folio",
+        {
+          params: {
+            sucursal: Number(ajuste.sucursal) || Number(sucursalSesion) || 0,
+            folio: Number(ajuste.folio) || 0,
+            usuario: ajuste.usuario || usuarioSesion,
+            tipoMovto: tipoMovtoDetalle > 0 ? tipoMovtoDetalle : undefined,
+          },
+        }
+      );
+      const detalle = Array.isArray(response.data) ? response.data : [];
+      if (detalle.length === 0) {
+        throw new Error("El procedimiento no devolvió renglones para el folio seleccionado.");
+      }
+      renglonesAjuste = detalle;
+    } catch (err: any) {
+      Swal.fire({
+        icon: "error",
+        title: "No fue posible cargar el ajuste",
+        text:
+          err.response?.data?.mensaje ||
+          err.message ||
+          "No se encontraron los renglones del ajuste seleccionado.",
         confirmButtonColor: "#000000",
       });
       return;
@@ -928,6 +969,12 @@ export default function AjustesInventario() {
       setTipoMovimiento(Number(tipoMovtoRaw));
     }
 
+    const folioDoctoRaw = obtenerValor(
+      renglonesAjuste[0],
+      "folio_docto",
+      "folioDocto"
+    );
+    setFolioDocumento(folioDoctoRaw == null ? "" : String(folioDoctoRaw));
     setFolio(Number(ajuste.folio));
     setRenglones(nuevosRenglones);
     setSelectedRowId(nuevosRenglones[0]?.id ?? null);

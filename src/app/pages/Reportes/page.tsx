@@ -25,6 +25,7 @@ import {
   Download,
   ExpandMore,
   FilterAlt,
+  Print,
   Search,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -585,6 +586,160 @@ function getRowsFromResponse(data: unknown): ReportRow[] {
   return Array.isArray(rows)
     ? rows.filter((row): row is ReportRow => typeof row === 'object' && row !== null)
     : [];
+}
+
+function escaparHtmlReporte(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function formatoMonedaImpresion(value: unknown): string {
+  const numberValue = Number(value);
+  if (Number.isNaN(numberValue)) return '-';
+  return numberValue.toLocaleString('es-MX', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function construirHtmlVentasEstilista(
+  rows: ReportRow[],
+  fechaInicial: string,
+  fechaFinal: string,
+): string {
+  const totalesPorCliente = rows.reduce<Record<string, number>>((totales, row) => {
+    const cliente = String(readProperty(row, ['Cliente']) ?? '');
+    if (cliente.trim().toLowerCase() === 'total' || cliente.trim().toLowerCase() === 'total del día') {
+      return totales;
+    }
+
+    const fecha = String(readProperty(row, ['Fecha']) ?? '').split('T')[0];
+    const llave = `${cliente}::${fecha}`;
+    totales[llave] = (totales[llave] ?? 0) + (Number(readProperty(row, ['Importe'])) || 0);
+    return totales;
+  }, {});
+
+  let html = `
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>Detalle de Ventas por Estilista</title>
+        <style>
+          @page { size: letter landscape; margin: 1cm; }
+          body { font-family: Arial, sans-serif; font-size: 9pt; color: #000; }
+          .header { text-align: left; margin-bottom: 10px; }
+          .header h2 { margin: 0 0 4px 0; font-size: 12pt; font-weight: bold; }
+          .header .sub { font-size: 9pt; }
+          .sucursal, .estilista { font-weight: bold; margin-top: 8px; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+          th, td { padding: 3px 5px; text-align: left; vertical-align: top; }
+          th { border-bottom: 1px solid #000; font-weight: bold; }
+          .num { text-align: right; }
+          .total { font-weight: bold; border-top: 1px solid #000; }
+          .total-dia { font-weight: bold; border-top: 2px solid #000; font-size: 10pt; }
+          .section { page-break-inside: avoid; }
+        </style>
+      </head>
+      <body onafterprint="window.close()">
+        <div class="header">
+          <h2>Detalle de Ventas por Estilista</h2>
+          <div class="sub">Desde ${escaparHtmlReporte(fechaInicial)} hasta ${escaparHtmlReporte(fechaFinal)}</div>
+        </div>
+  `;
+
+  let currentSucursal = '';
+  let currentEstilista = '';
+
+  for (const row of rows) {
+    const sucursal = String(readProperty(row, ['Sucursal']) ?? '');
+    const estilista = String(readProperty(row, ['Estilista']) ?? '');
+    const cliente = String(readProperty(row, ['Cliente']) ?? '');
+    const clienteNormalizado = cliente.trim().toLowerCase();
+
+    if (clienteNormalizado === 'total del día') {
+      if (currentEstilista) {
+        html += '</tbody></table></div>';
+        currentEstilista = '';
+      }
+      html += `
+        <table>
+          <tr class="total-dia">
+            <td colspan="6"></td>
+            <td class="num">Total del día</td>
+            <td class="num">${formatoMonedaImpresion(readProperty(row, ['Importe']))}</td>
+          </tr>
+        </table>
+      `;
+      continue;
+    }
+
+    if (clienteNormalizado === 'total') {
+      html += `
+        <tr class="total">
+          <td colspan="6"></td>
+          <td class="num">Total</td>
+          <td class="num">${formatoMonedaImpresion(readProperty(row, ['Importe']))}</td>
+        </tr>
+      `;
+      continue;
+    }
+
+    if (sucursal && sucursal !== currentSucursal) {
+      currentSucursal = sucursal;
+      html += `<div class="sucursal">${escaparHtmlReporte(sucursal)}</div>`;
+    }
+
+    if (estilista && estilista !== currentEstilista) {
+      if (currentEstilista) html += '</tbody></table></div>';
+      currentEstilista = estilista;
+      html += `<div class="section"><div class="estilista">${escaparHtmlReporte(estilista)}</div>`;
+      html += `
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Nombre</th>
+              <th>Descripción</th>
+              <th class="num">Cant</th>
+              <th class="num">Importe</th>
+              <th>Forma de pago</th>
+              <th class="num">Total</th>
+              <th class="num">Visitas</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+    }
+
+    const fecha = String(readProperty(row, ['Fecha']) ?? '').split('T')[0];
+    const llaveCliente = `${cliente}::${fecha}`;
+    html += `
+      <tr>
+        <td>${escaparHtmlReporte(fecha)}</td>
+        <td>${escaparHtmlReporte(cliente)}</td>
+        <td>${escaparHtmlReporte(readProperty(row, ['Descripcion']))}</td>
+        <td class="num">${escaparHtmlReporte(readProperty(row, ['Cant']))}</td>
+        <td class="num">${formatoMonedaImpresion(readProperty(row, ['Importe']))}</td>
+        <td>${escaparHtmlReporte(readProperty(row, ['forma_pago', 'formaPago']))}</td>
+        <td class="num">${formatoMonedaImpresion(totalesPorCliente[llaveCliente])}</td>
+        <td class="num">${escaparHtmlReporte(readProperty(row, ['Visitas']))}</td>
+      </tr>
+    `;
+  }
+
+  if (currentEstilista) html += '</tbody></table></div>';
+
+  return `${html}
+        <script>
+          window.addEventListener('afterprint', function () { window.close(); });
+        </script>
+      </body>
+    </html>
+  `;
 }
 
 export default function ReportesPage() {
@@ -1305,6 +1460,27 @@ export default function ReportesPage() {
     URL.revokeObjectURL(url);
   };
 
+  const handlePrintVentasEstilista = () => {
+    if (reportRows.length === 0) return;
+
+    const ventana = window.open('', '_blank', 'width=1200,height=800');
+    if (!ventana) {
+      setQueryError(true);
+      setQueryMessage('Permite las ventanas emergentes para imprimir el reporte.');
+      return;
+    }
+
+    const fechaInicial = formatearFechaReporte(filters.fechaInicial);
+    const fechaFinal = formatearFechaReporte(filters.fechaFinal);
+    ventana.document.open();
+    ventana.document.write(
+      construirHtmlVentasEstilista(reportRows, fechaInicial, fechaFinal),
+    );
+    ventana.document.close();
+    ventana.focus();
+    ventana.print();
+  };
+
   const renderFilter = (definition: FilterDefinition) => {
     const value = filters[definition.key];
     const isDate = definition.type === 'date';
@@ -1833,18 +2009,34 @@ export default function ReportesPage() {
               {reportRows.length > 0 ? `${reportRows.length} registro(s)` : 'Sin datos para mostrar'}
             </Typography>
           </Box>
-          <Tooltip title="Exportar resultados a Excel">
-            <span>
-              <Button
-                variant="outlined"
-                startIcon={<Download />}
-                onClick={handleExport}
-                disabled={reportRows.length === 0}
-              >
-                Excel
-              </Button>
-            </span>
-          </Tooltip>
+          <Stack direction="row" spacing={1} justifyContent="flex-end">
+            <Tooltip title="Exportar resultados a Excel">
+              <span>
+                <Button
+                  variant="outlined"
+                  startIcon={<Download />}
+                  onClick={handleExport}
+                  disabled={reportRows.length === 0}
+                >
+                  Excel
+                </Button>
+              </span>
+            </Tooltip>
+            {selectedReport?.metodoApi === 'sp_reporte_ventas_estilista' && (
+              <Tooltip title="Imprimir reporte de ventas por estilista">
+                <span>
+                  <Button
+                    variant="contained"
+                    startIcon={<Print />}
+                    onClick={handlePrintVentasEstilista}
+                    disabled={reportRows.length === 0}
+                  >
+                    Imprimir
+                  </Button>
+                </span>
+              </Tooltip>
+            )}
+          </Stack>
         </Stack>
         <Divider />
 
