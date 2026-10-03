@@ -75,5 +75,6 @@ export const routes = {
   recepcionTraspasos: "/recepcion-traspasos",
   ajustesInventario: "/ajustes-inventario",
   NivelacionInventarioPage: "/nivelacion-inventario",
+  pedidosProveedores: "/pedidos-proveedores",
 };
 

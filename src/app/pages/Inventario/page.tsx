@@ -1,5 +1,5 @@
 import { Box, Typography } from '@mui/material';
-import { SwapHoriz, MoveToInbox, Tune } from '@mui/icons-material';
+import { SwapHoriz, MoveToInbox, Tune, ShoppingCart } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { routes } from '../../../utils/Routes';
 
@@ -30,6 +30,12 @@ export default function InventarioPage() {
       title: 'nivelación Inventario',
       icon: Tune,
       path: routes.NivelacionInventarioPage,
+    },
+    {
+      id: 'pedidosProveedores',
+      title: 'Pedidos a Proveedores',
+      icon: ShoppingCart,
+      path: routes.pedidosProveedores,
     },
   ];
 

@@ -72,6 +72,7 @@ import TraspasoMercancia from './pages/TraspasoMercancia/page';
 import RecepcionTraspasos from './pages/RecepcionTraspasos/page';
 import AjustesInventario from './pages/AjustesInventario/page';
 import NivelacionInventarioPage from './pages/NivelacionInventario/Page';
+import PedidosProveedores from './pages/PedidosProveedores/page';
 
 
 
@@ -154,6 +155,7 @@ function App() {
            <Route path='/recepcion-traspasos' element={<Layout><RecepcionTraspasos /></Layout>} />
            <Route path='/ajustes-inventario' element={<Layout><AjustesInventario /></Layout>} />
            <Route path='/nivelacion-inventario' element={<Layout><NivelacionInventarioPage /></Layout>} />
+          <Route path='/pedidos-proveedores' element={<Layout><PedidosProveedores /></Layout>} />
 
 
        
