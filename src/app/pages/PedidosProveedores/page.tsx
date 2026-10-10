@@ -3,6 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Grid,
   MenuItem,
   Paper,
@@ -17,9 +21,10 @@ import {
   ExitToApp,
   Replay,
 } from '@mui/icons-material';
-import { DataGrid, type GridColDef } from '@mui/x-data-grid';
+import { DataGrid, type GridColDef, type GridRenderCellParams } from '@mui/x-data-grid';
 import Swal from 'sweetalert2';
 import useConsumoApi from '../../../hooks/useConsumoApi';
+import { useAuth } from '../../../context/AuthContext';
 import { routes } from '../../../utils/Routes';
 
 interface AreaOption {
@@ -42,76 +47,126 @@ interface ProveedorOption {
   nombre: string;
 }
 
-interface PedidoRow {
+interface ModeloOption {
   id: string;
-  clave_prod: string;
-  clave_prod_ruta: string;
-  descripcion: string;
-  marca: string;
-  d_area: string;
-  d_familia: string;
-  f_ini: string;
-  can: number;
-  e1: number;
-  e2: number;
-  e3: number;
-  e4: number;
-  e5: number;
-  e6: number;
-  e203: number;
-  e204: number;
-  t1: number;
-  t2: number;
-  t3: number;
-  t4: number;
-  t5: number;
-  t6: number;
-  t1203: number;
-  t1204: number;
-  v1: number;
-  v2: number;
-  v3: number;
-  v4: number;
-  v5: number;
-  v6: number;
+  modelo: string;
 }
 
+interface BusquedaRow {
+  id: string;
+  idPedido: number;
+  fecha_pedido: string;
+  cantidad_productos: number;
+  proveedor: string;
+}
+
+type PedidoRow = {
+  id: string;
+  [key: string]: unknown;
+};
+
+const obtenerFechaActual = () => {
+  const fecha = new Date();
+  const anio = fecha.getFullYear();
+  const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+  const dia = String(fecha.getDate()).padStart(2, '0');
+  return `${anio}-${mes}-${dia}`;
+};
+
+const columnasFijas = [
+  'clave_prod',
+  'clave_prod_ruta',
+  'descripcion',
+  'marca',
+  'd_area',
+  'd_familia',
+];
+
+const columnasPedido = [
+  'finalizado', 'cancelado',
+  'e1', 'e2', 'e3', 'e4', 'e5', 'e6', 'e203', 'e204',
+  't1', 't2', 't3', 't4', 't5', 't6', 't203', 't204',
+  'v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v203', 'v204',
+  'd1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd203', 'd204',
+  'p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p203', 'p204',
+  's1', 's2', 's3', 's4', 's5', 's6', 's7', 's203', 's204',
+  'unidad_paq',
+  'pReal_1', 'pReal_2', 'pReal_3', 'pReal_4', 'pReal_5', 'pReal_6', 'pReal_203', 'pReal_204',
+  'costo_unitario',
+  'pReal2_1', 'pReal2_2', 'pReal2_3', 'pReal2_4', 'pReal2_5', 'pReal2_6', 'pReal2_203',
+  'difPreal_1', 'difPreal_2', 'difPreal_3', 'difPreal_4', 'difPreal_5', 'difPreal_6', 'difPreal_203',
+  'pRealFinal1', 'pRealFinal2', 'pRealFinal3', 'pRealFinal4', 'pRealFinal5', 'pRealFinal6', 'pRealFinal203', 'pRealFinal204',
+  'pRealFinalRedondeado_204',
+  'costo1', 'costo2', 'costo3', 'costo4', 'costo5', 'costo6', 'costo203', 'costo204',
+  'diasVenta', 'diasSoporteStock',
+  'bonifi_1', 'bonifi_2', 'bonifi_3', 'bonifi_4', 'bonifi_5', 'bonifi_6', 'bonifi_203', 'bonifi_204',
+  'diaEfectivo',
+];
+
+const columnasEditables = new Set([
+  'pRealFinal1', 'pRealFinal2', 'pRealFinal3', 'pRealFinal4', 'pRealFinal5', 'pRealFinal6',
+  'pRealFinal203', 'pRealFinal204', 'pRealFinalRedondeado_204',
+  'bonifi_1', 'bonifi_2', 'bonifi_3', 'bonifi_4', 'bonifi_5', 'bonifi_6', 'bonifi_203', 'bonifi_204',
+]);
+
+const formatoDecimal = (value: unknown) => {
+  const numero = Number(value);
+  return Number.isFinite(numero)
+    ? numero.toLocaleString('es-MX', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+    : '';
+};
+
+const normalizarCamposEditables = (item: any): Record<string, number> => ({
+  pRealFinal1: Number(item.pRealFinal1 ?? item.pRealFinal_1 ?? 0),
+  pRealFinal2: Number(item.pRealFinal2 ?? item.pRealFinal_2 ?? 0),
+  pRealFinal3: Number(item.pRealFinal3 ?? item.pRealFinal_3 ?? 0),
+  pRealFinal4: Number(item.pRealFinal4 ?? item.pRealFinal_4 ?? 0),
+  pRealFinal5: Number(item.pRealFinal5 ?? item.pRealFinal_5 ?? 0),
+  pRealFinal6: Number(item.pRealFinal6 ?? item.pRealFinal_6 ?? 0),
+  pRealFinal203: Number(item.pRealFinal203 ?? item.pRealFinal_203 ?? 0),
+  pRealFinal204: Number(item.pRealFinal204 ?? item.pRealFinal_204 ?? 0),
+  pRealFinalRedondeado_204: Number(item.pRealFinalRedondeado_204 ?? 0),
+  bonifi_1: Number(item.bonifi_1 ?? item.bonificaciones_1 ?? 0),
+  bonifi_2: Number(item.bonifi_2 ?? item.bonificaciones_2 ?? 0),
+  bonifi_3: Number(item.bonifi_3 ?? item.bonificaciones_3 ?? 0),
+  bonifi_4: Number(item.bonifi_4 ?? item.bonificaciones_4 ?? 0),
+  bonifi_5: Number(item.bonifi_5 ?? item.bonificaciones_5 ?? 0),
+  bonifi_6: Number(item.bonifi_6 ?? item.bonificaciones_6 ?? 0),
+  bonifi_203: Number(item.bonifi_203 ?? item.bonificaciones_203 ?? 0),
+  bonifi_204: Number(item.bonifi_204 ?? item.bonificaciones_204 ?? 0),
+});
+
 const columnas: GridColDef<PedidoRow>[] = [
-  { field: 'clave_prod', headerName: 'clave_prod', width: 120 },
-  { field: 'clave_prod_ruta', headerName: 'clave_prod_ruta', width: 140 },
-  { field: 'descripcion', headerName: 'descripcion', width: 220 },
-  { field: 'marca', headerName: 'marca', width: 100 },
-  { field: 'd_area', headerName: 'd_area', width: 90 },
-  { field: 'd_familia', headerName: 'd_familia', width: 100 },
-  { field: 'f_ini', headerName: 'f_ini', width: 80 },
-  { field: 'can', headerName: 'can', width: 60, type: 'number' },
-  { field: 'e1', headerName: 'e1', width: 50, type: 'number' },
-  { field: 'e2', headerName: 'e2', width: 50, type: 'number' },
-  { field: 'e3', headerName: 'e3', width: 50, type: 'number' },
-  { field: 'e4', headerName: 'e4', width: 50, type: 'number' },
-  { field: 'e5', headerName: 'e5', width: 50, type: 'number' },
-  { field: 'e6', headerName: 'e6', width: 50, type: 'number' },
-  { field: 'e203', headerName: 'e203', width: 60, type: 'number' },
-  { field: 'e204', headerName: 'e204', width: 60, type: 'number' },
-  { field: 't1', headerName: 't1', width: 50, type: 'number' },
-  { field: 't2', headerName: 't2', width: 50, type: 'number' },
-  { field: 't3', headerName: 't3', width: 50, type: 'number' },
-  { field: 't4', headerName: 't4', width: 50, type: 'number' },
-  { field: 't5', headerName: 't5', width: 50, type: 'number' },
-  { field: 't6', headerName: 't6', width: 50, type: 'number' },
-  { field: 't1203', headerName: 't1203', width: 65, type: 'number' },
-  { field: 't1204', headerName: 't1204', width: 65, type: 'number' },
-  { field: 'v1', headerName: 'v1', width: 50, type: 'number' },
-  { field: 'v2', headerName: 'v2', width: 50, type: 'number' },
-  { field: 'v3', headerName: 'v3', width: 50, type: 'number' },
-  { field: 'v4', headerName: 'v4', width: 50, type: 'number' },
-  { field: 'v5', headerName: 'v5', width: 50, type: 'number' },
-  { field: 'v6', headerName: 'v6', width: 50, type: 'number' },
+  ...columnasFijas.map((field, index) => ({
+    field,
+    headerName: field,
+    width: [120, 140, 220, 100, 90, 100][index],
+  })),
+  ...columnasPedido.map((field) => ({
+    field,
+    headerName: field,
+    width: 105,
+    type: 'number' as const,
+    editable: columnasEditables.has(field),
+    renderCell: (params: { value: unknown }) => formatoDecimal(params.value),
+  })),
+];
+
+const columnasBusqueda: GridColDef<BusquedaRow>[] = [
+  { field: 'idPedido', headerName: 'Folio', width: 90, type: 'number' },
+  { field: 'fecha_pedido', headerName: 'Fecha', width: 140 },
+  { field: 'proveedor', headerName: 'Proveedor', width: 200 },
+  { field: 'cantidad_productos', headerName: 'Productos', width: 100, type: 'number', align: 'center', headerAlign: 'center' },
 ];
 
 export default function PedidosProveedoresPage() {
   const navigate = useNavigate();
   const { consumoApi } = useConsumoApi();
+  const { token } = useAuth();
+  const usuarioSesion =
+    token?.usuario ||
+    (typeof window !== 'undefined' ? localStorage.getItem('usuario') || '' : '') ||
+    'ADMIN';
 
   const [area, setArea] = useState('');
   const [areas, setAreas] = useState<AreaOption[]>([]);
@@ -126,12 +181,21 @@ export default function PedidosProveedoresPage() {
   const [diasVenta, setDiasVenta] = useState('30');
   const [diasInventario, setDiasInventario] = useState('30');
   const [modelo, setModelo] = useState('');
+  const [modelos, setModelos] = useState<ModeloOption[]>([]);
+  const [cargandoModelos, setCargandoModelos] = useState(false);
   const [proveedor, setProveedor] = useState('');
   const [proveedores, setProveedores] = useState<ProveedorOption[]>([]);
   const [cargandoProveedores, setCargandoProveedores] = useState(false);
   const [folio, setFolio] = useState(0);
-  const [rows] = useState<PedidoRow[]>([]);
-  const [loading] = useState(false);
+  const [rows, setRows] = useState<PedidoRow[]>([]);
+  const [cargandoGrid, setCargandoGrid] = useState(false);
+
+  const [dialogoBusquedaAbierto, setDialogoBusquedaAbierto] = useState(false);
+  const [buscarIdPedido, setBuscarIdPedido] = useState('');
+  const [buscarFechaInicio, setBuscarFechaInicio] = useState('');
+  const [buscarFechaFin, setBuscarFechaFin] = useState('');
+  const [resultadosBusqueda, setResultadosBusqueda] = useState<BusquedaRow[]>([]);
+  const [cargandoBusqueda, setCargandoBusqueda] = useState(false);
 
   useEffect(() => {
     const cargarAreas = async () => {
@@ -181,12 +245,12 @@ export default function PedidosProveedoresPage() {
     const cargarFamilias = async () => {
       setCargandoFamilias(true);
       try {
-        const res = await consumoApi.get('/api/CatMarcasFamilias/sp_bw_cat_marcasfamilias_list');
+        const res = await consumoApi.get('/api/CatMarcasFamilias/sp_bw_cat_marcasfamilias_sel');
         const data = Array.isArray(res.data) ? res.data : [];
         setFamilias(
           data.map((item: any) => ({
-            id: String(item.id ?? ''),
-            familia: String(item.marca ?? ''),
+            id: String(item.id_familia ?? item.id ?? ''),
+            familia: String(item.familia ?? ''),
           }))
         );
       } catch (error) {
@@ -197,6 +261,26 @@ export default function PedidosProveedoresPage() {
     };
 
     cargarFamilias();
+
+    const cargarModelos = async () => {
+      setCargandoModelos(true);
+      try {
+        const res = await consumoApi.get('/api/CatModelos/sp_cat_modelos_Sel');
+        const data = Array.isArray(res.data) ? res.data : [];
+        setModelos(
+          data.map((item: any) => ({
+            id: String(item.id ?? ''),
+            modelo: String(item.modelo ?? ''),
+          }))
+        );
+      } catch (error) {
+        console.error('Error cargando modelos:', error);
+      } finally {
+        setCargandoModelos(false);
+      }
+    };
+
+    cargarModelos();
 
     const cargarProveedores = async () => {
       setCargandoProveedores(true);
@@ -221,8 +305,120 @@ export default function PedidosProveedoresPage() {
     cargarProveedores();
   }, []);
 
-  const handleGenerarPedido = () => {
-    Swal.fire('Generar pedido', 'Aquí se consultará y generará el pedido.', 'info');
+  const handleGenerarPedido = async () => {
+    setCargandoGrid(true);
+    try {
+      const marcaTexto = marcas.find((m) => m.id === marca)?.marca ?? '';
+      const familiaTexto = familias.find((f) => f.id === familia)?.familia ?? '%';
+
+      const res = await consumoApi.post('/api/PedidosProveedores/sp_generar_pedido', {
+        area,
+        marca: marcaTexto,
+        familia: familiaTexto,
+        descripcion: descripcion ? `%${descripcion}%` : '%',
+        diasVenta: parseInt(diasVenta || '0', 10),
+        diasSoporteStock: parseInt(diasInventario || '0', 10),
+        almacenar: false,
+        modelo: parseInt(modelo || '0', 10),
+        proveedor,
+      });
+
+      const data = Array.isArray(res.data) ? res.data : [];
+      const mappedRows: PedidoRow[] = data.map((item: any, index: number) => ({
+        id: String(item.clave_prod ?? index),
+        ...item,
+        ...normalizarCamposEditables(item),
+        clave_prod: String(item.clave_prod ?? ''),
+        clave_prod_ruta: String(item.clave_prod_ruta ?? ''),
+        descripcion: String(item.descripcion ?? ''),
+        marca: String(item.marca ?? ''),
+        d_area: String(item.d_area ?? ''),
+        d_familia: String(item.d_familia ?? ''),
+        f_ini: String(item.f_ini ?? ''),
+        finalizado: Number(item.finalizado ?? 0),
+        cancelado: Number(item.cancelado ?? item.can ?? 0),
+        e1: Number(item.e1 ?? 0),
+        e2: Number(item.e2 ?? 0),
+        e3: Number(item.e3 ?? 0),
+        e4: Number(item.e4 ?? 0),
+        e5: Number(item.e5 ?? 0),
+        e6: Number(item.e6 ?? 0),
+        e203: Number(item.e203 ?? 0),
+        e204: Number(item.e204 ?? 0),
+        t1: Number(item.t1 ?? 0),
+        t2: Number(item.t2 ?? 0),
+        t3: Number(item.t3 ?? 0),
+        t4: Number(item.t4 ?? 0),
+        t5: Number(item.t5 ?? 0),
+        t6: Number(item.t6 ?? 0),
+        t1203: Number(item.t1203 ?? 0),
+        t1204: Number(item.t1204 ?? 0),
+        v1: Number(item.v1 ?? 0),
+        v2: Number(item.v2 ?? 0),
+        v3: Number(item.v3 ?? 0),
+        v4: Number(item.v4 ?? 0),
+        v5: Number(item.v5 ?? 0),
+        v6: Number(item.v6 ?? 0),
+      }));
+
+      setRows(mappedRows);
+
+      if (data.length > 0 && (data[0].idPedido || data[0].folio)) {
+        setFolio(Number(data[0].idPedido ?? data[0].folio ?? 0));
+      }
+    } catch (error: any) {
+      const mensaje = error?.response?.data?.mensaje || 'No se pudo generar el pedido.';
+      Swal.fire('Error', mensaje, 'error');
+    } finally {
+      setCargandoGrid(false);
+    }
+  };
+
+  const cargarDetallePedido = async (idPedido: number) => {
+    const res = await consumoApi.get('/api/PedidosProveedores/sp_buscar_pedidos_proveedores', {
+      params: { idPedido },
+    });
+    const data = Array.isArray(res.data) ? res.data : [];
+
+    const mappedRows: PedidoRow[] = data.map((item: any, index: number) => ({
+      id: String(item.clave_prod ?? index),
+      ...item,
+      ...normalizarCamposEditables(item),
+      clave_prod: String(item.clave_prod ?? ''),
+      clave_prod_ruta: String(item.clave_prod_ruta ?? ''),
+      descripcion: String(item.descripcion ?? ''),
+      marca: String(item.marca ?? ''),
+      d_area: String(item.d_area ?? ''),
+      d_familia: String(item.d_familia ?? ''),
+      f_ini: String(item.f_ini ?? ''),
+      finalizado: Number(item.finalizado ?? 0),
+      cancelado: Number(item.cancelado ?? item.can ?? 0),
+      e1: Number(item.e1 ?? 0),
+      e2: Number(item.e2 ?? 0),
+      e3: Number(item.e3 ?? 0),
+      e4: Number(item.e4 ?? 0),
+      e5: Number(item.e5 ?? 0),
+      e6: Number(item.e6 ?? 0),
+      e203: Number(item.e203 ?? 0),
+      e204: Number(item.e204 ?? 0),
+      t1: Number(item.t1 ?? 0),
+      t2: Number(item.t2 ?? 0),
+      t3: Number(item.t3 ?? 0),
+      t4: Number(item.t4 ?? 0),
+      t5: Number(item.t5 ?? 0),
+      t6: Number(item.t6 ?? 0),
+      t1203: Number(item.t1203 ?? 0),
+      t1204: Number(item.t1204 ?? 0),
+      v1: Number(item.v1 ?? 0),
+      v2: Number(item.v2 ?? 0),
+      v3: Number(item.v3 ?? 0),
+      v4: Number(item.v4 ?? 0),
+      v5: Number(item.v5 ?? 0),
+      v6: Number(item.v6 ?? 0),
+    }));
+
+    setRows(mappedRows);
+    return mappedRows;
   };
 
   const handleFinalizarPedido = async () => {
@@ -245,7 +441,9 @@ export default function PedidosProveedoresPage() {
     try {
       await consumoApi.post('/api/PedidosProveedores/sp_finalizarPedidoProveedor', {
         idPedido: folio,
+        usuario: usuarioSesion,
       });
+      await cargarDetallePedido(folio);
       Swal.fire('Finalizado', `El pedido folio ${folio} fue finalizado.`, 'success');
     } catch (error: any) {
       const mensaje = error?.response?.data?.mensaje || 'No se pudo finalizar el pedido.';
@@ -273,30 +471,178 @@ export default function PedidosProveedoresPage() {
     try {
       await consumoApi.post('/api/PedidosProveedores/sp_cancelarPedidoProveedor', {
         idPedido: folio,
+        usuario: usuarioSesion,
       });
+      await cargarDetallePedido(folio);
       Swal.fire('Cancelado', `El pedido folio ${folio} fue cancelado.`, 'success');
-      setFolio(0);
     } catch (error: any) {
       const mensaje = error?.response?.data?.mensaje || 'No se pudo cancelar el pedido.';
       Swal.fire('Error', mensaje, 'error');
     }
   };
 
-  const handleRecuperarPedido = () => {
-    Swal.fire('Recuperar pedido', 'Aquí se recuperará un pedido existente.', 'info');
+
+
+  const handleActivarPedido = async () => {
+    if (folio <= 0) {
+      Swal.fire('Folio requerido', 'No hay un pedido cargado para activar.', 'warning');
+      return;
+    }
+
+    const confirmacion = await Swal.fire({
+      title: 'Activar pedido',
+      text: `¿Deseas activar nuevamente el pedido folio ${folio}?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, activar',
+      cancelButtonText: 'No',
+      confirmButtonColor: '#000000',
+    });
+
+    if (!confirmacion.isConfirmed) return;
+
+    try {
+      const response = await consumoApi.post(
+        '/api/PedidosProveedores/sp_activar_pedido_proveedores',
+        { idPedido: folio, usuario: usuarioSesion },
+      );
+      await cargarDetallePedido(folio);
+      Swal.fire(
+        'Pedido activado',
+        response.data?.mensaje || `El pedido folio ${folio} fue activado correctamente.`,
+        'success',
+      );
+    } catch (error: any) {
+      const mensaje =
+        error?.response?.data?.mensaje ||
+        'No se pudo activar el pedido.';
+      Swal.fire('Error', mensaje, 'error');
+    }
+  };
+
+  const handleAbrirBusqueda = () => {
+    const fechaActual = obtenerFechaActual();
+    setBuscarIdPedido('');
+    setBuscarFechaInicio(fechaActual);
+    setBuscarFechaFin(fechaActual);
+    setResultadosBusqueda([]);
+    setDialogoBusquedaAbierto(true);
+  };
+
+  const handleCerrarBusqueda = () => {
+    setDialogoBusquedaAbierto(false);
+  };
+
+  const handleBuscarPedidos = async () => {
+    const folioTexto = buscarIdPedido.trim();
+    const folioBuscado = folioTexto ? Number(folioTexto) : 0;
+
+    if (folioTexto && (!Number.isInteger(folioBuscado) || folioBuscado <= 0)) {
+      Swal.fire('Folio inválido', 'Captura un folio mayor que cero.', 'warning');
+      return;
+    }
+
+    setCargandoBusqueda(true);
+    try {
+      const params: Record<string, unknown> = {};
+      if (folioBuscado > 0) {
+        params.idPedido = folioBuscado;
+      } else {
+        if (buscarFechaInicio) params.fechaInicio = buscarFechaInicio;
+        if (buscarFechaFin) params.fechaFin = buscarFechaFin;
+      }
+
+      const res = await consumoApi.get('/api/PedidosProveedores/sp_buscar_pedidos_proveedores', {
+        params,
+      });
+      const data = Array.isArray(res.data) ? res.data : [];
+      setResultadosBusqueda(
+        data.map((item: any, index: number) => ({
+          id: `${item.idPedido ?? index}-${index}`,
+          idPedido: Number(item.idPedido ?? 0),
+          fecha_pedido: String(item.fecha_pedido ?? ''),
+          proveedor: String(item.proveedor ?? ''),
+          cantidad_productos: Number(item.cantidad_productos ?? 0),
+        }))
+      );
+    } catch (error) {
+      console.error('Error buscando pedidos:', error);
+    } finally {
+      setCargandoBusqueda(false);
+    }
+  };
+
+  const handleSeleccionarPedido = async (row: BusquedaRow) => {
+    setCargandoGrid(true);
+    try {
+      const mappedRows = await cargarDetallePedido(row.idPedido);
+      setFolio(row.idPedido);
+      setDialogoBusquedaAbierto(false);
+      Swal.fire('Pedido cargado', `Se cargó el folio ${row.idPedido} con ${mappedRows.length} renglones.`, 'success');
+    } catch (error: any) {
+      const mensaje = error?.response?.data?.mensaje || 'No se pudo cargar el detalle del pedido.';
+      Swal.fire('Error', mensaje, 'error');
+    } finally {
+      setCargandoGrid(false);
+    }
   };
 
   const handleSalir = () => {
     navigate(routes.inventario);
   };
 
+  const procesarActualizacionDeRenglon = async (newRow: PedidoRow, oldRow: PedidoRow) => {
+    if (folio <= 0) {
+      Swal.fire('Pedido no guardado', 'Selecciona un pedido con folio antes de editarlo.', 'warning');
+      return oldRow;
+    }
+
+    try {
+      await consumoApi.put('/api/PedidosProveedores/sp_actualizar_detalle_pedido_proveedor', {
+        idPedido: folio,
+        clave_prod: String(newRow.clave_prod ?? ''),
+        pRealFinal_1: Number(newRow.pRealFinal1 ?? 0),
+        pRealFinal_2: Number(newRow.pRealFinal2 ?? 0),
+        pRealFinal_3: Number(newRow.pRealFinal3 ?? 0),
+        pRealFinal_4: Number(newRow.pRealFinal4 ?? 0),
+        pRealFinal_5: Number(newRow.pRealFinal5 ?? 0),
+        pRealFinal_6: Number(newRow.pRealFinal6 ?? 0),
+        pRealFinal_203: Number(newRow.pRealFinal203 ?? 0),
+        pRealFinal_204: Number(newRow.pRealFinal204 ?? 0),
+        pRealFinalRedondeado_204: Number(newRow.pRealFinalRedondeado_204 ?? 0),
+        bonificaciones_1: Number(newRow.bonifi_1 ?? 0),
+        bonificaciones_2: Number(newRow.bonifi_2 ?? 0),
+        bonificaciones_3: Number(newRow.bonifi_3 ?? 0),
+        bonificaciones_4: Number(newRow.bonifi_4 ?? 0),
+        bonificaciones_5: Number(newRow.bonifi_5 ?? 0),
+        bonificaciones_6: Number(newRow.bonifi_6 ?? 0),
+        bonificaciones_203: Number(newRow.bonifi_203 ?? 0),
+        bonificaciones_204: Number(newRow.bonifi_204 ?? 0),
+      });
+      setRows((currentRows) => currentRows.map((row) => (row.id === newRow.id ? newRow : row)));
+      return newRow;
+    } catch (error: any) {
+      const mensaje = error?.response?.data?.mensaje || 'No se pudo actualizar el detalle del pedido.';
+      Swal.fire('Error', mensaje, 'error');
+      return oldRow;
+    }
+  };
+
   return (
-    <Box sx={{ p: 2, minHeight: 'calc(100vh - 64px)' }}>
+    <Box
+      sx={{
+        width: '100%',
+        boxSizing: 'border-box',
+        p: { xs: 1, sm: 2 },
+        minHeight: 'calc(100vh - 64px)',
+      }}
+    >
       <Typography
         variant="h5"
         sx={{
           fontWeight: 'bold',
-          mb: 2,
+          mb: { xs: 1.5, sm: 2 },
+          fontSize: { xs: '1.35rem', sm: '1.5rem' },
           fontFamily: 'Georgia, "Times New Roman", serif',
         }}
       >
@@ -305,9 +651,16 @@ export default function PedidosProveedoresPage() {
 
       <Paper
         elevation={2}
-        sx={{ p: 2, mb: 2, borderRadius: 1, border: '1px solid #ccc' }}
+        sx={{
+          width: '100%',
+          boxSizing: 'border-box',
+          p: { xs: 1, sm: 2 },
+          mb: { xs: 1.5, sm: 2 },
+          borderRadius: 1,
+          border: '1px solid #000000',
+        }}
       >
-        <Grid container spacing={2} alignItems="flex-end">
+        <Grid container spacing={{ xs: 1, sm: 2 }} alignItems="flex-end">
           <Grid size={{ xs: 12 }}>
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, sm: 6, md: 3}}>
@@ -399,8 +752,14 @@ export default function PedidosProveedoresPage() {
                   label="Modelo"
                   value={modelo}
                   onChange={(e) => setModelo(e.target.value)}
+                  disabled={cargandoModelos}
                 >
                   <MenuItem value="">Seleccionar</MenuItem>
+                  {modelos.map((m) => (
+                    <MenuItem key={m.id} value={m.id}>
+                      {m.modelo}
+                    </MenuItem>
+                  ))}
                 </TextField>
               </Grid>
               <Grid size={{ xs: 12, sm: 6, md: 3}}>
@@ -433,6 +792,24 @@ export default function PedidosProveedoresPage() {
               flexWrap="wrap"
               useFlexGap
             >
+              <Box
+                sx={{
+                  bgcolor: '#dfdede',
+                  color: '#000000',
+                  px: 2,
+                  py: 0.5,
+                  borderRadius: 1,
+                  minWidth: 80,
+                  textAlign: 'center',
+                }}
+              >
+                <Typography variant="caption" sx={{ display: 'block', color: '#777' }}>
+                  Folio
+                </Typography>
+                <Typography variant="h7" sx={{ fontWeight: 'bold', lineHeight: 1 }}>
+                  {folio}
+                </Typography>
+              </Box>
               <Button
                 variant="contained"
                 size="small"
@@ -444,10 +821,18 @@ export default function PedidosProveedoresPage() {
               <Button
                 variant="contained"
                 size="small"
-                onClick={handleRecuperarPedido}
+                onClick={handleActivarPedido}
                 sx={{ textTransform: 'none', bgcolor: '#000000', color: '#ffffff', '&:hover': { bgcolor: '#b1b1b1' } }}
               >
-                Recuperar Pedido
+                Activar Pedido
+              </Button>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={handleAbrirBusqueda}
+                sx={{ textTransform: 'none', bgcolor: '#000000', color: '#ffffff', '&:hover': { bgcolor: '#b1b1b1' } }}
+              >
+                Buscar Pedido
               </Button>
               <Button
                 variant="contained"
@@ -473,24 +858,6 @@ export default function PedidosProveedoresPage() {
               >
                 Salir
               </Button>
-              <Box
-                sx={{
-                  bgcolor: '#dfdede',
-                  color: '#000000',
-                  px: 2,
-                  py: 0.5,
-                  borderRadius: 1,
-                  minWidth: 80,
-                  textAlign: 'right',
-                }}
-              >
-                <Typography variant="caption" sx={{ display: 'block', color: '#aaa' }}>
-                  Folio
-                </Typography>
-                <Typography variant="h7" sx={{ fontWeight: 'bold', lineHeight: 1 }}>
-                  {folio}
-                </Typography>
-              </Box>
             </Stack>
           </Grid>
         </Grid>
@@ -499,7 +866,8 @@ export default function PedidosProveedoresPage() {
       <Paper
         elevation={2}
         sx={{
-          height: { xs: 400, md: 520 },
+          width: '100%',
+          height: { xs: 380, sm: 460, md: 520 },
           border: '1px solid #ccc',
           borderRadius: 1,
           overflow: 'hidden',
@@ -508,7 +876,10 @@ export default function PedidosProveedoresPage() {
         <DataGrid
           rows={rows}
           columns={columnas}
-          loading={loading}
+          pinnedColumns={{ left: columnasFijas }}
+          processRowUpdate={procesarActualizacionDeRenglon}
+          isCellEditable={(params) => folio > 0 && Number(params.row.finalizado ?? 0) === 0}
+          loading={cargandoGrid}
           density="compact"
           pageSizeOptions={[10, 25, 50, 100]}
           initialState={{
@@ -516,13 +887,112 @@ export default function PedidosProveedoresPage() {
           }}
           disableRowSelectionOnClick
           sx={{
+            width: '100%',
             border: 'none',
             '& .MuiDataGrid-columnHeaders': {
               bgcolor: '#b3d9ff',
             },
+            '& .MuiDataGrid-cell, & .MuiDataGrid-columnHeader': {
+              fontSize: { xs: '0.7rem', sm: '0.78rem' },
+            },
           }}
         />
       </Paper>
+
+      <Dialog
+        open={dialogoBusquedaAbierto}
+        onClose={handleCerrarBusqueda}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>Buscar pedido</DialogTitle>
+        <DialogContent sx={{ py: 1, px: 2 }}>
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5, mt: 0.5 }}>
+            <TextField
+              label="Folio"
+              type="number"
+              size="small"
+              value={buscarIdPedido}
+              onChange={(e) => setBuscarIdPedido(e.target.value)}
+            />
+            <TextField
+              label="Fecha inicio"
+              type="date"
+              size="small"
+              value={buscarFechaInicio}
+              onChange={(e) => setBuscarFechaInicio(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
+            <TextField
+              label="Fecha fin"
+              type="date"
+              size="small"
+              value={buscarFechaFin}
+              onChange={(e) => setBuscarFechaFin(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
+            <Button
+              variant="contained"
+              size="small"
+              onClick={handleBuscarPedidos}
+              disabled={cargandoBusqueda}
+              sx={{ textTransform: 'none' }}
+            >
+              Buscar
+            </Button>
+          </Stack>
+
+          <Paper sx={{ height: 260, overflow: 'hidden' }}>
+            <DataGrid
+              rows={resultadosBusqueda}
+              columns={[
+                ...columnasBusqueda,
+                {
+                  field: 'id',
+                  headerName: 'Seleccionar',
+                  width: 110,
+                  sortable: false,
+                  filterable: false,
+                  renderCell: (params: GridRenderCellParams<BusquedaRow>) => (
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      fullWidth
+                      onClick={() => handleSeleccionarPedido(params.row)}
+                      sx={{
+                        textTransform: 'none',
+                        textAlign: 'center',
+                        justifyContent: 'center',
+                        bgcolor: '#000000',
+                        color: '#ffffff',
+                        borderColor: '#000000',
+                        '&:hover': {
+                          bgcolor: '#333333',
+                          borderColor: '#333333',
+                        },
+                      }}
+                    >
+                      Seleccionar
+                    </Button>
+                  ),
+                },
+              ]}
+              loading={cargandoBusqueda}
+              density="compact"
+              pageSizeOptions={[10, 25, 50]}
+              initialState={{
+                pagination: { paginationModel: { pageSize: 10, page: 0 } },
+              }}
+              disableRowSelectionOnClick
+            />
+          </Paper>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCerrarBusqueda} sx={{ textTransform: 'none' }}>
+            Cerrar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
