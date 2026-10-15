@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  Autocomplete,
   Box,
   Button,
   Dialog,
@@ -111,8 +112,9 @@ const columnasEditables = new Set([
 
 const formatoDecimal = (value: unknown) => {
   const numero = Number(value);
-  return Number.isFinite(numero)
-    ? numero.toLocaleString('es-MX', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+  const numeroNormalizado = Object.is(numero, -0) ? 0 : numero;
+  return Number.isFinite(numeroNormalizado)
+    ? numeroNormalizado.toLocaleString('es-MX', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
     : '';
 };
 
@@ -178,6 +180,33 @@ export default function PedidosProveedoresPage() {
   const [familias, setFamilias] = useState<FamiliaOption[]>([]);
   const [cargandoFamilias, setCargandoFamilias] = useState(false);
   const [descripcion, setDescripcion] = useState('');
+  const [productos, setProductos] = useState<{ clave_prod: string; descripcion: string }[]>([]);
+  const timeoutBusquedaProductos = useRef<NodeJS.Timeout | null>(null);
+
+  const buscarProductos = (texto: string) => {
+    if (timeoutBusquedaProductos.current) clearTimeout(timeoutBusquedaProductos.current);
+    timeoutBusquedaProductos.current = setTimeout(async () => {
+      try {
+        const res = await consumoApi.get('/api/CatProductos/sp_bw_cat_productos_sel', {
+          params: {
+            busqueda: texto,
+            pagina: 1,
+            tamanoPagina: 50,
+          },
+        });
+        const data = Array.isArray(res.data) ? res.data : [];
+        setProductos([
+          { clave_prod: 'TODOS', descripcion: 'Todos los productos' },
+          ...data.map((item: any) => ({
+            clave_prod: String(item.clave_prod ?? ''),
+            descripcion: String(item.descripcion ?? ''),
+          })),
+        ]);
+      } catch (error) {
+        console.error('Error buscando productos:', error);
+      }
+    }, 300);
+  };
   const [diasVenta, setDiasVenta] = useState('30');
   const [diasInventario, setDiasInventario] = useState('30');
   const [modelo, setModelo] = useState('');
@@ -306,6 +335,11 @@ export default function PedidosProveedoresPage() {
   }, []);
 
   const handleGenerarPedido = async () => {
+    if (!proveedor) {
+      Swal.fire('Proveedor requerido', 'Selecciona un proveedor para generar el pedido.', 'warning');
+      return;
+    }
+
     setCargandoGrid(true);
     try {
       const marcaTexto = marcas.find((m) => m.id === marca)?.marca ?? '';
@@ -318,57 +352,66 @@ export default function PedidosProveedoresPage() {
         descripcion: descripcion ? `%${descripcion}%` : '%',
         diasVenta: parseInt(diasVenta || '0', 10),
         diasSoporteStock: parseInt(diasInventario || '0', 10),
-        almacenar: false,
+        almacenar: true,
         modelo: parseInt(modelo || '0', 10),
         proveedor,
+      }, {
+        timeout: 180000,
       });
 
       const data = Array.isArray(res.data) ? res.data : [];
-      const mappedRows: PedidoRow[] = data.map((item: any, index: number) => ({
-        id: String(item.clave_prod ?? index),
-        ...item,
-        ...normalizarCamposEditables(item),
-        clave_prod: String(item.clave_prod ?? ''),
-        clave_prod_ruta: String(item.clave_prod_ruta ?? ''),
-        descripcion: String(item.descripcion ?? ''),
-        marca: String(item.marca ?? ''),
-        d_area: String(item.d_area ?? ''),
-        d_familia: String(item.d_familia ?? ''),
-        f_ini: String(item.f_ini ?? ''),
-        finalizado: Number(item.finalizado ?? 0),
-        cancelado: Number(item.cancelado ?? item.can ?? 0),
-        e1: Number(item.e1 ?? 0),
-        e2: Number(item.e2 ?? 0),
-        e3: Number(item.e3 ?? 0),
-        e4: Number(item.e4 ?? 0),
-        e5: Number(item.e5 ?? 0),
-        e6: Number(item.e6 ?? 0),
-        e203: Number(item.e203 ?? 0),
-        e204: Number(item.e204 ?? 0),
-        t1: Number(item.t1 ?? 0),
-        t2: Number(item.t2 ?? 0),
-        t3: Number(item.t3 ?? 0),
-        t4: Number(item.t4 ?? 0),
-        t5: Number(item.t5 ?? 0),
-        t6: Number(item.t6 ?? 0),
-        t1203: Number(item.t1203 ?? 0),
-        t1204: Number(item.t1204 ?? 0),
-        v1: Number(item.v1 ?? 0),
-        v2: Number(item.v2 ?? 0),
-        v3: Number(item.v3 ?? 0),
-        v4: Number(item.v4 ?? 0),
-        v5: Number(item.v5 ?? 0),
-        v6: Number(item.v6 ?? 0),
-      }));
+      const folioGenerado = Number(data[0]?.folio ?? data[0]?.idPedido ?? 0);
 
-      setRows(mappedRows);
-
-      if (data.length > 0 && (data[0].idPedido || data[0].folio)) {
-        setFolio(Number(data[0].idPedido ?? data[0].folio ?? 0));
+      if (folioGenerado <= 0) {
+        setRows([]);
+        setFolio(0);
+        Swal.fire(
+          'Sin productos',
+          'No se encontraron productos que correspondan con el área, marca, familia, descripción y proveedor seleccionados.',
+          'warning',
+        );
+        return;
       }
+
+      setFolio(folioGenerado);
+      const detalle = await cargarDetallePedido(folioGenerado);
+
+      if (detalle.length === 0) {
+        setFolio(0);
+        setRows([]);
+        Swal.fire(
+          'Sin productos',
+          'No se encontraron productos que correspondan con los filtros seleccionados. No se guardó ningún pedido.',
+          'warning',
+        );
+        return;
+      }
+
+      Swal.fire(
+        'Pedido generado',
+        `Se generó el folio ${folioGenerado} con ${detalle.length} productos.`,
+        'success',
+      );
     } catch (error: any) {
-      const mensaje = error?.response?.data?.mensaje || 'No se pudo generar el pedido.';
-      Swal.fire('Error', mensaje, 'error');
+      const resultadoNoConfirmado =
+        error?.code === 'ECONNABORTED' ||
+        error?.code === 'ERR_NETWORK' ||
+        !error?.response;
+
+      if (resultadoNoConfirmado) {
+        Swal.fire({
+          title: 'Resultado no confirmado',
+          text: 'Se perdió la conexión o se agotó el tiempo de espera. El pedido podría haberse generado. Revísalo en Buscar Pedido antes de volver a intentarlo para evitar duplicados.',
+          icon: 'warning',
+          confirmButtonText: 'Entendido',
+        });
+      } else {
+        const respuesta = error.response.data;
+        const mensaje = respuesta?.detalle
+          ? `${respuesta?.mensaje || 'No se pudo generar el pedido.'} ${respuesta.detalle}`
+          : respuesta?.mensaje || 'No se pudo generar el pedido.';
+        Swal.fire('Error', mensaje, 'error');
+      }
     } finally {
       setCargandoGrid(false);
     }
@@ -664,40 +707,32 @@ export default function PedidosProveedoresPage() {
           <Grid size={{ xs: 12 }}>
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, sm: 6, md: 3}}>
-                <TextField
-                  select
-                  fullWidth
-                  size="small"
-                  label="Area"
-                  value={area}
-                  onChange={(e) => setArea(e.target.value)}
+                <Autocomplete
+                  options={areas.map((a) => ({ value: a.area, label: a.descripcion }))}
+                  getOptionLabel={(option) => option.label}
+                  value={areas.find((a) => a.area === area) ? { value: area, label: areas.find((a) => a.area === area)!.descripcion } : null}
+                  onChange={(_, option) => setArea(option?.value ?? '')}
+                  isOptionEqualToValue={(opt, val) => opt.value === val.value}
+                  renderInput={(params) => (
+                    <TextField {...params} fullWidth size="small" label="Area" />
+                  )}
                   disabled={cargandoAreas}
-                >
-                  <MenuItem value="">Seleccionar</MenuItem>
-                  {areas.map((a) => (
-                    <MenuItem key={a.area} value={a.area}>
-                      {a.descripcion}
-                    </MenuItem>
-                  ))}
-                </TextField>
+                  clearOnEscape
+                />
               </Grid>
               <Grid size={{ xs: 12, sm: 6, md: 3}}>
-                <TextField
-                  select
-                  fullWidth
-                  size="small"
-                  label="Marca"
-                  value={marca}
-                  onChange={(e) => setMarca(e.target.value)}
+                <Autocomplete
+                  options={marcas.map((m) => ({ value: m.id, label: m.marca }))}
+                  getOptionLabel={(option) => option.label}
+                  value={marcas.find((m) => m.id === marca) ? { value: marca, label: marcas.find((m) => m.id === marca)!.marca } : null}
+                  onChange={(_, option) => setMarca(option?.value ?? '')}
+                  isOptionEqualToValue={(opt, val) => opt.value === val.value}
+                  renderInput={(params) => (
+                    <TextField {...params} fullWidth size="small" label="Marca" />
+                  )}
                   disabled={cargandoMarcas}
-                >
-                  <MenuItem value="">Seleccionar</MenuItem>
-                  {marcas.map((m) => (
-                    <MenuItem key={m.id} value={m.id}>
-                      {m.marca}
-                    </MenuItem>
-                  ))}
-                </TextField>
+                  clearOnEscape
+                />
               </Grid>
               <Grid size={{ xs: 12, sm: 6, md: 3}}>
                 <TextField
@@ -709,30 +744,63 @@ export default function PedidosProveedoresPage() {
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6, md: 3}}>
-                <TextField
-                  select
-                  fullWidth
-                  size="small"
-                  label="Familia"
-                  value={familia}
-                  onChange={(e) => setFamilia(e.target.value)}
+                <Autocomplete
+                  options={[
+                    { value: '', label: 'Todas' },
+                    ...familias.map((f) => ({ value: f.id, label: f.familia })),
+                  ]}
+                  getOptionLabel={(option) => option.label}
+                  value={
+                    familia === ''
+                      ? { value: '', label: 'Todas' }
+                      : familias.find((f) => f.id === familia)
+                        ? { value: familia, label: familias.find((f) => f.id === familia)!.familia }
+                        : null
+                  }
+                  onChange={(_, option) => setFamilia(option?.value ?? '')}
+                  isOptionEqualToValue={(opt, val) => opt.value === val.value}
+                  renderInput={(params) => (
+                    <TextField {...params} fullWidth size="small" label="Familia" />
+                  )}
                   disabled={cargandoFamilias}
-                >
-                  <MenuItem value="">Seleccionar</MenuItem>
-                  {familias.map((f) => (
-                    <MenuItem key={f.id} value={f.id}>
-                      {f.familia}
-                    </MenuItem>
-                  ))}
-                </TextField>
+                  clearOnEscape
+                />
               </Grid>
               <Grid size={{ xs: 12, sm: 6, md: 3}}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="Descripción"
-                  value={descripcion}
-                  onChange={(e) => setDescripcion(e.target.value)}
+                <Autocomplete
+                  freeSolo
+                  options={productos}
+                  getOptionLabel={(option) =>
+                    typeof option === 'string' ? option : option.descripcion
+                  }
+                  inputValue={descripcion}
+                  onInputChange={(_, value) => {
+                    setDescripcion(value);
+                    buscarProductos(value);
+                  }}
+                  onChange={(_, option) => {
+                    if (typeof option === 'string') {
+                      setDescripcion(option);
+                    } else if (option) {
+                      if (option.clave_prod === 'TODOS') {
+                        setDescripcion('');
+                      } else {
+                        setDescripcion(option.descripcion);
+                      }
+                    }
+                  }}
+                  onOpen={() => {
+                    if (productos.length <= 1) buscarProductos('');
+                  }}
+                  isOptionEqualToValue={(opt, val) =>
+                    typeof opt === 'string' && typeof val === 'string'
+                      ? opt === val
+                      : (opt as any)?.clave_prod === (val as any)?.clave_prod
+                  }
+                  renderInput={(params) => (
+                    <TextField {...params} fullWidth size="small" label="Descripción" />
+                  )}
+                  clearOnEscape
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6, md: 3}}>
@@ -763,22 +831,18 @@ export default function PedidosProveedoresPage() {
                 </TextField>
               </Grid>
               <Grid size={{ xs: 12, sm: 6, md: 3}}>
-                <TextField
-                  select
-                  fullWidth
-                  size="small"
-                  label="Proveedor"
-                  value={proveedor}
-                  onChange={(e) => setProveedor(e.target.value)}
+                <Autocomplete
+                  options={proveedores.map((p) => ({ value: p.id, label: p.nombre }))}
+                  getOptionLabel={(option) => option.label}
+                  value={proveedores.find((p) => p.id === proveedor) ? { value: proveedor, label: proveedores.find((p) => p.id === proveedor)!.nombre } : null}
+                  onChange={(_, option) => setProveedor(option?.value ?? '')}
+                  isOptionEqualToValue={(opt, val) => opt.value === val.value}
+                  renderInput={(params) => (
+                    <TextField {...params} fullWidth size="small" label="Proveedor" />
+                  )}
                   disabled={cargandoProveedores}
-                >
-                  <MenuItem value="">Seleccionar</MenuItem>
-                  {proveedores.map((p) => (
-                    <MenuItem key={p.id} value={p.id}>
-                      {p.nombre}
-                    </MenuItem>
-                  ))}
-                </TextField>
+                  clearOnEscape
+                />
               </Grid>
             </Grid>
           </Grid>
