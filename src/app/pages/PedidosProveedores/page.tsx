@@ -58,7 +58,9 @@ interface BusquedaRow {
   idPedido: number;
   fecha_pedido: string;
   cantidad_productos: number;
+  clave_proveedor: string;
   proveedor: string;
+  estado: string;
 }
 
 type PedidoRow = {
@@ -72,6 +74,17 @@ const obtenerFechaActual = () => {
   const mes = String(fecha.getMonth() + 1).padStart(2, '0');
   const dia = String(fecha.getDate()).padStart(2, '0');
   return `${anio}-${mes}-${dia}`;
+};
+
+const formatearFechaCorta = (value: unknown) => {
+  const fecha = new Date(String(value ?? ''));
+  return Number.isNaN(fecha.getTime())
+    ? String(value ?? '')
+    : fecha.toLocaleDateString('es-MX', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      });
 };
 
 const columnasFijas = [
@@ -155,10 +168,12 @@ const columnas: GridColDef<PedidoRow>[] = [
 ];
 
 const columnasBusqueda: GridColDef<BusquedaRow>[] = [
-  { field: 'idPedido', headerName: 'Folio', width: 90, type: 'number' },
+  { field: 'idPedido', headerName: 'Folio', width: 60, type: 'number' },
   { field: 'fecha_pedido', headerName: 'Fecha', width: 140 },
+  { field: 'clave_proveedor', headerName: 'Clave proveedor', width: 115 },
   { field: 'proveedor', headerName: 'Proveedor', width: 200 },
   { field: 'cantidad_productos', headerName: 'Productos', width: 100, type: 'number', align: 'center', headerAlign: 'center' },
+  { field: 'estado', headerName: 'Estado', width: 120 },
 ];
 
 export default function PedidosProveedoresPage() {
@@ -500,6 +515,11 @@ export default function PedidosProveedoresPage() {
       return;
     }
 
+    if (rows.some((row) => Number(row.cancelado) === 1)) {
+      Swal.fire('Pedido cancelado', `El pedido folio ${folio} ya está cancelado.`, 'warning');
+      return;
+    }
+
     const confirm = await Swal.fire({
       title: 'Cancelar pedido',
       text: `¿Seguro que deseas cancelar el pedido folio ${folio}?`,
@@ -599,14 +619,41 @@ export default function PedidosProveedoresPage() {
         params,
       });
       const data = Array.isArray(res.data) ? res.data : [];
+      const filasBusqueda =
+        folioBuscado > 0 && data.length > 0
+          ? [{
+              idPedido: folioBuscado,
+              fecha_pedido: data[0].fecha_pedido ?? data[0].fecha,
+              proveedor: data[0].proveedor ?? '',
+              cantidad_productos: data.length,
+              estado: data.some((item: any) => Number(item.cancelado) === 1)
+                ? 'CANCELADO'
+                : data.some((item: any) => Number(item.finalizado) === 1)
+                  ? 'FINALIZADO'
+                  : 'ACTIVO',
+            }]
+          : data;
       setResultadosBusqueda(
-        data.map((item: any, index: number) => ({
-          id: `${item.idPedido ?? index}-${index}`,
-          idPedido: Number(item.idPedido ?? 0),
-          fecha_pedido: String(item.fecha_pedido ?? ''),
-          proveedor: String(item.proveedor ?? ''),
-          cantidad_productos: Number(item.cantidad_productos ?? 0),
-        }))
+        filasBusqueda.map((item: any, index: number) => {
+          const proveedorId = String(item.proveedor ?? '').trim();
+          const proveedorCatalogo = proveedores.find(
+            (option) =>
+              option.id.trim() === proveedorId ||
+              (Number.isFinite(Number(option.id)) &&
+                Number.isFinite(Number(proveedorId)) &&
+                Number(option.id) === Number(proveedorId)),
+          );
+
+          return {
+            id: `${item.idPedido ?? index}-${index}`,
+            idPedido: Number(item.idPedido ?? 0),
+            fecha_pedido: formatearFechaCorta(item.fecha_pedido),
+            clave_proveedor: proveedorId,
+            proveedor: proveedorCatalogo?.nombre || proveedorId,
+            cantidad_productos: Number(item.cantidad_productos ?? 0),
+            estado: String(item.estado ?? 'ACTIVO'),
+          };
+        })
       );
     } catch (error) {
       console.error('Error buscando pedidos:', error);
@@ -716,7 +763,7 @@ export default function PedidosProveedoresPage() {
                   renderInput={(params) => (
                     <TextField {...params} fullWidth size="small" label="Area" />
                   )}
-                  disabled={cargandoAreas}
+                  disabled={cargandoGrid || cargandoAreas}
                   clearOnEscape
                 />
               </Grid>
@@ -730,7 +777,7 @@ export default function PedidosProveedoresPage() {
                   renderInput={(params) => (
                     <TextField {...params} fullWidth size="small" label="Marca" />
                   )}
-                  disabled={cargandoMarcas}
+                  disabled={cargandoGrid || cargandoMarcas}
                   clearOnEscape
                 />
               </Grid>
@@ -741,6 +788,7 @@ export default function PedidosProveedoresPage() {
                   label="Días Venta"
                   value={diasVenta}
                   onChange={(e) => setDiasVenta(e.target.value)}
+                  disabled={cargandoGrid}
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6, md: 3}}>
@@ -762,7 +810,7 @@ export default function PedidosProveedoresPage() {
                   renderInput={(params) => (
                     <TextField {...params} fullWidth size="small" label="Familia" />
                   )}
-                  disabled={cargandoFamilias}
+                  disabled={cargandoGrid || cargandoFamilias}
                   clearOnEscape
                 />
               </Grid>
@@ -800,6 +848,7 @@ export default function PedidosProveedoresPage() {
                   renderInput={(params) => (
                     <TextField {...params} fullWidth size="small" label="Descripción" />
                   )}
+                  disabled={cargandoGrid}
                   clearOnEscape
                 />
               </Grid>
@@ -810,6 +859,7 @@ export default function PedidosProveedoresPage() {
                   label="Días Inventario"
                   value={diasInventario}
                   onChange={(e) => setDiasInventario(e.target.value)}
+                  disabled={cargandoGrid}
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6, md: 3}}>
@@ -820,7 +870,7 @@ export default function PedidosProveedoresPage() {
                   label="Modelo"
                   value={modelo}
                   onChange={(e) => setModelo(e.target.value)}
-                  disabled={cargandoModelos}
+                  disabled={cargandoGrid || cargandoModelos}
                 >
                   <MenuItem value="">Seleccionar</MenuItem>
                   {modelos.map((m) => (
@@ -840,7 +890,7 @@ export default function PedidosProveedoresPage() {
                   renderInput={(params) => (
                     <TextField {...params} fullWidth size="small" label="Proveedor" />
                   )}
-                  disabled={cargandoProveedores}
+                  disabled={cargandoGrid || cargandoProveedores}
                   clearOnEscape
                 />
               </Grid>
@@ -878,6 +928,7 @@ export default function PedidosProveedoresPage() {
                 variant="contained"
                 size="small"
                 onClick={handleGenerarPedido}
+                disabled={cargandoGrid}
                 sx={{ textTransform: 'none', bgcolor: '#000000', color: '#ffffff', '&:hover': { bgcolor: '#b1b1b1' } }}
               >
                 Generar Pedido
@@ -886,6 +937,7 @@ export default function PedidosProveedoresPage() {
                 variant="contained"
                 size="small"
                 onClick={handleActivarPedido}
+                disabled={cargandoGrid}
                 sx={{ textTransform: 'none', bgcolor: '#000000', color: '#ffffff', '&:hover': { bgcolor: '#b1b1b1' } }}
               >
                 Activar Pedido
@@ -894,6 +946,7 @@ export default function PedidosProveedoresPage() {
                 variant="contained"
                 size="small"
                 onClick={handleAbrirBusqueda}
+                disabled={cargandoGrid}
                 sx={{ textTransform: 'none', bgcolor: '#000000', color: '#ffffff', '&:hover': { bgcolor: '#b1b1b1' } }}
               >
                 Buscar Pedido
@@ -902,6 +955,7 @@ export default function PedidosProveedoresPage() {
                 variant="contained"
                 size="small"
                 onClick={handleFinalizarPedido}
+                disabled={cargandoGrid}
                 sx={{ textTransform: 'none', bgcolor: '#000000', color: '#ffffff', '&:hover': { bgcolor: '#b1b1b1' } }}
               >
                 Finalizar Pedido
@@ -910,6 +964,8 @@ export default function PedidosProveedoresPage() {
                 variant="contained"
                 size="small"
                 onClick={handleCancelarPedido}
+                disabled={cargandoGrid}
+                disabled={folio <= 0 || rows.some((row) => Number(row.cancelado) === 1)}
                 sx={{ textTransform: 'none', bgcolor: '#000000', color: '#ffffff', '&:hover': { bgcolor: '#b1b1b1' } }}
               >
                 Cancelar Pedido
@@ -918,6 +974,7 @@ export default function PedidosProveedoresPage() {
                 variant="contained"
                 size="small"
                 onClick={handleSalir}
+                disabled={cargandoGrid}
                 sx={{ textTransform: 'none', bgcolor: '#000000', color: '#ffffff', '&:hover': { bgcolor: '#b1b1b1' } }}
               >
                 Salir
