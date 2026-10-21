@@ -19,6 +19,7 @@ import Swal from 'sweetalert2';
 
 import useConsumoApi from "../../../hooks/useConsumoApi"; 
 import { useSessionContext } from '../../../context/SessionProvider';
+import { useAuth } from '../../../context/AuthContext';
 
 // --- ESTILOS BERLLANO ELEGANTE ---
 const commonProps = {
@@ -44,6 +45,11 @@ export default function CatPerfilesPermisos() {
   const [openModalCuentas, setOpenModalCuentas] = useState(false);
   const { consumoApi } = useConsumoApi();
   const { session } = useSessionContext();
+  const { token } = useAuth();
+  const usuarioSesion =
+    token?.usuario ||
+    (typeof window !== 'undefined' ? localStorage.getItem('usuario') || '' : '') ||
+    String(session?.claveEmpleado || session?.id || '');
 
   // --- ESTADOS ---
   const [perfiles, setPerfiles] = useState<any[]>([]);
@@ -75,7 +81,16 @@ const [openModalMovProv, setOpenModalMovProv] = useState(false);
   const fetchPerfiles = async () => {
     setLoadingPerfiles(true);
     try {
-      const response = await consumoApi.get('/api/CatPerfiles/sel');
+      const response = await consumoApi.get('/api/CatPerfiles/sel', {
+        params: {
+          usuario: usuarioSesion,
+          cia: session?.cia ?? 1,
+          sucursal: session?.sucursal ?? 1,
+          OSUserName: '',
+          OSMachineName: '',
+          IPAddress: '',
+        },
+      });
       setPerfiles(response.data || []);
     } catch (error) {
       setMessage({ text: "Error al cargar perfiles", type: 'error' });
@@ -98,7 +113,7 @@ const [openModalMovProv, setOpenModalMovProv] = useState(false);
 
   useEffect(() => {
     fetchPerfiles();
-  }, []);
+  }, [usuarioSesion, session?.cia, session?.sucursal]);
 
   // --- 2. ACCIONES DE PERFILES ---
 const handleGuardarPerfil = async () => {
@@ -934,5 +949,4 @@ return (
     </Dialog>
   );
 };
-
 

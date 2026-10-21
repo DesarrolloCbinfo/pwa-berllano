@@ -15,6 +15,7 @@ import Swal from 'sweetalert2';
 
 import useConsumoApi from '../../../hooks/useConsumoApi';
 import { useSessionContext } from '../../../context/SessionProvider'; 
+import { useAuth } from '../../../context/AuthContext';
 
 const commonProps = {
   fullWidth: true, size: "small" as const, variant: "outlined" as const,
@@ -40,6 +41,11 @@ const initialFormState = {
 export default function Usuarios() {
   const { consumoApi } = useConsumoApi();
   const { session } = useSessionContext();
+  const { token } = useAuth();
+  const usuarioSesion =
+    token?.usuario ||
+    (typeof window !== 'undefined' ? localStorage.getItem('usuario') || '' : '') ||
+    String(session?.claveEmpleado || session?.id || '');
 
   const isSavingRef = useRef(false);
 
@@ -79,7 +85,9 @@ export default function Usuarios() {
     });
   };
 
-  useEffect(() => { fetchCatalogos(); }, []);
+  useEffect(() => {
+      fetchCatalogos();
+  }, [usuarioSesion, session?.cia, session?.sucursal]);
 
   const fetchCatalogos = async () => {
       setLoading(true);
@@ -89,10 +97,33 @@ export default function Usuarios() {
           setPerfiles(Array.isArray(resPerfiles?.data) ? resPerfiles.data : []);
 
           // Cargamos la tabla principal de usuarios
-          const resTabla = await consumoApi.get('/api/Usuarios/sp_bw_cat_usuarios_sel');
+          const resTabla = await consumoApi.get('/api/Usuarios/sp_bw_cat_usuarios_sel', {
+              params: {
+                  usuario: usuarioSesion,
+                  cia: session?.cia ?? 1,
+                  sucursal: session?.sucursal ?? 1,
+                  OSUserName: '',
+                  OSMachineName: '',
+                  IPAddress: '',
+              },
+          });
           setRows(Array.isArray(resTabla?.data) ? resTabla.data : []);
-      } catch (error) {
-          setMessage({ text: 'Error al cargar catálogos.', type: 'error' });
+      } catch (error: any) {
+          const mensaje = String(error?.response?.data?.mensaje || '');
+
+          if (/acceso denegado/i.test(mensaje)) {
+              Swal.fire({
+                  title: 'Permiso requerido',
+                  text: 'No cuentas con permisos para consultar el catálogo de usuarios.',
+                  icon: 'warning',
+                  confirmButtonColor: '#333',
+              });
+          } else {
+              setMessage({
+                  text: mensaje || 'Error al cargar catálogos.',
+                  type: 'error',
+              });
+          }
       } finally { setLoading(false); }
   };
 
