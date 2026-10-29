@@ -27,7 +27,7 @@ const useConsumoApi = () => {
   };
 
   const consumoApi = axios.create({
-    baseURL: "https://217.216.95.62:5001/:9004/api/TREBOL",
+    baseURL: "https://127.0.0.1:5001/:9004/api/TREBOL",
     headers: {
       "Content-Type": "application/json",
     },

@@ -13,6 +13,7 @@ import DemoStepper from './pages/DemoStepper/DemoStepper';
 import Login from './pages/Login/Login';
 import Layout from '../components/Layout';
 import RecepcionMercancia from './pages/RecepcionMercancia/RecepcionMercancia';
+import RecepcionMercanciaProveedor from './pages/RecepcionMercanciaProveedor/page';
 import Catalogos from './pages/catalogos/page';
 import CatAreasDeptosClases from './pages/cat_AreasDeptosClases/page';
 import CatTipoDescuentos from './pages/cat_Tipo_Descuento/page';
@@ -98,6 +99,7 @@ function App() {
           <Route path='/demoStepper' element={<Layout><DemoStepper /></Layout>} />
           <Route path='/generadorFormularios' element={<Layout><GeneradorFormularios /></Layout>} />
           <Route path='/recepcion' element={<Layout><RecepcionMercancia /></Layout>} />
+          <Route path='/recepcionMercanciaProveedor' element={<Layout><RecepcionMercanciaProveedor /></Layout>} />
           <Route path='/catalogos' element={<Layout><Catalogos /></Layout>} />
           <Route path='/cat_AreasDeptosClases' element={<Layout><CatAreasDeptosClases/></Layout>} />
          <Route path='/cat_Tipo_Descuento' element={<Layout><CatTipoDescuentos/></Layout>} />

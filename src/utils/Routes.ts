@@ -7,6 +7,7 @@ export const routes = {
   demoStepper: "/demoStepper",
   generadorFormularios: "/generadorFormularios",
   recepcion: "/recepcion",
+  recepcionMercanciaProveedor: "/recepcionMercanciaProveedor",
   catalogos: "/catalogos",
   cat_Areas: "/cat_Areas",
   cat_Tipo_Descuento: "/cat_Tipo_Descuento",

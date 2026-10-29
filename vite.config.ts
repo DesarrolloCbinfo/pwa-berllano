@@ -11,7 +11,7 @@ export default defineConfig({
     allowedHosts: true,
     proxy: {
       '/api': {
-        target: 'https://217.216.95.62:7102',
+        target: 'https://127.0.0.1:7102',
         changeOrigin: true,
         secure: false,
         configure: (proxy, options) => {
