@@ -687,6 +687,11 @@ export default function PedidosProveedoresPage() {
       return oldRow;
     }
 
+    if (Number(oldRow.finalizado ?? 0) === 1) {
+      Swal.fire('Pedido finalizado', 'Este pedido solo puede consultarse; no permite editar sus valores.', 'info');
+      return oldRow;
+    }
+
     try {
       await consumoApi.put('/api/PedidosProveedores/sp_actualizar_detalle_pedido_proveedor', {
         idPedido: folio,

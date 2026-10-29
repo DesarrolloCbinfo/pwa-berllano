@@ -106,6 +106,18 @@ function valorVerdadero(valor: unknown) {
   return valor === true || valor === 1 || ["true", "1", "si", "sí"].includes(normalizado);
 }
 
+function esEstadoEnTransito(estado: unknown) {
+  const normalizado = String(estado || "")
+    .trim()
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ");
+
+  return normalizado === "EN TRANSITO";
+}
+
 function obtenerEstadoTraspaso(item: any) {
   if (valorVerdadero(obtenerValor(item, "cancelado", "cancelada"))) return "CANCELADO";
   if (valorVerdadero(obtenerValor(item, "recibido", "aceptado"))) return "ACEPTADO";
@@ -239,6 +251,7 @@ export default function TraspasoMercancia() {
   };
 
   const puedeEditarFila = (row: TraspasoRow) =>
+    !esEstadoEnTransito(row.estado) &&
     !valorVerdadero(row.recibido) &&
     String(row.estado || "").toUpperCase() !== "ACEPTADO" &&
     esMismoUsuario(row.usuario);
@@ -468,11 +481,19 @@ export default function TraspasoMercancia() {
     [rows]
   );
 
+  const traspasoEnTransito = useMemo(
+    () => rows.some((r) => esEstadoEnTransito(r.estado)),
+    [rows]
+  );
+
   const updateRow = (
     id: number,
     field: keyof TraspasoRow,
     value: string | number | boolean
   ) => {
+    const rowActual = rows.find((row) => row.id === id);
+    if (rowActual && !puedeEditarFila(rowActual)) return;
+
     setRows((prev) =>
       prev.map((row) => {
         if (row.id !== id) return row;
@@ -915,6 +936,16 @@ export default function TraspasoMercancia() {
   };
 
   const handleCancelarTraspaso = async () => {
+    if (traspasoAceptado) {
+      await Swal.fire({
+        icon: "info",
+        title: "Traspaso aceptado",
+        text: "Un traspaso aceptado no se puede editar ni cancelar.",
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
+
     const confirmar = await Swal.fire({
       icon: "warning",
       title: "ATENCIÓN!",
@@ -980,6 +1011,16 @@ export default function TraspasoMercancia() {
   };
 
   const handleEliminarFila = async (row: TraspasoRow) => {
+    if (esEstadoEnTransito(row.estado) || valorVerdadero(row.recibido) || String(row.estado || "").toUpperCase() === "ACEPTADO") {
+      await Swal.fire({
+        icon: "info",
+        title: "Traspaso bloqueado",
+        text: "Un traspaso aceptado o en tránsito no se puede editar ni eliminar.",
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
+
     if (row.clave) {
       try {
         const posicion = rows.findIndex((r) => r.id === row.id);
@@ -1439,6 +1480,16 @@ export default function TraspasoMercancia() {
   };
 
   const handleAgregarRenglon = async () => {
+    if (traspasoEnTransito) {
+      await Swal.fire({
+        icon: "info",
+        title: "Traspaso en tránsito",
+        text: "No se pueden agregar registros mientras el traspaso esté en tránsito.",
+        confirmButtonColor: "#000000",
+      });
+      return;
+    }
+
     if (sucDestino && (await verificarSucDestinoOcupada(Number(sucDestino)))) {
       Swal.fire({
         icon: "warning",
@@ -1611,7 +1662,7 @@ export default function TraspasoMercancia() {
           <Button
             variant="contained"
             onClick={handleCancelarTraspaso}
-            disabled={cancelando || traspasoCancelado || traspasoPendiente}
+            disabled={cancelando || traspasoCancelado || traspasoPendiente || traspasoAceptado}
             sx={{ bgcolor: "#d9534f", color: "white" }}
           >
             {cancelando ? "Procesando..." : "Cancelar Traspaso"}
@@ -1937,7 +1988,7 @@ export default function TraspasoMercancia() {
               size="small"
               startIcon={<AddIcon />}
               onClick={handleAgregarRenglon}
-              disabled={traspasoAceptado || traspasoCancelado || traspasoFinalizado || traspasoOtroUsuario || sucDestinoOcupada}
+              disabled={traspasoEnTransito || traspasoAceptado || traspasoCancelado || traspasoFinalizado || traspasoOtroUsuario || sucDestinoOcupada}
               sx={{
                 bgcolor: "#000000",
                 color: "#fff",
