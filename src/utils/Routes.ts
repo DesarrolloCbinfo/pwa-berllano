@@ -80,4 +80,9 @@ export const routes = {
   NivelacionInventarioPage: "/nivelacion-inventario",
   pedidosProveedores: "/pedidos-proveedores",
   administracionErogaciones: "/administracion-erogaciones",
+
+  //Conteos
+  conteos: "/conteos",
+  conteoRegistro: (idConteo: number | string) => `/conteos/registro/${idConteo}`,
+  conteoProductos: (idConteo: number | string) => `/conteos/productos/${idConteo}`,
 };

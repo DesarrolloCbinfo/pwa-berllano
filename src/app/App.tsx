@@ -77,6 +77,9 @@ import AjustesInventario from './pages/AjustesInventario/page';
 import NivelacionInventarioPage from './pages/NivelacionInventario/Page';
 import PedidosProveedores from './pages/PedidosProveedores/page';
 import AdministracionErogaciones from './pages/AdministracionErogaciones/page';
+import ConteosPage from './pages/Conteos/page';
+import RegistroConteo from './pages/Conteos/RegistroConteo';
+import ProductosConteo from './pages/Conteos/ProductosConteo';
 
 
 
@@ -164,6 +167,9 @@ function App() {
            <Route path='/nivelacion-inventario' element={<Layout><NivelacionInventarioPage /></Layout>} />
           <Route path='/pedidos-proveedores' element={<Layout><PedidosProveedores /></Layout>} />
           <Route path='/administracion-erogaciones' element={<Layout><AdministracionErogaciones /></Layout>} />
+          <Route path='/conteos' element={<Layout><ConteosPage /></Layout>} />
+          <Route path='/conteos/registro/:idConteo' element={<Layout><RegistroConteo /></Layout>} />
+          <Route path='/conteos/productos/:idConteo' element={<Layout><ProductosConteo /></Layout>} />
 
 
        

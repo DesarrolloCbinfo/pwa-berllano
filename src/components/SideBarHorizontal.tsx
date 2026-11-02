@@ -163,6 +163,7 @@ const SidebarHorizontal = () => {
             <MenuItem onClick={() => { setAnchorModuloComercial(null); navigate(routes.Validacion_Productos_Servicios); }}>Validación de Productos y Servicios</MenuItem>
             <MenuItem onClick={() => { setAnchorModuloComercial(null); navigate(routes.carteleraDigital); }}>Cartelera Digital</MenuItem>
             <MenuItem onClick={() => { setAnchorModuloComercial(null); navigate(routes.facturacion); }}>Facturación</MenuItem>
+            <MenuItem onClick={() => { setAnchorModuloComercial(null); navigate(routes.conteos); }}>Conteos</MenuItem>
         </Menu>
 
         {/* PERFIL - Oculto en móvil */}
@@ -317,6 +318,12 @@ const SidebarHorizontal = () => {
           </ListItemButton>
           <ListItemButton onClick={() => { navigate(routes.carteleraDigital); setDrawerOpen(false); }}>
             <ListItemText primary="Cartelera Digital" />
+          </ListItemButton>
+          <ListItemButton onClick={() => { navigate(routes.facturacion); setDrawerOpen(false); }}>
+            <ListItemText primary="Facturación" />
+          </ListItemButton>
+          <ListItemButton onClick={() => { navigate(routes.conteos); setDrawerOpen(false); }}>
+            <ListItemText primary="Conteos" />
           </ListItemButton>
 
           <Divider sx={{ my: 1 }} />
