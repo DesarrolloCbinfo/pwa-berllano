@@ -128,10 +128,6 @@ export default function ReporteRazPage() {
           </Box>
           <Stack spacing={3} aria-busy={consultando}>
             {seccionesRaz.map((seccion) => <RazSection key={seccion.id} seccion={seccion} filas={filas} />)}
-            <Paper component="section" variant="outlined" aria-labelledby="raz-depositos" sx={{ p: 2 }}>
-              <Typography id="raz-depositos" variant="h6">Depósitos</Typography>
-              <Typography variant="body2" sx={{ color: 'grey.700' }}>Esta sección estará disponible próximamente.</Typography>
-            </Paper>
           </Stack>
         </>
       )}
@@ -140,7 +136,7 @@ export default function ReporteRazPage() {
         <Paper variant="outlined" sx={{ py: 7, px: 2, textAlign: 'center' }}>
           <Assessment color="disabled" sx={{ fontSize: 40, mb: 1 }} />
           <Typography variant="h6">{consulta ? 'Sin datos para el periodo seleccionado' : 'Selecciona un año y un mes para comenzar'}</Typography>
-          <Typography variant="body2" sx={{ color: 'grey.700' }}>Consulta el reporte para ver Venta real, Puntos, Raz, Fiscal y Tarjeta.</Typography>
+          <Typography variant="body2" sx={{ color: 'grey.700' }}>Consulta el reporte para ver Venta real, Puntos, Raz, Fiscal, Tarjeta y Depósitos.</Typography>
         </Paper>
       )}
     </Box>

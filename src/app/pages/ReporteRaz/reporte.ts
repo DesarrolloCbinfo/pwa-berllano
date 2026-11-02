@@ -75,6 +75,12 @@ export const seccionesRaz: SeccionRaz[] = [
     id: 'tarjeta', titulo: 'Tarjeta', descripcion: 'Importes de tarjeta por día y sucursal.',
     grupos: [{ titulo: 'Por sucursal', columnas: sucursales.map((sucursal) => ({ campo: sucursal.tarjeta, etiqueta: sucursal.total })) }],
   },
+  {
+    id: 'depositos', titulo: 'Depósitos', descripcion: 'Diferencia entre Fiscal y Tarjeta para cada día y sucursal.',
+    grupos: [{ titulo: 'Por sucursal', columnas: sucursales.map((sucursal) => ({
+      campo: `${sucursal.total}_2`, etiqueta: sucursal.total, restar: sucursal.tarjeta,
+    })) }],
+  },
 ];
 
 export function parametrosRaz(periodo: PeriodoRaz) {
@@ -135,15 +141,40 @@ export function formatoNumeroRaz(valor: number | null) {
   return valor === null ? '—' : formatoNumero.format(Math.abs(valor) < 0.005 ? 0 : valor);
 }
 
-export function filasExcelRaz(filas: FilaRaz[], seccion: SeccionRaz, periodo: PeriodoRaz) {
-  const columnas = seccion.grupos.flatMap((grupo) => grupo.columnas);
+function fechaSerialExcelRaz(fecha: string) {
+  const [anio, mes, dia] = fecha.split('-').map(Number);
+  const dias = (Date.UTC(anio, mes - 1, dia) - Date.UTC(1899, 11, 31)) / 86_400_000;
+  return dias >= 60 ? dias + 1 : dias;
+}
+
+export function filasExcelRaz(filas: FilaRaz[]) {
+  const columnas = gruposVenta('real').flatMap((grupo) => grupo.columnas);
+  const tipos: Record<string, string> = {
+    'venta-real': '1Real', puntos: '2Puntos', raz: '3Raz',
+    fiscal: '4Fiscal', tarjeta: '5Tarjetas', depositos: '6Depositos',
+  };
   return [
-    [`Reporte Raz — ${seccion.titulo}`],
-    [`${mesesRaz[periodo.mes - 1]} de ${periodo.anio}`],
-    [],
-    ['Fecha', ...seccion.grupos.flatMap((grupo) => grupo.columnas.map((_, indice) => indice === 0 ? grupo.titulo : ''))],
-    ['', ...columnas.map((columna) => columna.etiqueta)],
-    ...filas.map((fila) => [formatoFechaRaz(fila.fecha), ...columnas.map((columna) => valorRaz(fila, columna))]),
-    ['TOTALES', ...columnas.map((columna) => totalColumnaRaz(filas, columna))],
+    ['dato', 'fecha', ...columnas.map((columna) => columna.etiqueta)],
+    ...seccionesRaz.flatMap((seccion) => {
+      const columnasSeccion = new Map(seccion.grupos.flatMap((grupo) => grupo.columnas)
+        .map((columna) => [columna.etiqueta, columna]));
+      const esPuntosOTarjeta = seccion.id === 'puntos' || seccion.id === 'tarjeta';
+      return filas.map((fila) => [
+        tipos[seccion.id], fechaSerialExcelRaz(fila.fecha),
+        ...columnas.map((columna) => {
+          const columnaSeccion = columnasSeccion.get(columna.etiqueta);
+          if (columnaSeccion) {
+            const valor = valorRaz(fila, columnaSeccion);
+            // La consulta UNION de Access completa Ofi con cero en estos bloques.
+            return valor ?? (columna.etiqueta === 'Ofi' && seccion.grupos.length === 1 ? 0 : null);
+          }
+          // Access conserva el desglose fiscal de Leju en Puntos y Tarjetas.
+          if (esPuntosOTarjeta && ['LejuProd', 'LejuServ'].includes(columna.etiqueta)) {
+            return fila.valores[`${columna.campo}2`.toLowerCase()] ?? null;
+          }
+          return 0;
+        }),
+      ]);
+    }),
   ];
 }

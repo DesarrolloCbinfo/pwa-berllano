@@ -4,7 +4,7 @@ import {
   IconButton, Link, Paper, Stack, Table, TableBody, TableCell, TableContainer,
   TableFooter, TableHead, TablePagination, TableRow, TextField, Typography,
 } from '@mui/material';
-import { ArrowBack, Assessment, ChevronRight, Download, Print, Search } from '@mui/icons-material';
+import { ArrowBack, Assessment, ChevronRight, Download, PictureAsPdf, Search } from '@mui/icons-material';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
@@ -16,7 +16,7 @@ import useConsumoApi from '../../../hooks/useConsumoApi';
 import useSession from '../../../hooks/useSession';
 import { routes } from '../../../utils/Routes';
 import {
-  contextoReporte, crearHtmlImpresion, crearPeticionRecepcion, filasParaExportar,
+  contextoReporte, crearPeticionRecepcion, filasParaExportar,
   formatoFecha, formatoMoneda, normalizarRecepciones, sumarRecepciones, titulosReporte,
 } from './reporte';
 import type { ConsultaRecepcion, FilaRecepcion } from './reporte';
@@ -43,6 +43,7 @@ export default function ReporteRecepcionMercanciasPage() {
   const [mensaje, setMensaje] = useState('');
   const [pagina, setPagina] = useState(0);
   const [tamanoPagina, setTamanoPagina] = useState(20);
+  const [generandoPdf, setGenerandoPdf] = useState(false);
 
   const reporte = useQuery({
     queryKey: ['reporte-recepcion-mercancias', consulta],
@@ -164,17 +165,18 @@ export default function ReporteRecepcionMercanciasPage() {
     XLSX.writeFile(libro, `Recepcion_mercancias_${consulta.nivel}_${consulta.fechaInicial}_${consulta.fechaFinal}.xlsx`);
   };
 
-  const imprimir = () => {
+  const exportarPdf = async () => {
     if (!consulta || filas.length === 0) return;
-    const ventana = window.open('', '_blank', 'width=1100,height=800');
-    if (!ventana) {
-      setMensaje('Permite las ventanas emergentes para imprimir el reporte.');
-      return;
+    setGenerandoPdf(true);
+    setMensaje('');
+    try {
+      const { exportarPdfRecepciones } = await import('./exportarPdf');
+      await exportarPdfRecepciones(consulta, filas);
+    } catch (error) {
+      setMensaje(error instanceof Error ? `No fue posible generar el PDF: ${error.message}` : 'No fue posible generar el PDF.');
+    } finally {
+      setGenerandoPdf(false);
     }
-    ventana.onload = () => { ventana.focus(); ventana.print(); };
-    ventana.document.open();
-    ventana.document.write(crearHtmlImpresion(consulta, filas));
-    ventana.document.close();
   };
 
   return (
@@ -208,17 +210,27 @@ export default function ReporteRecepcionMercanciasPage() {
             />
           ))}
           <SucursalSelector
-            value={sucursal} label="Sucursal" defaultSucursalId={session?.sucursal}
-            disabled={todasSucursales || consultando}
+            value={todasSucursales ? null : sucursal} label="Sucursal" defaultSucursalId={session?.sucursal}
+            autoSelect={!todasSucursales}
+            disabled={consultando}
             onChange={(nueva) => {
               setSucursal(nueva);
-              if (!todasSucursales) { setProveedor(null); limpiarResultados(); }
+              setTodasSucursales(false);
+              setProveedor(null);
+              limpiarResultados();
             }}
           />
-          <ProveedorSelector
-            value={proveedor} disabled={todasSucursales || !sucursal || consultando}
-            onChange={(nuevo) => { setProveedor(nuevo); limpiarResultados(); }}
-          />
+          <Box>
+            <ProveedorSelector
+              value={proveedor} disabled={todasSucursales || !sucursal || consultando}
+              onChange={(nuevo) => { setProveedor(nuevo); limpiarResultados(); }}
+            />
+            {(todasSucursales || !sucursal) && (
+              <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'grey.700' }}>
+                Selecciona una sucursal para habilitar el proveedor.
+              </Typography>
+            )}
+          </Box>
         </Box>
         <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'stretch', sm: 'center' }} justifyContent="space-between" spacing={2} sx={{ mt: 2 }}>
           <Box>
@@ -229,7 +241,7 @@ export default function ReporteRecepcionMercanciasPage() {
               }} />}
             />
             <Typography variant="caption" display="block" color="text.secondary">
-              {todasSucursales ? 'Consulta el resumen de todas las sucursales.'
+              {todasSucursales ? 'Consulta todas las sucursales o selecciona una para ver sus proveedores.'
                 : proveedor ? 'Consulta los folios de la sucursal y el proveedor seleccionados.'
                   : 'Consulta los proveedores de la sucursal seleccionada.'}
             </Typography>
@@ -269,7 +281,9 @@ export default function ReporteRecepcionMercanciasPage() {
               <Button startIcon={<ArrowBack />} onClick={nivel === 'folios' ? volverProveedores : volverSucursales}>Volver</Button>
             )}
             <Button variant="outlined" startIcon={<Download />} onClick={exportar} disabled={filas.length === 0 || consultando}>Excel</Button>
-            <Button variant="outlined" startIcon={<Print />} onClick={imprimir} disabled={filas.length === 0 || consultando}>Imprimir</Button>
+            <Button variant="outlined" startIcon={generandoPdf ? <CircularProgress size={16} /> : <PictureAsPdf />} onClick={exportarPdf} disabled={filas.length === 0 || consultando || generandoPdf}>
+              {generandoPdf ? 'Generando PDF...' : 'Exportar PDF'}
+            </Button>
           </Stack>
         </Stack>
 
@@ -299,8 +313,13 @@ export default function ReporteRecepcionMercanciasPage() {
                       <TableCell align="right" sx={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{formatoMoneda(fila.total)}</TableCell>
                       {tieneDetalle && (
                         <TableCell align="right">
-                          <Button size="small" endIcon={<ChevronRight />} onClick={() => abrirDetalle(fila)} disabled={consultando}
-                            aria-label={`${nivel === 'sucursales' ? 'Ver proveedores de' : 'Ver folios de'} ${fila.nombre || fila.clave}`} sx={{ whiteSpace: 'nowrap' }}>
+                          <Button variant="contained" size="small" endIcon={<ChevronRight />} onClick={() => abrirDetalle(fila)} disabled={consultando}
+                            aria-label={`${nivel === 'sucursales' ? 'Ver proveedores de' : 'Ver folios de'} ${fila.nombre || fila.clave}`} sx={{
+                              whiteSpace: 'nowrap', minWidth: 150, px: 2, py: 0.75, fontWeight: 600,
+                              border: '1px solid', borderColor: 'primary.main', borderRadius: 1,
+                              '&.Mui-disabled': { borderColor: 'action.disabledBackground' },
+                              '&.Mui-focusVisible': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: 2 },
+                            }}>
                             {nivel === 'sucursales' ? 'Ver proveedores' : 'Ver folios'}
                           </Button>
                         </TableCell>

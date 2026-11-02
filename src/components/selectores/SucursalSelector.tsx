@@ -18,6 +18,7 @@ interface Props {
   value: SucursalOption | null;
   onChange: (value: SucursalOption) => void;
   defaultSucursalId?: number;
+  autoSelect?: boolean;
   label?: string;
   disabled?: boolean;
   sx?: SxProps<Theme>;
@@ -27,6 +28,7 @@ export default function SucursalSelector({
   value,
   onChange,
   defaultSucursalId,
+  autoSelect = true,
   label = "Sucursal destino",
   disabled,
   sx,
@@ -56,12 +58,12 @@ export default function SucursalSelector({
   });
 
   useEffect(() => {
-    if (value || sucursales.length === 0) return;
+    if (!autoSelect || value || sucursales.length === 0) return;
     const predeterminada =
       sucursales.find((sucursal) => sucursal.cve_sucursal === defaultSucursalId) ??
       sucursales[0];
     if (predeterminada) onChange(predeterminada);
-  }, [value, sucursales, defaultSucursalId, onChange]);
+  }, [autoSelect, value, sucursales, defaultSucursalId, onChange]);
 
   const opciones = useMemo(() => {
     if (!value) return sucursales;
@@ -72,9 +74,9 @@ export default function SucursalSelector({
   }, [sucursales, value]);
 
   return (
-    <Autocomplete<SucursalOption, false, true, false>
+    <Autocomplete<SucursalOption, false, boolean, false>
       options={opciones}
-      value={value ?? undefined}
+      value={value}
       onChange={(_, nueva) => {
         if (nueva) onChange(nueva);
       }}
