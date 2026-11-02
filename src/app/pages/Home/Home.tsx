@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styles from './Home.module.css';
-import SidebarHorizontal from '../../../components/SideBarHorizontal';
 import {
   ShoppingCart,
   Folder,
@@ -16,16 +15,16 @@ import {
   Slideshow,
   Receipt,
   Warehouse,
+  AccountBalance,
 } from '@mui/icons-material';
 import { routes } from '../../../utils/Routes';
-import useSession from '../../../hooks/useSession';
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
-  const session = useSession();
   const [showCatalogs, setShowCatalogs] = useState(false);
   const [showRRHH, setShowRRHH] = useState(false);
   const [showComercial, setShowComercial] = useState(false);
+  const [showAdministracionFinanzas, setShowAdministracionFinanzas] = useState(false);
 
   const mainActions = [
     { 
@@ -92,6 +91,14 @@ const Home: React.FC = () => {
       color: '#6f42c1', 
       action: () => setShowRRHH(!showRRHH) 
     },
+    {
+      id: 'administracionFinanzas',
+      title: 'Administración y Finanzas',
+      description: 'Gestión administrativa y financiera',
+      icon: AccountBalance,
+      color: '#126782',
+      action: () => setShowAdministracionFinanzas(!showAdministracionFinanzas),
+    },
     { 
       id: 'demoStepper', 
       title: 'DemoStepper', 
@@ -110,9 +117,7 @@ const Home: React.FC = () => {
     },
   ];
 
-  const visibleActions = mainActions.filter((action) =>{
-    return true
-  });
+  const visibleActions = mainActions;
 
   const comercialesItems = [
     //Proveedores
@@ -144,16 +149,15 @@ const Home: React.FC = () => {
   ];
 
   const administracionyfinanzasItems = [
-    //Sucursales
     { id: 'sucursales', title: 'Sucursales', path: routes.cat_Sucursales },
-    //Compradores
     { id: 'compradores', title: 'Compradores', path: routes.cat_Compradores },
-    //Medios de pago
     { id: 'mediosPago', title: 'Medios de Pago', path: routes.cat_Medios_Pago },
-    //Categorias de gastos
     { id: 'categoriasGastos', title: 'Categorías de Gastos', path: routes.cat_Categorias },
-    //Proveedores Admon
     { id: 'provAcreedores', title: 'Prov. Acreedores', path: routes.cat_Proveedores_Acreedores },
+  ];
+
+  const administracionFinanzasItems = [
+    { id: 'administracionErogaciones', title: 'Administración de Erogaciones', path: routes.administracionErogaciones },
   ];
 
   const RRHHItems = [
@@ -175,8 +179,6 @@ const Home: React.FC = () => {
     { id: 'nivelesEstudios', title: 'Niveles Estudios', path: routes.cat_niveles_estudios_rrhh },
     //Dias festivos
     { id: 'diasFestivos', title: 'Días Festivos', path: routes.cat_dias_festivos },
-    //Movimientos
-    { id: 'movimientos', title: 'Movimientos', path: routes.cat_nominas_movimientos },
     //Tipos de Movimientos
     { id: 'tiposMovimientos', title: 'Tipos Movimientos', path: routes.cat_tipos_movimientos },
     //Conceptos de Ajustes
@@ -257,13 +259,15 @@ const Home: React.FC = () => {
                     <h3>{action.title}</h3>
                     <p>{action.description}</p>
                   </div>
-                  {(action.id === 'catalogs' || action.id === 'rrhh' || action.id === 'comercial') && (
+                  {(action.id === 'catalogs' || action.id === 'rrhh' || action.id === 'comercial' || action.id === 'administracionFinanzas') && (
                     <span className={styles.expandIcon}>
                       {action.id === 'catalogs' 
                         ? (showCatalogs ? <KeyboardArrowDown /> : <KeyboardArrowRight />)
                         : action.id === 'rrhh'
                           ? (showRRHH ? <KeyboardArrowDown /> : <KeyboardArrowRight />)
-                          : (showComercial ? <KeyboardArrowDown /> : <KeyboardArrowRight />)
+                          : action.id === 'comercial'
+                            ? (showComercial ? <KeyboardArrowDown /> : <KeyboardArrowRight />)
+                            : (showAdministracionFinanzas ? <KeyboardArrowDown /> : <KeyboardArrowRight />)
                       }
                     </span>
                   )}
@@ -380,6 +384,29 @@ const Home: React.FC = () => {
                 </h3>
                 <div className={styles.catalogsGrid}>
                   {rrhhItems.map((catalog) => (
+                    <button
+                      key={catalog.id}
+                      className={styles.catalogCard}
+                      onClick={() => navigate(catalog.path)}
+                    >
+                      <Folder className={styles.catalogIcon} />
+                      <span>{catalog.title}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {showAdministracionFinanzas && (
+            <div className={styles.catalogsSection}>
+              <div className={styles.catalogSubsection}>
+                <h3 className={styles.subsectionTitle}>
+                  <AccountBalance className={styles.sectionIcon} />
+                  Administración
+                </h3>
+                <div className={styles.catalogsGrid}>
+                  {administracionFinanzasItems.map((catalog) => (
                     <button
                       key={catalog.id}
                       className={styles.catalogCard}

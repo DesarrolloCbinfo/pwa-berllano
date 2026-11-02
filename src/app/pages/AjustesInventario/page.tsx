@@ -297,7 +297,16 @@ export default function AjustesInventario() {
     () => tiposMovimiento.find((t) => t.tipo_movto === tipoMovimiento) || null,
     [tiposMovimiento, tipoMovimiento]
   );
-  const esMovimientoSalida = tipoMovimientoSeleccionado?.movto_salida ?? null;
+  const esMovimientoSalida = useMemo(() => {
+    if (!tipoMovimientoSeleccionado) return null;
+    const valor = tipoMovimientoSeleccionado.movto_salida as unknown;
+    return (
+      valor === true ||
+      valor === 1 ||
+      String(valor).trim().toLowerCase() === "true" ||
+      String(valor).trim() === "1"
+    );
+  }, [tipoMovimientoSeleccionado]);
 
   const total = useMemo(
     () =>
