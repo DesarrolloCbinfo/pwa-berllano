@@ -11,20 +11,20 @@ import {
   IconButton,
   Snackbar,
   Stack,
-  TextField,
   Typography,
 } from "@mui/material";
 import DoneAllIcon from "@mui/icons-material/DoneAllOutlined";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import SearchIcon from "@mui/icons-material/SearchOutlined";
-import {
-  keepPreviousData,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Swal from "sweetalert2";
+import { useAuth } from "../../../context/AuthContext";
 import useConsumoApi from "../../../hooks/useConsumoApi";
+import useSession from "../../../hooks/useSession";
+import ProveedorSelector from "../../../components/selectores/ProveedorSelector";
+import SucursalSelector from "../../../components/selectores/SucursalSelector";
+import type { ProveedorOption } from "../../../components/selectores/ProveedorSelector";
+import type { SucursalOption } from "../../../components/selectores/SucursalSelector";
 import CapturaPartidasTable from "../../../features/RecepcionMercanciaProveedor/components/CapturaPartidasTable";
 import EdicionPartidasTable from "../../../features/RecepcionMercanciaProveedor/components/EdicionPartidasTable";
 import EditarPartidaDialog from "../../../features/RecepcionMercanciaProveedor/components/EditarPartidaDialog";
@@ -42,8 +42,6 @@ import type {
   PedidosARecepcionarPaginado,
 } from "../../../features/RecepcionMercanciaProveedor/types/RecepcionMercanciaTypes";
 import { obtenerMensajeError } from "../../../features/RecepcionMercanciaProveedor/utils/errores";
-
-const SUCURSAL_DESTINO = 1;
 
 function formatoMoneda(valor: number) {
   return Number(valor || 0).toLocaleString("es-MX", {
@@ -74,10 +72,14 @@ interface Notificacion {
 
 export default function RecepcionMercanciaProveedorPage() {
   const { consumoApi } = useConsumoApi();
+  const { token } = useAuth();
+  const session = useSession();
   const qc = useQueryClient();
 
-  const [proveedorFiltro, setProveedorFiltro] = useState("");
-  const [proveedorAplicado, setProveedorAplicado] = useState("");
+  const [proveedorSeleccionado, setProveedorSeleccionado] =
+    useState<ProveedorOption | null>(null);
+  const [sucursalSeleccionada, setSucursalSeleccionada] =
+    useState<SucursalOption | null>(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [folioSeleccionado, setFolioSeleccionado] = useState<number | null>(null);
@@ -94,14 +96,26 @@ export default function RecepcionMercanciaProveedorPage() {
     message: "",
   });
 
+  const defaultSucursalId =
+    Number(session?.sucursal) || Number(token?.claveDepartamento) || 1;
+  const proveedorFiltroId = proveedorSeleccionado?.id ?? "";
+  const cveSucursal = sucursalSeleccionada?.cve_sucursal ?? 0;
+
   const pedidosQuery = useQuery<PedidosARecepcionarPaginado>({
-    queryKey: ["recepcion-pedidos", proveedorAplicado, pageNumber, pageSize],
+    queryKey: [
+      "recepcion-pedidos",
+      proveedorFiltroId,
+      cveSucursal,
+      pageNumber,
+      pageSize,
+    ],
     queryFn: async () => {
       const { data } = await consumoApi.get<
         PedidosARecepcionarPaginado | PedidoARecepcionar[]
       >(
         RecepcionMercanciaApis.pedidosARecepcionar(
-          proveedorAplicado,
+          proveedorFiltroId,
+          cveSucursal,
           pageNumber,
           pageSize
         )
@@ -133,31 +147,31 @@ export default function RecepcionMercanciaProveedorPage() {
           (lista.length > 0 ? Math.ceil(lista.length / pageSize) : 0),
       };
     },
-    placeholderData: keepPreviousData,
+    enabled: cveSucursal > 0,
   });
 
   const detalleQuery = useQuery<PedidoDetalle[]>({
-    queryKey: ["recepcion-pedido-detalle", folioSeleccionado],
+    queryKey: ["recepcion-pedido-detalle", folioSeleccionado, cveSucursal],
     queryFn: async () => {
-      if (folioSeleccionado == null) return [];
+      if (folioSeleccionado == null || cveSucursal <= 0) return [];
       const { data } = await consumoApi.get<PedidoDetalle[]>(
-        RecepcionMercanciaApis.pedidoDetalle(folioSeleccionado)
+        RecepcionMercanciaApis.pedidoDetalle(folioSeleccionado, cveSucursal)
       );
       return Array.isArray(data) ? data : [];
     },
-    enabled: folioSeleccionado != null,
+    enabled: folioSeleccionado != null && cveSucursal > 0,
   });
 
   const intermediaQuery = useQuery<PartidaIntermedia[]>({
-    queryKey: ["recepcion-intermedia", folioSeleccionado],
+    queryKey: ["recepcion-intermedia", folioSeleccionado, cveSucursal],
     queryFn: async () => {
-      if (folioSeleccionado == null) return [];
+      if (folioSeleccionado == null || cveSucursal <= 0) return [];
       const { data } = await consumoApi.get<PartidaIntermedia[]>(
-        RecepcionMercanciaApis.intermedia(folioSeleccionado)
+        RecepcionMercanciaApis.intermedia(folioSeleccionado, cveSucursal)
       );
       return Array.isArray(data) ? data : [];
     },
-    enabled: folioSeleccionado != null,
+    enabled: folioSeleccionado != null && cveSucursal > 0,
   });
 
   const pedidos = useMemo(
@@ -205,7 +219,7 @@ export default function RecepcionMercanciaProveedorPage() {
         message: data?.mensaje || "Partida eliminada correctamente.",
       });
       await qc.invalidateQueries({
-        queryKey: ["recepcion-intermedia", folioSeleccionado],
+        queryKey: ["recepcion-intermedia", folioSeleccionado, cveSucursal],
       });
     },
     onError: async (error) => {
@@ -215,7 +229,7 @@ export default function RecepcionMercanciaProveedorPage() {
         message: obtenerMensajeError(error, "No se pudo eliminar la partida"),
       });
       await qc.invalidateQueries({
-        queryKey: ["recepcion-intermedia", folioSeleccionado],
+        queryKey: ["recepcion-intermedia", folioSeleccionado, cveSucursal],
       });
     },
   });
@@ -227,7 +241,7 @@ export default function RecepcionMercanciaProveedorPage() {
       }
       const { data } = await consumoApi.put<FinalizarRecepcionResponse>(
         RecepcionMercanciaApis.finalizar,
-        { folio: folioSeleccionado }
+        { folio: folioSeleccionado, cve_sucursal: cveSucursal }
       );
       return data;
     },
@@ -241,7 +255,7 @@ export default function RecepcionMercanciaProveedorPage() {
       await qc.invalidateQueries({ queryKey: ["recepcion-pedidos"] });
       if (folioFinalizado != null) {
         await qc.invalidateQueries({
-          queryKey: ["recepcion-intermedia", folioFinalizado],
+          queryKey: ["recepcion-intermedia", folioFinalizado, cveSucursal],
         });
       }
 
@@ -263,29 +277,46 @@ export default function RecepcionMercanciaProveedorPage() {
         message: obtenerMensajeError(error, "No se pudo finalizar la recepción"),
       });
       await qc.invalidateQueries({
-        queryKey: ["recepcion-intermedia", folioSeleccionado],
+        queryKey: ["recepcion-intermedia", folioSeleccionado, cveSucursal],
       });
     },
   });
 
-  const handleBuscar = () => {
-    const nuevoFiltro = proveedorFiltro.trim();
-    if (nuevoFiltro !== proveedorAplicado) {
-      setFolioSeleccionado(null);
-      setPedidoSeleccionado(null);
-      setPartidaEditando(null);
+  const handleSucursalChange = (sucursal: SucursalOption) => {
+    if (sucursal.cve_sucursal === cveSucursal) {
+      setSucursalSeleccionada(sucursal);
+      return;
     }
-    setProveedorAplicado(nuevoFiltro);
-    setPageNumber(1);
-  };
-
-  const handleLimpiar = () => {
-    setProveedorFiltro("");
-    setProveedorAplicado("");
+    setSucursalSeleccionada(sucursal);
     setPageNumber(1);
     setFolioSeleccionado(null);
     setPedidoSeleccionado(null);
     setPartidaEditando(null);
+    setConfirmarFinalizar(false);
+  };
+
+  const handleProveedorChange = (proveedor: ProveedorOption | null) => {
+    const nuevoId = proveedor?.id ?? "";
+    if (nuevoId === proveedorFiltroId) {
+      setProveedorSeleccionado(proveedor);
+      return;
+    }
+    setProveedorSeleccionado(proveedor);
+    setPageNumber(1);
+    setFolioSeleccionado(null);
+    setPedidoSeleccionado(null);
+    setPartidaEditando(null);
+    setConfirmarFinalizar(false);
+  };
+
+  const handleLimpiarFiltro = () => {
+    if (!proveedorSeleccionado) return;
+    setProveedorSeleccionado(null);
+    setPageNumber(1);
+    setFolioSeleccionado(null);
+    setPedidoSeleccionado(null);
+    setPartidaEditando(null);
+    setConfirmarFinalizar(false);
   };
 
   const handleSeleccionar = (pedido: PedidoARecepcionar) => {
@@ -305,10 +336,10 @@ export default function RecepcionMercanciaProveedorPage() {
     cantidad: number,
     observaciones: string
   ) => {
-    if (folioSeleccionado == null) return false;
+    if (folioSeleccionado == null || cveSucursal <= 0) return false;
 
     const payload: AgregarPartidaPayload = {
-      sucursal_destino: SUCURSAL_DESTINO,
+      sucursal_destino: cveSucursal,
       folio: folioSeleccionado,
       clave_prod: item.clave_prod,
       descripcion: item.descripcion,
@@ -330,7 +361,7 @@ export default function RecepcionMercanciaProveedorPage() {
         message: data?.mensaje || "Partida agregada correctamente.",
       });
       await qc.invalidateQueries({
-        queryKey: ["recepcion-intermedia", folioSeleccionado],
+        queryKey: ["recepcion-intermedia", folioSeleccionado, cveSucursal],
       });
       return true;
     } catch (error) {
@@ -359,7 +390,7 @@ export default function RecepcionMercanciaProveedorPage() {
       });
       setPartidaEditando(null);
       await qc.invalidateQueries({
-        queryKey: ["recepcion-intermedia", folioSeleccionado],
+        queryKey: ["recepcion-intermedia", folioSeleccionado, cveSucursal],
       });
       return true;
     } catch (error) {
@@ -369,7 +400,7 @@ export default function RecepcionMercanciaProveedorPage() {
         message: obtenerMensajeError(error, "No se pudo actualizar la partida"),
       });
       await qc.invalidateQueries({
-        queryKey: ["recepcion-intermedia", folioSeleccionado],
+        queryKey: ["recepcion-intermedia", folioSeleccionado, cveSucursal],
       });
       return false;
     } finally {
@@ -399,7 +430,7 @@ export default function RecepcionMercanciaProveedorPage() {
 
   const refrescarIntermedia = () => {
     void qc.invalidateQueries({
-      queryKey: ["recepcion-intermedia", folioSeleccionado],
+      queryKey: ["recepcion-intermedia", folioSeleccionado, cveSucursal],
     });
   };
 
@@ -428,34 +459,32 @@ export default function RecepcionMercanciaProveedorPage() {
               spacing={1.5}
               alignItems={{ xs: "stretch", sm: "center" }}
             >
-              <TextField
-                label="Proveedor (opcional)"
-                value={proveedorFiltro}
-                onChange={(event) => setProveedorFiltro(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") handleBuscar();
-                }}
-                size="small"
-                sx={{ width: { xs: "100%", sm: 240 } }}
+              <SucursalSelector
+                value={sucursalSeleccionada}
+                onChange={handleSucursalChange}
+                defaultSucursalId={defaultSucursalId}
+                sx={{ width: { xs: "100%", sm: 260 } }}
+              />
+              <ProveedorSelector
+                value={proveedorSeleccionado}
+                onChange={handleProveedorChange}
+                sx={{ width: { xs: "100%", sm: 340 } }}
               />
               <Button
-                variant="contained"
-                startIcon={<SearchIcon />}
-                onClick={handleBuscar}
-                disabled={pedidosQuery.isFetching}
-                sx={{ textTransform: "none" }}
-              >
-                Buscar
-              </Button>
-              <Button
                 variant="text"
-                onClick={handleLimpiar}
-                disabled={pedidosQuery.isFetching}
+                onClick={handleLimpiarFiltro}
+                disabled={!proveedorSeleccionado || pedidosQuery.isFetching}
                 sx={{ textTransform: "none" }}
               >
-                Limpiar
+                Limpiar filtro
               </Button>
             </Stack>
+
+            {cveSucursal <= 0 && (
+              <Alert severity="info">
+                Selecciona una sucursal para consultar los pedidos pendientes.
+              </Alert>
+            )}
 
             {pedidosQuery.isError && (
               <Alert severity="error">
@@ -507,6 +536,14 @@ export default function RecepcionMercanciaProveedorPage() {
                     size="small"
                     variant="outlined"
                   />
+                  {sucursalSeleccionada && (
+                    <Chip
+                      label={`Sucursal: ${sucursalSeleccionada.nombre}`}
+                      size="small"
+                      variant="outlined"
+                      color="secondary"
+                    />
+                  )}
                 </Box>
 
                 {detalleQuery.isError && (

@@ -69,6 +69,7 @@ export interface OperacionPartidaResponse {
 export interface FinalizarRecepcionResponse {
   ok: boolean;
   folio: number;
+  cve_sucursal: number;
   estatus: string;
   mensaje: string;
 }
