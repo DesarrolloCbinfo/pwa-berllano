@@ -9,7 +9,7 @@ import {
 } from "@mui/material";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import Swal from "sweetalert2";
-import useConsumoApi from "../../../hooks/useConsumoApi";
+import useConsumoApiConteos from "../../../hooks/useConsumoApiConteos";
 import useSession from "../../../hooks/useSession";
 import { routes } from "../../../utils/Routes";
 import { ConteosApis } from "./apis/ConteosApis";
@@ -17,7 +17,7 @@ import { getSucursalConteo } from "./conteoSession";
 import { IProductoConteo } from "./interfaces/IProductoConteo";
 
 export default function RegistroConteo() {
-  const { consumoApi } = useConsumoApi();
+  const { consumoApi } = useConsumoApiConteos();
   const session = useSession();
   const navigate = useNavigate();
   const { idConteo } = useParams<{ idConteo: string }>();

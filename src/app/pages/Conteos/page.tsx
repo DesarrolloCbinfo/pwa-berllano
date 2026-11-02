@@ -19,7 +19,7 @@ import {
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
-import useConsumoApi from "../../../hooks/useConsumoApi";
+import useConsumoApiConteos from "../../../hooks/useConsumoApiConteos";
 import useSession from "../../../hooks/useSession";
 import { routes } from "../../../utils/Routes";
 import { ConteosApis } from "./apis/ConteosApis";
@@ -31,7 +31,7 @@ import {
 } from "./conteoSession";
 
 export default function ConteosPage() {
-  const { consumoApi } = useConsumoApi();
+  const { consumoApi } = useConsumoApiConteos();
   const session = useSession();
   const navigate = useNavigate();
 
