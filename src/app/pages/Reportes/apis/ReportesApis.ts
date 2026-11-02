@@ -23,4 +23,5 @@ export const ReportesApis = {
   puntosCliente: '/api/CatReportes/sp_reporte_puntos_cliente',
   ventasCfds: '/api/CatReportes/sp_reporte_ventas_cfds',
   ventasEstilista: '/api/CatReportes/sp_reporte_ventas_estilista',
+  ingresosFacturas: '/api/CatReportes/sp_reporteIngresosFacturas',
 };

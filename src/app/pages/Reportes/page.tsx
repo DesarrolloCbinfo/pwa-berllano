@@ -203,6 +203,7 @@ const filterDefinitions: FilterDefinition[] = [
 ];
 
 const knownReportFilters: Record<string, FilterName[]> = {
+  sp_reporteIngresosFacturas: ['fechaInicial', 'fechaFinal', 'sucursal'],
   RepVtaSucEstilista: ['fechaInicial', 'fechaFinal', 'sucursal', 'cliente', 'estilista'],
   RepVtaDetalle: ['fechaInicial', 'fechaFinal', 'sucursal', 'cliente', 'estilista'],
   RepVtaSucFecha: ['fechaInicial', 'fechaFinal', 'sucursal', 'cliente', 'estilista'],
@@ -1288,7 +1289,9 @@ export default function ReportesPage() {
                                   ? ReportesApis.ventasEstilista
                                   : selectedReport.metodoApi === 'sp_reporte_ventas_cfds'
                                     ? ReportesApis.ventasCfds
-                                    : null;
+                                    : selectedReport.metodoApi === 'sp_reporteIngresosFacturas'
+                                      ? ReportesApis.ingresosFacturas
+                                      : null;
 
     if (!reportEndpoint) {
       setReportRows([]);
@@ -1320,7 +1323,7 @@ export default function ReportesPage() {
       return;
     }
     if (
-      ['sp_reporte_inventario', 'sp_reporte_ajuste_inventario', 'sp_reporte_ventas_estilista'].includes(
+      ['sp_reporte_inventario', 'sp_reporte_ajuste_inventario', 'sp_reporte_ventas_estilista', 'sp_reporteIngresosFacturas'].includes(
         selectedReport.metodoApi,
       ) &&
       !filters.sucursal
@@ -1410,6 +1413,13 @@ export default function ReportesPage() {
               sucursal: filters.sucursal.trim() || '%',
             }
           : {}),
+      ...(selectedReport.metodoApi === 'sp_reporteIngresosFacturas'
+        ? {
+            f1: `${filters.fechaInicial}T00:00:00`,
+            f2: `${filters.fechaFinal}T00:00:00`,
+            suc: Number(filters.sucursal),
+          }
+        : {}),
     };
 
     try {
@@ -2070,7 +2080,8 @@ export default function ReportesPage() {
             <Typography variant="body2" color="text.secondary" textAlign="center">
               {selectedReport?.metodoApi === 'sp_reporte_medios_pagos' ||
               selectedReport?.metodoApi === 'sp_reporte_medios_pagos_folios' ||
-              selectedReport?.metodoApi === 'sp_reporte_inventario_compras'
+              selectedReport?.metodoApi === 'sp_reporte_inventario_compras' ||
+              selectedReport?.metodoApi === 'sp_reporteIngresosFacturas'
                 ? 'Selecciona los filtros y consulta el reporte para mostrar sus resultados.'
                 : 'Selecciona un reporte y sus filtros. La tabla se llenará al conectar la API específica del reporte.'}
             </Typography>

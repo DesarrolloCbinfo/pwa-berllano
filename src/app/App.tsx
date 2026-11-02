@@ -69,6 +69,8 @@ import CatPermisosDeptos from './pages/cat_PermisosDeptos/page';
 import ValidacionProductosServicios from './pages/Validacion_Productos_Servicios/page';
 import Inventario from './pages/Inventario/page';
 import Reportes from './pages/Reportes/page';
+import ReporteRecepcionMercancias from './pages/ReporteRecepcionMercancias/page';
+import ReporteRaz from './pages/ReporteRaz/page';
 import TraspasoMercancia from './pages/TraspasoMercancia/page';
 import RecepcionTraspasos from './pages/RecepcionTraspasos/page';
 import AjustesInventario from './pages/AjustesInventario/page';
@@ -154,6 +156,8 @@ function App() {
            <Route path='/facturacion' element={<Layout><Facturacion /></Layout>} />
            <Route path='/inventario' element={<Layout><Inventario /></Layout>} />
            <Route path='/reportes' element={<Layout><Reportes /></Layout>} />
+           <Route path='/reportes/recepcion-mercancias-sucursales' element={<Layout><ReporteRecepcionMercancias /></Layout>} />
+           <Route path='/reportes/raz' element={<Layout><ReporteRaz /></Layout>} />
            <Route path='/traspaso-mercancia' element={<Layout><TraspasoMercancia /></Layout>} />
            <Route path='/recepcion-traspasos' element={<Layout><RecepcionTraspasos /></Layout>} />
            <Route path='/ajustes-inventario' element={<Layout><AjustesInventario /></Layout>} />

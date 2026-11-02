@@ -25,6 +25,7 @@ const Home: React.FC = () => {
   const [showRRHH, setShowRRHH] = useState(false);
   const [showComercial, setShowComercial] = useState(false);
   const [showAdministracionFinanzas, setShowAdministracionFinanzas] = useState(false);
+  const [showReportes, setShowReportes] = useState(false);
 
   const mainActions = [
     { 
@@ -113,7 +114,7 @@ const Home: React.FC = () => {
       description: 'Consulta de reportes', 
       icon: Assessment, 
       color: '#7952b3', 
-      path: routes.reportes 
+      action: () => setShowReportes(!showReportes)
     },
   ];
 
@@ -158,6 +159,12 @@ const Home: React.FC = () => {
 
   const administracionFinanzasItems = [
     { id: 'administracionErogaciones', title: 'Administración de Erogaciones', path: routes.administracionErogaciones },
+  ];
+
+  const reportesItems = [
+    { id: 'consultaReportes', title: 'Consulta de reportes', path: routes.reportes },
+    { id: 'recepcionMercancias', title: 'Recepción de mercancías por sucursales', path: routes.reporteRecepcionMercancias },
+    { id: 'reporteRaz', title: 'Reporte Raz', path: routes.reporteRaz },
   ];
 
   const RRHHItems = [
@@ -253,13 +260,15 @@ const Home: React.FC = () => {
                   className={styles.actionCard}
                   style={{ backgroundColor: action.color }}
                   onClick={() => action.path ? navigate(action.path) : action.action?.()}
+                  aria-expanded={action.id === 'reportes' ? showReportes : undefined}
+                  aria-controls={action.id === 'reportes' ? 'submodulos-reportes' : undefined}
                 >
                   <Icon className={styles.actionIcon} />
                   <div className={styles.actionContent}>
                     <h3>{action.title}</h3>
                     <p>{action.description}</p>
                   </div>
-                  {(action.id === 'catalogs' || action.id === 'rrhh' || action.id === 'comercial' || action.id === 'administracionFinanzas') && (
+                  {(action.id === 'catalogs' || action.id === 'rrhh' || action.id === 'comercial' || action.id === 'administracionFinanzas' || action.id === 'reportes') && (
                     <span className={styles.expandIcon}>
                       {action.id === 'catalogs' 
                         ? (showCatalogs ? <KeyboardArrowDown /> : <KeyboardArrowRight />)
@@ -267,7 +276,9 @@ const Home: React.FC = () => {
                           ? (showRRHH ? <KeyboardArrowDown /> : <KeyboardArrowRight />)
                           : action.id === 'comercial'
                             ? (showComercial ? <KeyboardArrowDown /> : <KeyboardArrowRight />)
-                            : (showAdministracionFinanzas ? <KeyboardArrowDown /> : <KeyboardArrowRight />)
+                            : action.id === 'administracionFinanzas'
+                              ? (showAdministracionFinanzas ? <KeyboardArrowDown /> : <KeyboardArrowRight />)
+                              : (showReportes ? <KeyboardArrowDown /> : <KeyboardArrowRight />)
                       }
                     </span>
                   )}
@@ -414,6 +425,29 @@ const Home: React.FC = () => {
                     >
                       <Folder className={styles.catalogIcon} />
                       <span>{catalog.title}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {showReportes && (
+            <div id="submodulos-reportes" className={styles.catalogsSection}>
+              <div className={styles.catalogSubsection}>
+                <h3 className={styles.subsectionTitle}>
+                  <Assessment className={styles.sectionIcon} />
+                  Reportes
+                </h3>
+                <div className={styles.catalogsGrid}>
+                  {reportesItems.map((reporte) => (
+                    <button
+                      key={reporte.id}
+                      className={styles.catalogCard}
+                      onClick={() => navigate(reporte.path)}
+                    >
+                      <Assessment className={styles.catalogIcon} />
+                      <span>{reporte.title}</span>
                     </button>
                   ))}
                 </div>
