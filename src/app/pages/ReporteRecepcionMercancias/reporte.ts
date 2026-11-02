@@ -110,3 +110,40 @@ export function contextoReporte(consulta: ConsultaRecepcion) {
     ...(consulta.nivel === 'folios' ? [`Proveedor: ${consulta.proveedor.id} - ${consulta.proveedor.nombre}`] : []),
   ].join(' · ');
 }
+
+export function crearHtmlImpresion(consulta: ConsultaRecepcion, filas: FilaRecepcion[]) {
+  const escapar = (valor: unknown) => String(valor ?? '').replace(/[&<>"']/g, (caracter) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  })[caracter] ?? caracter);
+  const esFolios = consulta.nivel === 'folios';
+  const columnas = [
+    ...(esFolios ? ['Fecha', 'Folio'] : [consulta.nivel === 'sucursales' ? 'Sucursal' : 'Proveedor']),
+    'Subtotal', 'IVA', 'Total',
+  ];
+  const totales = sumarRecepciones(filas);
+  const renglones = filas.map((fila) => [
+    ...(esFolios ? [formatoFecha(fila.fecha), fila.clave] : [fila.nombre || fila.clave]),
+    formatoMoneda(fila.subtotal), formatoMoneda(fila.iva), formatoMoneda(fila.total),
+  ]);
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8">
+    <title>${escapar(titulosReporte[consulta.nivel])}</title>
+    <style>
+      @page { size: letter portrait; margin: 15mm 18mm; }
+      body { font: 9pt Arial, sans-serif; color: #111; }
+      h1 { font-size: 20pt; font-style: italic; border-bottom: 4px solid #111; padding-bottom: 5px; }
+      p { line-height: 1.6; }
+      table { width: 100%; border-collapse: collapse; margin-top: 18px; }
+      th, td { padding: 6px 4px; border-bottom: 1px solid #aaa; text-align: left; }
+      th { color: #004100; }
+      tr > :nth-last-child(-n+3) { text-align: right; white-space: nowrap; }
+      thead { display: table-header-group; } tr { break-inside: avoid; }
+      tfoot { display: table-row-group; font-weight: bold; }
+    </style></head><body>
+    <h1>${escapar(titulosReporte[consulta.nivel])}</h1>
+    <p>${escapar(contextoReporte(consulta))}</p>
+    <table><thead><tr>${columnas.map((columna) => `<th>${escapar(columna)}</th>`).join('')}</tr></thead>
+    <tbody>${renglones.map((fila) => `<tr>${fila.map((valor) => `<td>${escapar(valor)}</td>`).join('')}</tr>`).join('')}</tbody>
+    <tfoot><tr><td colspan="${esFolios ? 2 : 1}" style="text-align:right">Totales:</td>${Object.values(totales).map((valor) =>
+      `<td>${escapar(formatoMoneda(valor))}</td>`,
+    ).join('')}</tr></tfoot></table></body></html>`;
+}

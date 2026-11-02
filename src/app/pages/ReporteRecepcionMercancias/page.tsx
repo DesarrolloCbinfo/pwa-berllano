@@ -4,7 +4,7 @@ import {
   IconButton, Link, Paper, Stack, Table, TableBody, TableCell, TableContainer,
   TableFooter, TableHead, TablePagination, TableRow, TextField, Typography,
 } from '@mui/material';
-import { ArrowBack, Assessment, ChevronRight, Download, PictureAsPdf, Search } from '@mui/icons-material';
+import { ArrowBack, Assessment, ChevronRight, Download, PictureAsPdf, Print, Search } from '@mui/icons-material';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
@@ -16,7 +16,7 @@ import useConsumoApi from '../../../hooks/useConsumoApi';
 import useSession from '../../../hooks/useSession';
 import { routes } from '../../../utils/Routes';
 import {
-  contextoReporte, crearPeticionRecepcion, filasParaExportar,
+  contextoReporte, crearHtmlImpresion, crearPeticionRecepcion, filasParaExportar,
   formatoFecha, formatoMoneda, normalizarRecepciones, sumarRecepciones, titulosReporte,
 } from './reporte';
 import type { ConsultaRecepcion, FilaRecepcion } from './reporte';
@@ -165,6 +165,20 @@ export default function ReporteRecepcionMercanciasPage() {
     XLSX.writeFile(libro, `Recepcion_mercancias_${consulta.nivel}_${consulta.fechaInicial}_${consulta.fechaFinal}.xlsx`);
   };
 
+  const imprimir = () => {
+    if (!consulta || filas.length === 0) return;
+    const ventana = window.open('', '_blank', 'width=1100,height=800');
+    if (!ventana) {
+      setMensaje('Permite las ventanas emergentes para imprimir el reporte.');
+      return;
+    }
+    ventana.document.open();
+    ventana.document.write(crearHtmlImpresion(consulta, filas));
+    ventana.onload = () => { ventana.focus(); ventana.print(); };
+    ventana.onafterprint = () => ventana.close();
+    ventana.document.close();
+  };
+
   const exportarPdf = async () => {
     if (!consulta || filas.length === 0) return;
     setGenerandoPdf(true);
@@ -212,7 +226,7 @@ export default function ReporteRecepcionMercanciasPage() {
           <SucursalSelector
             value={todasSucursales ? null : sucursal} label="Sucursal" defaultSucursalId={session?.sucursal}
             autoSelect={!todasSucursales}
-            disabled={consultando}
+            disabled
             onChange={(nueva) => {
               setSucursal(nueva);
               setTodasSucursales(false);
@@ -222,14 +236,9 @@ export default function ReporteRecepcionMercanciasPage() {
           />
           <Box>
             <ProveedorSelector
-              value={proveedor} disabled={todasSucursales || !sucursal || consultando}
+              value={proveedor} disabled
               onChange={(nuevo) => { setProveedor(nuevo); limpiarResultados(); }}
             />
-            {(todasSucursales || !sucursal) && (
-              <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'grey.700' }}>
-                Selecciona una sucursal para habilitar el proveedor.
-              </Typography>
-            )}
           </Box>
         </Box>
         <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'stretch', sm: 'center' }} justifyContent="space-between" spacing={2} sx={{ mt: 2 }}>
@@ -241,7 +250,7 @@ export default function ReporteRecepcionMercanciasPage() {
               }} />}
             />
             <Typography variant="caption" display="block" color="text.secondary">
-              {todasSucursales ? 'Consulta todas las sucursales o selecciona una para ver sus proveedores.'
+              {todasSucursales ? 'Consulta todas las sucursales y abre sus proveedores desde la tabla.'
                 : proveedor ? 'Consulta los folios de la sucursal y el proveedor seleccionados.'
                   : 'Consulta los proveedores de la sucursal seleccionada.'}
             </Typography>
@@ -281,6 +290,7 @@ export default function ReporteRecepcionMercanciasPage() {
               <Button startIcon={<ArrowBack />} onClick={nivel === 'folios' ? volverProveedores : volverSucursales}>Volver</Button>
             )}
             <Button variant="outlined" startIcon={<Download />} onClick={exportar} disabled={filas.length === 0 || consultando}>Excel</Button>
+            <Button variant="outlined" startIcon={<Print />} onClick={imprimir} disabled={filas.length === 0 || consultando}>Imprimir</Button>
             <Button variant="outlined" startIcon={generandoPdf ? <CircularProgress size={16} /> : <PictureAsPdf />} onClick={exportarPdf} disabled={filas.length === 0 || consultando || generandoPdf}>
               {generandoPdf ? 'Generando PDF...' : 'Exportar PDF'}
             </Button>
