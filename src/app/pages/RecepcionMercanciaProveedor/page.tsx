@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Box,
@@ -7,12 +7,18 @@ import {
   CardContent,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
   IconButton,
   Snackbar,
   Stack,
+  TextField,
   Typography,
 } from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
 import DoneAllIcon from "@mui/icons-material/DoneAllOutlined";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import SearchIcon from "@mui/icons-material/SearchOutlined";
@@ -25,7 +31,7 @@ import ProveedorSelector from "../../../components/selectores/ProveedorSelector"
 import SucursalSelector from "../../../components/selectores/SucursalSelector";
 import type { ProveedorOption } from "../../../components/selectores/ProveedorSelector";
 import type { SucursalOption } from "../../../components/selectores/SucursalSelector";
-import CapturaPartidasTable from "../../../features/RecepcionMercanciaProveedor/components/CapturaPartidasTable";
+import CapturaEscaneo from "../../../features/RecepcionMercanciaProveedor/components/CapturaEscaneo";
 import EdicionPartidasTable from "../../../features/RecepcionMercanciaProveedor/components/EdicionPartidasTable";
 import EditarPartidaDialog from "../../../features/RecepcionMercanciaProveedor/components/EditarPartidaDialog";
 import FinalizarRecepcionDialog from "../../../features/RecepcionMercanciaProveedor/components/FinalizarRecepcionDialog";
@@ -34,21 +40,22 @@ import { RecepcionMercanciaApis } from "../../../features/RecepcionMercanciaProv
 import type {
   ActualizarPartidaPayload,
   AgregarPartidaPayload,
+  FinalizarRecepcionPayload,
   FinalizarRecepcionResponse,
   OperacionPartidaResponse,
+  PartidaCapturada,
   PartidaIntermedia,
   PedidoARecepcionar,
-  PedidoDetalle,
   PedidosARecepcionarPaginado,
+  RegistrarPartidaResponse,
+  ValidacionClaveResponse,
 } from "../../../features/RecepcionMercanciaProveedor/types/RecepcionMercanciaTypes";
-import { obtenerMensajeError } from "../../../features/RecepcionMercanciaProveedor/utils/errores";
-
-function formatoMoneda(valor: number) {
-  return Number(valor || 0).toLocaleString("es-MX", {
-    style: "currency",
-    currency: "MXN",
-  });
-}
+import {
+  esConflicto,
+  obtenerMensajeError,
+} from "../../../features/RecepcionMercanciaProveedor/utils/errores";
+import { colorEstatus } from "../../../features/RecepcionMercanciaProveedor/utils/estatus";
+import type { ResultadoAlta } from "../../../features/RecepcionMercanciaProveedor/components/CapturaEscaneo";
 
 function formatearFecha(valor: string) {
   if (!valor) return "-";
@@ -64,9 +71,14 @@ function formatearFecha(valor: string) {
   });
 }
 
+function normalizarFecha(valor: string) {
+  const texto = valor.trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(texto) ? texto : "";
+}
+
 interface Notificacion {
   open: boolean;
-  severity: "success" | "error";
+  severity: "success" | "warning" | "error";
   message: string;
 }
 
@@ -76,10 +88,30 @@ export default function RecepcionMercanciaProveedorPage() {
   const session = useSession();
   const qc = useQueryClient();
 
+  const sucursalSesionId =
+    Number(session?.sucursal) || Number(token?.claveDepartamento) || 0;
+
   const [proveedorSeleccionado, setProveedorSeleccionado] =
     useState<ProveedorOption | null>(null);
   const [sucursalSeleccionada, setSucursalSeleccionada] =
-    useState<SucursalOption | null>(null);
+    useState<SucursalOption | null>(() =>
+      sucursalSesionId > 0
+        ? {
+            cve_sucursal: sucursalSesionId,
+            nombre:
+              session?.dSucursal?.trim() || `Sucursal ${sucursalSesionId}`,
+          }
+        : null
+    );
+  const [folioFiltro, setFolioFiltro] = useState("");
+  const [fechaInicioFiltro, setFechaInicioFiltro] = useState("");
+  const [fechaFinFiltro, setFechaFinFiltro] = useState("");
+  const [proveedorAplicadoId, setProveedorAplicadoId] = useState("%");
+  const [folioAplicado, setFolioAplicado] = useState<number | undefined>(
+    undefined
+  );
+  const [fechaInicioAplicada, setFechaInicioAplicada] = useState("");
+  const [fechaFinAplicada, setFechaFinAplicada] = useState("");
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [folioSeleccionado, setFolioSeleccionado] = useState<number | null>(null);
@@ -96,16 +128,41 @@ export default function RecepcionMercanciaProveedorPage() {
     message: "",
   });
 
-  const defaultSucursalId =
-    Number(session?.sucursal) || Number(token?.claveDepartamento) || 1;
-  const proveedorFiltroId = proveedorSeleccionado?.id ?? "";
+  const sucursalPreviaRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (sucursalSesionId <= 0) {
+      setSucursalSeleccionada(null);
+      return;
+    }
+
+    const nombre =
+      session?.dSucursal?.trim() || `Sucursal ${sucursalSesionId}`;
+    setSucursalSeleccionada({ cve_sucursal: sucursalSesionId, nombre });
+
+    if (
+      sucursalPreviaRef.current !== null &&
+      sucursalPreviaRef.current !== sucursalSesionId
+    ) {
+      setPageNumber(1);
+      setFolioSeleccionado(null);
+      setPedidoSeleccionado(null);
+      setPartidaEditando(null);
+      setConfirmarFinalizar(false);
+    }
+    sucursalPreviaRef.current = sucursalSesionId;
+  }, [sucursalSesionId, session?.dSucursal]);
+
   const cveSucursal = sucursalSeleccionada?.cve_sucursal ?? 0;
 
   const pedidosQuery = useQuery<PedidosARecepcionarPaginado>({
     queryKey: [
       "recepcion-pedidos",
-      proveedorFiltroId,
+      proveedorAplicadoId,
       cveSucursal,
+      folioAplicado,
+      fechaInicioAplicada,
+      fechaFinAplicada,
       pageNumber,
       pageSize,
     ],
@@ -113,12 +170,15 @@ export default function RecepcionMercanciaProveedorPage() {
       const { data } = await consumoApi.get<
         PedidosARecepcionarPaginado | PedidoARecepcionar[]
       >(
-        RecepcionMercanciaApis.pedidosARecepcionar(
-          proveedorFiltroId,
+        RecepcionMercanciaApis.pedidosARecepcionar({
+          proveedor: proveedorAplicadoId,
           cveSucursal,
+          folio: folioAplicado,
+          fechaInicio: fechaInicioAplicada,
+          fechaFin: fechaFinAplicada,
           pageNumber,
-          pageSize
-        )
+          pageSize,
+        })
       );
 
       if (Array.isArray(data)) {
@@ -150,18 +210,6 @@ export default function RecepcionMercanciaProveedorPage() {
     enabled: cveSucursal > 0,
   });
 
-  const detalleQuery = useQuery<PedidoDetalle[]>({
-    queryKey: ["recepcion-pedido-detalle", folioSeleccionado, cveSucursal],
-    queryFn: async () => {
-      if (folioSeleccionado == null || cveSucursal <= 0) return [];
-      const { data } = await consumoApi.get<PedidoDetalle[]>(
-        RecepcionMercanciaApis.pedidoDetalle(folioSeleccionado, cveSucursal)
-      );
-      return Array.isArray(data) ? data : [];
-    },
-    enabled: folioSeleccionado != null && cveSucursal > 0,
-  });
-
   const intermediaQuery = useQuery<PartidaIntermedia[]>({
     queryKey: ["recepcion-intermedia", folioSeleccionado, cveSucursal],
     queryFn: async () => {
@@ -178,7 +226,6 @@ export default function RecepcionMercanciaProveedorPage() {
     () => pedidosQuery.data?.data ?? [],
     [pedidosQuery.data]
   );
-  const detalle = useMemo(() => detalleQuery.data ?? [], [detalleQuery.data]);
   const partidas = useMemo(() => intermediaQuery.data ?? [], [intermediaQuery.data]);
 
   const totalRegistros = pedidosQuery.data?.totalRegistros ?? 0;
@@ -192,16 +239,6 @@ export default function RecepcionMercanciaProveedorPage() {
 
   const totalPartidas = useMemo(
     () => partidas.reduce((total, partida) => total + Number(partida.cantidad || 0), 0),
-    [partidas]
-  );
-
-  const totalRecibido = useMemo(
-    () =>
-      partidas.reduce(
-        (total, partida) =>
-          total + Number(partida.cantidad || 0) * Number(partida.costo_pedido || 0),
-        0
-      ),
     [partidas]
   );
 
@@ -221,6 +258,7 @@ export default function RecepcionMercanciaProveedorPage() {
       await qc.invalidateQueries({
         queryKey: ["recepcion-intermedia", folioSeleccionado, cveSucursal],
       });
+      await qc.invalidateQueries({ queryKey: ["recepcion-pedidos"] });
     },
     onError: async (error) => {
       setNotif({
@@ -231,17 +269,22 @@ export default function RecepcionMercanciaProveedorPage() {
       await qc.invalidateQueries({
         queryKey: ["recepcion-intermedia", folioSeleccionado, cveSucursal],
       });
+      await qc.invalidateQueries({ queryKey: ["recepcion-pedidos"] });
     },
   });
 
   const finalizarMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (datos: FinalizarRecepcionPayload) => {
       if (folioSeleccionado == null) {
         throw new Error("No hay pedido seleccionado");
       }
       const { data } = await consumoApi.put<FinalizarRecepcionResponse>(
         RecepcionMercanciaApis.finalizar,
-        { folio: folioSeleccionado, cve_sucursal: cveSucursal }
+        {
+          folio: folioSeleccionado,
+          cve_sucursal: cveSucursal,
+          ...datos,
+        }
       );
       return data;
     },
@@ -270,7 +313,6 @@ export default function RecepcionMercanciaProveedorPage() {
       });
     },
     onError: async (error) => {
-      setConfirmarFinalizar(false);
       setNotif({
         open: true,
         severity: "error",
@@ -283,35 +325,54 @@ export default function RecepcionMercanciaProveedorPage() {
   });
 
   const handleSucursalChange = (sucursal: SucursalOption) => {
-    if (sucursal.cve_sucursal === cveSucursal) {
-      setSucursalSeleccionada(sucursal);
-      return;
-    }
+    if (sucursal.cve_sucursal !== sucursalSesionId) return;
     setSucursalSeleccionada(sucursal);
-    setPageNumber(1);
-    setFolioSeleccionado(null);
-    setPedidoSeleccionado(null);
-    setPartidaEditando(null);
-    setConfirmarFinalizar(false);
   };
 
   const handleProveedorChange = (proveedor: ProveedorOption | null) => {
-    const nuevoId = proveedor?.id ?? "";
-    if (nuevoId === proveedorFiltroId) {
-      setProveedorSeleccionado(proveedor);
-      return;
-    }
     setProveedorSeleccionado(proveedor);
-    setPageNumber(1);
-    setFolioSeleccionado(null);
-    setPedidoSeleccionado(null);
-    setPartidaEditando(null);
-    setConfirmarFinalizar(false);
   };
 
-  const handleLimpiarFiltro = () => {
-    if (!proveedorSeleccionado) return;
+  const handleLimpiarFiltros = () => {
     setProveedorSeleccionado(null);
+    setFolioFiltro("");
+    setFechaInicioFiltro("");
+    setFechaFinFiltro("");
+  };
+
+  const handleBuscar = () => {
+    const folioTexto = folioFiltro.trim();
+    let folioNumero: number | undefined;
+
+    if (folioTexto !== "") {
+      if (!/^\d+$/.test(folioTexto)) {
+        setNotif({
+          open: true,
+          severity: "error",
+          message: "El folio debe ser un número mayor o igual a 0.",
+        });
+        return;
+      }
+      const numero = Number(folioTexto);
+      if (numero > 0) folioNumero = numero;
+    }
+
+    const inicio = normalizarFecha(fechaInicioFiltro);
+    const fin = normalizarFecha(fechaFinFiltro);
+
+    if (inicio && fin && inicio > fin) {
+      setNotif({
+        open: true,
+        severity: "error",
+        message: "La fecha de inicio no puede ser mayor que la fecha fin.",
+      });
+      return;
+    }
+
+    setProveedorAplicadoId(proveedorSeleccionado?.id?.trim() || "%");
+    setFolioAplicado(folioNumero);
+    setFechaInicioAplicada(inicio);
+    setFechaFinAplicada(fin);
     setPageNumber(1);
     setFolioSeleccionado(null);
     setPedidoSeleccionado(null);
@@ -326,51 +387,76 @@ export default function RecepcionMercanciaProveedorPage() {
     setPartidaEditando(null);
   };
 
+  const handleCloseRecepcion = () => {
+    if (finalizarMutation.isPending) return;
+    setFolioSeleccionado(null);
+    setPedidoSeleccionado(null);
+    setPartidaEditando(null);
+    setConfirmarFinalizar(false);
+  };
+
   const handlePageSizeChange = (nuevoPageSize: number) => {
     setPageSize(nuevoPageSize);
     setPageNumber(1);
   };
 
+  const handleValidarClave = async (clave: string) => {
+    const { data } = await consumoApi.get<ValidacionClaveResponse>(
+      RecepcionMercanciaApis.validarClave(clave)
+    );
+    return data;
+  };
+
   const handleAgregarPartida = async (
-    item: PedidoDetalle,
-    cantidad: number,
-    observaciones: string
-  ) => {
-    if (folioSeleccionado == null || cveSucursal <= 0) return false;
+    partida: PartidaCapturada
+  ): Promise<ResultadoAlta> => {
+    if (folioSeleccionado == null || cveSucursal <= 0) return "error";
 
     const payload: AgregarPartidaPayload = {
       sucursal_destino: cveSucursal,
       folio: folioSeleccionado,
-      clave_prod: item.clave_prod,
-      descripcion: item.descripcion,
-      proveedor: item.proveedor || pedidoSeleccionado?.proveedor || "",
-      cantidad,
-      observaciones,
-      cantidad_pedido: item.cantidad_pedido,
-      costo_pedido: item.costo_pedido,
+      clave_prod: partida.clave_prod,
+      descripcion: partida.descripcion,
+      proveedor: pedidoSeleccionado?.clave_proveedor || "",
+      cantidad: partida.cantidad,
+      observaciones: partida.observaciones,
     };
 
     try {
-      const { data } = await consumoApi.post<OperacionPartidaResponse>(
+      const { data } = await consumoApi.post<RegistrarPartidaResponse>(
         RecepcionMercanciaApis.intermediaBase,
         payload
       );
       setNotif({
         open: true,
         severity: "success",
-        message: data?.mensaje || "Partida agregada correctamente.",
+        message: data?.mensaje || "Producto registrado exitosamente.",
       });
       await qc.invalidateQueries({
         queryKey: ["recepcion-intermedia", folioSeleccionado, cveSucursal],
       });
-      return true;
+      await qc.invalidateQueries({ queryKey: ["recepcion-pedidos"] });
+      return "ok";
     } catch (error) {
+      const duplicado = esConflicto(error);
       setNotif({
         open: true,
-        severity: "error",
-        message: obtenerMensajeError(error, "No se pudo agregar la partida"),
+        severity: duplicado ? "warning" : "error",
+        message: obtenerMensajeError(
+          error,
+          duplicado
+            ? "Ya se registró este producto."
+            : "No se pudo agregar la partida"
+        ),
       });
-      return false;
+      if (duplicado) {
+        await qc.invalidateQueries({
+          queryKey: ["recepcion-intermedia", folioSeleccionado, cveSucursal],
+        });
+        await qc.invalidateQueries({ queryKey: ["recepcion-pedidos"] });
+        return "duplicado";
+      }
+      return "error";
     }
   };
 
@@ -458,31 +544,86 @@ export default function RecepcionMercanciaProveedorPage() {
               direction={{ xs: "column", sm: "row" }}
               spacing={1.5}
               alignItems={{ xs: "stretch", sm: "center" }}
+              flexWrap="wrap"
+              useFlexGap
             >
               <SucursalSelector
                 value={sucursalSeleccionada}
                 onChange={handleSucursalChange}
-                defaultSucursalId={defaultSucursalId}
-                sx={{ width: { xs: "100%", sm: 260 } }}
+                label="Sucursal de la sesión"
+                disabled
+                autoSelect={false}
+                sx={{ width: { xs: "100%", sm: 240 } }}
               />
               <ProveedorSelector
                 value={proveedorSeleccionado}
                 onChange={handleProveedorChange}
-                sx={{ width: { xs: "100%", sm: 340 } }}
+                sx={{ width: { xs: "100%", sm: 320 } }}
+              />
+              <TextField
+                label="Folio"
+                type="number"
+                size="small"
+                value={folioFiltro}
+                onChange={(event) => setFolioFiltro(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") handleBuscar();
+                }}
+                inputProps={{ min: 0, step: 1 }}
+                sx={{ width: { xs: "100%", sm: 130 } }}
+              />
+              <TextField
+                label="Fecha inicio"
+                type="date"
+                size="small"
+                value={fechaInicioFiltro}
+                onChange={(event) => setFechaInicioFiltro(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") handleBuscar();
+                }}
+                InputLabelProps={{ shrink: true }}
+                sx={{ width: { xs: "100%", sm: 170 } }}
+              />
+              <TextField
+                label="Fecha fin"
+                type="date"
+                size="small"
+                value={fechaFinFiltro}
+                onChange={(event) => setFechaFinFiltro(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") handleBuscar();
+                }}
+                InputLabelProps={{ shrink: true }}
+                sx={{ width: { xs: "100%", sm: 170 } }}
               />
               <Button
-                variant="text"
-                onClick={handleLimpiarFiltro}
-                disabled={!proveedorSeleccionado || pedidosQuery.isFetching}
+                variant="contained"
+                startIcon={<SearchIcon />}
+                onClick={handleBuscar}
+                disabled={cveSucursal <= 0 || pedidosQuery.isFetching}
                 sx={{ textTransform: "none" }}
               >
-                Limpiar filtro
+                Buscar
+              </Button>
+              <Button
+                variant="text"
+                onClick={handleLimpiarFiltros}
+                disabled={
+                  !proveedorSeleccionado &&
+                  !folioFiltro &&
+                  !fechaInicioFiltro &&
+                  !fechaFinFiltro
+                }
+                title="Limpia los campos; presiona Buscar para actualizar el listado"
+                sx={{ textTransform: "none" }}
+              >
+                Limpiar campos
               </Button>
             </Stack>
 
             {cveSucursal <= 0 && (
-              <Alert severity="info">
-                Selecciona una sucursal para consultar los pedidos pendientes.
+              <Alert severity="error">
+                No se pudo determinar la sucursal de la sesión.
               </Alert>
             )}
 
@@ -511,22 +652,42 @@ export default function RecepcionMercanciaProveedorPage() {
       </Card>
 
       {folioSeleccionado != null && (
-        <>
-          <Card elevation={0} sx={{ border: "2px solid", borderColor: "divider" }}>
-            <CardContent>
-              <Stack spacing={2}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                    Pedido #{folioSeleccionado}
-                  </Typography>
+        <Dialog
+          open
+          onClose={handleCloseRecepcion}
+          fullWidth
+          maxWidth="lg"
+          scroll="paper"
+          disableEscapeKeyDown={finalizarMutation.isPending}
+        >
+          <DialogTitle sx={{ pb: 1 }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: 2,
+              }}
+            >
+              <Stack spacing={1}>
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                  Recepción pedido #{folioSeleccionado}
+                </Typography>
+                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
                   <Chip
-                    label={`Proveedor: ${pedidoSeleccionado?.proveedor ?? "N/A"}`}
+                    label={`Proveedor: ${
+                      pedidoSeleccionado?.nombre_proveedor ||
+                      pedidoSeleccionado?.clave_proveedor ||
+                      "N/A"
+                    }`}
                     size="small"
                     variant="outlined"
                   />
                   <Chip
                     label={`Usuario: ${
-                      pedidoSeleccionado?.usuarioRealizaPedido ?? "N/A"
+                      pedidoSeleccionado?.nombre_usuario ||
+                      pedidoSeleccionado?.clave_usuario ||
+                      "N/A"
                     }`}
                     size="small"
                     variant="outlined"
@@ -535,6 +696,15 @@ export default function RecepcionMercanciaProveedorPage() {
                     label={`Fecha: ${formatearFecha(pedidoSeleccionado?.fecha ?? "")}`}
                     size="small"
                     variant="outlined"
+                  />
+                  <Chip
+                    label={`Estatus: ${
+                      pedidoSeleccionado?.estatus || "Pendiente"
+                    }`}
+                    size="small"
+                    color={colorEstatus(
+                      pedidoSeleccionado?.estatus || "Pendiente"
+                    )}
                   />
                   {sucursalSeleccionada && (
                     <Chip
@@ -545,127 +715,139 @@ export default function RecepcionMercanciaProveedorPage() {
                     />
                   )}
                 </Box>
-
-                {detalleQuery.isError && (
-                  <Alert severity="error">
-                    {obtenerMensajeError(
-                      detalleQuery.error,
-                      "No se pudo cargar el detalle del pedido"
-                    )}
-                  </Alert>
-                )}
-
-                <CapturaPartidasTable
-                  folio={folioSeleccionado}
-                  detalle={detalle}
-                  cargando={detalleQuery.isLoading}
-                  onAgregar={handleAgregarPartida}
-                />
               </Stack>
-            </CardContent>
-          </Card>
+              <IconButton
+                aria-label="Cerrar recepción"
+                onClick={handleCloseRecepcion}
+                disabled={finalizarMutation.isPending}
+              >
+                <CloseIcon />
+              </IconButton>
+            </Box>
+          </DialogTitle>
 
-          <Card elevation={0} sx={{ border: "2px solid", borderColor: "divider" }}>
-            <CardContent>
-              <Stack spacing={2}>
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    gap: 2,
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <DoneAllIcon sx={{ color: "primary.main" }} />
-                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                      Partidas en edición
-                    </Typography>
-                    <Chip
-                      label={`${partidas.length} partidas`}
-                      size="small"
-                      color="primary"
+          <DialogContent dividers sx={{ bgcolor: "grey.50" }}>
+            <Stack spacing={3}>
+              <Card elevation={0} sx={{ border: "2px solid", borderColor: "divider" }}>
+                <CardContent>
+                  <Stack spacing={2}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <SearchIcon sx={{ color: "primary.main" }} />
+                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                        Capturar producto
+                      </Typography>
+                    </Box>
+                    <CapturaEscaneo
+                      folio={folioSeleccionado}
+                      onValidar={handleValidarClave}
+                      onAgregar={handleAgregarPartida}
                     />
-                  </Box>
-
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <IconButton
-                      onClick={refrescarIntermedia}
-                      disabled={intermediaQuery.isFetching}
-                      color="primary"
-                    >
-                      {intermediaQuery.isFetching ? (
-                        <CircularProgress size={20} />
-                      ) : (
-                        <RefreshIcon />
-                      )}
-                    </IconButton>
-                    <Button
-                      variant="contained"
-                      color="success"
-                      startIcon={<DoneAllIcon />}
-                      onClick={() => setConfirmarFinalizar(true)}
-                      disabled={
-                        partidas.length === 0 ||
-                        intermediaQuery.isLoading ||
-                        finalizarMutation.isPending
-                      }
-                      sx={{ textTransform: "none", fontWeight: 600 }}
-                    >
-                      Terminar recepción
-                    </Button>
                   </Stack>
-                </Box>
+                </CardContent>
+              </Card>
 
-                {intermediaQuery.isError && (
-                  <Alert severity="error">
-                    {obtenerMensajeError(
-                      intermediaQuery.error,
-                      "No se pudieron cargar las partidas en edición"
-                    )}
-                  </Alert>
-                )}
-
-                <EdicionPartidasTable
-                  partidas={partidas}
-                  cargando={intermediaQuery.isLoading}
-                  eliminandoId={
-                    eliminarMutation.isPending
-                      ? eliminarMutation.variables?.id ?? null
-                      : null
-                  }
-                  onEditar={setPartidaEditando}
-                  onEliminar={handleEliminarPartida}
-                />
-
-                <Divider />
-
-                <Stack direction={{ xs: "column", sm: "row" }} spacing={4}>
-                  <Box>
-                    <Typography variant="caption" color="text.secondary">
-                      Total piezas
-                    </Typography>
-                    <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                      {totalPartidas}
-                    </Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant="caption" color="text.secondary">
-                      Total recibido
-                    </Typography>
-                    <Typography
-                      variant="h5"
-                      sx={{ fontWeight: 700, color: "primary.main" }}
+              <Card elevation={0} sx={{ border: "2px solid", borderColor: "divider" }}>
+                <CardContent>
+                  <Stack spacing={2}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: 2,
+                        flexWrap: "wrap",
+                      }}
                     >
-                      {formatoMoneda(totalRecibido)}
-                    </Typography>
-                  </Box>
-                </Stack>
-              </Stack>
-            </CardContent>
-          </Card>
-        </>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                        <DoneAllIcon sx={{ color: "primary.main" }} />
+                        <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                          Partidas en edición
+                        </Typography>
+                        <Chip
+                          label={`${partidas.length} partidas`}
+                          size="small"
+                          color="primary"
+                        />
+                      </Box>
+
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <IconButton
+                          onClick={refrescarIntermedia}
+                          disabled={intermediaQuery.isFetching}
+                          color="primary"
+                        >
+                          {intermediaQuery.isFetching ? (
+                            <CircularProgress size={20} />
+                          ) : (
+                            <RefreshIcon />
+                          )}
+                        </IconButton>
+                        <Button
+                          variant="contained"
+                          color="success"
+                          startIcon={<DoneAllIcon />}
+                          onClick={() => setConfirmarFinalizar(true)}
+                          disabled={
+                            partidas.length === 0 ||
+                            intermediaQuery.isLoading ||
+                            finalizarMutation.isPending
+                          }
+                          sx={{ textTransform: "none", fontWeight: 600 }}
+                        >
+                          Terminar recepción
+                        </Button>
+                      </Stack>
+                    </Box>
+
+                    {intermediaQuery.isError && (
+                      <Alert severity="error">
+                        {obtenerMensajeError(
+                          intermediaQuery.error,
+                          "No se pudieron cargar las partidas en edición"
+                        )}
+                      </Alert>
+                    )}
+
+                    <EdicionPartidasTable
+                      partidas={partidas}
+                      cargando={intermediaQuery.isLoading}
+                      eliminandoId={
+                        eliminarMutation.isPending
+                          ? eliminarMutation.variables?.id ?? null
+                          : null
+                      }
+                      onEditar={setPartidaEditando}
+                      onEliminar={handleEliminarPartida}
+                    />
+
+                    <Divider />
+
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={4}>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary">
+                          Total piezas
+                        </Typography>
+                        <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                          {totalPartidas}
+                        </Typography>
+                      </Box>
+                    </Stack>
+                  </Stack>
+                </CardContent>
+              </Card>
+            </Stack>
+          </DialogContent>
+
+          <DialogActions>
+            <Button
+              onClick={handleCloseRecepcion}
+              disabled={finalizarMutation.isPending}
+              sx={{ textTransform: "none" }}
+            >
+              Cerrar
+            </Button>
+          </DialogActions>
+        </Dialog>
       )}
 
       <EditarPartidaDialog
@@ -683,7 +865,7 @@ export default function RecepcionMercanciaProveedorPage() {
         folio={folioSeleccionado}
         finalizando={finalizarMutation.isPending}
         onClose={() => setConfirmarFinalizar(false)}
-        onConfirmar={() => finalizarMutation.mutate()}
+        onConfirmar={(datos) => finalizarMutation.mutate(datos)}
       />
 
       <Snackbar

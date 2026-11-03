@@ -6,9 +6,16 @@ export function obtenerMensajeError(
 ): string {
   if (axios.isAxiosError(error)) {
     const data = error.response?.data as
-      | { mensaje?: string; detalle?: string }
+      | { mensaje?: string; mensaje2?: string; detalle?: string }
       | undefined;
-    return data?.mensaje || data?.detalle || error.message || mensajeDefault;
+
+    const mensaje = data?.mensaje?.trim();
+    const mensaje2 = data?.mensaje2?.trim();
+    if (mensaje || mensaje2) {
+      return [mensaje, mensaje2].filter(Boolean).join(". ");
+    }
+
+    return data?.detalle || error.message || mensajeDefault;
   }
 
   if (error instanceof Error) {
@@ -16,4 +23,8 @@ export function obtenerMensajeError(
   }
 
   return mensajeDefault;
+}
+
+export function esConflicto(error: unknown): boolean {
+  return axios.isAxiosError(error) && error.response?.status === 409;
 }

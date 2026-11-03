@@ -24,13 +24,6 @@ interface Props {
   onEliminar: (partida: PartidaIntermedia) => void;
 }
 
-function formatoMoneda(valor: number) {
-  return Number(valor || 0).toLocaleString("es-MX", {
-    style: "currency",
-    currency: "MXN",
-  });
-}
-
 export default function EdicionPartidasTable({
   partidas,
   cargando,
@@ -49,15 +42,7 @@ export default function EdicionPartidasTable({
             <TableCell align="right" sx={{ fontWeight: 600 }}>
               Cantidad
             </TableCell>
-            <TableCell align="right" sx={{ fontWeight: 600 }}>
-              Cant. admón.
-            </TableCell>
-            <TableCell align="right" sx={{ fontWeight: 600 }}>
-              Cant. pedido
-            </TableCell>
-            <TableCell align="right" sx={{ fontWeight: 600 }}>
-              Costo pedido
-            </TableCell>
+       
             <TableCell sx={{ fontWeight: 600 }}>Observaciones</TableCell>
             <TableCell sx={{ fontWeight: 600 }}>Estatus</TableCell>
           </TableRow>
@@ -65,7 +50,7 @@ export default function EdicionPartidasTable({
         <TableBody>
           {cargando && partidas.length === 0 && (
             <TableRow>
-              <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
+              <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
                 <CircularProgress size={24} />
               </TableCell>
             </TableRow>
@@ -73,7 +58,7 @@ export default function EdicionPartidasTable({
 
           {!cargando && partidas.length === 0 && (
             <TableRow>
-              <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
+              <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
                 <Typography variant="body2" color="text.secondary">
                   Aún no hay partidas capturadas para este pedido.
                 </Typography>
@@ -117,9 +102,7 @@ export default function EdicionPartidasTable({
               </TableCell>
               <TableCell sx={{ maxWidth: 260 }}>{partida.descripcion || "-"}</TableCell>
               <TableCell align="right">{partida.cantidad}</TableCell>
-              <TableCell align="right">{partida.cantidad_administracion}</TableCell>
-              <TableCell align="right">{partida.cantidad_pedido}</TableCell>
-              <TableCell align="right">{formatoMoneda(partida.costo_pedido)}</TableCell>
+              {/* <TableCell align="right">{partida.cantidad_administracion}</TableCell> */}
               <TableCell sx={{ maxWidth: 220 }}>
                 {partida.observaciones || "-"}
               </TableCell>

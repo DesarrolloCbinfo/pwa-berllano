@@ -1,8 +1,11 @@
 export interface PedidoARecepcionar {
   folio: number;
   fecha: string;
-  proveedor: string;
-  usuarioRealizaPedido: string;
+  clave_proveedor: string;
+  nombre_proveedor: string;
+  clave_usuario: string;
+  nombre_usuario: string;
+  estatus: string;
 }
 
 export interface PedidosARecepcionarPaginado {
@@ -17,8 +20,6 @@ export interface PedidoDetalle {
   folio: number;
   clave_prod: string;
   descripcion: string;
-  cantidad_pedido: number;
-  costo_pedido: number;
   proveedor: string;
   marca: string;
 }
@@ -33,8 +34,6 @@ export interface PartidaIntermedia {
   cantidad: number;
   cantidad_administracion: number;
   observaciones: string;
-  cantidad_pedido: number;
-  costo_pedido: number;
   estatus: string;
 }
 
@@ -46,8 +45,22 @@ export interface AgregarPartidaPayload {
   proveedor: string;
   cantidad: number;
   observaciones: string;
-  cantidad_pedido: number;
-  costo_pedido: number;
+}
+
+export interface PartidaCapturada {
+  clave_prod: string;
+  descripcion: string;
+  cantidad: number;
+  observaciones: string;
+}
+
+export interface ValidacionClaveResponse {
+  ok: boolean;
+  codigo: number;
+  clave_prod: string;
+  descripcion: string;
+  requiere_descripcion_manual: number;
+  mensaje: string;
 }
 
 export interface ActualizarPartidaPayload {
@@ -66,10 +79,28 @@ export interface OperacionPartidaResponse {
   mensaje: string;
 }
 
+export interface RegistrarPartidaResponse {
+  ok: boolean;
+  codigo: number;
+  folio: number;
+  sucursal_destino: number;
+  mensaje: string;
+  mensaje2?: string;
+}
+
+export interface FinalizarRecepcionPayload {
+  total_factura: number;
+  folio_docto: string;
+  fecha_factura: string;
+}
+
 export interface FinalizarRecepcionResponse {
   ok: boolean;
   folio: number;
   cve_sucursal: number;
+  total_factura: number;
+  folio_docto: string;
+  fecha_factura: string;
   estatus: string;
   mensaje: string;
 }

@@ -12,6 +12,7 @@ import {
   Typography,
 } from "@mui/material";
 import type { PedidoARecepcionar } from "../types/RecepcionMercanciaTypes";
+import { colorEstatus } from "../utils/estatus";
 
 interface Props {
   pedidos: PedidoARecepcionar[];
@@ -62,6 +63,7 @@ export default function PedidosPendientesTable({
             <TableCell sx={{ fontWeight: 600 }}>Fecha</TableCell>
             <TableCell sx={{ fontWeight: 600 }}>Proveedor</TableCell>
             <TableCell sx={{ fontWeight: 600 }}>Usuario</TableCell>
+            <TableCell sx={{ fontWeight: 600 }}>Estatus</TableCell>
             <TableCell align="right" sx={{ fontWeight: 600 }}>
               Acción
             </TableCell>
@@ -70,7 +72,7 @@ export default function PedidosPendientesTable({
         <TableBody>
           {cargando && pedidos.length === 0 && (
             <TableRow>
-              <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+              <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
                 <CircularProgress size={24} />
               </TableCell>
             </TableRow>
@@ -78,7 +80,7 @@ export default function PedidosPendientesTable({
 
           {!cargando && pedidos.length === 0 && (
             <TableRow>
-              <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+              <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
                 <Typography variant="body2" color="text.secondary">
                   No hay pedidos pendientes de recepción.
                 </Typography>
@@ -100,8 +102,33 @@ export default function PedidosPendientesTable({
                   <Chip label={`#${pedido.folio}`} size="small" variant="outlined" />
                 </TableCell>
                 <TableCell>{formatearFecha(pedido.fecha)}</TableCell>
-                <TableCell>{pedido.proveedor || "-"}</TableCell>
-                <TableCell>{pedido.usuarioRealizaPedido || "-"}</TableCell>
+                <TableCell sx={{ minWidth: 180 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {pedido.nombre_proveedor || pedido.clave_proveedor || "-"}
+                  </Typography>
+                  {pedido.clave_proveedor && (
+                    <Typography variant="caption" color="text.secondary">
+                      {pedido.clave_proveedor}
+                    </Typography>
+                  )}
+                </TableCell>
+                <TableCell sx={{ minWidth: 160 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {pedido.nombre_usuario || pedido.clave_usuario || "-"}
+                  </Typography>
+                  {pedido.clave_usuario && (
+                    <Typography variant="caption" color="text.secondary">
+                      {pedido.clave_usuario}
+                    </Typography>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Chip
+                    label={pedido.estatus || "Pendiente"}
+                    size="small"
+                    color={colorEstatus(pedido.estatus)}
+                  />
+                </TableCell>
                 <TableCell align="right">
                   <Button
                     size="small"
