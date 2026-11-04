@@ -9,3 +9,29 @@ export interface ISucursalConteo {
   cve_sucursal: number;
   nombre: string;
 }
+
+export interface IUsuarioConteo {
+  usuario: string;
+  nombre: string;
+}
+
+export interface IMarcaConteo {
+  id: number;
+  marca: string;
+}
+
+export interface IFamiliaConteo {
+  clave: number;
+  descripcion: string;
+  Seleccion: boolean;
+}
+
+export interface IConteoActivo {
+  idConteo: number;
+  fecha: string;
+  usuario: string;
+  sucursal: number;
+  usuarioAsignado: string;
+  estado: number;
+  descripcion: string;
+}

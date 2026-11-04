@@ -9,4 +9,16 @@ export const ConteosApis = {
   elimina: "/api/Conteos/sp_ConteosElimina",
   validaUsuario: (usuario: string, pass: string) =>
     `/api/Conteos/sp_validausuario?usuario=${encodeURIComponent(usuario)}&pass=${encodeURIComponent(pass)}`,
+
+  // Administracion de conteos (ex-formulario MP de Access)
+  usuarios: "/api/Conteos/usuarios",
+  marcas: "/api/Conteos/marcas",
+  familias: "/api/Conteos/familias",
+  familiasSeleccion: "/api/Conteos/familiasSeleccion",
+  transito: (suc: number) => `/api/Conteos/transito?suc=${suc}`,
+  inicializa: "/api/Conteos/inicializa",
+  sincro: "/api/Conteos/sincro",
+  activos: (suc: number) => `/api/Conteos/activos?suc=${suc}`,
+  cambiaUsuario: "/api/Conteos/cambiaUsuario",
+  eliminaConteo: "/api/Conteos/eliminaConteo",
 };

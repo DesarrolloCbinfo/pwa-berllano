@@ -85,4 +85,6 @@ export const routes = {
   conteos: "/conteos",
   conteoRegistro: (idConteo: number | string) => `/conteos/registro/${idConteo}`,
   conteoProductos: (idConteo: number | string) => `/conteos/productos/${idConteo}`,
+  conteoAdmin: "/conteos/admin",
+  conteoActivos: "/conteos/admin/activos",
 };
