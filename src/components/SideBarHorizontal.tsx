@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   AppBar,
@@ -46,12 +46,10 @@ const SidebarHorizontal = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  const [anchorCatalogos, setAnchorCatalogos] = useState<null | HTMLElement>(null);
   const [anchorModuloComercial, setAnchorModuloComercial] = useState<null | HTMLElement>(null);
   const [anchorPerfil, setAnchorPerfil] = useState<null | HTMLElement>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const openCatalogos = Boolean(anchorCatalogos);
   const openModuloComercial = Boolean(anchorModuloComercial);
   const openPerfil = Boolean(anchorPerfil);
 
@@ -164,6 +162,7 @@ const SidebarHorizontal = () => {
             <MenuItem onClick={() => { setAnchorModuloComercial(null); navigate(routes.carteleraDigital); }}>Cartelera Digital</MenuItem>
             <MenuItem onClick={() => { setAnchorModuloComercial(null); navigate(routes.facturacion); }}>Facturación</MenuItem>
             <MenuItem onClick={() => { setAnchorModuloComercial(null); navigate(routes.conteos); }}>Conteos</MenuItem>
+            <MenuItem onClick={() => { setAnchorModuloComercial(null); navigate(routes.conteoAdmin); }}>Administración Conteos</MenuItem>
         </Menu>
 
         {/* PERFIL - Oculto en móvil */}
@@ -324,6 +323,9 @@ const SidebarHorizontal = () => {
           </ListItemButton>
           <ListItemButton onClick={() => { navigate(routes.conteos); setDrawerOpen(false); }}>
             <ListItemText primary="Conteos" />
+          </ListItemButton>
+          <ListItemButton onClick={() => { navigate(routes.conteoAdmin); setDrawerOpen(false); }}>
+            <ListItemText primary="Administración Conteos" />
           </ListItemButton>
 
           <Divider sx={{ my: 1 }} />

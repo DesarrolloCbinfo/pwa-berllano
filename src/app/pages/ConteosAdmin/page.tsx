@@ -4,6 +4,10 @@ import {
   Button,
   Checkbox,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControl,
   InputLabel,
   MenuItem,
@@ -25,6 +29,7 @@ import useSession from "../../../hooks/useSession";
 import { routes } from "../../../utils/Routes";
 import { ConteosApis } from "../Conteos/apis/ConteosApis";
 import {
+  IConteoActivo,
   IFamiliaConteo,
   IMarcaConteo,
   ISucursalConteo,
@@ -52,29 +57,31 @@ export default function ConteosAdminPage() {
   const [familias, setFamilias] = useState<IFamiliaConteo[]>([]);
   const [familiasSel, setFamiliasSel] = useState<Set<number>>(new Set());
   const [descripcion, setDescripcion] = useState("");
+  const [descError, setDescError] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadingFamilias, setLoadingFamilias] = useState(false);
   const [procesando, setProcesando] = useState(false);
+
+  // Ajustar inventario (cierre de conteo -> sp_cierraConteos2026)
+  const [conteosActivos, setConteosActivos] = useState<IConteoActivo[]>([]);
+  const [conteoCerrarSel, setConteoCerrarSel] = useState<number | "">("");
+  const [abrirCierre, setAbrirCierre] = useState(false);
+  const [cerrando, setCerrando] = useState(false);
+  const [cargandoActivos, setCargandoActivos] = useState(false);
 
   useEffect(() => {
     const cargar = async () => {
       try {
-        const [resSuc, resUsr, resMar, resFam] = await Promise.all([
+        const [resSuc, resUsr, resMar] = await Promise.all([
           consumoApi.get(ConteosApis.sucursales),
           consumoApi.get(ConteosApis.usuarios),
           consumoApi.get(ConteosApis.marcas),
-          consumoApi.get(ConteosApis.familias),
         ]);
 
         const listaSuc: ISucursalConteo[] = resSuc.data ?? [];
         setSucursales(listaSuc);
         setUsuarios(resUsr.data ?? []);
         setMarcas(resMar.data ?? []);
-
-        const listaFam: IFamiliaConteo[] = resFam.data ?? [];
-        setFamilias(listaFam);
-        setFamiliasSel(
-          new Set(listaFam.filter((f) => f.Seleccion).map((f) => f.clave))
-        );
 
         const guardada = getSucursalConteo();
         if (guardada && listaSuc.some((s) => s.cve_sucursal === guardada.id)) {
@@ -103,6 +110,40 @@ export default function ConteosAdminPage() {
 
     cargar();
   }, []);
+
+  // Al seleccionar la marca se despliegan sus familias (aux_marca_AfterUpdate)
+  useEffect(() => {
+    if (!marcaSel || !sucursalSel) {
+      setFamilias([]);
+      setFamiliasSel(new Set());
+      return;
+    }
+
+    const cargarFamilias = async () => {
+      setLoadingFamilias(true);
+      try {
+        const res = await consumoApi.get(
+          ConteosApis.familias(marcaSel, sucursalSel.id)
+        );
+        const lista: IFamiliaConteo[] = res.data ?? [];
+        setFamilias(lista);
+        setFamiliasSel(
+          new Set(lista.filter((f) => f.Seleccion).map((f) => f.clave))
+        );
+      } catch (error) {
+        console.error("Error al cargar las familias:", error);
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: "No se pudieron cargar las familias de la marca",
+        });
+      } finally {
+        setLoadingFamilias(false);
+      }
+    };
+
+    cargarFamilias();
+  }, [marcaSel, sucursalSel?.id]);
 
   const handleSucursalChange = (value: number) => {
     const suc = sucursales.find((s) => s.cve_sucursal === value);
@@ -136,12 +177,9 @@ export default function ConteosAdminPage() {
 
   const marcaTexto = marcas.find((m) => m.id === marcaSel)?.marca ?? "";
 
-  // Persiste la seleccion en aux_familias (la usan sincro e inicializa)
-  const sincronizarSeleccion = async () => {
-    await consumoApi.post(ConteosApis.familiasSeleccion, {
-      claves: [...familiasSel],
-    });
-  };
+  // La seleccion de familias vive solo en el cliente: se envia como
+  // TVP a los SPs, sin escribir en aux_familias (uso concurrente)
+  const familiasClaves = () => [...familiasSel];
 
   const validarBase = (requiereMarca: boolean) => {
     if (!sucursalSel) {
@@ -155,33 +193,6 @@ export default function ConteosAdminPage() {
     return true;
   };
 
-  const iniciarSincro = async () => {
-    if (procesando || !validarBase(true)) return;
-
-    setProcesando(true);
-    try {
-      await sincronizarSeleccion();
-      await consumoApi.post(ConteosApis.sincro, {
-        sucursal: sucursalSel!.id,
-        marca: marcaTexto,
-        usuario: usuarioSel || session?.claveEmpleado || "admin",
-      });
-      Swal.fire({
-        icon: "success",
-        title: "Sincronizacion completada",
-      });
-    } catch (error) {
-      console.error("Error al iniciar la sincronizacion:", error);
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "No se pudo iniciar la sincronizacion",
-      });
-    } finally {
-      setProcesando(false);
-    }
-  };
-
   const inicializarProceso = async () => {
     if (procesando || !validarBase(true)) return;
 
@@ -192,7 +203,15 @@ export default function ConteosAdminPage() {
 
     setProcesando(true);
     try {
-      await sincronizarSeleccion();
+      if (!descripcion.trim()) {
+        setDescError(true);
+        Swal.fire({
+          icon: "warning",
+          title: "Falta la descripcion",
+          text: "Escriba una breve descripcion del conteo.",
+        });
+        return;
+      }
 
       // Misma validacion que el Access: traspasos en transito bloquean el proceso
       const resTx = await consumoApi.get(ConteosApis.transito(sucursalSel!.id));
@@ -222,6 +241,7 @@ export default function ConteosAdminPage() {
         descripcion,
         marca: marcaTexto,
         usuario: session?.claveEmpleado || "admin",
+        familias: familiasClaves(),
       });
 
       Swal.fire({
@@ -238,6 +258,83 @@ export default function ConteosAdminPage() {
       });
     } finally {
       setProcesando(false);
+    }
+  };
+
+  // AJUSTAR INVENTARIO: cierra el conteo seleccionado (sp_cierraConteos2026)
+  const ajustarInventario = async () => {
+    if (!sucursalSel) {
+      Swal.fire({ icon: "warning", title: "Falta la sucursal" });
+      return;
+    }
+
+    setCargandoActivos(true);
+    try {
+      const res = await consumoApi.get(ConteosApis.activos(sucursalSel.id));
+      const lista: IConteoActivo[] = res.data ?? [];
+      if (lista.length === 0) {
+        Swal.fire({
+          icon: "info",
+          title: "Ajustar Inventario",
+          text: "No hay conteos activos en la sucursal",
+        });
+        return;
+      }
+      setConteosActivos(lista);
+      setConteoCerrarSel(lista.length === 1 ? lista[0].idConteo : "");
+      setAbrirCierre(true);
+    } catch (error) {
+      console.error("Error al cargar los conteos activos:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudieron cargar los conteos activos",
+      });
+    } finally {
+      setCargandoActivos(false);
+    }
+  };
+
+  const confirmarCierre = async () => {
+    if (!conteoCerrarSel) {
+      Swal.fire({ icon: "warning", title: "Seleccione un conteo" });
+      return;
+    }
+
+    const confirma = await Swal.fire({
+      icon: "question",
+      title: "Ajustar Inventario",
+      text: `Se cerrara el conteo #${conteoCerrarSel} y se aplicaran las diferencias al inventario. Desea continuar?`,
+      showCancelButton: true,
+      confirmButtonText: "Si",
+      cancelButtonText: "No",
+    });
+    if (!confirma.isConfirmed) return;
+
+    setCerrando(true);
+    try {
+      await consumoApi.post(ConteosApis.cierraConteo, {
+        idConteo: conteoCerrarSel,
+      });
+      Swal.fire({
+        icon: "success",
+        title: "Ajustar Inventario",
+        text: "Cierre exitoso",
+      });
+      setAbrirCierre(false);
+      setConteosActivos((prev) =>
+        prev.filter((c) => c.idConteo !== conteoCerrarSel)
+      );
+      setConteoCerrarSel("");
+    } catch (error) {
+      console.error("Error al cerrar el conteo:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudo cerrar el conteo",
+      });
+    } finally {
+      setCerrando(false);
     }
   };
 
@@ -362,11 +459,19 @@ export default function ConteosAdminPage() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {familias.length === 0 ? (
+                  {loadingFamilias ? (
+                    <TableRow>
+                      <TableCell colSpan={3} align="center">
+                        <CircularProgress size={20} />
+                      </TableCell>
+                    </TableRow>
+                  ) : familias.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={3} align="center">
                         <Typography variant="body2" color="textSecondary">
-                          Sin familias para mostrar
+                          {marcaSel
+                            ? "Sin familias para mostrar"
+                            : "Seleccione una marca"}
                         </Typography>
                       </TableCell>
                     </TableRow>
@@ -410,19 +515,17 @@ export default function ConteosAdminPage() {
               <TextField
                 label="Descripción"
                 size="small"
+                required
                 value={descripcion}
-                onChange={(e) => setDescripcion(e.target.value)}
+                onChange={(e) => {
+                  setDescripcion(e.target.value);
+                  if (e.target.value.trim()) setDescError(false);
+                }}
+                error={descError}
+                helperText={descError ? "La descripción es obligatoria" : ""}
                 fullWidth
               />
 
-              <Button
-                variant="outlined"
-                fullWidth
-                disabled={procesando}
-                onClick={iniciarSincro}
-              >
-                Iniciar Sincro
-              </Button>
               <Button
                 variant="contained"
                 fullWidth
@@ -452,16 +555,65 @@ export default function ConteosAdminPage() {
                 gap: 2,
               }}
             >
-              <Button variant="outlined" fullWidth>
+              <Button
+                variant="outlined"
+                fullWidth
+                disabled={cargandoActivos}
+                onClick={ajustarInventario}
+              >
                 Ajustar Inventario
               </Button>
+              {/* Boton oculto por ahora: Ver Reportes de Conteos
               <Button variant="outlined" fullWidth>
                 Ver Reportes de Conteos
               </Button>
+              */}
             </Paper>
           </Box>
         </Box>
       )}
+
+      <Dialog
+        open={abrirCierre}
+        onClose={() => setAbrirCierre(false)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>Ajustar Inventario</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            Seleccione el conteo a cerrar. Se aplicaran las diferencias al
+            inventario.
+          </Typography>
+          <FormControl size="small" fullWidth>
+            <InputLabel id="cierre-conteo-label">Conteo</InputLabel>
+            <Select
+              labelId="cierre-conteo-label"
+              label="Conteo"
+              value={conteoCerrarSel}
+              onChange={(e) => setConteoCerrarSel(Number(e.target.value))}
+            >
+              {conteosActivos.map((c) => (
+                <MenuItem key={c.idConteo} value={c.idConteo}>
+                  #{c.idConteo} - {c.descripcion}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAbrirCierre(false)} disabled={cerrando}>
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            onClick={confirmarCierre}
+            disabled={cerrando || !conteoCerrarSel}
+          >
+            {cerrando ? <CircularProgress size={20} /> : "Ajustar"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

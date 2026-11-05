@@ -14,10 +14,12 @@ import {
   TableHead,
   TableRow,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
-import useConsumoApiConteos from "../../../hooks/useConsumoApiConteos";
+import useConsumoApi from "../../../hooks/useConsumoApi";
 import useSession from "../../../hooks/useSession";
 import { routes } from "../../../utils/Routes";
 import { ConteosApis } from "../Conteos/apis/ConteosApis";
@@ -28,9 +30,11 @@ import {
 } from "../Conteos/interfaces/IConteo";
 
 export default function ConteosActivos() {
-  const { consumoApi } = useConsumoApiConteos();
+  const { consumoApi } = useConsumoApi();
   const session = useSession();
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const [conteos, setConteos] = useState<IConteoActivo[]>([]);
   const [usuarios, setUsuarios] = useState<IUsuarioConteo[]>([]);
@@ -124,14 +128,14 @@ export default function ConteosActivos() {
   };
 
   return (
-    <Box sx={{ p: 4, minHeight: "calc(100vh - 64px)" }}>
+    <Box sx={{ p: { xs: 2, md: 4 }, minHeight: "calc(100vh - 64px)" }}>
       <Typography
         sx={{
           textAlign: "center",
           mb: 1,
           fontFamily: 'Georgia, "Times New Roman", serif',
           fontWeight: 700,
-          fontSize: "1.75rem",
+          fontSize: { xs: "1.3rem", md: "1.75rem" },
           color: "#111",
         }}
       >
@@ -152,8 +156,77 @@ export default function ConteosActivos() {
         <Alert severity="info" sx={{ maxWidth: 600, mx: "auto" }}>
           No hay conteos activos en la sucursal
         </Alert>
+      ) : isMobile ? (
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 2,
+            maxWidth: 600,
+            mx: "auto",
+          }}
+        >
+          {conteos.map((c) => (
+            <Paper key={c.idConteo} variant="outlined" sx={{ p: 2 }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "baseline",
+                  gap: 1,
+                }}
+              >
+                <Typography sx={{ fontWeight: "bold" }}>
+                  Conteo #{c.idConteo}
+                </Typography>
+                <Typography variant="body2" color="textSecondary">
+                  {formatFecha(c.fecha)}
+                </Typography>
+              </Box>
+              <Typography variant="body2" sx={{ mt: 0.5 }}>
+                {c.descripcion}
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                <b>Usuario:</b> {c.usuario}
+              </Typography>
+              <Select
+                size="small"
+                fullWidth
+                sx={{ mt: 1 }}
+                value={c.usuarioAsignado ?? ""}
+                disabled={guardandoId === c.idConteo}
+                onChange={(e) => cambiarUsuario(c.idConteo, e.target.value)}
+              >
+                {usuarios.map((u) => (
+                  <MenuItem key={u.usuario} value={u.usuario}>
+                    {u.nombre}
+                  </MenuItem>
+                ))}
+                {c.usuarioAsignado &&
+                  !usuarios.some((u) => u.usuario === c.usuarioAsignado) && (
+                    <MenuItem value={c.usuarioAsignado}>
+                      {c.usuarioAsignado}
+                    </MenuItem>
+                  )}
+              </Select>
+              <Button
+                variant="outlined"
+                size="small"
+                color="error"
+                fullWidth
+                sx={{ mt: 1.5 }}
+                onClick={() => eliminarConteo(c)}
+              >
+                Eliminar
+              </Button>
+            </Paper>
+          ))}
+        </Box>
       ) : (
-        <TableContainer component={Paper} sx={{ maxWidth: 1100, mx: "auto" }}>
+        <TableContainer
+          component={Paper}
+          sx={{ maxWidth: 1100, mx: "auto", overflowX: "auto" }}
+        >
           <Table>
             <TableHead>
               <TableRow sx={{ backgroundColor: "#212121" }}>

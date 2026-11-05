@@ -24,6 +24,7 @@ export interface IFamiliaConteo {
   clave: number;
   descripcion: string;
   Seleccion: boolean;
+  cta: number;
 }
 
 export interface IConteoActivo {

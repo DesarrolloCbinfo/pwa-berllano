@@ -125,14 +125,14 @@ export default function ConteosPage() {
   };
 
   return (
-    <Box sx={{ p: 4, minHeight: "calc(100vh - 64px)" }}>
+    <Box sx={{ p: { xs: 2, md: 4 }, minHeight: "calc(100vh - 64px)" }}>
       <Typography
         sx={{
           textAlign: "center",
           mb: 1,
           fontFamily: 'Georgia, "Times New Roman", serif',
           fontWeight: 700,
-          fontSize: "1.75rem",
+          fontSize: { xs: "1.3rem", md: "1.75rem" },
           color: "#111",
         }}
       >
@@ -152,7 +152,7 @@ export default function ConteosPage() {
         <Typography variant="body2">
           <b>Usuario:</b> {session?.nombre}
         </Typography>
-        <FormControl size="small" sx={{ minWidth: 220 }}>
+        <FormControl size="small" sx={{ minWidth: { xs: "100%", sm: 220 } }}>
           <InputLabel id="sucursal-conteo-label">Sucursal</InputLabel>
           <Select
             labelId="sucursal-conteo-label"
@@ -182,7 +182,10 @@ export default function ConteosPage() {
           No hay conteos abiertos en la sucursal seleccionada
         </Alert>
       ) : (
-        <TableContainer component={Paper} sx={{ maxWidth: 900, mx: "auto" }}>
+        <TableContainer
+          component={Paper}
+          sx={{ maxWidth: 900, mx: "auto", overflowX: "auto" }}
+        >
           <Table>
             <TableHead>
               <TableRow sx={{ backgroundColor: "#212121" }}>

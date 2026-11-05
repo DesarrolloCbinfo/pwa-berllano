@@ -159,12 +159,18 @@ export default function RegistroConteo() {
   }
 
   return (
-    <Box sx={{ p: 4, minHeight: "calc(100vh - 64px)", textAlign: "center" }}>
+    <Box
+      sx={{
+        p: { xs: 2, md: 4 },
+        minHeight: "calc(100vh - 64px)",
+        textAlign: "center",
+      }}
+    >
       <Typography
         sx={{
           fontFamily: 'Georgia, "Times New Roman", serif',
           fontWeight: 700,
-          fontSize: "1.75rem",
+          fontSize: { xs: "1.3rem", md: "1.75rem" },
           color: "#111",
         }}
       >
@@ -187,7 +193,8 @@ export default function RegistroConteo() {
           registrarConteo();
         }}
         sx={{
-          width: 350,
+          width: { xs: "100%", sm: 350 },
+          maxWidth: 350,
           mx: "auto",
           mt: 4,
           p: 3,
@@ -235,7 +242,7 @@ export default function RegistroConteo() {
           type="submit"
           variant="contained"
           disabled={registrando}
-          sx={{ width: 200, mx: "auto" }}
+          sx={{ width: { xs: "100%", sm: 200 }, mx: "auto" }}
         >
           {registrando ? "Registrando..." : "Registrar Conteo"}
         </Button>
@@ -253,14 +260,18 @@ export default function RegistroConteo() {
         <Button
           variant="contained"
           color="secondary"
-          sx={{ width: 250 }}
+          sx={{ width: { xs: "100%", sm: 250 } }}
           onClick={() => navigate(routes.conteoProductos(id))}
         >
           Lista de productos
         </Button>
         <Button
           variant="contained"
-          sx={{ width: 250, backgroundColor: "green", "&:hover": { backgroundColor: "#006400" } }}
+          sx={{
+            width: { xs: "100%", sm: 250 },
+            backgroundColor: "green",
+            "&:hover": { backgroundColor: "#006400" },
+          }}
           onClick={() => navigate(routes.conteos)}
         >
           Regresar a lista de conteos
