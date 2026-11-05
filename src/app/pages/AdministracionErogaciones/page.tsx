@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Autocomplete,
   Box,
   Button,
   Card,
@@ -33,6 +34,8 @@ import { useAuth } from "../../../context/AuthContext";
 type CuentaRetiro = {
   Cuenta: string;
   Descripcion: string;
+  Banco: string;
+  NoCuenta: string;
   Cia: string | number;
 };
 
@@ -43,6 +46,11 @@ type SucursalOption = {
 
 type ProveedorAdmonOption = {
   nombre: string;
+};
+
+type BeneficiarioPago = {
+  nombre: string;
+  clave: string;
 };
 
 type CategoriaErogacionOption = {
@@ -99,6 +107,17 @@ const moneda = (value: number) =>
     minimumFractionDigits: 2,
   });
 
+const numeroConComas = (value: number) =>
+  Number(value || 0).toLocaleString("es-MX", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+const redondear2 = (value: number) =>
+  Math.round((Number(value) || 0) * 100) / 100;
+
+const TASA_IVA_DEFAULT = 0.16;
+
 let consecutivoFila = 0;
 
 const filaVacia = (id?: number): ErogacionRow => ({
@@ -142,12 +161,43 @@ export default function AdministracionErogaciones() {
   const [cargandoSubsubcategoria, setCargandoSubsubcategoria] = useState<number | null>(null);
   const [erogacionRegistrada, setErogacionRegistrada] = useState(false);
   const [estadoErogacion, setEstadoErogacion] = useState("PENDIENTE");
+  const [erogacionPagada, setErogacionPagada] = useState(false);
+  const [procesando, setProcesando] = useState(false);
+  const procesandoRef = useRef(false);
+
+  const iniciarProceso = () => {
+    if (procesandoRef.current) return false;
+    procesandoRef.current = true;
+    setProcesando(true);
+    return true;
+  };
+
+  const terminarProceso = () => {
+    procesandoRef.current = false;
+    setProcesando(false);
+  };
   const [busquedaAbierta, setBusquedaAbierta] = useState(false);
   const [busquedaFolio, setBusquedaFolio] = useState("");
   const [busquedaFechaInicio, setBusquedaFechaInicio] = useState(fechaActual());
   const [busquedaFechaFin, setBusquedaFechaFin] = useState(fechaActual());
   const [resultadosBusqueda, setResultadosBusqueda] = useState<ErogacionBusqueda[]>([]);
   const [buscandoErogaciones, setBuscandoErogaciones] = useState(false);
+  const [pagosAbierto, setPagosAbierto] = useState(false);
+  const [pagoFecha, setPagoFecha] = useState(fechaActual());
+  const [pagoCuenta, setPagoCuenta] = useState("");
+  const [pagoFolioDocto, setPagoFolioDocto] = useState("1");
+  const [pagoBeneficiario, setPagoBeneficiario] = useState("");
+  const [pagoImporte, setPagoImporte] = useState(0);
+  const [pagoConcepto, setPagoConcepto] = useState("");
+  const [pagoMemo, setPagoMemo] = useState("");
+  const [beneficiariosPago, setBeneficiariosPago] = useState<BeneficiarioPago[]>([]);
+  const [pagoBeneficiarioClave, setPagoBeneficiarioClave] = useState("");
+  const [permisos, setPermisos] = useState({
+    registro: true,
+    valida: true,
+    autoriza: true,
+    pago: true,
+  });
   const [filas, setFilas] = useState<ErogacionRow[]>(() => [filaVacia()]);
   const [corte, setCorte] = useState<number | null>(null);
   const [corteParcial, setCorteParcial] = useState<number | null>(null);
@@ -161,6 +211,7 @@ export default function AdministracionErogaciones() {
     id_subsubgasto: number;
   }>>({});
   const temporizadoresDetalleRef = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
+  const omitirGuardadoDetalleRef = useRef(false);
 
   const cargarSiguienteFolio = async () => {
     const sucursalSesion = Number(session?.sucursal || 0);
@@ -218,7 +269,8 @@ export default function AdministracionErogaciones() {
       !texto ||
       !session?.sucursal ||
       !fechaAlta ||
-      !usuarioSesion.trim()
+      !usuarioSesion.trim() ||
+      !permisos.registro
     ) {
       return;
     }
@@ -236,11 +288,16 @@ export default function AdministracionErogaciones() {
         };
 
         if (!encabezadoGuardadoRef.current) {
-          await consumoApi.post(
+          const alta = await consumoApi.post(
             "/api/AdministracionErogaciones/sp_bw_detalle_erogacion_add",
             { ...encabezado, usuario_registra: usuarioSesion },
           );
           encabezadoGuardadoRef.current = true;
+          const folioAsignado = Number(alta.data?.folio ?? 0);
+          if (folioAsignado > 0) {
+            setFolio(String(folioAsignado));
+            void refrescarEstado(folioAsignado);
+          }
         } else {
           const folioNum = Number(folio);
           if (folioNum > 0) {
@@ -267,17 +324,47 @@ export default function AdministracionErogaciones() {
     }, 800);
 
     return () => clearTimeout(timer);
-  }, [concepto, fechaAlta, fechaVencimiento, session?.sucursal, corte, corteParcial, folio]);
+  }, [concepto, fechaAlta, fechaVencimiento, session?.sucursal, corte, corteParcial, folio, permisos.registro]);
 
   useEffect(() => {
     const cargarCuentasRetiro = async () => {
+      const candidatos = [
+        usuarioSesion.trim(),
+        String(session?.claveEmpleado ?? "").trim(),
+        String(session?.nombre ?? "").trim(),
+      ].filter((valor, indice, lista) => valor !== "" && lista.indexOf(valor) === indice);
+
+      if (candidatos.length === 0) {
+        setCuentasRetiro([]);
+        return;
+      }
+
       setCargandoCuentas(true);
       try {
-        const response = await consumoApi.get(
-          "/api/AdministracionErogaciones/sp_bw_ObtenerCuentasBancarias",
-          { params: { cia: "1" } },
-        );
-        setCuentasRetiro(Array.isArray(response.data) ? response.data : []);
+        let data: any[] = [];
+
+        for (const usuario of candidatos) {
+          const response = await consumoApi.get(
+            "/api/AdministracionErogaciones/sp_bw_cuentas_bancarias_erogaciones_sel",
+            { params: { usuario, cia: 1, opTesoreria: 1 } },
+          );
+          data = Array.isArray(response.data) ? response.data : [];
+          if (data.length > 0) break;
+        }
+
+        const unicas = new Map<string, CuentaRetiro>();
+        data.forEach((cuenta: any) => {
+          const clave = String(cuenta.Cuenta ?? "");
+          if (!clave || unicas.has(clave)) return;
+          unicas.set(clave, {
+            Cuenta: clave,
+            Descripcion: String(cuenta.Descripcion ?? ""),
+            Banco: String(cuenta.Banco_Descripcion ?? ""),
+            NoCuenta: String(cuenta.No_cuenta ?? ""),
+            Cia: 1,
+          });
+        });
+        setCuentasRetiro([...unicas.values()]);
       } catch (error) {
         console.error("Error al cargar las cuentas de retiro:", error);
         setCuentasRetiro([]);
@@ -287,7 +374,7 @@ export default function AdministracionErogaciones() {
     };
 
     cargarCuentasRetiro();
-  }, []);
+  }, [usuarioSesion, session?.claveEmpleado, session?.nombre]);
 
   useEffect(() => {
     const cargarSucursales = async () => {
@@ -342,6 +429,71 @@ export default function AdministracionErogaciones() {
   }, []);
 
   useEffect(() => {
+    const cargarPermisos = async () => {
+      const sucursalSesion = Number(session?.sucursal || 0);
+      if (!usuarioSesion.trim() || sucursalSesion <= 0) return;
+
+      const consultar = async (formulario: string) => {
+        try {
+          const response = await consumoApi.get(
+            "/api/AdministracionErogaciones/sp_ok_permiso",
+            {
+              params: {
+                usuario: usuarioSesion.trim(),
+                formulario,
+                sucursal: sucursalSesion,
+                cia: 1,
+              },
+            },
+          );
+          return response.data?.permiso === true;
+        } catch (error) {
+          console.error(`Error al verificar el permiso ${formulario}:`, error);
+          return true;
+        }
+      };
+
+      const [registro, valida, autoriza, pago] = await Promise.all([
+        consultar("F_EROGACIONES_REGISTRO"),
+        consultar("F_EROGACIONES_VALIDA"),
+        consultar("F_EROGACIONES_AUTORIZA"),
+        consultar("F_EROGACIONES_PAGOS"),
+      ]);
+
+      setPermisos({ registro, valida, autoriza, pago });
+    };
+
+    void cargarPermisos();
+  }, [usuarioSesion, session?.sucursal]);
+
+  useEffect(() => {
+    const cargarBeneficiariosPago = async () => {
+      try {
+        const response = await consumoApi.get(
+          "/api/AdministracionErogaciones/sp_bw_beneficiario_erogaciones_pagos_sel",
+          { params: { cia: 1 } },
+        );
+        const data = Array.isArray(response.data) ? response.data : [];
+        const unicos = new Map<string, BeneficiarioPago>();
+        data.forEach((item: any) => {
+          const nombre = String(item.destino ?? item.nombre ?? "").trim();
+          if (!nombre || unicos.has(nombre)) return;
+          unicos.set(nombre, {
+            nombre,
+            clave: String(item.clave ?? item.Clave ?? "").trim(),
+          });
+        });
+        setBeneficiariosPago([...unicos.values()]);
+      } catch (error) {
+        console.error("Error al cargar los beneficiarios de pagos:", error);
+        setBeneficiariosPago([]);
+      }
+    };
+
+    cargarBeneficiariosPago();
+  }, []);
+
+  useEffect(() => {
     const cargarCategoriasErogacion = async () => {
       setCargandoCategorias(true);
       try {
@@ -390,6 +542,9 @@ export default function AdministracionErogaciones() {
   const estaRegistrada =
     erogacionRegistrada ||
     ["REGISTRADO", "VALIDADO", "AUTORIZADO"].includes(estadoErogacion);
+
+  const mostrarEstadoBusqueda = permisos.valida || permisos.autoriza;
+  const puedeCapturar = permisos.registro;
 
   const programarGuardadoDetalle = (row: ErogacionRow) => {
     if (erogacionRegistrada || !encabezadoCompleto) return;
@@ -490,6 +645,10 @@ export default function AdministracionErogaciones() {
   };
 
   useEffect(() => {
+    if (omitirGuardadoDetalleRef.current) {
+      omitirGuardadoDetalleRef.current = false;
+      return;
+    }
     if (erogacionRegistrada || !encabezadoCompleto) return;
     filas.forEach(programarGuardadoDetalle);
   }, [filas, encabezadoCompleto, erogacionRegistrada, folio, session?.sucursal]);
@@ -510,9 +669,20 @@ export default function AdministracionErogaciones() {
 
         if (campo === "total") {
           actualizada.subtotal =
-            ivaActual === -1 ? 0 : Number(valor || 0) / (1 + ivaActual);
-        } else if (campo === "subtotal" || campo === "iva") {
-          actualizada.total = subtotalActual * (1 + ivaActual);
+            ivaActual === -1 ? 0 : redondear2(Number(valor || 0) / (1 + ivaActual));
+        } else if (campo === "iva") {
+          const ivaImporte = Number(valor || 0);
+          actualizada.iva =
+            subtotalActual > 0
+              ? Math.round((ivaImporte / subtotalActual) * 1000000) / 1000000
+              : 0;
+          actualizada.total = redondear2(subtotalActual + ivaImporte);
+        } else if (campo === "subtotal") {
+          actualizada.subtotal = redondear2(subtotalActual);
+          actualizada.iva = TASA_IVA_DEFAULT;
+          actualizada.total = redondear2(
+            Number(actualizada.subtotal || 0) * (1 + TASA_IVA_DEFAULT),
+          );
         }
         return actualizada;
       }),
@@ -616,6 +786,7 @@ export default function AdministracionErogaciones() {
 
     setErogacionRegistrada(false);
     setEstadoErogacion("PENDIENTE");
+    setErogacionPagada(false);
     setFolio("");
     setConcepto("");
     setFechaAlta(fechaActual());
@@ -649,13 +820,23 @@ export default function AdministracionErogaciones() {
     };
 
     const sucursalSesion = Number(session?.sucursal || 0);
+    const guardado = detalleGuardadoRef.current[row.id];
+    const sucursalOrigen =
+      guardado?.sucursal_origen || Number(row.centroCosto || 0) || sucursalSesion;
+    const folioDocto = guardado?.folio_docto || row.folioDocumento.trim();
+    const idGasto = guardado?.id_gasto || Number(row.categoria || 0);
+    const idSubgasto = guardado?.id_subgasto || Number(row.subcategoria || 0);
+    const idSubsubgasto =
+      guardado?.id_subsubgasto || Number(row.subSubcategoria || 0);
+
     const datosCompletos =
       Number(folio) > 0 &&
       sucursalSesion > 0 &&
-      Number(row.categoria) > 0 &&
-      Number(row.subcategoria) > 0 &&
-      Number(row.subSubcategoria) > 0 &&
-      row.folioDocumento.trim() !== "";
+      sucursalOrigen > 0 &&
+      idGasto > 0 &&
+      idSubgasto > 0 &&
+      idSubsubgasto > 0 &&
+      folioDocto !== "";
 
     if (!datosCompletos) {
       eliminarLocal();
@@ -674,6 +855,8 @@ export default function AdministracionErogaciones() {
 
     if (!confirmacion.isConfirmed) return;
 
+    if (!iniciarProceso()) return;
+
     try {
       await consumoApi.delete(
         "/api/AdministracionErogaciones/sp_bw_detalle_erogacion_categoria_del",
@@ -681,15 +864,16 @@ export default function AdministracionErogaciones() {
           data: {
             sucursal: sucursalSesion,
             folio: Number(folio),
-            sucursal_origen: sucursalSesion,
-            folio_docto: row.folioDocumento.trim(),
-            id_gasto: Number(row.categoria),
-            id_subgasto: Number(row.subcategoria),
-            id_subsubgasto: Number(row.subSubcategoria),
+            sucursal_origen: sucursalOrigen,
+            folio_docto: folioDocto,
+            id_gasto: idGasto,
+            id_subgasto: idSubgasto,
+            id_subsubgasto: idSubsubgasto,
             cia: 1,
           },
         },
       );
+      delete detalleGuardadoRef.current[row.id];
       eliminarLocal();
       aviso("Categoría eliminada", "La categoría se eliminó correctamente.");
     } catch (error: any) {
@@ -700,6 +884,8 @@ export default function AdministracionErogaciones() {
           "No fue posible eliminar la categoría.",
         "error",
       );
+    } finally {
+      terminarProceso();
     }
   };
 
@@ -716,9 +902,142 @@ export default function AdministracionErogaciones() {
     aviso("Vista previa", "La vista previa se habilitará al conectar el procedimiento de impresión.");
   };
 
-  const handleValidacion = async () => {
-    if (erogacionRegistrada) {
-      aviso("Erogación registrada", "Esta erogación ya está registrada y solo permite lectura.");
+  const abrirPagos = async () => {
+    setPagoFecha(fechaAlta || fechaActual());
+    setPagoCuenta(cuentaRetiro);
+    setPagoFolioDocto("1");
+    setPagoBeneficiario("");
+    setPagoBeneficiarioClave("");
+    setPagoImporte(Number(total || 0));
+    setPagoConcepto(concepto);
+    setPagoMemo(concepto);
+    setPagosAbierto(true);
+
+    const sucursalSesion = Number(session?.sucursal || 0);
+    if (sucursalSesion <= 0) return;
+
+    try {
+      const response = await consumoApi.get(
+        "/api/AdministracionErogaciones/sp_bw_folio_mayor_pagos_erogaciones_sel",
+        { params: { sucursal: sucursalSesion, cia: 1 } },
+      );
+      const fila = Array.isArray(response.data) ? response.data[0] : null;
+      const mayor = Number(fila?.mayor_folio_cheque ?? 0);
+      setPagoFolioDocto(String(mayor + 1));
+    } catch (error) {
+      console.error("Error al obtener el folio de cheque:", error);
+      setPagoFolioDocto("1");
+    }
+  };
+
+  const handlePagar = async () => {
+    if (erogacionPagada) {
+      aviso(
+        "Erogación ya pagada",
+        "Esta erogación ya tiene un pago registrado y no se puede volver a pagar.",
+      );
+      return;
+    }
+
+    if (!permisos.pago) {
+      aviso(
+        "Sin permiso de pago",
+        "No cuentas con permiso para pagar erogaciones.",
+      );
+      return;
+    }
+
+    if (estadoErogacion !== "AUTORIZADO") {
+      aviso(
+        "Erogación no autorizada",
+        "Solo puedes pagar una erogación en estado AUTORIZADO.",
+      );
+      return;
+    }
+
+    if (pagoImporte <= 0) {
+      aviso("Importe requerido", "El importe debe ser mayor a cero.");
+      return;
+    }
+    if (!pagoCuenta) {
+      aviso("Cuenta requerida", "Selecciona la cuenta para el pago.");
+      return;
+    }
+    if (!pagoFolioDocto.trim()) {
+      aviso("Folio requerido", "Captura el folio del cheque o documento.");
+      return;
+    }
+    if (!pagoBeneficiario.trim()) {
+      aviso(
+        "Beneficiario requerido",
+        "Selecciona o escribe el beneficiario del pago.",
+      );
+      return;
+    }
+
+    const sucursalSesion = Number(session?.sucursal || 0);
+    const folioNumerico = Number(folio || 0);
+    const usuario = usuarioSesion.trim();
+
+    if (sucursalSesion <= 0 || folioNumerico <= 0 || !usuario) {
+      aviso("Datos incompletos", "No se pudo identificar la erogación.");
+      return;
+    }
+
+    if (!iniciarProceso()) return;
+
+    try {
+      const response = await consumoApi.post(
+        "/api/AdministracionErogaciones/sp_bw_pago_erogaciones",
+        {
+          cia: 1,
+          sucursal: sucursalSesion,
+          fecha: `${pagoFecha}T00:00:00`,
+          origen: 1,
+          folio: pagoFolioDocto.trim(),
+          cuenta: pagoCuenta,
+          beneficiario: pagoBeneficiario.trim(),
+          cuenta_transfer: pagoCuenta,
+          beneficiario_col1: pagoBeneficiarioClave || "000000",
+          tipo: "R",
+          estatus: 1,
+          seguimiento: 0,
+          importe: Number(pagoImporte || 0),
+          descripcion: pagoConcepto,
+          memo: pagoMemo,
+          usuario,
+          folio_erogaciones: folioNumerico,
+        },
+      );
+
+      Swal.fire(
+        "Pago registrado",
+        response.data?.mensaje || "Operación realizada correctamente.",
+        "success",
+      );
+
+      setPagosAbierto(false);
+      setErogacionPagada(true);
+      void refrescarEstado(folioNumerico);
+    } catch (error: any) {
+      Swal.fire(
+        "No se pudo pagar",
+        error?.response?.data?.mensaje ||
+          error?.response?.data?.detalle ||
+          "No fue posible registrar el pago de la erogación.",
+        "error",
+      );
+    } finally {
+      terminarProceso();
+    }
+  };
+
+  const handleEdicion = async () => {
+    if (estadoErogacion !== "REGISTRADO") {
+      aviso(
+        "Edición no disponible",
+        "Solo puedes editar una erogación que esté en estado REGISTRADO.",
+      );
       return;
     }
 
@@ -730,6 +1049,63 @@ export default function AdministracionErogaciones() {
       aviso("Datos incompletos", "Captura el folio y valida la sesión antes de continuar.");
       return;
     }
+
+    if (!iniciarProceso()) return;
+
+    try {
+      const response = await consumoApi.post(
+        "/api/AdministracionErogaciones/sp_bw_registrar_detalle_erogacion_upd",
+        {
+          sucursal: sucursalSesion,
+          folio: folioNumerico,
+          usuario_registra: usuario,
+          cia: 1,
+          OSUserName: "",
+          OSMachineName: "",
+          IPAddress: "",
+        },
+      );
+
+      setErogacionRegistrada(false);
+      Swal.fire(
+        "Edición habilitada",
+        response.data?.mensaje ||
+          "La erogación regresó a pendiente y ya puede editarse.",
+        "success",
+      );
+      void refrescarEstado(folioNumerico);
+    } catch (error: any) {
+      Swal.fire(
+        "No se pudo habilitar la edición",
+        error?.response?.data?.mensaje ||
+          error?.response?.data?.detalle ||
+          "No fue posible habilitar la edición de la erogación.",
+        "error",
+      );
+    } finally {
+      terminarProceso();
+    }
+  };
+
+  const handleValidacion = async () => {
+    if (estadoErogacion !== "PENDIENTE") {
+      aviso(
+        "Erogación registrada",
+        "Esta erogación ya está registrada y solo permite lectura.",
+      );
+      return;
+    }
+
+    const sucursalSesion = Number(session?.sucursal || 0);
+    const usuario = usuarioSesion.trim();
+    const folioNumerico = Number(folio || 0);
+
+    if (sucursalSesion <= 0 || folioNumerico <= 0 || !usuario) {
+      aviso("Datos incompletos", "Captura el folio y valida la sesión antes de continuar.");
+      return;
+    }
+
+    if (!iniciarProceso()) return;
 
     try {
       const response = await consumoApi.post(
@@ -760,20 +1136,17 @@ export default function AdministracionErogaciones() {
           "No fue posible validar la erogación.",
         "error",
       );
+    } finally {
+      terminarProceso();
     }
   };
 
   const handleValidar = async () => {
-    if (!estaRegistrada) {
+    if (estadoErogacion !== "REGISTRADO" && estadoErogacion !== "VALIDADO") {
       aviso(
         "Erogación no registrada",
-        "Primero debes registrar la erogación antes de validarla.",
+        "Solo puedes validar una erogación en estado REGISTRADO o VALIDADO.",
       );
-      return;
-    }
-
-    if (estadoErogacion === "AUTORIZADO") {
-      aviso("Erogación autorizada", "Esta erogación ya fue autorizada.");
       return;
     }
 
@@ -785,6 +1158,8 @@ export default function AdministracionErogaciones() {
       aviso("Datos incompletos", "Captura el folio y valida la sesión antes de continuar.");
       return;
     }
+
+    if (!iniciarProceso()) return;
 
     try {
       const response = await consumoApi.post(
@@ -800,18 +1175,31 @@ export default function AdministracionErogaciones() {
         },
       );
 
+      const estadoValidado =
+        Number(response.data?.resultado?.EstadoValidado ?? 0) === 1;
       const tienePermisoAutoriza =
         Number(response.data?.resultado?.TienePermisoAutoriza ?? 0) === 1;
 
       Swal.fire({
-        title: "Erogación validada",
-        text: tienePermisoAutoriza
-          ? "La erogación fue validada y autorizada correctamente."
-          : "La erogación fue validada correctamente.",
+        title: estadoValidado ? "Erogación validada" : "Validación retirada",
+        text: estadoValidado
+          ? tienePermisoAutoriza
+            ? "La erogación quedó validada y autorizada correctamente."
+            : "La erogación fue validada correctamente."
+          : "La erogación quedó sin validar.",
         icon: "success",
         confirmButtonColor: "#111",
       });
-      void refrescarEstado(folioNumerico);
+      await refrescarEstado(folioNumerico);
+
+      if (
+        estadoValidado &&
+        tienePermisoAutoriza &&
+        permisos.autoriza &&
+        permisos.pago
+      ) {
+        await abrirPagos();
+      }
     } catch (error: any) {
       Swal.fire(
         "No se pudo validar",
@@ -820,6 +1208,8 @@ export default function AdministracionErogaciones() {
           "No fue posible validar la erogación.",
         "error",
       );
+    } finally {
+      terminarProceso();
     }
   };
 
@@ -832,8 +1222,11 @@ export default function AdministracionErogaciones() {
       return;
     }
 
-    if (estadoErogacion === "AUTORIZADO") {
-      aviso("Erogación autorizada", "Esta erogación ya fue autorizada.");
+    if (estadoErogacion !== "VALIDADO" && estadoErogacion !== "AUTORIZADO") {
+      aviso(
+        "Erogación no validada",
+        "Solo puedes autorizar una erogación VALIDADA o AUTORIZADA.",
+      );
       return;
     }
 
@@ -848,6 +1241,8 @@ export default function AdministracionErogaciones() {
       );
       return;
     }
+
+    if (!iniciarProceso()) return;
 
     try {
       const response = await consumoApi.post(
@@ -878,6 +1273,8 @@ export default function AdministracionErogaciones() {
           "No fue posible autorizar la erogación.",
         "error",
       );
+    } finally {
+      terminarProceso();
     }
   };
 
@@ -888,7 +1285,7 @@ export default function AdministracionErogaciones() {
     try {
       const response = await consumoApi.get(
         "/api/AdministracionErogaciones/sp_bw_buscar_Erogaciones_sel",
-        { params: { sucursal: sucursalSesion, folio: folioNumerico, cia: 1 } },
+        { params: { sucursal: sucursalSesion, usuario: usuarioSesion.trim(), folio: folioNumerico, cia: 1 } },
       );
       const estado = String(response.data?.cabecera?.[0]?.estado ?? "").trim();
       if (estado) setEstadoErogacion(estado.toUpperCase());
@@ -900,6 +1297,10 @@ export default function AdministracionErogaciones() {
   const aplicarErogacionBuscada = (cabecera: any, detalles: any[]) => {
     const fechaInput = (valor: unknown) =>
       valor ? String(valor).slice(0, 10) : fechaActual();
+
+    encabezadoGuardadoRef.current = true;
+    guardandoEncabezadoRef.current = false;
+    omitirGuardadoDetalleRef.current = true;
 
     detalleGuardadoRef.current = {};
     const filasBuscadas: ErogacionRow[] = detalles.map((detalle: any) => {
@@ -924,7 +1325,10 @@ export default function AdministracionErogaciones() {
         subcategoria: String(detalle.id_subgasto ?? ""),
         subSubcategoria: String(detalle.id_subsubgasto ?? ""),
         subtotal: subtotalDetalle,
-        iva: subtotalDetalle > 0 ? ivaDetalle / subtotalDetalle : 0,
+        iva:
+          subtotalDetalle > 0 && ivaDetalle / subtotalDetalle <= 1
+            ? ivaDetalle / subtotalDetalle
+            : TASA_IVA_DEFAULT,
         total: Number(detalle.total ?? subtotalDetalle + ivaDetalle),
         observaciones: String(detalle.observacion ?? ""),
       };
@@ -938,6 +1342,10 @@ export default function AdministracionErogaciones() {
     setEstadoErogacion(String(cabecera.estado ?? "").trim().toUpperCase() || "PENDIENTE");
     setFilas(filasBuscadas.length > 0 ? filasBuscadas : [filaVacia()]);
     setErogacionRegistrada(Number(cabecera.registrado ?? 0) === 1);
+    setErogacionPagada(
+      String(cabecera.folio_cheque ?? "").trim() !== "" &&
+        Number(cabecera.provisional ?? 0) === 0,
+    );
   };
 
   const cargarOpcionesDeDetalles = async (detalles: any[]) => {
@@ -1026,13 +1434,21 @@ export default function AdministracionErogaciones() {
       return;
     }
 
+    if (!iniciarProceso()) return;
+
     setBuscandoErogaciones(true);
     try {
       const folioBuscado = Number(busquedaFolio || 0);
       const params = folioBuscado > 0
-        ? { sucursal: sucursalSesion, folio: folioBuscado, cia: 1 }
+        ? {
+            sucursal: sucursalSesion,
+            usuario: usuarioSesion.trim(),
+            folio: folioBuscado,
+            cia: 1,
+          }
         : {
             sucursal: sucursalSesion,
+            usuario: usuarioSesion.trim(),
             fecha_inicio: busquedaFechaInicio || undefined,
             fecha_fin: busquedaFechaFin || undefined,
             cia: 1,
@@ -1055,15 +1471,17 @@ export default function AdministracionErogaciones() {
       );
     } finally {
       setBuscandoErogaciones(false);
+      terminarProceso();
     }
   };
 
   const seleccionarErogacion = async (folioSeleccionado: number) => {
+    if (!iniciarProceso()) return;
     const sucursalSesion = Number(session?.sucursal || 0);
     try {
       const response = await consumoApi.get(
         "/api/AdministracionErogaciones/sp_bw_buscar_Erogaciones_sel",
-        { params: { sucursal: sucursalSesion, folio: folioSeleccionado, cia: 1 } },
+        { params: { sucursal: sucursalSesion, usuario: usuarioSesion.trim(), folio: folioSeleccionado, cia: 1 } },
       );
       const cabecera = response.data?.cabecera?.[0];
       if (!cabecera) {
@@ -1087,6 +1505,8 @@ export default function AdministracionErogaciones() {
           "No fue posible cargar la erogación.",
         "error",
       );
+    } finally {
+      terminarProceso();
     }
   };
 
@@ -1203,8 +1623,9 @@ export default function AdministracionErogaciones() {
               >
                 <MenuItem value="">Seleccionar cuenta</MenuItem>
                 {cuentasRetiro.map((cuenta) => (
-                  <MenuItem key={`${cuenta.Cia}-${cuenta.Cuenta}`} value={cuenta.Cuenta}>
-                    {cuenta.Cuenta} - {cuenta.Descripcion}
+                  <MenuItem key={cuenta.Cuenta} value={cuenta.Cuenta}>
+                    {cuenta.Descripcion}
+                    {cuenta.Banco ? ` - ${cuenta.Banco}` : ""}
                   </MenuItem>
                 ))}
               </Select>
@@ -1222,21 +1643,35 @@ export default function AdministracionErogaciones() {
             }}
           >
             <Stack direction={{ xs: "column", sm: "row" }} spacing={0.7} flexWrap="wrap">
-              <Button  onClick={nuevaRecepcion} size="small" variant="contained" sx={{ bgcolor: "#000000", color: "#ffffff", textTransform: "none", boxShadow: "none" }}>Nueva recepción</Button>
-              <Button onClick={abrirBusqueda} size="small" variant="contained" sx={{ bgcolor: "#000000", color: "#ffffff", textTransform: "none", boxShadow: "none" }}>Buscar</Button>
-              <Button onClick={handleVistaPrevia} size="small" variant="contained" sx={{ bgcolor: "#000000", color: "#ffffff", textTransform: "none", boxShadow: "none" }}>Vista Previa</Button>
-              <Button  onClick={handleValidacion} size="small" variant="contained" sx={{ bgcolor: "#000000", color: "#ffffff", textTransform: "none", boxShadow: "none" }}>Registrar</Button>
-              <Button  onClick={handleValidar} disabled={!estaRegistrada || estadoErogacion === "AUTORIZADO"} size="small" variant="contained" sx={{ bgcolor: "#000000", color: "#ffffff", textTransform: "none", boxShadow: "none", "&.Mui-disabled": { bgcolor: "#9e9e9e", color: "#fff" } }}>Validar</Button>
-              <Button onClick={handleAutorizar} disabled={!estaRegistrada || estadoErogacion === "AUTORIZADO"} size="small" variant="contained" sx={{ bgcolor: "#000000", color: "#ffffff", textTransform: "none", boxShadow: "none", "&.Mui-disabled": { bgcolor: "#9e9e9e", color: "#fff" } }}>Autorizar</Button>
-              <Button  onClick={() => window.history.back()} size="small" variant="contained" sx={{ bgcolor: "#000000", color: "#ffffff", textTransform: "none", boxShadow: "none" }}>Salir</Button>
+              <Button  onClick={nuevaRecepcion} disabled={procesando} size="small" variant="contained" sx={{ bgcolor: "#000000", color: "#ffffff", textTransform: "none", boxShadow: "none" }}>Nueva erogacion</Button>
+              <Button onClick={abrirBusqueda} disabled={procesando} size="small" variant="contained" sx={{ bgcolor: "#000000", color: "#ffffff", textTransform: "none", boxShadow: "none" }}>Buscar</Button>
+              <Button onClick={handleVistaPrevia} disabled={procesando} size="small" variant="contained" sx={{ bgcolor: "#000000", color: "#ffffff", textTransform: "none", boxShadow: "none" }}>Vista Previa</Button>
+              {permisos.registro && (
+                <>
+                  <Button  onClick={handleEdicion} disabled={procesando || estadoErogacion !== "REGISTRADO"} size="small" variant="contained" sx={{ bgcolor: "#000000", color: "#ffffff", textTransform: "none", boxShadow: "none", "&.Mui-disabled": { bgcolor: "#9e9e9e", color: "#fff" } }}>Edición</Button>
+                  <Button  onClick={handleValidacion} disabled={procesando || estadoErogacion !== "PENDIENTE"} size="small" variant="contained" sx={{ bgcolor: "#000000", color: "#ffffff", textTransform: "none", boxShadow: "none", "&.Mui-disabled": { bgcolor: "#9e9e9e", color: "#fff" } }}>Registrar</Button>
+                </>
+              )}
+              {permisos.valida && (
+                <Button  onClick={handleValidar} disabled={procesando || !(estadoErogacion === "REGISTRADO" || estadoErogacion === "VALIDADO")} size="small" variant="contained" sx={{ bgcolor: "#000000", color: "#ffffff", textTransform: "none", boxShadow: "none", "&.Mui-disabled": { bgcolor: "#9e9e9e", color: "#fff" } }}>Validar</Button>
+              )}
+              {permisos.autoriza && (
+                <Button onClick={handleAutorizar} disabled={procesando || !(estadoErogacion === "VALIDADO" || estadoErogacion === "AUTORIZADO")} size="small" variant="contained" sx={{ bgcolor: "#000000", color: "#ffffff", textTransform: "none", boxShadow: "none", "&.Mui-disabled": { bgcolor: "#9e9e9e", color: "#fff" } }}>Autorizar</Button>
+              )}
+              {permisos.pago && (
+                <Button onClick={() => void abrirPagos()} disabled={procesando || estadoErogacion !== "AUTORIZADO" || erogacionPagada} size="small" variant="contained" sx={{ bgcolor: "#000000", color: "#ffffff", textTransform: "none", boxShadow: "none", "&.Mui-disabled": { bgcolor: "#9e9e9e", color: "#fff" } }}>Pagos</Button>
+              )}
+              <Button  onClick={() => window.history.back()} disabled={procesando} size="small" variant="contained" sx={{ bgcolor: "#000000", color: "#ffffff", textTransform: "none", boxShadow: "none" }}>Salir</Button>
             </Stack>
-            <TextField
-              label="Estado"
-              value={estadoErogacion}
-              size="small"
-              InputProps={{ readOnly: true }}
-              sx={{ minWidth: { xs: "100%", sm: 170 }, bgcolor: "#fff" }}
-            />
+            {(permisos.valida || permisos.autoriza) && (
+              <TextField
+                label="Estado"
+                value={erogacionPagada ? "PAGADO" : estadoErogacion}
+                size="small"
+                InputProps={{ readOnly: true }}
+                sx={{ minWidth: { xs: "100%", sm: 170 }, bgcolor: "#fff" }}
+              />
+            )}
           </Box>
           </Box>
         </CardContent>
@@ -1245,17 +1680,24 @@ export default function AdministracionErogaciones() {
       <Card elevation={0} sx={{ border: "1px solid #8c8c8c", borderRadius: 0, bgcolor: "#fff", overflow: "hidden" }}>
         <CardContent sx={{ p: { xs: 1, sm: 1.5 }, "&:last-child": { pb: 1.5 } }}>
           <Grid container spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
+            {!puedeCapturar && (
+              <Grid size={{ xs: 12 }}>
+                <Typography sx={{ color: "#b91c1c", fontWeight: 700, fontSize: "0.85rem" }}>
+                  No cuentas con permiso para registrar erogaciones
+                </Typography>
+              </Grid>
+            )}
             <Grid size={{ xs: 12, sm: 3, md: 2 }}>
               <TextField label="Folio" value={folio} size="small" fullWidth InputProps={{ readOnly: true }} />
             </Grid>
             <Grid size={{ xs: 12, sm: 5, md: 4 }}>
-              <TextField label="Concepto" value={concepto} onChange={(event) => setConcepto(event.target.value)} size="small" fullWidth disabled={erogacionRegistrada} />
+              <TextField label="Concepto" value={concepto} onChange={(event) => setConcepto(event.target.value)} size="small" fullWidth disabled={erogacionRegistrada || !puedeCapturar} />
             </Grid>
             <Grid size={{ xs: 12, sm: 4, md: 2 }}>
-              <TextField label="Fecha Alta" type="date" value={fechaAlta} onChange={(event) => setFechaAlta(event.target.value)} size="small" fullWidth disabled={erogacionRegistrada} InputLabelProps={{ shrink: true }} />
+              <TextField label="Fecha Alta" type="date" value={fechaAlta} onChange={(event) => setFechaAlta(event.target.value)} size="small" fullWidth disabled={erogacionRegistrada || !puedeCapturar} InputLabelProps={{ shrink: true }} />
             </Grid>
             <Grid size={{ xs: 12, sm: 4, md: 2 }}>
-              <TextField label="Fecha Vencimiento" type="date" value={fechaVencimiento} onChange={(event) => setFechaVencimiento(event.target.value)} size="small" fullWidth disabled={erogacionRegistrada} InputLabelProps={{ shrink: true }} />
+              <TextField label="Fecha Vencimiento" type="date" value={fechaVencimiento} onChange={(event) => setFechaVencimiento(event.target.value)} size="small" fullWidth disabled={erogacionRegistrada || !puedeCapturar} InputLabelProps={{ shrink: true }} />
             </Grid>
             <Grid size={{ xs: 12, sm: 8, md: 2 }}>
               <Select
@@ -1264,13 +1706,14 @@ export default function AdministracionErogaciones() {
                 onChange={(event) => setCuentaRetiro(event.target.value)}
                 size="small"
                 fullWidth
-                disabled={cargandoCuentas || erogacionRegistrada}
+                disabled={cargandoCuentas || estadoErogacion === "AUTORIZADO" || !puedeCapturar}
                 renderValue={(value) => cuentasRetiro.find((cuenta) => cuenta.Cuenta === value)?.Descripcion || (value || "Cuenta de Retiro")}
               >
                 <MenuItem value="">Seleccionar cuenta</MenuItem>
                 {cuentasRetiro.map((cuenta) => (
-                  <MenuItem key={`${cuenta.Cia}-${cuenta.Cuenta}`} value={cuenta.Cuenta}>
-                    {cuenta.Cuenta} - {cuenta.Descripcion}
+                  <MenuItem key={cuenta.Cuenta} value={cuenta.Cuenta}>
+                    {cuenta.Descripcion}
+                    {cuenta.Banco ? ` - ${cuenta.Banco}` : ""}
                   </MenuItem>
                 ))}
               </Select>
@@ -1435,33 +1878,44 @@ export default function AdministracionErogaciones() {
                     <TableCell sx={{ minWidth: 105, p: 0.35 }}>
                       <TextField
                         type="number"
-                        value={row.subtotal}
+                        value={redondear2(row.subtotal)}
                         onChange={(event) => actualizarFila(row.id, "subtotal", Number(event.target.value) || 0)}
                         variant="standard"
                         size="small"
                         fullWidth
+                        inputProps={{ min: 0, step: 0.01 }}
+                        InputProps={{ readOnly: erogacionRegistrada }}
+                        sx={{ "& input": { textAlign: "right" } }}
                       />
                     </TableCell>
-                    <TableCell sx={{ minWidth: 85, p: 0.35 }}>
+                    <TableCell sx={{ minWidth: 95, p: 0.35 }}>
                       <TextField
                         type="number"
-                        value={row.iva}
-                        onChange={(event) => actualizarFila(row.id, "iva", Number(event.target.value) || 0)}
+                        value={redondear2(Number(row.subtotal || 0) * Number(row.iva || 0))}
+                        onChange={(event) =>
+                          actualizarFila(row.id, "iva", Number(event.target.value) || 0)
+                        }
                         variant="standard"
                         size="small"
                         fullWidth
                         inputProps={{ min: 0, step: 0.01 }}
+                        InputProps={{ readOnly: erogacionRegistrada }}
+                        sx={{ "& input": { textAlign: "right" } }}
                       />
                     </TableCell>
                     <TableCell sx={{ minWidth: 105, p: 0.35 }}>
                       <TextField
                         type="number"
-                        value={row.total}
-                        onChange={(event) => actualizarFila(row.id, "total", Number(event.target.value) || 0)}
+                        value={redondear2(row.total)}
+                        onChange={(event) =>
+                          actualizarFila(row.id, "total", Number(event.target.value) || 0)
+                        }
                         variant="standard"
                         size="small"
                         fullWidth
                         inputProps={{ min: 0, step: 0.01 }}
+                        InputProps={{ readOnly: erogacionRegistrada }}
+                        sx={{ "& input": { textAlign: "right" } }}
                       />
                     </TableCell>
                     <TableCell sx={{ minWidth: 220, p: 0.35 }}>
@@ -1573,7 +2027,7 @@ export default function AdministracionErogaciones() {
                 onClick={() => void ejecutarBusqueda()}
                 variant="contained"
                 fullWidth
-                disabled={buscandoErogaciones}
+                disabled={buscandoErogaciones || procesando}
                 sx={{
                   bgcolor: "#111",
                   color: "#fff",
@@ -1591,7 +2045,14 @@ export default function AdministracionErogaciones() {
             <Table size="small">
               <TableHead>
                 <TableRow sx={{ bgcolor: "#f5f5f5" }}>
-                  {["Folio", "Concepto", "Fecha", "Usuario", "Estado", "Acción"].map((header) => (
+                  {[
+                    "Folio",
+                    "Concepto",
+                    "Fecha",
+                    "Usuario",
+                    ...(mostrarEstadoBusqueda ? ["Estado"] : []),
+                    "Acción",
+                  ].map((header) => (
                     <TableCell key={header} sx={{ fontWeight: 700, whiteSpace: "nowrap" }}>
                       {header}
                     </TableCell>
@@ -1601,7 +2062,7 @@ export default function AdministracionErogaciones() {
               <TableBody>
                 {resultadosBusqueda.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} align="center" sx={{ py: 1.5 }}>
+                    <TableCell colSpan={mostrarEstadoBusqueda ? 6 : 5} align="center" sx={{ py: 1.5 }}>
                       {buscandoErogaciones ? "Buscando..." : "Sin resultados"}
                     </TableCell>
                   </TableRow>
@@ -1616,18 +2077,21 @@ export default function AdministracionErogaciones() {
                           : ""}
                       </TableCell>
                       <TableCell>{resultado.usuario_registra || ""}</TableCell>
-                      <TableCell>
-                        {Number(resultado.autorizado ?? 0) === 1
-                          ? "Autorizado"
-                          : Number(resultado.validado ?? 0) === 1
-                            ? "Validado"
-                            : Number(resultado.registrado ?? 0) === 1
-                              ? "Registrado"
-                              : "Pendiente"}
-                      </TableCell>
+                      {mostrarEstadoBusqueda && (
+                        <TableCell>
+                          {Number(resultado.autorizado ?? 0) === 1
+                            ? "Autorizado"
+                            : Number(resultado.validado ?? 0) === 1
+                              ? "Validado"
+                              : Number(resultado.registrado ?? 0) === 1
+                                ? "Registrado"
+                                : "Pendiente"}
+                        </TableCell>
+                      )}
                       <TableCell>
                         <Button
                           size="small"
+                          disabled={procesando}
                           onClick={() => void seleccionarErogacion(Number(resultado.folio))}
                           sx={{ color: "#111", fontWeight: 700 }}
                         >
@@ -1650,6 +2114,207 @@ export default function AdministracionErogaciones() {
             CERRAR
           </Button>
         </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={pagosAbierto}
+        onClose={() => setPagosAbierto(false)}
+        fullWidth
+        maxWidth="md"
+        PaperProps={{
+          sx: {
+            borderRadius: 1,
+            border: "1px solid #8c8c8c",
+            overflow: "hidden",
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            p: 0,
+            bgcolor: "#000",
+            color: "#fff",
+            px: { xs: 1.5, sm: 2.5 },
+            py: 1,
+          }}
+        >
+          <Typography
+            sx={{
+              color: "#fff",
+              fontWeight: 20,
+              fontSize: { xs: "1.4rem", sm: "1.7rem" },
+              lineHeight: 1.05,
+              fontFamily: "Georgia, 'Times New Roman', serif",
+            }}
+          >
+            Póliza de Cheques
+          </Typography>
+        </DialogTitle>
+
+        <DialogContent sx={{ p: { xs: 1.5, sm: 2.5 }, bgcolor: "#fff" }}>
+
+          <Stack spacing={1.2}>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ sm: "center" }}>
+              <Typography sx={{ minWidth: 150, textAlign: { sm: "right" }, fontWeight: 600, fontSize: "0.85rem" }}>
+                Fecha del movimiento:
+              </Typography>
+              <TextField
+                type="date"
+                size="small"
+                value={pagoFecha}
+                onChange={(event) => setPagoFecha(event.target.value)}
+                sx={{ width: { xs: "100%", sm: 170 } }}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Stack>
+
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <Typography sx={{ minWidth: 150, textAlign: "right", fontWeight: 600, fontSize: "0.85rem" }}>
+                Cuenta:
+              </Typography>
+              <Select
+                displayEmpty
+                size="small"
+                value={pagoCuenta}
+                onChange={(event) => setPagoCuenta(event.target.value)}
+                sx={{ width: { xs: "100%", sm: 400 } }}
+                renderValue={(value) =>
+                  cuentasRetiro.find((cuenta) => cuenta.Cuenta === value)?.Descripcion ||
+                  value ||
+                  "Seleccionar cuenta"
+                }
+              >
+                <MenuItem value="">Seleccionar cuenta</MenuItem>
+                {cuentasRetiro.map((cuenta) => (
+                  <MenuItem key={cuenta.Cuenta} value={cuenta.Cuenta}>
+                    {cuenta.Descripcion}
+                    {cuenta.Banco ? ` - ${cuenta.Banco}` : ""}
+                  </MenuItem>
+                ))}
+              </Select>
+            </Stack>
+
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <Typography sx={{ minWidth: 150, textAlign: "right", fontWeight: 600, fontSize: "0.85rem" }}>
+                Folio del Cheque o Docto:
+              </Typography>
+              <TextField
+                size="small"
+                value={pagoFolioDocto}
+                onChange={(event) => setPagoFolioDocto(event.target.value)}
+                sx={{ width: { xs: "100%", sm: 170 } }}
+              />
+            </Stack>
+
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <Typography sx={{ minWidth: 150, textAlign: "right", fontWeight: 600, fontSize: "0.85rem" }}>
+                Beneficiario:
+              </Typography>
+              <Autocomplete
+                freeSolo
+                size="small"
+                options={beneficiariosPago.map((item) => item.nombre)}
+                value={pagoBeneficiario}
+                onChange={(_, value) => {
+                  const nombre = String(value ?? "");
+                  setPagoBeneficiario(nombre);
+                  const encontrado = beneficiariosPago.find(
+                    (item) => item.nombre.toLowerCase() === nombre.trim().toLowerCase(),
+                  );
+                  setPagoBeneficiarioClave(encontrado?.clave ?? "");
+                }}
+                onInputChange={(_, value) => {
+                  const nombre = value ?? "";
+                  setPagoBeneficiario(nombre);
+                  const encontrado = beneficiariosPago.find(
+                    (item) => item.nombre.toLowerCase() === nombre.trim().toLowerCase(),
+                  );
+                  setPagoBeneficiarioClave(encontrado?.clave ?? "");
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    size="small"
+                    placeholder="Seleccionar o escribir beneficiario"
+                  />
+                )}
+                sx={{ width: { xs: "100%", sm: 520 } }}
+              />
+            </Stack>
+
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <Typography sx={{ minWidth: 150, textAlign: "right", fontWeight: 600, fontSize: "0.85rem" }}>
+                Importe:
+              </Typography>
+              <TextField
+                size="small"
+                value={numeroConComas(pagoImporte)}
+                InputProps={{ readOnly: true }}
+                sx={{
+                  width: { xs: "100%", sm: 200 },
+                  "& .MuiInputBase-input": {
+                    bgcolor: "#f5f6f7",
+                    fontWeight: 700,
+                    textAlign: "right",
+                  },
+                }}
+              />
+            </Stack>
+
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <Typography sx={{ minWidth: 150, textAlign: "right", fontWeight: 600, fontSize: "0.85rem" }}>
+                Concepto:
+              </Typography>
+              <TextField
+                size="small"
+                value={pagoConcepto}
+                InputProps={{ readOnly: true }}
+                sx={{
+                  width: { xs: "100%", sm: 520 },
+                  "& .MuiInputBase-input": { bgcolor: "#f5f6f7" },
+                }}
+              />
+            </Stack>
+
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <Typography sx={{ minWidth: 150, textAlign: "right", fontWeight: 600, fontSize: "0.85rem" }}>
+                Memo:
+              </Typography>
+              <TextField
+                size="small"
+                value={pagoMemo}
+                onChange={(event) => setPagoMemo(event.target.value)}
+                sx={{ width: { xs: "100%", sm: 520 } }}
+              />
+            </Stack>
+
+          </Stack>
+
+          <Box sx={{ borderTop: "1px solid #d7dde2", mt: 2 }} />
+
+          <Stack direction="row" spacing={4} justifyContent="center" sx={{ mt: 2 }}>
+            <Box
+              onClick={() => {
+                if (procesando) return;
+                void handlePagar();
+              }}
+              sx={{
+                cursor: procesando ? "not-allowed" : "pointer",
+                textAlign: "center",
+                opacity: procesando ? 0.5 : 1,
+                "&:hover": { opacity: procesando ? 0.5 : 0.75 },
+              }}
+            >
+              <Typography sx={{ fontSize: "0.8rem", color: "#1f2937" }}>Pagar</Typography>
+            </Box>
+            <Box
+              onClick={() => setPagosAbierto(false)}
+              sx={{ cursor: "pointer", textAlign: "center", "&:hover": { opacity: 0.75 } }}
+            >
+              <Typography sx={{ fontSize: "0.8rem", color: "#1f2937" }}>Salir</Typography>
+            </Box>
+          </Stack>
+        </DialogContent>
       </Dialog>
 
     </Box>
