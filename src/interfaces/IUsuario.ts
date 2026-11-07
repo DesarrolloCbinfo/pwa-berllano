@@ -2,6 +2,7 @@ export interface IUsuario {
   acceso: number,
   id: number,
   cia: number,
+  idCia?: number,
   idDepartamento: number,
   sucursal: number,
   dSucursal: string,

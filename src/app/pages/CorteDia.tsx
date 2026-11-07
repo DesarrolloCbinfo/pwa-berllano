@@ -35,11 +35,13 @@ export default function CorteDia() {
   const sincronizarContextoWorker = useWorkerStore((s) => s.sincronizarContexto);
 
   // Sincroniza el contexto empresa/sucursal con el store del worker.
+  // El login guarda la empresa como cia (SP) o idCia (modal de sucursales).
   useEffect(() => {
-    if (session?.cia && session?.sucursal) {
-      sincronizarContextoWorker(session.cia, session.sucursal);
+    const idEmpresa = session?.cia || session?.idCia || 0;
+    if (idEmpresa && session?.sucursal) {
+      sincronizarContextoWorker(idEmpresa, session.sucursal);
     }
-  }, [session?.cia, session?.sucursal, sincronizarContextoWorker]);
+  }, [session?.cia, session?.idCia, session?.sucursal, sincronizarContextoWorker]);
 
   const [ultimoCorte, setUltimoCorte] = useState<CorteData | null>(null);
   const [loading, setLoading] = useState(false);
