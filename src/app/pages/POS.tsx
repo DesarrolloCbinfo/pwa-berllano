@@ -2,6 +2,10 @@ import React, { useEffect } from "react";
 import { flushSync } from 'react-dom';
 //import TextField from "@mui/material/TextField";
 import useConsumoApi from "../../hooks/useConsumoApi";
+import useConsumoWorker from "../../hooks/useConsumoWorker";
+import { useWorkerStore } from "../../context/useWorkerStore";
+import SelectorRecursosWorkerModal from "../../components/POS/SelectorRecursosWorkerModal";
+import { construirTicketVentaDataset } from "../../utils/ticketDatasetBuilder";
 import { useServerTable } from "../../hooks/useServerTable";
 import useSession from "../../hooks/useSession";
 import ClientesTable from "../../components/POS/ClientesTable";
@@ -341,6 +345,19 @@ React.useEffect(() => {
 
 const session = useSession();
 const sucursal = session?.sucursal || 1;
+
+const { imprimirTicketWorker } = useConsumoWorker();
+const equipoActivoWorker = useWorkerStore((s) => s.equipoActivo);
+const abrirModalWorker = useWorkerStore((s) => s.abrirModal);
+const sincronizarContextoWorker = useWorkerStore((s) => s.sincronizarContexto);
+
+// Sincroniza el contexto empresa/sucursal con el store del worker para
+// resolver a que caja/impresora mandar los tickets.
+useEffect(() => {
+  if (session?.cia && session?.sucursal) {
+    sincronizarContextoWorker(session.cia, session.sucursal);
+  }
+}, [session?.cia, session?.sucursal, sincronizarContextoWorker]);
 
 const [ventasEnProceso, setVentasEnProceso] = React.useState<VentaEnProceso[]>([]);
 const [modalVentasEnProcesoOpen, setModalVentasEnProcesoOpen] = React.useState(false);
@@ -2140,6 +2157,14 @@ return (
                 InputProps={{ readOnly: true }}
                 sx={{ minWidth: '90px', maxWidth: '90px', '& .MuiInputBase-input': { textAlign: 'right', fontWeight: 'bold', color: puntosAcumulados > 0 ? 'black' : 'inherit' } }}
               />
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={abrirModalWorker}
+                sx={{ minWidth: '70px', fontSize: '0.7rem', textTransform: 'none' }}
+              >
+                {equipoActivoWorker ?? "Caja"}
+              </Button>
             </Box>
 
             <FormControl size="small" sx={{ flex: 0.6, minWidth: '150px' }}>
@@ -3079,7 +3104,22 @@ return (
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
           <Button
             variant="contained"
-            onClick={() => window.print()}
+            onClick={async () => {
+              const impreso = await imprimirTicketWorker(construirTicketVentaDataset({
+                nombreEmpresa: "BERLLANO",
+                sucursal: historialInsumosData[0]?.sucursal ?? `SUC ${sucursal}`,
+                fecha: selectedVenta?.fecha ? new Date(selectedVenta.fecha).toLocaleDateString("es-MX") : "",
+                cliente: selectedVenta?.clienteNombre ?? "",
+                servicio: selectedVenta?.servDesc ?? "",
+                atendio: historialInsumosData[0]?.estilista ?? selectedVenta?.estilista ?? "",
+                lineasDetalle: historialInsumosData.map((insumo) => ({
+                  cantidad: insumo.cantidad.toFixed(3),
+                  descripcion: insumo.producto_Insumo,
+                })),
+              }));
+              // Respaldo: si el worker no responde, queda la impresion del navegador
+              if (!impreso) window.print();
+            }}
             sx={{ backgroundColor: '#000', '&:hover': { backgroundColor: '#333' } }}
           >
             Imprimir
@@ -4246,6 +4286,8 @@ return (
           </Box>
                </DialogContent>
       </Dialog>
+
+      <SelectorRecursosWorkerModal />
     </>
   );
 }

@@ -11,6 +11,10 @@ import {
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import useConsumoApi from "../../hooks/useConsumoApi";
+import useConsumoWorker from "../../hooks/useConsumoWorker";
+import { useWorkerStore } from "../../context/useWorkerStore";
+import SelectorRecursosWorkerModal from "../../components/POS/SelectorRecursosWorkerModal";
+import { construirTicketCorteDataset } from "../../utils/ticketDatasetBuilder";
 import useSession from "../../hooks/useSession";
 import { routes } from "../../utils/Routes";
 import { useAuth } from "../../context/AuthContext";
@@ -25,6 +29,17 @@ export default function CorteDia() {
   const session = useSession();
   const navigate = useNavigate();
   const { logout } = useAuth();
+  const { imprimirTicketWorker } = useConsumoWorker();
+  const equipoActivoWorker = useWorkerStore((s) => s.equipoActivo);
+  const abrirModalWorker = useWorkerStore((s) => s.abrirModal);
+  const sincronizarContextoWorker = useWorkerStore((s) => s.sincronizarContexto);
+
+  // Sincroniza el contexto empresa/sucursal con el store del worker.
+  useEffect(() => {
+    if (session?.cia && session?.sucursal) {
+      sincronizarContextoWorker(session.cia, session.sucursal);
+    }
+  }, [session?.cia, session?.sucursal, sincronizarContextoWorker]);
 
   const [ultimoCorte, setUltimoCorte] = useState<CorteData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -101,6 +116,18 @@ export default function CorteDia() {
 
       if (data?.corteProcesado || data?.mensaje) {
         const reportePromise = consultarReporteVentas();
+        // Impresion primaria: ticket resumen del corte via worker (silencioso).
+        // El reporte detallado en carta queda como opcion secundaria en el dialogo.
+        imprimirTicketWorker(construirTicketCorteDataset({
+          nombreEmpresa: "CORTE DE DIA",
+          sucursal: session?.dSucursal || String(session?.sucursal ?? ""),
+          caja: "1",
+          fecha: fechaActual,
+          hora: horaActual,
+          corte: String(ultimoCorte?.corte_maximo ?? ""),
+          corteParcial: String(ultimoCorte?.corte_parcial_maximo ?? ""),
+          usuario: String(session?.id ?? ""),
+        }));
         Swal.fire({
           title: "Corte de día realizado",
           text: "El corte se ha cerrado. ¿Desea imprimir el reporte de las ventas de hoy?",
@@ -418,12 +445,22 @@ export default function CorteDia() {
 
   return (
     <Box sx={{ p: { xs: 2, sm: 3 }, maxWidth: 800, mx: "auto", fontFamily: '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif' }}>
-      <Typography
-        variant="h3"
-        sx={{ mb: 0.5, fontWeight: "bold", textAlign: "center", color: "primary.main" }}
-      >
-        Módulo de Corte de Día
-      </Typography>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+        <Typography
+          variant="h3"
+          sx={{ flex: 1, fontWeight: "bold", textAlign: "center", color: "primary.main" }}
+        >
+          Módulo de Corte de Día
+        </Typography>
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={abrirModalWorker}
+          sx={{ minWidth: 70, fontSize: "0.7rem", textTransform: "none" }}
+        >
+          {equipoActivoWorker ?? "Caja"}
+        </Button>
+      </Box>
 
       {/* Info del corte */}
       <Paper elevation={2} sx={{ p: 1, mb: 2 }}>
@@ -522,6 +559,7 @@ export default function CorteDia() {
         </Button>
       </Box>
 
+      <SelectorRecursosWorkerModal />
     </Box>
   );
 }
