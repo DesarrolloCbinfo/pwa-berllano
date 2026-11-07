@@ -242,6 +242,11 @@ export default function ValidacionProductosServicios() {
   };
 
   // --- VALIDAR SERVICIO INDIVIDUAL ---
+  const respuestaExitosa = (resultado: any) =>
+    typeof resultado?.codigo === 'number'
+      ? resultado.codigo === 0
+      : Boolean(resultado?.mensaje1 || resultado?.mensaje);
+
   const handleValidarServicio = async (row: ValidacionRow) => {
     const result = await Swal.fire({
       title: '¿Confirmar validación?',
@@ -267,11 +272,11 @@ export default function ValidacionProductosServicios() {
 
         const resultado = response.data;
 
-        if (resultado.codigo === 0) {
+        if (respuestaExitosa(resultado)) {
           Swal.fire({
             icon: 'success',
             title: 'Éxito',
-            text: resultado.mensaje1 || 'Servicio validado correctamente'
+            text: resultado.mensaje1 || resultado.mensaje || 'Servicio validado correctamente'
           });
 
           // Recargar datos
@@ -280,7 +285,7 @@ export default function ValidacionProductosServicios() {
           Swal.fire({
             icon: 'error',
             title: 'Error',
-            text: resultado.mensaje1 || 'No se pudo validar el servicio'
+            text: resultado.mensaje1 || resultado.mensaje || 'No se pudo validar el servicio'
           });
         }
       } catch (error) {
@@ -327,7 +332,7 @@ export default function ValidacionProductosServicios() {
             });
             
             const resultado = response.data;
-            if (resultado.codigo === 0) {
+            if (respuestaExitosa(resultado)) {
               exitosos++;
             } else {
               fallidos++;
