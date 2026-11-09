@@ -1,4 +1,5 @@
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
+import { useCallback } from "react";
 import Swal from "sweetalert2";
 import type {
   IRecursoResuelto,
@@ -95,91 +96,97 @@ const ejecutarPeticionWorker = async (
 };
 
 export const useConsumoWorker = () => {
-  const { resolverRecurso } = useWorkerStore();
+  const resolverRecurso = useWorkerStore((s) => s.resolverRecurso);
 
-  const resolverYMostrar = (tipo: TipoRecursoWorker): IRecursoResuelto | null => {
-    const resuelto = resolverRecurso(tipo);
-    if (!resuelto) {
-      Swal.fire({
-        icon: "info",
-        title: "Selecciona una caja",
-        text: "No hay un equipo/worker configurado para esta operación. Elige la caja a utilizar.",
-      });
-    }
-    return resuelto;
-  };
+  const resolverYMostrar = useCallback(
+    (tipo: TipoRecursoWorker): IRecursoResuelto | null => {
+      const resuelto = resolverRecurso(tipo);
+      if (!resuelto) {
+        Swal.fire({
+          icon: "info",
+          title: "Selecciona una caja",
+          text: "No hay un equipo/worker configurado para esta operación. Elige la caja a utilizar.",
+        });
+      }
+      return resuelto;
+    },
+    [resolverRecurso]
+  );
 
-  const imprimirTicketWorker = async (lineas: ITicketLinea[]): Promise<boolean> => {
-    const resuelto = resolverYMostrar("Tickets");
-    if (!resuelto) return false;
+  const imprimirTicketWorker = useCallback(
+    async (lineas: ITicketLinea[]): Promise<boolean> => {
+      const resuelto = resolverYMostrar("Tickets");
+      if (!resuelto) return false;
 
-    try {
-      await ejecutarPeticionWorker(resuelto, {
-        method: "POST",
-        url: "/api/impresion/ticket",
-        data: {
-          recurso: resuelto.nombreDispositivo ?? "",
-          ticket_dataset: lineas,
-        },
-      });
-      return true;
-    } catch (e) {
-      mostrarError(e as AxiosError);
-      return false;
-    }
-  };
+      try {
+        await ejecutarPeticionWorker(resuelto, {
+          method: "POST",
+          url: "/api/impresion/ticket",
+          data: {
+            recurso: resuelto.nombreDispositivo ?? "",
+            ticket_dataset: lineas,
+          },
+        });
+        return true;
+      } catch (e) {
+        mostrarError(e as AxiosError);
+        return false;
+      }
+    },
+    [resolverYMostrar]
+  );
 
-  const imprimirDocumentoWorker = async (
-    urlFile: string,
-    recursoOverride?: string
-  ): Promise<boolean> => {
-    const resuelto = resolverYMostrar("Documentos");
-    if (!resuelto) return false;
+  const imprimirDocumentoWorker = useCallback(
+    async (urlFile: string, recursoOverride?: string): Promise<boolean> => {
+      const resuelto = resolverYMostrar("Documentos");
+      if (!resuelto) return false;
 
-    try {
-      await ejecutarPeticionWorker(resuelto, {
-        method: "POST",
-        url: "/api/impresion/documento",
-        data: {
-          url_file: urlFile,
-          recurso: recursoOverride ?? resuelto.nombreDispositivo ?? "",
-        },
-      });
-      return true;
-    } catch (e) {
-      mostrarError(e as AxiosError);
-      return false;
-    }
-  };
+      try {
+        await ejecutarPeticionWorker(resuelto, {
+          method: "POST",
+          url: "/api/impresion/documento",
+          data: {
+            url_file: urlFile,
+            recurso: recursoOverride ?? resuelto.nombreDispositivo ?? "",
+          },
+        });
+        return true;
+      } catch (e) {
+        mostrarError(e as AxiosError);
+        return false;
+      }
+    },
+    [resolverYMostrar]
+  );
 
   // Health check puntual hacia un worker (para el badge "En linea" del modal).
-  const verificarEstadoWorker = async (
-    ipWorker: string,
-    puerto: number
-  ): Promise<IWorkerIdentidad | null> => {
-    try {
-      const { data } = await axios.get<IWorkerIdentidad>(
-        `http://${ipWorker}:${puerto}/api/sistema/identidad`,
-        { timeout: 2000 }
-      );
-      return data;
-    } catch {
+  const verificarEstadoWorker = useCallback(
+    async (ipWorker: string, puerto: number): Promise<IWorkerIdentidad | null> => {
       try {
-        // segundo intento por si la IP esta obsoleta y el hostname si responde
-        const fila = useWorkerStore
-          .getState()
-          .recursosSucursal.find((r) => r.ipWorker === ipWorker);
-        if (!fila?.hostWorker) return null;
         const { data } = await axios.get<IWorkerIdentidad>(
-          `http://${fila.hostWorker}:${puerto}/api/sistema/identidad`,
+          `http://${ipWorker}:${puerto}/api/sistema/identidad`,
           { timeout: 2000 }
         );
         return data;
       } catch {
-        return null;
+        try {
+          // segundo intento por si la IP esta obsoleta y el hostname si responde
+          const fila = useWorkerStore
+            .getState()
+            .recursosSucursal.find((r) => r.ipWorker === ipWorker);
+          if (!fila?.hostWorker) return null;
+          const { data } = await axios.get<IWorkerIdentidad>(
+            `http://${fila.hostWorker}:${puerto}/api/sistema/identidad`,
+            { timeout: 2000 }
+          );
+          return data;
+        } catch {
+          return null;
+        }
       }
-    }
-  };
+    },
+    []
+  );
 
   return {
     imprimirTicketWorker,

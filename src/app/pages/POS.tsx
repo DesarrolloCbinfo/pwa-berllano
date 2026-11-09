@@ -6,6 +6,7 @@ import useConsumoWorker from "../../hooks/useConsumoWorker";
 import { useWorkerStore } from "../../context/useWorkerStore";
 import SelectorRecursosWorkerModal from "../../components/POS/SelectorRecursosWorkerModal";
 import { construirTicketVentaDataset } from "../../utils/ticketDatasetBuilder";
+import type { ITicketLinea } from "../../interfaces/workerInterfaces";
 import { useServerTable } from "../../hooks/useServerTable";
 import useSession from "../../hooks/useSession";
 import ClientesTable from "../../components/POS/ClientesTable";
@@ -1501,7 +1502,30 @@ const verificaDatosVenta = () => {
           willOpen: () => { flushSync(() => { setModalCobroOpen(false); }); },
           confirmButtonText: 'Aceptar'
         });
-        
+
+        // Ticket de venta por el worker: sp_ticket_venta arma las lineas
+        // fiscales y el API las entrega ya mapeadas al contrato del worker.
+        try {
+          const ticketRes = await consumoApi.get('/api/PuntoDeVenta/sp_ticket_venta_dataset', {
+            params: {
+              folio: res.data?.folio,
+              suc: sucursal,
+              cuenta_recompensa: cuentaRecompensa || "",
+              cuenta_puntos: cuentaPuntos || "",
+              venta_credito: isCredito ? 1 : 0,
+              cxc: 0,
+              cambio: cambio || 0,
+              total_a_pagar: totalVenta || 0,
+            },
+          });
+          const dataset = ticketRes.data?.ticket_dataset;
+          if (Array.isArray(dataset) && dataset.length) {
+            await imprimirTicketWorker(dataset as ITicketLinea[]);
+          }
+        } catch (e) {
+          console.error("Ticket de venta (worker):", e);
+        }
+
         // Verificar si se requiere retiro de caja
         try {
           const retiroRes = await consumoApi.get(`/api/Cortedia/verifica-retiros?sucursal=${sucursal}&caja=1`);
