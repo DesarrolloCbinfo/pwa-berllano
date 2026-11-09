@@ -165,6 +165,7 @@ const Home: React.FC = () => {
     { id: 'consultaReportes', title: 'Consulta de reportes', path: routes.reportes },
     { id: 'recepcionMercancias', title: 'Recepción de mercancías por sucursales', path: routes.reporteRecepcionMercancias },
     { id: 'reporteRaz', title: 'Reporte Raz', path: routes.reporteRaz },
+    { id: 'reporteConteosMarca', title: 'Reporte de Conteos por Marca', path: routes.reporteConteosMarca },
   ];
 
   const RRHHItems = [

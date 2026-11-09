@@ -28,7 +28,7 @@ import {
   Print,
   Search,
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { MaterialReactTable, type MRT_ColumnDef } from 'material-react-table';
 import * as XLSX from 'xlsx';
 import useConsumoApi from '../../../hooks/useConsumoApi';
@@ -252,6 +252,12 @@ const knownReportFilters: Record<string, FilterName[]> = {
     'proveedor',
   ],
   sp_reporte_inventario_ERP: ['fechaCorte', 'obsoleto', 'todo'],
+  sp_bw_reporte_conteos_marca: [
+    'fechaInicial',
+    'fechaFinal',
+    'sucursal',
+    'marca',
+  ],
   sp_reporte_rentabilidad_insumos: [
     'sucursal',
     'fechaInicial',
@@ -745,6 +751,8 @@ function construirHtmlVentasEstilista(
 
 export default function ReportesPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const reporteSolicitado = searchParams.get('reporte') ?? '';
   const { consumoApi } = useConsumoApi();
   const { session } = useSessionContext();
   const apiRef = useRef(consumoApi);
@@ -784,6 +792,12 @@ export default function ReportesPage() {
   const [queryLoading, setQueryLoading] = useState(false);
   const [queryError, setQueryError] = useState(false);
   const [queryMessage, setQueryMessage] = useState('');
+
+  useEffect(() => {
+    if (!reporteSolicitado || reports.length === 0) return;
+    const existe = reports.some((report) => report.metodoApi === reporteSolicitado);
+    if (existe) setSelectedReportKey(reporteSolicitado);
+  }, [reporteSolicitado, reports]);
 
   useEffect(() => {
     let active = true;
@@ -1291,7 +1305,9 @@ export default function ReportesPage() {
                                     ? ReportesApis.ventasCfds
                                     : selectedReport.metodoApi === 'sp_reporteIngresosFacturas'
                                       ? ReportesApis.ingresosFacturas
-                                      : null;
+                                      : selectedReport.metodoApi === 'sp_bw_reporte_conteos_marca'
+                                        ? ReportesApis.conteosMarcaFamilia
+                                        : null;
 
     if (!reportEndpoint) {
       setReportRows([]);
@@ -1323,7 +1339,7 @@ export default function ReportesPage() {
       return;
     }
     if (
-      ['sp_reporte_inventario', 'sp_reporte_ajuste_inventario', 'sp_reporte_ventas_estilista', 'sp_reporteIngresosFacturas'].includes(
+      ['sp_reporte_inventario', 'sp_reporte_ajuste_inventario', 'sp_reporte_ventas_estilista', 'sp_reporteIngresosFacturas', 'sp_bw_reporte_conteos_marca'].includes(
         selectedReport.metodoApi,
       ) &&
       !filters.sucursal
@@ -1418,6 +1434,14 @@ export default function ReportesPage() {
             f1: `${filters.fechaInicial}T00:00:00`,
             f2: `${filters.fechaFinal}T00:00:00`,
             suc: Number(filters.sucursal),
+          }
+        : {}),
+      ...(selectedReport.metodoApi === 'sp_bw_reporte_conteos_marca'
+        ? {
+            f1: filters.fechaInicial,
+            f2: filters.fechaFinal,
+            suc: Number(filters.sucursal),
+            marca: filters.marca.trim() || '%',
           }
         : {}),
     };

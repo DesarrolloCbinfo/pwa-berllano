@@ -24,4 +24,5 @@ export const ReportesApis = {
   ventasCfds: '/api/CatReportes/sp_reporte_ventas_cfds',
   ventasEstilista: '/api/CatReportes/sp_reporte_ventas_estilista',
   ingresosFacturas: '/api/CatReportes/sp_reporteIngresosFacturas',
+  conteosMarcaFamilia: '/api/CatReportes/sp_bw_reporte_conteos_marca',
 };
