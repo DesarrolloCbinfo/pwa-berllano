@@ -1,5 +1,5 @@
 import { Box, Typography } from '@mui/material';
-import { SwapHoriz, MoveToInbox, Tune, ShoppingCart, LocalShipping } from '@mui/icons-material';
+import { SwapHoriz, MoveToInbox, Tune, ShoppingCart, LocalShipping, FactCheck } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { routes } from '../../../utils/Routes';
 
@@ -42,6 +42,12 @@ export default function InventarioPage() {
       title: 'Recepción de Mercancía de Pedidos',
       icon: LocalShipping,
       path: routes.recepcionMercanciaProveedor,
+    },
+    {
+      id: 'recepcionMercanciaAdministracion',
+      title: 'Administración de Recepción',
+      icon: FactCheck,
+      path: routes.recepcionMercanciaAdministracion,
     },
   ];
 

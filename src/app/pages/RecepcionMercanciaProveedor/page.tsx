@@ -59,16 +59,11 @@ import type { ResultadoAlta } from "../../../features/RecepcionMercanciaProveedo
 
 function formatearFecha(valor: string) {
   if (!valor) return "-";
-  const fecha = new Date(valor);
-  if (Number.isNaN(fecha.getTime())) return valor;
-  return fecha.toLocaleString("es-MX", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
+  const [fecha] = valor.split("T");
+  if (!fecha) return valor;
+  const [anio, mes, dia] = fecha.split("-");
+  if (!anio || !mes || !dia) return valor;
+  return `${dia}/${mes}/${anio}`;
 }
 
 function normalizarFecha(valor: string) {

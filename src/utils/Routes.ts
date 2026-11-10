@@ -81,6 +81,7 @@ export const routes = {
   NivelacionInventarioPage: "/nivelacion-inventario",
   pedidosProveedores: "/pedidos-proveedores",
   administracionErogaciones: "/administracion-erogaciones",
+  recepcionMercanciaAdministracion: "/recepcion-mercancia-administracion",
 
   //Conteos
   conteos: "/conteos",
