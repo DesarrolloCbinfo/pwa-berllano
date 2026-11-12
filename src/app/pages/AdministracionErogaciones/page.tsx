@@ -346,7 +346,7 @@ export default function AdministracionErogaciones() {
         for (const usuario of candidatos) {
           const response = await consumoApi.get(
             "/api/AdministracionErogaciones/sp_bw_cuentas_bancarias_erogaciones_sel",
-            { params: { usuario, cia: 1, opTesoreria: 1 } },
+            { params: { usuario, cia: 1 } },
           );
           data = Array.isArray(response.data) ? response.data : [];
           if (data.length > 0) break;
@@ -1192,12 +1192,7 @@ export default function AdministracionErogaciones() {
       });
       await refrescarEstado(folioNumerico);
 
-      if (
-        estadoValidado &&
-        tienePermisoAutoriza &&
-        permisos.autoriza &&
-        permisos.pago
-      ) {
+      if (estadoValidado && permisos.pago) {
         await abrirPagos();
       }
     } catch (error: any) {
