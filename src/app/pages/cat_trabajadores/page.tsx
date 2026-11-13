@@ -847,19 +847,23 @@ export default function CatTrabajadores() {
       console.log('Headers:', response.headers);
       console.log('Longitud de la respuesta:', response.data?.length);
       
-      if (response.data?.codigo === 0) {
-        
+      if (Number(response.data?.codigo) === 0) {
+
         const trabajadorActualizado = response.data;
         console.log('Usando datos actualizados del stored procedure:', trabajadorActualizado);
-        
-       
+
+
         if (trabajadorActualizado.password) {
           console.log('Contraseña actualizada en frontend:', trabajadorActualizado.password);
-    
+
         }
-        
-        await fetchTrabajadores(); 
-        setOpenEdit(false);     
+
+        try {
+          await fetchTrabajadores();
+        } catch (error) {
+          console.error('Error al recargar trabajadores:', error);
+        }
+        setOpenEdit(false);
         await Swal.fire({
           title: '¡Éxito!',
           text: response.data.mensaje || response.data.mensaje1 || (isEditing ? 'Trabajador actualizado exitosamente' : 'Trabajador agregado exitosamente'),
