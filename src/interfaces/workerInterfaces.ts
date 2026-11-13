@@ -4,6 +4,7 @@ export interface IRecursoWorker {
   idRecurso: number;
   idEmpresa: number;
   idSucursal: number;
+  caja: number;
   equipo: string;
   recurso: TipoRecursoWorker;
   ipWorker: string;
@@ -55,4 +56,17 @@ export interface IRecursoResuelto {
   urlFallbackMdns: string | null;
   nombreDispositivo: string | null;
   equipo: string;
+  caja: number;
+}
+
+// Contrato de POST /api/terminal/cobro del worker (respuesta resumida).
+export interface ICobroTerminalResumen {
+  aprobada: boolean;
+  estado: string;
+  codigoRespuesta: string;
+  mensajeRespuesta: string;
+  ventaInsertada: boolean;
+  mensajeInsercion: string;
+  ticketImpreso: boolean;
+  mensajeTicket: string;
 }

@@ -2,6 +2,7 @@ import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import { useCallback } from "react";
 import Swal from "sweetalert2";
 import type {
+  ICobroTerminalResumen,
   IRecursoResuelto,
   ITicketLinea,
   IWorkerIdentidad,
@@ -11,6 +12,24 @@ import { useWorkerStore } from "../context/useWorkerStore";
 
 const WORKER_KEY = import.meta.env.VITE_WORKER_KEY ?? "CAMBIAR_EN_INSTALACION";
 const TIMEOUT_MS_DEFAULT = 30_000;
+// El pinpad puede tardar ~60s esperando la tarjeta antes de responder.
+const TIMEOUT_MS_TERMINAL = 90_000;
+
+// Body de POST /api/terminal/cobro (snake_case, contrato del worker).
+export interface CobroTerminalRequest {
+  monto: number;
+  referencia: string;
+  no_venta: number;
+  usuario_pos: string;
+  corte: number;
+  corte_parcial: number;
+  sucursal: number;
+  caja?: number;              // si no viene, usa la del recurso resuelto
+  monto_retiro?: number;
+  efectivo?: number;
+  pago_combinado?: string;
+  imprimir_voucher?: boolean;
+}
 
 const esErrorRed = (error: AxiosError): boolean =>
   !error.response &&
@@ -188,10 +207,52 @@ export const useConsumoWorker = () => {
     []
   );
 
+  // POST /api/terminal/cobro al worker del equipo activo. La caja sale del
+  // recurso 'TerminalBanorte' seleccionado (mismo worker, varias cajas).
+  // Con no_venta > 0 el worker registra sp_registra_pago_banorte2026 e
+  // imprime el voucher en la impresora 'Tickets' de esa caja.
+  const cobrarTerminalWorker = useCallback(
+    async (req: CobroTerminalRequest): Promise<ICobroTerminalResumen | null> => {
+      const resuelto = resolverYMostrar("TerminalBanorte");
+      if (!resuelto) return null;
+
+      try {
+        const { data } = await ejecutarPeticionWorker(
+          resuelto,
+          {
+            method: "POST",
+            url: "/api/terminal/cobro",
+            data: {
+              monto: req.monto,
+              referencia: req.referencia,
+              no_venta: req.no_venta,
+              usuario_pos: req.usuario_pos,
+              corte: req.corte,
+              corte_parcial: req.corte_parcial,
+              sucursal: req.sucursal,
+              caja: req.caja ?? resuelto.caja,
+              monto_retiro: req.monto_retiro ?? 0,
+              efectivo: req.efectivo ?? 0,
+              pago_combinado: req.pago_combinado ?? "",
+              imprimir_voucher: req.imprimir_voucher ?? true,
+            },
+          },
+          TIMEOUT_MS_TERMINAL
+        );
+        return data as ICobroTerminalResumen;
+      } catch (e) {
+        mostrarError(e as AxiosError);
+        return null;
+      }
+    },
+    [resolverYMostrar]
+  );
+
   return {
     imprimirTicketWorker,
     imprimirDocumentoWorker,
     verificarEstadoWorker,
+    cobrarTerminalWorker,
   };
 };
 

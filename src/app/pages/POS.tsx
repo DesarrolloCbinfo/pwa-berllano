@@ -5,8 +5,9 @@ import useConsumoApi from "../../hooks/useConsumoApi";
 import useConsumoWorker from "../../hooks/useConsumoWorker";
 import { useWorkerStore } from "../../context/useWorkerStore";
 import SelectorRecursosWorkerModal from "../../components/POS/SelectorRecursosWorkerModal";
+import CobroBanorteModal from "../../components/POS/CobroBanorteModal";
 import { construirTicketVentaDataset } from "../../utils/ticketDatasetBuilder";
-import type { ITicketLinea } from "../../interfaces/workerInterfaces";
+import type { ICobroTerminalResumen, ITicketLinea } from "../../interfaces/workerInterfaces";
 import { useServerTable } from "../../hooks/useServerTable";
 import useSession from "../../hooks/useSession";
 import ClientesTable from "../../components/POS/ClientesTable";
@@ -347,8 +348,9 @@ React.useEffect(() => {
 const session = useSession();
 const sucursal = session?.sucursal || 1;
 
-const { imprimirTicketWorker } = useConsumoWorker();
+const { imprimirTicketWorker, cobrarTerminalWorker } = useConsumoWorker();
 const equipoActivoWorker = useWorkerStore((s) => s.equipoActivo);
+const resolverRecursoWorker = useWorkerStore((s) => s.resolverRecurso);
 const abrirModalWorker = useWorkerStore((s) => s.abrirModal);
 const sincronizarContextoWorker = useWorkerStore((s) => s.sincronizarContexto);
 
@@ -392,6 +394,11 @@ const [recompensaTC, setRecompensaTC] = React.useState('');
 
 // Estados para el modal de cobro
 const [modalCobroOpen, setModalCobroOpen] = React.useState(false);
+// Contexto del cobro Banorte (modal f_banorte): folio ya registrado + corte
+const [cobroBanorte, setCobroBanorte] = React.useState<{
+  open: boolean; noVenta: number; caja: number; corte: number; corteParcial: number; total: number;
+} | null>(null);
+const [registrandoVentaBanorte, setRegistrandoVentaBanorte] = React.useState(false);
 const [formasPago, setFormasPago] = React.useState<FormaPago[]>([]);
 const [loadingFormasPago, setLoadingFormasPago] = React.useState(false);
 const [tiposCardFormasPago, setTiposCardFormasPago] = React.useState<string[]>([]);
@@ -1603,6 +1610,88 @@ const verificaDatosVenta = () => {
     } finally {
       setFinalizandoVenta(false);
     }
+  };
+
+  // Equivalente a Comando96_Click de Access en un solo procedimiento:
+  // resuelve la caja del equipo activo, obtiene el corte, registra la venta
+  // "como pagada en efectivo" (sp_bw_pos_registra_venta_banorte) para amarrar
+  // el no_venta y abre el modal de cobro (f_banorte).
+  const handleCobroConTarjeta = async () => {
+    if (!verificaDatosVenta()) return;
+    if (!clienteSeleccionado || !estilistaSeleccionado) {
+      Swal.fire({ icon: 'warning', title: 'Atención', text: 'Faltan datos para finalizar la venta' });
+      return;
+    }
+
+    const resuelto = resolverRecursoWorker('TerminalBanorte');
+    if (!resuelto) {
+      Swal.fire({ icon: 'info', title: 'Selecciona una caja', text: 'No hay terminal Banorte configurada. Elige la caja a utilizar.' });
+      abrirModalWorker();
+      return;
+    }
+    const cajaCobro = resuelto.caja || 1;
+
+    setRegistrandoVentaBanorte(true);
+    try {
+      // Corte/corte_parcial actuales de la caja (ultimo_corte_realizado + 1 del VBA)
+      const corteRes = await consumoApi.get('/api/PuntoDeVenta/get_corte_actual', {
+        params: { caja: cajaCobro, sucursal },
+      });
+      const info = Array.isArray(corteRes.data) ? corteRes.data[0] : corteRes.data;
+      const corte = Number(info?.corte ?? info?.Corte ?? 0) || 0;
+      const corteParcial = Number(info?.corte_parcial ?? info?.Corte_parcial ?? info?.CorteParcial ?? 0) || 0;
+
+      // Registra la venta como efectivo y amarra el folio (inserta_venta_banorte)
+      const reg = await consumoApi.post('/api/PuntoDeVenta/sp_bw_pos_registra_venta_banorte', {
+        sucursal,
+        caja: cajaCobro,
+        cve_cliente: clienteSeleccionado.No_cliente,
+        corte,
+        corte_parcial: corteParcial,
+        credito: 0,
+        total: totalVenta,
+        usuario: String(session?.id ?? ''),
+      });
+
+      if (reg.data?.ok !== 1 || !reg.data?.folio) {
+        Swal.fire({ icon: 'error', title: 'Error', text: reg.data?.mensaje || 'No se registró la venta para el cobro Banorte' });
+        return;
+      }
+
+      // procesaCobroBanorte: abre el modal con el folio amarrado
+      setCobroBanorte({
+        open: true,
+        noVenta: reg.data.folio,
+        caja: cajaCobro,
+        corte,
+        corteParcial,
+        total: totalVenta,
+      });
+    } catch (error: any) {
+      Swal.fire({ icon: 'error', title: 'Error', text: error.response?.data?.mensaje || 'Error al registrar la venta para cobro Banorte' });
+    } finally {
+      setRegistrandoVentaBanorte(false);
+    }
+  };
+
+  // Boton PAGAR de cada TCx del modal: POST /api/terminal/cobro al worker con
+  // el no_venta registrado. El worker cobra + post-venta (detalle_ventas_pagos)
+  // + voucher en la impresora Tickets de la caja.
+  const handlePagarBanorte = async (monto: number, tarjeta: string): Promise<ICobroTerminalResumen | null> => {
+    if (!cobroBanorte) return null;
+    return await cobrarTerminalWorker({
+      monto,
+      referencia: `${tarjeta}-V${cobroBanorte.noVenta}`,
+      no_venta: cobroBanorte.noVenta,
+      usuario_pos: String(session?.id ?? ''),
+      corte: cobroBanorte.corte,
+      corte_parcial: cobroBanorte.corteParcial,
+      sucursal,
+      caja: cobroBanorte.caja,
+      efectivo: 0,
+      pago_combinado: '',
+      imprimir_voucher: true,
+    });
   };
 
   const handleEliminarInsumoUnico = async (insumo: {producto: Producto, cantidad: number, validado: boolean, observacion: string, idSql?: number, enBaseDatos?: boolean}) => {
@@ -4015,7 +4104,7 @@ return (
     {/* Botones de Control Inferiores */}
     <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3, mt: 1.5 }}>
       <Button variant="outlined" onClick={handleReiniciarCobro} color="warning" sx={{ borderRadius: 0, fontWeight: 'bold', textTransform: 'none', minWidth: 100, height: 32, fontSize: '0.85rem' }}>Reiniciar</Button>
-      <Button variant="contained" disabled={isCredito || finalizandoVenta} onClick={() => Swal.fire({ icon: 'info', title: 'Cobro con Tarjeta', text: 'Llamando a realiza_pago_tc_banorte...', confirmButtonColor: '#333333' })} sx={{ backgroundColor: '#4a6572', color: 'white', borderRadius: 0, fontWeight: 'bold', textTransform: 'none', minWidth: 130, height: 32, fontSize: '0.85rem', border: '1px solid #34495e', '&:hover': { backgroundColor: '#34495e' } }}>Cobro con Tarjeta</Button>
+      <Button variant="contained" disabled={isCredito || finalizandoVenta || registrandoVentaBanorte} onClick={handleCobroConTarjeta} sx={{ backgroundColor: '#4a6572', color: 'white', borderRadius: 0, fontWeight: 'bold', textTransform: 'none', minWidth: 130, height: 32, fontSize: '0.85rem', border: '1px solid #34495e', '&:hover': { backgroundColor: '#34495e' } }}>{registrandoVentaBanorte ? 'Registrando...' : 'Cobro con Tarjeta'}</Button>
       <Button variant="contained" onClick={handleFinalizarVenta} disabled={!puedeFinalizar || finalizandoVenta} sx={{ backgroundColor: '#4a6572', color: 'white', borderRadius: 0, fontWeight: 'bold', textTransform: 'none', minWidth: 130, height: 32, fontSize: '0.85rem', border: '1px solid #34495e', '&:hover': { backgroundColor: '#34495e' } }}>{finalizandoVenta ? 'Procesando...' : 'Registrar venta'}</Button>
       <Button variant="contained" onClick={() => setModalCobroOpen(false)} sx={{ backgroundColor: '#4a6572', color: 'white', borderRadius: 0, fontWeight: 'bold', textTransform: 'none', minWidth: 90, height: 32, fontSize: '0.85rem', border: '1px solid #34495e', '&:hover': { backgroundColor: '#34495e' } }}>Salir</Button>
     </Box>
@@ -4314,6 +4403,18 @@ return (
       </Dialog>
 
       <SelectorRecursosWorkerModal />
+
+      {/* Modal de cobro Banorte (f_banorte): TC1..TC3 + efectivo contra el
+          folio ya registrado como efectivo. VENTA queda pendiente. */}
+      {cobroBanorte && (
+        <CobroBanorteModal
+          open={cobroBanorte.open}
+          total={cobroBanorte.total}
+          folioVenta={cobroBanorte.noVenta}
+          onPagar={handlePagarBanorte}
+          onCerrar={() => setCobroBanorte((prev) => (prev ? { ...prev, open: false } : null))}
+        />
+      )}
     </>
   );
 }

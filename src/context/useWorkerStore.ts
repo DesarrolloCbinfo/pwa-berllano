@@ -21,6 +21,7 @@ const mapearRecurso = (row: Record<string, unknown>): IRecursoWorker => ({
   idRecurso: Number(row.IdRecurso) || 0,
   idEmpresa: Number(row.IdEmpresa) || 0,
   idSucursal: Number(row.IdSucursal) || 0,
+  caja: Number(row.Caja ?? row.caja) || 0,
   equipo: String(row.Equipo ?? ""),
   recurso: String(row.Recurso ?? "") as TipoRecursoWorker,
   ipWorker: String(row.IpWorker ?? ""),
@@ -172,6 +173,7 @@ export const useWorkerStore = create<WorkerStore>()(
           urlFallbackMdns: fila.hostWorker ? `http://${fila.hostWorker}:${fila.puerto}` : null,
           nombreDispositivo: fila.nombreDispositivoLocal,
           equipo: fila.equipo,
+          caja: fila.caja,
         };
       },
 
