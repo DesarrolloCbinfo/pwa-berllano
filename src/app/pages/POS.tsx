@@ -1694,6 +1694,63 @@ const verificaDatosVenta = () => {
     });
   };
 
+  // Boton VENTA del modal f_banorte: port de btnVenta_Click de Access.
+  // La venta y sus cargos ya quedaron en BD (sp_bw_pos_registra_venta_banorte
+  // + sp_registra_pago_banorte2026 por cada TC); aqui solo se imprime el
+  // ticket de venta (IMPRIME_TICKET_VENTA2026), se muestra el cambio y se
+  // cierra el cobro (TempVars!cobroRelizado = 1 + DoCmd.Close).
+  const handleVentaBanorte = async (pagoTotal: number) => {
+    if (!cobroBanorte) return;
+    const cambio = Math.max(0, pagoTotal - cobroBanorte.total);
+
+    try {
+      const ticketRes = await consumoApi.get('/api/PuntoDeVenta/sp_ticket_venta_dataset', {
+        params: {
+          folio: cobroBanorte.noVenta,
+          suc: sucursal,
+          cuenta_recompensa: '',
+          cuenta_puntos: '',
+          venta_credito: 0,
+          cxc: 0,
+          cambio,
+          total_a_pagar: cobroBanorte.total,
+        },
+      });
+      const dataset = ticketRes.data?.ticket_dataset;
+      if (Array.isArray(dataset) && dataset.length) {
+        await imprimirTicketWorker(dataset as ITicketLinea[]);
+      }
+    } catch (e) {
+      console.error('Ticket de venta Banorte (worker):', e);
+    }
+
+    await Swal.fire({
+      icon: 'success',
+      title: 'Venta Concluida',
+      text: `Venta Cerrada Con Éxito. Cambio a entregar: $${cambio.toFixed(2)}`,
+      confirmButtonText: 'Aceptar',
+    });
+
+    // Cierre del cobro + inicializa_pantalla() del VBA
+    setCobroBanorte(null);
+    setModalCobroOpen(false);
+    setDetallesVenta([]);
+    setClienteSeleccionado({ No_cliente: '00001', nombre: 'PÚBLICO EN GENERAL', ap_paterno: null, ap_materno: null });
+    setEstilistaSeleccionado('');
+    setAuxiliarSeleccionado('');
+    setPagosRegistro([]);
+    setSumaManual(0);
+    setPagoEfectivo(0);
+    setTmpPagoEfectivo(0);
+    setPuntosPago(0);
+    setCuentaPuntos('');
+    setCuentaRecompensa('');
+    setNc(0);
+    setBonificacion(0);
+    setFolioDev('');
+    setIsVentaEnProceso(false);
+  };
+
   const handleEliminarInsumoUnico = async (insumo: {producto: Producto, cantidad: number, validado: boolean, observacion: string, idSql?: number, enBaseDatos?: boolean}) => {
     if (insumo.enBaseDatos) {
       try {
@@ -4405,13 +4462,14 @@ return (
       <SelectorRecursosWorkerModal />
 
       {/* Modal de cobro Banorte (f_banorte): TC1..TC3 + efectivo contra el
-          folio ya registrado como efectivo. VENTA queda pendiente. */}
+          folio ya registrado como efectivo. VENTA concluye como btnVenta_Click. */}
       {cobroBanorte && (
         <CobroBanorteModal
           open={cobroBanorte.open}
           total={cobroBanorte.total}
           folioVenta={cobroBanorte.noVenta}
           onPagar={handlePagarBanorte}
+          onVenta={handleVentaBanorte}
           onCerrar={() => setCobroBanorte((prev) => (prev ? { ...prev, open: false } : null))}
         />
       )}

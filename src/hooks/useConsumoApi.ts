@@ -38,8 +38,8 @@ const useConsumoApi = () => {
   };
 
 const consumoApi = axios.create({
-    baseURL: "http://127.0.0.1:8079/",
-    //baseURL: "http://127.0.0.1:8079/",
+    // baseURL: "http://127.0.0.1:8079/",
+    baseURL: "http://217.216.95.62:8079/",
     headers: {
       "Content-Type": "application/json",
     },
