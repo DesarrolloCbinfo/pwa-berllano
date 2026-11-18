@@ -92,7 +92,7 @@ export default function EditarPartidaDialog({
                 )
               }
               disabled={guardando}
-              inputProps={{ min: 0, step: 1 }}
+              inputProps={{ min: 0, step: "any" }}
               fullWidth
             />
             <TextField
@@ -105,7 +105,7 @@ export default function EditarPartidaDialog({
                 )
               }
               disabled={guardando}
-              inputProps={{ min: 0, step: 1 }}
+              inputProps={{ min: 0, step: "any" }}
               fullWidth
             />
           </Stack>

@@ -101,7 +101,11 @@ export default function EdicionPartidasTable({
                 <Chip label={partida.clave_prod} size="small" variant="outlined" />
               </TableCell>
               <TableCell sx={{ maxWidth: 260 }}>{partida.descripcion || "-"}</TableCell>
-              <TableCell align="right">{partida.cantidad}</TableCell>
+              <TableCell align="right">
+                {Number(partida.cantidad || 0).toLocaleString("es-MX", {
+                  maximumFractionDigits: 3,
+                })}
+              </TableCell>
               {/* <TableCell align="right">{partida.cantidad_administracion}</TableCell> */}
               <TableCell sx={{ maxWidth: 220 }}>
                 {partida.observaciones || "-"}

@@ -24,14 +24,28 @@ export interface RecepcionAdministracionRow {
   costo_sin_iva: number;
   costo_total: number;
   costoFactura1: number;
-  precioVenta: number;
+  /** Precio de venta lista 1 (catálogo actual). Informativo. */
+  precioVenta_actual: number;
+  /** Precio nuevo (editable). Lo entrega el SP. */
+  nuevo_precio: number | null;
+  porcentaje_iva: number | null;
+  administracion_terminada: boolean | number | null;
+  actualizar_catalogo: boolean | number | null;
 }
 
 export interface ActualizarRecepcionAdministracionPayload {
   id: number;
   cantidad_administracion: number;
-  cantidad_bonificacion_r: number;
-  cantidad_bonificacion_p: number;
   cantidad_bonificacion_admin: number;
-  costo_sin_iva: number;
+  cantidad_bonificacion_r: number;
+  costo_administracion: number;
+  porcentaje_iva: number;
+  nuevo_precio: number;
+  actualizar_catalogo: boolean;
+  observaciones: string;
+}
+
+export interface FinalizarAdministracionPayload {
+  folio: number;
+  cve_sucursal: number;
 }

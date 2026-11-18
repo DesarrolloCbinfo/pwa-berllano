@@ -80,8 +80,7 @@ export default function CapturaEscaneo({
 
   const verificado = claveVerificada != null;
   const cantidadNumero = Number(cantidad);
-  const cantidadValida =
-    Number.isInteger(cantidadNumero) && cantidadNumero > 0;
+  const cantidadValida = Number.isFinite(cantidadNumero) && cantidadNumero > 0;
   const descripcionValida = requiereDescripcionManual
     ? descripcionManual.trim().length > 0
     : descripcionCatalogo.trim().length > 0;
@@ -340,7 +339,7 @@ export default function CapturaEscaneo({
           value={cantidad}
           onChange={(event) => setCantidad(event.target.value)}
           inputRef={cantidadRef}
-          inputProps={{ min: 1, step: 1 }}
+          inputProps={{ min: 0, step: "any" }}
           disabled={enviando}
           sx={{ width: { xs: "100%", sm: 220 } }}
         />
