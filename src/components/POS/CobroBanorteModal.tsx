@@ -9,6 +9,11 @@ import {
   Typography,
 } from "@mui/material";
 import type { ICobroTerminalResumen } from "../../interfaces/workerInterfaces";
+import {
+  aCentavos,
+  cotizarCargoBanorteCentavos,
+  puedeCancelarBanorte,
+} from "./banorteSaldo";
 
 // Port del formulario Access "f_banorte" (Banorte V 1.0 interredes).
 // Cada boton PAGAR lanza POST /api/terminal/cobro al worker con el no_venta
@@ -19,9 +24,14 @@ interface CobroBanorteModalProps {
   open: boolean;
   total: number;          // TOTAL_A_PAGAR de la venta
   folioVenta: number;     // no_venta ya registrada (detalle_ventas)
-  onPagar: (monto: number, tarjeta: string) => Promise<ICobroTerminalResumen | null>;
+  // efectivoRestante: saldo en pesos que queda como complemento en efectivo
+  // despues de este cargo (contable, no lo captura el cajero).
+  onPagar: (monto: number, tarjeta: string, efectivoRestante: number) => Promise<ICobroTerminalResumen | null>;
   onVenta: (pagoTotal: number) => Promise<void> | void;
-  onCerrar: () => void;
+  // Reversa en sistema de la(s) venta(s) recien registradas (no es
+  // devolucion bancaria). Ausencia = boton deshabilitado; un string de
+  // retorno bloquea el modal para conciliacion; void = sigue abierto.
+  onCancelar?: () => Promise<string | void>;
 }
 
 const NUM_TC = 3;
@@ -64,7 +74,7 @@ const CobroBanorteModal: React.FC<CobroBanorteModalProps> = ({
   folioVenta,
   onPagar,
   onVenta,
-  onCerrar,
+  onCancelar,
 }) => {
   // Lo escrito por el cajero en cada caja TC (aun no cobrado)
   const [tcMontos, setTcMontos] = React.useState<string[]>(Array(NUM_TC).fill(""));
@@ -74,18 +84,25 @@ const CobroBanorteModal: React.FC<CobroBanorteModalProps> = ({
   const [tcLoading, setTcLoading] = React.useState<boolean[]>(Array(NUM_TC).fill(false));
   const [efectivo, setEfectivo] = React.useState("");
   const [cerrandoVenta, setCerrandoVenta] = React.useState(false);
+  // Cualquier cargo en transito bloquea todos los PAGAR/VENTA: dos slots no
+  // pueden cotizar contra el mismo saldo en paralelo.
+  const [cobroPendiente, setCobroPendiente] = React.useState(false);
+  // Una aprobada cuyo pago NO quedo registrado bloquea el modal completo:
+  // no se reintenta ni se cierra hasta conciliar la venta a mano.
+  const [bloqueoConciliacion, setBloqueoConciliacion] = React.useState("");
+  // Cancelacion del cobro en transito (misma exclusion mutua por ref).
+  const [cancelando, setCancelando] = React.useState(false);
 
   const totalAprobado = tcAprobados.reduce((a, b) => a + b, 0);
-  const totalEscrito = tcMontos.reduce((a, b) => a + (parseFloat(b) || 0), 0);
-  const excedeEscrito = totalEscrito > total;
+  const aprobadosCentavos = tcAprobados.map(aCentavos);
 
-  // RecalcularSaldos: si lo escrito cubre el total, el efectivo queda en 0 y bloqueado
-  const efectivoLocked = totalEscrito >= total;
+  // RecalcularSaldos: el efectivo se bloquea por lo YA APROBADO, no por lo
+  // escrito; un texto declinado/sin cobrar no debe poner el efectivo en 0.
+  const efectivoLocked = aprobadosCentavos.reduce((a, b) => a + b, 0) >= aCentavos(total);
   const efectivoVal = efectivoLocked ? 0 : parseFloat(efectivo) || 0;
 
   const pagoTotal = totalAprobado + efectivoVal;
-  const ventaCubierta = pagoTotal >= total;
-  const puedeCancelar = totalAprobado === 0;
+  const ventaCubierta = aCentavos(pagoTotal) >= aCentavos(total);
 
   const setTcMonto = (i: number, v: string) =>
     setTcMontos((prev) => prev.map((x, idx) => (idx === i ? v : x)));
@@ -96,29 +113,94 @@ const CobroBanorteModal: React.FC<CobroBanorteModalProps> = ({
   const setTcCargando = (i: number, v: boolean) =>
     setTcLoading((prev) => prev.map((x, idx) => (idx === i ? v : x)));
 
+  // Candado inmediato (ref): dos PAGAR no pueden salir contra el mismo saldo
+  // aunque el click llegue antes de que React repinte el estado.
+  const cobroEnCursoRef = React.useRef(false);
+
   const handlePagar = async (i: number) => {
-    const monto = parseFloat(tcMontos[i]) || 0;
-    if (monto <= 0) {
-      setTcMensaje(i, "Captura un monto mayor a cero");
+    if (cobroEnCursoRef.current || bloqueoConciliacion || cancelando) return;
+    const cargoCentavos = aCentavos(parseFloat(tcMontos[i]) || 0);
+    const cotizacion = cotizarCargoBanorteCentavos(
+      aCentavos(total),
+      aprobadosCentavos,
+      cargoCentavos
+    );
+    if (!cotizacion.ok) {
+      setTcMensaje(i, cotizacion.motivo);
       return;
     }
+    cobroEnCursoRef.current = true;
+    setCobroPendiente(true);
     setTcCargando(i, true);
     setTcMensaje(i, "Esperando tarjeta en la terminal...");
     try {
-      const res = await onPagar(monto, `TC${i + 1}`);
+      const res = await onPagar(
+        cargoCentavos / 100,
+        `TC${i + 1}`,
+        cotizacion.efectivoRestanteCentavos / 100
+      );
       if (res?.aprobada) {
-        setTcAprobado(i, monto);
+        // Aunque el registro local falle, el cargo ya salio por la terminal:
+        // el slot queda aprobado y NO se puede volver a cobrar.
+        setTcAprobado(i, cargoCentavos / 100);
         const extra = [
           res.ventaInsertada ? "" : " (no registro pago en BD)",
           res.ticketImpreso ? "" : " (voucher no impreso)",
         ].join("");
         setTcMensaje(i, `Aprobada: ${res.mensajeRespuesta}${extra}`);
-      } else {
+        if (!res.ventaInsertada) {
+          setBloqueoConciliacion(
+            `TC${i + 1} aprobada por ${(cargoCentavos / 100).toFixed(2)} pero el pago no quedo registrado en BD. ` +
+            `No vuelva a cobrar; solicite conciliación con el folio ${folioVenta}.`
+          );
+        }
+      } else if (res) {
         setTcAprobado(i, 0);
-        setTcMensaje(i, res ? res.mensajeRespuesta || "No aprobada" : "Sin respuesta del worker");
+        setTcMensaje(i, res.mensajeRespuesta || "No aprobada");
+      } else {
+        // Respuesta nula: no sabemos si el cargo se aplico. Se bloquea todo
+        // para evitar un posible cobro duplicado.
+        setTcAprobado(i, 0);
+        setTcMensaje(i, "Resultado del cargo desconocido");
+        setBloqueoConciliacion(
+          `No se pudo confirmar el cargo de TC${i + 1}. No vuelva a cobrar; ` +
+          `solicite conciliación con el folio ${folioVenta}.`
+        );
       }
     } finally {
       setTcCargando(i, false);
+      setCobroPendiente(false);
+      cobroEnCursoRef.current = false;
+    }
+  };
+
+  const puedeCancelar = puedeCancelarBanorte({
+    hayToken: !!onCancelar,
+    cargoEnCurso: cobroPendiente,
+    cierreEnCurso: cerrandoVenta,
+    cancelacionEnCurso: cancelando,
+    tieneTarjetaAprobada: tcAprobados.some((v) => v > 0),
+    requiereConciliacion: !!bloqueoConciliacion,
+  });
+
+  const tituloCancelar = !onCancelar
+    ? "Cancelar no esta disponible para este cobro"
+    : tcAprobados.some((v) => v > 0)
+      ? "Ya hay un cargo aprobado en tarjeta; para devolverlo use el proceso bancario correspondiente"
+      : "Revierte la venta registrada en el sistema; no devuelve el cargo a la tarjeta";
+
+  const handleCancelar = async () => {
+    if (!onCancelar || !puedeCancelar || cobroEnCursoRef.current) return;
+    // Mismo candado que PAGAR/VENTA: la cancelacion no puede cruzarse con un
+    // cargo o el cierre.
+    cobroEnCursoRef.current = true;
+    setCancelando(true);
+    try {
+      const motivo = await onCancelar();
+      if (typeof motivo === "string" && motivo) setBloqueoConciliacion(motivo);
+    } finally {
+      setCancelando(false);
+      cobroEnCursoRef.current = false;
     }
   };
 
@@ -127,7 +209,7 @@ const CobroBanorteModal: React.FC<CobroBanorteModalProps> = ({
       open={open}
       maxWidth="sm"
       fullWidth
-      onClose={() => { if (puedeCancelar) onCerrar(); }}
+      disableEscapeKeyDown
       PaperProps={{ sx: { borderRadius: 1, overflow: "hidden" } }}
     >
       <DialogTitle
@@ -227,7 +309,7 @@ const CobroBanorteModal: React.FC<CobroBanorteModalProps> = ({
                 type="number"
                 value={tcMontos[i]}
                 onChange={(e) => setTcMonto(i, e.target.value)}
-                disabled={tcAprobados[i] > 0 || tcLoading[i]}
+                disabled={tcAprobados[i] > 0 || cobroPendiente || cerrandoVenta || cancelando || !!bloqueoConciliacion}
                 sx={{ ...campoSx, width: 95 }}
                 placeholder="0.00"
               />
@@ -235,10 +317,12 @@ const CobroBanorteModal: React.FC<CobroBanorteModalProps> = ({
                 variant="contained"
                 disableElevation
                 disabled={
-                  tcLoading[i] ||
+                  cobroPendiente ||
+                  cerrandoVenta ||
+                  cancelando ||
+                  !!bloqueoConciliacion ||
                   tcAprobados[i] > 0 ||
-                  !(parseFloat(tcMontos[i]) > 0) ||
-                  excedeEscrito
+                  !(parseFloat(tcMontos[i]) > 0)
                 }
                 onClick={() => handlePagar(i)}
                 sx={btnClasico}
@@ -274,70 +358,78 @@ const CobroBanorteModal: React.FC<CobroBanorteModalProps> = ({
           ))}
         </Box>
 
-        {excedeEscrito && (
-          <Typography color="error" variant="caption" sx={{ display: "block", mt: 0.5 }}>
-            El monto total en tarjeta no puede ser mayor al total de la venta.
+        {bloqueoConciliacion && (
+          <Typography color="error" variant="caption" sx={{ display: "block", mt: 0.5, fontWeight: "bold" }}>
+            {bloqueoConciliacion}
           </Typography>
         )}
 
-        {/* PAGO TOTAL + VENTA / CANCELAR */}
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mt: 2 }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Typography sx={{ ...labelSx, minWidth: 100 }}>PAGO TOTAL</Typography>
-            <TextField
-              size="small"
-              value={pagoTotal.toFixed(2)}
-              disabled
-              sx={{ ...campoSx, width: 110 }}
-            />
+        {/* PAGO TOTAL + VENTA (oculto cuando el modal quedo bloqueado para
+            conciliacion: no se permiten mas cargos ni el cierre) */}
+        {!bloqueoConciliacion && (
+          <>
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mt: 2 }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Typography sx={{ ...labelSx, minWidth: 100 }}>PAGO TOTAL</Typography>
+                <TextField
+                  size="small"
+                  value={pagoTotal.toFixed(2)}
+                  disabled
+                  sx={{ ...campoSx, width: 110 }}
+                />
+                <Typography
+                  variant="caption"
+                  sx={{ color: ventaCubierta ? "#1e7d1e" : "#777", fontWeight: "bold", ml: 0.5 }}
+                >
+                  {ventaCubierta ? "Cubierto" : `Faltan $${(total - pagoTotal).toFixed(2)}`}
+                </Typography>
+              </Box>
+              <Box sx={{ display: "flex", gap: 1.5 }}>
+                <Button
+                  variant="contained"
+                  disableElevation
+                  disabled={!puedeCancelar}
+                  onClick={handleCancelar}
+                  title={tituloCancelar}
+                  sx={{ ...btnClasico, minWidth: 95 }}
+                >
+                  {cancelando ? "..." : "CANCELAR"}
+                </Button>
+                <Button
+                  variant="contained"
+                  disableElevation
+                  disabled={!ventaCubierta || cerrandoVenta || cobroPendiente || cancelando}
+                  onClick={async () => {
+                    // Mismo candado que los PAGAR: el cierre (impresion) y un
+                    // cargo no pueden correr en paralelo.
+                    if (cobroEnCursoRef.current) return;
+                    cobroEnCursoRef.current = true;
+                    setCerrandoVenta(true);
+                    try {
+                      await onVenta(pagoTotal);
+                    } finally {
+                      setCerrandoVenta(false);
+                      cobroEnCursoRef.current = false;
+                    }
+                  }}
+                  title={ventaCubierta ? "Concluir la venta e imprimir el ticket" : "Falta cubrir el total de la venta"}
+                  sx={{ ...btnClasico, minWidth: 95 }}
+                >
+                  {cerrandoVenta ? "..." : "VENTA"}
+                </Button>
+              </Box>
+            </Box>
             <Typography
               variant="caption"
-              sx={{ color: ventaCubierta ? "#1e7d1e" : "#777", fontWeight: "bold", ml: 0.5 }}
+              sx={{ display: "block", textAlign: "center", mt: 1, color: "#9c6500" }}
             >
-              {ventaCubierta ? "Cubierto" : `Faltan $${(total - pagoTotal).toFixed(2)}`}
+              {tcAprobados.some((v) => v > 0)
+                ? "Hay un cargo aprobado. CANCELAR no hace devoluciones bancarias."
+                : onCancelar
+                  ? "Puedes concluir la venta con VENTA o revertirla con CANCELAR."
+                  : "No se habilito CANCELAR para esta venta."}
             </Typography>
-          </Box>
-          <Box sx={{ display: "flex", gap: 1.5 }}>
-            <Button
-              variant="contained"
-              disableElevation
-              disabled={!ventaCubierta || cerrandoVenta}
-              onClick={async () => {
-                setCerrandoVenta(true);
-                try {
-                  await onVenta(pagoTotal);
-                } finally {
-                  setCerrandoVenta(false);
-                }
-              }}
-              title={ventaCubierta ? "Concluir la venta e imprimir el ticket" : "Falta cubrir el total de la venta"}
-              sx={{ ...btnClasico, minWidth: 95 }}
-            >
-              {cerrandoVenta ? "..." : "VENTA"}
-            </Button>
-            <Button
-              variant="contained"
-              disableElevation
-              disabled={!puedeCancelar}
-              onClick={onCerrar}
-              title={
-                puedeCancelar
-                  ? "Cerrar sin cobrar"
-                  : "Hay cobros aprobados: cancela desde Devolucion"
-              }
-              sx={{ ...btnClasico, minWidth: 95 }}
-            >
-              CANCELAR
-            </Button>
-          </Box>
-        </Box>
-        {!puedeCancelar && (
-          <Typography
-            variant="caption"
-            sx={{ display: "block", textAlign: "center", mt: 1, color: "#9c6500" }}
-          >
-            Ya hay tarjetas aprobadas; para salir debes hacer la devolucion primero.
-          </Typography>
+          </>
         )}
       </DialogContent>
     </Dialog>

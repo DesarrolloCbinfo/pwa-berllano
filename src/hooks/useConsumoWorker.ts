@@ -88,13 +88,45 @@ const mostrarError = (error: AxiosError): void => {
   }
 };
 
+// Variante para cobros de terminal: un timeout o un error de red no confirma
+// que el cargo no se haya aplicado, asi que el mensaje pide conciliar antes
+// de reintentar en lugar de invitar a repetir la operacion.
+const mostrarErrorCobro = (error: AxiosError): void => {
+  const status = error.response?.status;
+  const mensajeServidor =
+    (error.response?.data as { mensaje?: string } | undefined)?.mensaje ?? "";
+
+  if (status === 400) {
+    Swal.fire({
+      icon: "warning",
+      title: "Cargo no confirmado",
+      text: mensajeServidor || "El worker rechazo el cobro.",
+    });
+  } else if (status === 401) {
+    Swal.fire({
+      icon: "error",
+      title: "Sin autorización",
+      text: "La llave del worker no coincide. Revisa la configuración (VITE_WORKER_KEY).",
+    });
+  } else {
+    Swal.fire({
+      icon: "warning",
+      title: "Resultado del cargo desconocido",
+      text:
+        mensajeServidor ||
+        "No se pudo confirmar el cobro con la terminal. No vuelva a cobrar; solicite conciliación del folio antes de intentar otro cargo.",
+    });
+  }
+};
+
 // Ejecuta una peticion contra el worker intentando primero la IP LAN y, si
 // falla por red, una vez mas contra el hostname mDNS (.local) que sirve de
 // respaldo para tablets/iPads en el mismo Wi-Fi.
 const ejecutarPeticionWorker = async (
   resuelto: IRecursoResuelto,
   config: Omit<AxiosRequestConfig, "baseURL">,
-  timeoutMs = TIMEOUT_MS_DEFAULT
+  timeoutMs = TIMEOUT_MS_DEFAULT,
+  permitirFallback = true
 ): Promise<AxiosResponse> => {
   const cfg = (base: string): AxiosRequestConfig => ({
     ...config,
@@ -107,7 +139,7 @@ const ejecutarPeticionWorker = async (
     return await axios.request(cfg(resuelto.urlPrimaria));
   } catch (e) {
     const error = e as AxiosError;
-    if (esErrorRed(error) && resuelto.urlFallbackMdns) {
+    if (permitirFallback && esErrorRed(error) && resuelto.urlFallbackMdns) {
       return await axios.request(cfg(resuelto.urlFallbackMdns));
     }
     throw error;
@@ -237,11 +269,21 @@ export const useConsumoWorker = () => {
               imprimir_voucher: req.imprimir_voucher ?? true,
             },
           },
-          TIMEOUT_MS_TERMINAL
+          TIMEOUT_MS_TERMINAL,
+          // Un cobro nunca se reintenta solo: replicar el POST tras un
+          // timeout podria duplicar el cargo en la terminal.
+          false
         );
         return data as ICobroTerminalResumen;
       } catch (e) {
-        mostrarError(e as AxiosError);
+        const error = e as AxiosError;
+        // TerminalController devuelve la declinacion como HTTP 400 con el
+        // resumen completo: es una respuesta valida, no un error de red.
+        const cuerpo = error.response?.data as ICobroTerminalResumen | undefined;
+        if (error.response?.status === 400 && cuerpo?.aprobada === false && typeof cuerpo.mensajeRespuesta === "string") {
+          return cuerpo;
+        }
+        mostrarErrorCobro(error);
         return null;
       }
     },

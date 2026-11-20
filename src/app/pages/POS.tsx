@@ -76,6 +76,11 @@ type ClienteHistorialResumen = {
   FormaPago: string;
 };
 
+// Caja contable fija del POS: en este proyecto el cierre y los medios de
+// pago siempre operan en la caja 1; el selector de caja solo identifica el
+// equipo fisico (terminal/impresora) por el que sale el cobro o el ticket.
+const CAJA_CONTABLE_POS = 1;
+
 const obtenerIdSucursalPorNombre = (nombre: string | number | undefined): number => {
   if (nombre === undefined || nombre === null) return 0;
   if (typeof nombre === 'number') return nombre;
@@ -396,9 +401,20 @@ const [recompensaTC, setRecompensaTC] = React.useState('');
 const [modalCobroOpen, setModalCobroOpen] = React.useState(false);
 // Contexto del cobro Banorte (modal f_banorte): folio ya registrado + corte
 const [cobroBanorte, setCobroBanorte] = React.useState<{
-  open: boolean; noVenta: number; caja: number; corte: number; corteParcial: number; total: number;
+  open: boolean; noVenta: number; cajaEquipo: number; corte: number; corteParcial: number; total: number;
+  sucursal: number;
+  // Cobro Multiple TC (Comando30): folios en el orden registrado; el ultimo
+  // es no_venta y pago_combinado los lleva todos unidos por comas.
+  pagoCombinado: string; esMultiple: boolean;
+  folios: { cve_cliente: string; folio: number; total: number }[];
+  // Token protegido que permite revertir estos folios mientras sigan en
+  // placeholder de efectivo (30 min); null si el operador no cabe en el
+  // contrato legacy (@usuario nvarchar(30)) -> Cancelar deshabilitado.
+  tokenCancelacion: string | null;
 } | null>(null);
 const [registrandoVentaBanorte, setRegistrandoVentaBanorte] = React.useState(false);
+// Candado inmediato para que dos clicks no disparen dos registros de venta.
+const registroBanorteEnCursoRef = React.useRef(false);
 const [formasPago, setFormasPago] = React.useState<FormaPago[]>([]);
 const [loadingFormasPago, setLoadingFormasPago] = React.useState(false);
 const [tiposCardFormasPago, setTiposCardFormasPago] = React.useState<string[]>([]);
@@ -1479,7 +1495,7 @@ const verificaDatosVenta = () => {
       const payload = {
         cia: 1,
         sucursal: sucursal,
-        caja: 1,
+        caja: CAJA_CONTABLE_POS,
         cve_cliente: clienteSeleccionado.No_cliente, 
         estilista: estilistaSeleccionado,
         usuario: session?.id || '',
@@ -1535,7 +1551,7 @@ const verificaDatosVenta = () => {
 
         // Verificar si se requiere retiro de caja
         try {
-          const retiroRes = await consumoApi.get(`/api/Cortedia/verifica-retiros?sucursal=${sucursal}&caja=1`);
+          const retiroRes = await consumoApi.get(`/api/Cortedia/verifica-retiros?sucursal=${sucursal}&caja=${CAJA_CONTABLE_POS}`);
           if (retiroRes.data?.requiereRetiro) {
             await Swal.fire({
               icon: 'warning',
@@ -1616,7 +1632,21 @@ const verificaDatosVenta = () => {
   // resuelve la caja del equipo activo, obtiene el corte, registra la venta
   // "como pagada en efectivo" (sp_bw_pos_registra_venta_banorte) para amarrar
   // el no_venta y abre el modal de cobro (f_banorte).
+  // Corte/corte_parcial actuales de la caja contable fija
+  // (ultimo_corte_realizado + 1 del VBA).
+  const obtenerCorteCaja = async () => {
+    const corteRes = await consumoApi.get('/api/PuntoDeVenta/get_corte_actual', {
+      params: { caja: CAJA_CONTABLE_POS, sucursal },
+    });
+    const info = Array.isArray(corteRes.data) ? corteRes.data[0] : corteRes.data;
+    return {
+      corte: Number(info?.corte ?? info?.Corte ?? 0) || 0,
+      corteParcial: Number(info?.corte_parcial ?? info?.Corte_parcial ?? info?.CorteParcial ?? 0) || 0,
+    };
+  };
+
   const handleCobroConTarjeta = async () => {
+    if (registroBanorteEnCursoRef.current) return;
     if (!verificaDatosVenta()) return;
     if (!clienteSeleccionado || !estilistaSeleccionado) {
       Swal.fire({ icon: 'warning', title: 'Atención', text: 'Faltan datos para finalizar la venta' });
@@ -1631,20 +1661,15 @@ const verificaDatosVenta = () => {
     }
     const cajaCobro = resuelto.caja || 1;
 
+    registroBanorteEnCursoRef.current = true;
     setRegistrandoVentaBanorte(true);
     try {
-      // Corte/corte_parcial actuales de la caja (ultimo_corte_realizado + 1 del VBA)
-      const corteRes = await consumoApi.get('/api/PuntoDeVenta/get_corte_actual', {
-        params: { caja: cajaCobro, sucursal },
-      });
-      const info = Array.isArray(corteRes.data) ? corteRes.data[0] : corteRes.data;
-      const corte = Number(info?.corte ?? info?.Corte ?? 0) || 0;
-      const corteParcial = Number(info?.corte_parcial ?? info?.Corte_parcial ?? info?.CorteParcial ?? 0) || 0;
+      const { corte, corteParcial } = await obtenerCorteCaja();
 
       // Registra la venta como efectivo y amarra el folio (inserta_venta_banorte)
       const reg = await consumoApi.post('/api/PuntoDeVenta/sp_bw_pos_registra_venta_banorte', {
         sucursal,
-        caja: cajaCobro,
+        caja: CAJA_CONTABLE_POS,
         cve_cliente: clienteSeleccionado.No_cliente,
         corte,
         corte_parcial: corteParcial,
@@ -1654,7 +1679,7 @@ const verificaDatosVenta = () => {
       });
 
       if (reg.data?.ok !== 1 || !reg.data?.folio) {
-        Swal.fire({ icon: 'error', title: 'Error', text: reg.data?.mensaje || 'No se registró la venta para el cobro Banorte' });
+        Swal.fire({ icon: 'warning', title: 'Resultado incierto', text: 'El servidor respondió de forma inesperada. Antes de reintentar verifique si el folio quedó registrado.' });
         return;
       }
 
@@ -1662,22 +1687,108 @@ const verificaDatosVenta = () => {
       setCobroBanorte({
         open: true,
         noVenta: reg.data.folio,
-        caja: cajaCobro,
+        cajaEquipo: cajaCobro,
         corte,
         corteParcial,
         total: totalVenta,
+        sucursal,
+        pagoCombinado: '',
+        esMultiple: false,
+        folios: [{ cve_cliente: clienteSeleccionado.No_cliente, folio: reg.data.folio, total: totalVenta }],
+        tokenCancelacion: reg.data?.token_cancelacion ?? null,
       });
     } catch (error: any) {
-      Swal.fire({ icon: 'error', title: 'Error', text: error.response?.data?.mensaje || 'Error al registrar la venta para cobro Banorte' });
+      if (error.response?.status === 400) {
+        // Rechazo confirmado del servidor: nada quedo registrado, se puede reintentar.
+        Swal.fire({ icon: 'error', title: 'Error', text: error.response?.data?.mensaje || 'El servidor rechazó el registro de la venta' });
+      } else {
+        Swal.fire({ icon: 'warning', title: 'Resultado incierto', text: 'No se pudo confirmar el registro de la venta. Antes de reintentar verifique si el folio quedó registrado.' });
+      }
     } finally {
       setRegistrandoVentaBanorte(false);
+      registroBanorteEnCursoRef.current = false;
+    }
+  };
+
+  // Comando30_Click del POS Access: registra una venta por cliente
+  // seleccionado (todo-o-nada en el API) y abre el mismo modal f_banorte
+  // con el ultimo folio y pago_combinado = todos los folios.
+  const handleCobroMultipleTC = async () => {
+    if (registroBanorteEnCursoRef.current || loadingClientesServicioTC) return;
+    const seleccionados = clientesServicioTC.filter(v => selectedClientesTC.has(v.cve_cliente));
+    if (seleccionados.length === 0) {
+      Swal.fire({ icon: 'warning', title: 'Atención', text: 'Selecciona al menos un cliente para el cobro múltiple.' });
+      return;
+    }
+
+    const resuelto = resolverRecursoWorker('TerminalBanorte');
+    if (!resuelto) {
+      Swal.fire({ icon: 'info', title: 'Selecciona una caja', text: 'No hay terminal Banorte configurada. Elige la caja a utilizar.' });
+      abrirModalWorker();
+      return;
+    }
+    const cajaCobro = resuelto.caja || 1;
+
+    registroBanorteEnCursoRef.current = true;
+    setRegistrandoVentaBanorte(true);
+    try {
+      const { corte, corteParcial } = await obtenerCorteCaja();
+
+      const reg = await consumoApi.post('/api/PuntoDeVenta/sp_bw_pos_registra_venta_banorte_multiple', {
+        sucursal,
+        caja: CAJA_CONTABLE_POS,
+        corte,
+        corte_parcial: corteParcial,
+        usuario: String(session?.id ?? ''),
+        clientes: seleccionados.map(v => ({ cve_cliente: v.cve_cliente, total: v.importe })),
+      });
+
+      const foliosResp = Array.isArray(reg.data?.folios) ? reg.data.folios : [];
+      if (reg.data?.ok !== 1 || foliosResp.length !== seleccionados.length) {
+        // Respuesta 200 sin el lote completo es un resultado inesperado:
+        // puede haber folios registrados, no reintentar a ciegas.
+        Swal.fire({ icon: 'warning', title: 'Resultado incierto', text: 'El servidor respondió de forma inesperada. Antes de reintentar verifique si los folios quedaron registrados.' });
+        return;
+      }
+
+      const folios = foliosResp.map((f: { cve_cliente: string; folio: number; total: number }) => ({
+        cve_cliente: String(f.cve_cliente),
+        folio: Number(f.folio),
+        total: Number(f.total),
+      }));
+      const totalLote = folios.reduce((s: number, f: { total: number }) => s + Math.round(f.total * 100), 0) / 100;
+
+      setModalCobrosMultipleTCOpen(false);
+      setCobroBanorte({
+        open: true,
+        noVenta: folios[folios.length - 1].folio,
+        cajaEquipo: cajaCobro,
+        corte,
+        corteParcial,
+        total: totalLote,
+        sucursal,
+        pagoCombinado: folios.map((f: { folio: number }) => f.folio).join(','),
+        esMultiple: true,
+        folios,
+        tokenCancelacion: reg.data?.token_cancelacion ?? null,
+      });
+    } catch (error: any) {
+      if (error.response?.status === 400) {
+        // Rechazo confirmado del servidor: nada quedo registrado, se puede reintentar.
+        Swal.fire({ icon: 'error', title: 'Error', text: error.response?.data?.mensaje || 'El servidor rechazó el registro del cobro múltiple' });
+      } else {
+        Swal.fire({ icon: 'warning', title: 'Resultado incierto', text: 'No se pudo confirmar el registro del lote. Antes de reintentar verifique si los folios quedaron registrados.' });
+      }
+    } finally {
+      setRegistrandoVentaBanorte(false);
+      registroBanorteEnCursoRef.current = false;
     }
   };
 
   // Boton PAGAR de cada TCx del modal: POST /api/terminal/cobro al worker con
   // el no_venta registrado. El worker cobra + post-venta (detalle_ventas_pagos)
   // + voucher en la impresora Tickets de la caja.
-  const handlePagarBanorte = async (monto: number, tarjeta: string): Promise<ICobroTerminalResumen | null> => {
+  const handlePagarBanorte = async (monto: number, tarjeta: string, efectivoRestante: number): Promise<ICobroTerminalResumen | null> => {
     if (!cobroBanorte) return null;
     return await cobrarTerminalWorker({
       monto,
@@ -1686,10 +1797,14 @@ const verificaDatosVenta = () => {
       usuario_pos: String(session?.id ?? ''),
       corte: cobroBanorte.corte,
       corte_parcial: cobroBanorte.corteParcial,
-      sucursal,
-      caja: cobroBanorte.caja,
-      efectivo: 0,
-      pago_combinado: '',
+      sucursal: cobroBanorte.sucursal,
+      // La caja del request del worker es la fisica: define terminal e
+      // impresora de voucher; la contable la fija el propio worker (caja 1).
+      caja: cobroBanorte.cajaEquipo,
+      // Remanente en efectivo calculado por el modal (no lo escribe el cajero);
+      // el SP lo registra como complemento en efectivo del pago combinado.
+      efectivo: efectivoRestante,
+      pago_combinado: cobroBanorte.pagoCombinado,
       imprimir_voucher: true,
     });
   };
@@ -1699,56 +1814,140 @@ const verificaDatosVenta = () => {
   // + sp_registra_pago_banorte2026 por cada TC); aqui solo se imprime el
   // ticket de venta (IMPRIME_TICKET_VENTA2026), se muestra el cambio y se
   // cierra el cobro (TempVars!cobroRelizado = 1 + DoCmd.Close).
-  const handleVentaBanorte = async (pagoTotal: number) => {
-    if (!cobroBanorte) return;
-    const cambio = Math.max(0, pagoTotal - cobroBanorte.total);
-
+  // Imprime un ticket de venta Banorte; devuelve false ante error, dataset
+  // vacio o fallo del worker (para contar folios no impresos en el lote).
+  const imprimirTicketBanorte = async (folio: number, total: number, cambio: number, suc: number): Promise<boolean> => {
     try {
       const ticketRes = await consumoApi.get('/api/PuntoDeVenta/sp_ticket_venta_dataset', {
         params: {
-          folio: cobroBanorte.noVenta,
-          suc: sucursal,
+          folio,
+          suc,
           cuenta_recompensa: '',
           cuenta_puntos: '',
           venta_credito: 0,
           cxc: 0,
           cambio,
-          total_a_pagar: cobroBanorte.total,
+          total_a_pagar: total,
         },
       });
       const dataset = ticketRes.data?.ticket_dataset;
-      if (Array.isArray(dataset) && dataset.length) {
-        await imprimirTicketWorker(dataset as ITicketLinea[]);
-      }
+      if (!Array.isArray(dataset) || !dataset.length) return false;
+      return await imprimirTicketWorker(dataset as ITicketLinea[]);
     } catch (e) {
-      console.error('Ticket de venta Banorte (worker):', e);
+      console.error(`Ticket de venta Banorte folio ${folio} (worker):`, e);
+      return false;
+    }
+  };
+
+  const handleVentaBanorte = async (pagoTotal: number) => {
+    if (!cobroBanorte) return;
+    const ctx = cobroBanorte;
+    const cambio = Math.max(0, pagoTotal - ctx.total);
+
+    // Un ticket por folio con su total individual; el cambio solo aparece en
+    // el ultimo (folio que concentra el efectivo). Un error de impresion en un
+    // folio no impide intentar los demas.
+    let ticketsFallidos = 0;
+    for (let i = 0; i < ctx.folios.length; i++) {
+      const f = ctx.folios[i];
+      const esUltimo = i === ctx.folios.length - 1;
+      const impreso = await imprimirTicketBanorte(f.folio, f.total, esUltimo ? cambio : 0, ctx.sucursal);
+      if (!impreso) ticketsFallidos++;
     }
 
     await Swal.fire({
-      icon: 'success',
+      icon: ticketsFallidos > 0 ? 'warning' : 'success',
       title: 'Venta Concluida',
-      text: `Venta Cerrada Con Éxito. Cambio a entregar: $${cambio.toFixed(2)}`,
+      text: `Venta Cerrada Con Éxito. Cambio a entregar: $${cambio.toFixed(2)}` +
+        (ticketsFallidos > 0 ? ` (${ticketsFallidos} ticket(s) no impresos)` : ''),
       confirmButtonText: 'Aceptar',
     });
 
-    // Cierre del cobro + inicializa_pantalla() del VBA
+    cerrarCobroBanorte(ctx);
+  };
+
+  // Cierre del cobro + inicializa_pantalla() del VBA, compartido por VENTA y
+  // CANCELAR. En cobro multiple el carrito actual solo se reinicia si su
+  // cliente estaba en la seleccion.
+  const cerrarCobroBanorte = (ctx: NonNullable<typeof cobroBanorte>) => {
+    const clienteActualId = (clienteSeleccionado?.No_cliente ?? '').trim().toLowerCase();
+    const clienteActualEnLote = ctx.esMultiple &&
+      ctx.folios.some(f => f.cve_cliente.trim().toLowerCase() === clienteActualId);
     setCobroBanorte(null);
-    setModalCobroOpen(false);
-    setDetallesVenta([]);
-    setClienteSeleccionado({ No_cliente: '00001', nombre: 'PÚBLICO EN GENERAL', ap_paterno: null, ap_materno: null });
-    setEstilistaSeleccionado('');
-    setAuxiliarSeleccionado('');
-    setPagosRegistro([]);
-    setSumaManual(0);
-    setPagoEfectivo(0);
-    setTmpPagoEfectivo(0);
-    setPuntosPago(0);
-    setCuentaPuntos('');
-    setCuentaRecompensa('');
-    setNc(0);
-    setBonificacion(0);
-    setFolioDev('');
-    setIsVentaEnProceso(false);
+    if (!ctx.esMultiple || clienteActualEnLote) {
+      setModalCobroOpen(false);
+      setDetallesVenta([]);
+      setClienteSeleccionado({ No_cliente: '00001', nombre: 'PÚBLICO EN GENERAL', ap_paterno: null, ap_materno: null });
+      setEstilistaSeleccionado('');
+      setAuxiliarSeleccionado('');
+      setPagosRegistro([]);
+      setSumaManual(0);
+      setPagoEfectivo(0);
+      setTmpPagoEfectivo(0);
+      setPuntosPago(0);
+      setCuentaPuntos('');
+      setCuentaRecompensa('');
+      setNc(0);
+      setBonificacion(0);
+      setFolioDev('');
+      setIsVentaEnProceso(false);
+    }
+    if (ctx.esMultiple) {
+      setModalCobrosMultipleTCOpen(false);
+      setSelectedClientesTC(new Set());
+      setRecompensaTC('');
+      fetchClientesServicioTC();
+      fetchVentasEnProceso();
+    }
+  };
+
+  // Boton CANCELAR del modal f_banorte: revierte la(s) venta(s) registradas
+  // con placeholder de efectivo via token protegido. NO es una devolucion
+  // bancaria: nunca toca la terminal. Devuelve un motivo para bloquear el
+  // modal en conciliacion, o void si el operador cancelo el confirm.
+  const handleCancelarBanorte = async (): Promise<string | void> => {
+    if (!cobroBanorte || !cobroBanorte.tokenCancelacion) {
+      return 'La cancelación no está disponible para este cobro.';
+    }
+    const ctx = cobroBanorte;
+    const foliosTexto = ctx.folios.map(f => f.folio).join(', ');
+
+    const confirmacion = await Swal.fire({
+      icon: 'warning',
+      title: 'Cancelar venta registrada',
+      html: `Se revertirá(n) en el sistema la(s) venta(s) folio(s) <b>${foliosTexto}</b>.<br/>` +
+        'Esto NO devuelve el cargo a la tarjeta; la devolución al banco es un proceso aparte.',
+      showCancelButton: true,
+      confirmButtonText: 'Cancelar venta',
+      cancelButtonText: 'Volver',
+    });
+    if (!confirmacion.isConfirmed) return;
+
+    try {
+      const res = await consumoApi.post('/api/PuntoDeVenta/cancelar-venta-banorte', {
+        token_cancelacion: ctx.tokenCancelacion,
+      });
+      if (res.data?.ok === 1) {
+        await Swal.fire({
+          icon: 'success',
+          title: 'Venta cancelada',
+          text: res.data?.mensaje || 'La venta fue revertida correctamente.',
+          confirmButtonText: 'Aceptar',
+        });
+        cerrarCobroBanorte(ctx);
+        return;
+      }
+      // Respuesta 200 sin ok:1 = resultado inesperado: no afirmar nada.
+      return 'El servidor respondió de forma inesperada. No vuelva a cobrar; concilie los folios manualmente.';
+    } catch (error: any) {
+      const status = error.response?.status;
+      const mensaje = error.response?.data?.mensaje;
+      if (status === 400 || status === 403 || status === 409) {
+        return mensaje || 'La cancelación fue rechazada; concilie los folios manualmente.';
+      }
+      // 500/transporte: resultado incierto, fail closed.
+      return 'No se pudo confirmar la cancelación. No vuelva a cobrar; concilie los folios manualmente.';
+    }
   };
 
   const handleEliminarInsumoUnico = async (insumo: {producto: Producto, cantidad: number, validado: boolean, observacion: string, idSql?: number, enBaseDatos?: boolean}) => {
@@ -2329,14 +2528,16 @@ return (
                 InputProps={{ readOnly: true }}
                 sx={{ minWidth: '90px', maxWidth: '90px', '& .MuiInputBase-input': { textAlign: 'right', fontWeight: 'bold', color: puntosAcumulados > 0 ? 'black' : 'inherit' } }}
               />
-              <Button
-                size="small"
-                variant="outlined"
-                onClick={abrirModalWorker}
-                sx={{ minWidth: '70px', fontSize: '0.7rem', textTransform: 'none' }}
-              >
-                {equipoActivoWorker ?? "Caja"}
-              </Button>
+              {(session?.claveEmpleado === 'PRUEBA' || session?.claveEmpleado === 'ADMIN') && (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={abrirModalWorker}
+                  sx={{ minWidth: '70px', fontSize: '0.7rem', textTransform: 'none' }}
+                >
+                  {equipoActivoWorker ?? "Caja"}
+                </Button>
+              )}
             </Box>
 
             <FormControl size="small" sx={{ flex: 0.6, minWidth: '150px' }}>
@@ -3886,7 +4087,7 @@ return (
   maxWidth="md"
   fullWidth
   open={modalCobrosMultipleTCOpen}
-  onClose={() => { setModalCobrosMultipleTCOpen(false); setSelectedClientesTC(new Set()); setRecompensaTC(''); }}
+  onClose={() => { if (!registrandoVentaBanorte) { setModalCobrosMultipleTCOpen(false); setSelectedClientesTC(new Set()); setRecompensaTC(''); } }}
   PaperProps={{ sx: { m: { xs: 1, sm: 2 }, maxHeight: '90vh' } }}
 >
   <DialogTitle sx={{ pb: 0 }}>
@@ -3922,6 +4123,7 @@ return (
                 <input
                   type="checkbox"
                   checked={selectedClientesTC.has(venta.cve_cliente)}
+                  disabled={registrandoVentaBanorte}
                   onChange={(e) => {
                     const next = new Set(selectedClientesTC);
                     if (e.target.checked) next.add(venta.cve_cliente); else next.delete(venta.cve_cliente);
@@ -3949,25 +4151,25 @@ return (
           type="text"
           value={recompensaTC}
           onChange={e => setRecompensaTC(e.target.value)}
+          disabled
+          title="La recompensa no se aplica en cobros múltiples"
           style={{ width: 80, border: '1px solid #ccc', padding: '2px 4px' }}
         />
-        <Typography color="error" fontWeight="bold">*</Typography>
+        <Typography variant="caption" color="text.secondary">(no aplicada)</Typography>
       </Box>
       <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3, mb: 1 }}>
         <Button
           variant="outlined"
           size="small"
-          disabled={selectedClientesTC.size === 0}
-          onClick={() => {
-            const seleccionados = clientesServicioTC.filter(v => selectedClientesTC.has(v.cve_cliente));
-            console.log('Cobro Multiple TC:', seleccionados, 'Recompensa:', recompensaTC);
-          }}
+          disabled={selectedClientesTC.size === 0 || loadingClientesServicioTC || registrandoVentaBanorte}
+          onClick={handleCobroMultipleTC}
         >
-          Cobro Multiple TC
+          {registrandoVentaBanorte ? 'Registrando...' : 'Cobro Multiple TC'}
         </Button>
         <Button
           variant="outlined"
           size="small"
+          disabled={registrandoVentaBanorte}
           onClick={() => { setModalCobrosMultipleTCOpen(false); setSelectedClientesTC(new Set()); setRecompensaTC(''); }}
         >
           Salir
@@ -4470,7 +4672,7 @@ return (
           folioVenta={cobroBanorte.noVenta}
           onPagar={handlePagarBanorte}
           onVenta={handleVentaBanorte}
-          onCerrar={() => setCobroBanorte((prev) => (prev ? { ...prev, open: false } : null))}
+          onCancelar={cobroBanorte.tokenCancelacion ? handleCancelarBanorte : undefined}
         />
       )}
     </>
