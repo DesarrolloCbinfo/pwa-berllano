@@ -161,11 +161,17 @@ const Home: React.FC = () => {
     { id: 'administracionErogaciones', title: 'Administración de Erogaciones', path: routes.administracionErogaciones },
   ];
 
+  const tesoreriaItems = [
+    { id: 'tesoreria', title: 'Tesorería', path: routes.tesoreria },
+  ];
+
   const reportesItems = [
     { id: 'consultaReportes', title: 'Consulta de reportes', path: routes.reportes },
     { id: 'recepcionMercancias', title: 'Recepción de mercancías por sucursales', path: routes.reporteRecepcionMercancias },
     { id: 'reporteRaz', title: 'Reporte Raz', path: routes.reporteRaz },
     { id: 'reporteConteosMarca', title: 'Reporte de Conteos por Marca', path: routes.reporteConteosMarca },
+    { id: 'reporteVisitasClientesPuestos', title: 'Reporte de Visitas por Puesto', path: routes.reporteVisitasClientesPuestos },
+    { id: 'reporteClientesResumen', title: 'Reporte de Clientes', path: routes.reporteClientesResumen },
   ];
 
   const RRHHItems = [
@@ -419,6 +425,25 @@ const Home: React.FC = () => {
                 </h3>
                 <div className={styles.catalogsGrid}>
                   {administracionFinanzasItems.map((catalog) => (
+                    <button
+                      key={catalog.id}
+                      className={styles.catalogCard}
+                      onClick={() => navigate(catalog.path)}
+                    >
+                      <Folder className={styles.catalogIcon} />
+                      <span>{catalog.title}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className={styles.catalogSubsection}>
+                <h3 className={styles.subsectionTitle}>
+                  <AccountBalance className={styles.sectionIcon} />
+                  Tesorería
+                </h3>
+                <div className={styles.catalogsGrid}>
+                  {tesoreriaItems.map((catalog) => (
                     <button
                       key={catalog.id}
                       className={styles.catalogCard}

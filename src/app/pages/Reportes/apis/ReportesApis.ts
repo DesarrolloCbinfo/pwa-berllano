@@ -25,4 +25,8 @@ export const ReportesApis = {
   ventasEstilista: '/api/CatReportes/sp_reporte_ventas_estilista',
   ingresosFacturas: '/api/CatReportes/sp_reporteIngresosFacturas',
   conteosMarcaFamilia: '/api/CatReportes/sp_bw_reporte_conteos_marca',
+  plasticosAsignados: '/api/CatReportes/sp_reporte_plasticos_asignados',
+  visitasClientesPuestos: '/api/CatReportes/sp_reporte_visitas_clientes_puestos',
+  clientesResumen: '/api/CatReportes/sp_reporte_clientes_resumen',
+  clientesDetalle: '/api/CatReportes/sp_reportes_clientes_detalle_por_cliente',
 };

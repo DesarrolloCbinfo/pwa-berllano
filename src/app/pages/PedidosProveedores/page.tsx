@@ -89,7 +89,7 @@ const formatearFechaCorta = (value: unknown) => {
 
 const columnasFijas = [
   'clave_prod',
-  'clave_prod_ruta',
+  'cve.prod.ruta',
   'descripcion',
   'marca',
   'd_area',
@@ -155,14 +155,17 @@ const columnas: GridColDef<PedidoRow>[] = [
   ...columnasFijas.map((field, index) => ({
     field,
     headerName: field,
-    width: [120, 140, 220, 100, 90, 100][index],
+    width: [90, 100, 170, 80, 75, 80][index],
+    cellClassName: `columna-fija-${index}`,
+    headerClassName: `columna-fija-${index}`,
   })),
   ...columnasPedido.map((field) => ({
     field,
     headerName: field,
-    width: 105,
+    width: 78,
     type: 'number' as const,
     editable: columnasEditables.has(field),
+    cellClassName: columnasEditables.has(field) ? 'celdaEditablePedido' : '',
     renderCell: (params: { value: unknown }) => formatoDecimal(params.value),
   })),
 ];
@@ -714,8 +717,22 @@ export default function PedidosProveedoresPage() {
         bonificaciones_203: Number(newRow.bonifi_203 ?? 0),
         bonificaciones_204: Number(newRow.bonifi_204 ?? 0),
       });
-      setRows((currentRows) => currentRows.map((row) => (row.id === newRow.id ? newRow : row)));
-      return newRow;
+      const costoUnitario = Number(newRow.costo_unitario ?? 0);
+      const filaRecalculada: PedidoRow = {
+        ...newRow,
+        costo1: Number(newRow.pRealFinal1 ?? 0) * costoUnitario,
+        costo2: Number(newRow.pRealFinal2 ?? 0) * costoUnitario,
+        costo3: Number(newRow.pRealFinal3 ?? 0) * costoUnitario,
+        costo4: Number(newRow.pRealFinal4 ?? 0) * costoUnitario,
+        costo5: Number(newRow.pRealFinal5 ?? 0) * costoUnitario,
+        costo6: Number(newRow.pRealFinal6 ?? 0) * costoUnitario,
+        costo203: Number(newRow.pRealFinal203 ?? 0) * costoUnitario,
+        costo204: Number(newRow.pRealFinal204 ?? 0) * costoUnitario,
+      };
+      setRows((currentRows) =>
+        currentRows.map((row) => (row.id === filaRecalculada.id ? filaRecalculada : row)),
+      );
+      return filaRecalculada;
     } catch (error: any) {
       const mensaje = error?.response?.data?.mensaje || 'No se pudo actualizar el detalle del pedido.';
       Swal.fire('Error', mensaje, 'error');
@@ -1012,6 +1029,7 @@ export default function PedidosProveedoresPage() {
             pagination: { paginationModel: { pageSize: 50, page: 0 } },
           }}
           disableRowSelectionOnClick
+          disableVirtualization
           sx={{
             width: '100%',
             border: 'none',
@@ -1020,6 +1038,25 @@ export default function PedidosProveedoresPage() {
             },
             '& .MuiDataGrid-cell, & .MuiDataGrid-columnHeader': {
               fontSize: { xs: '0.7rem', sm: '0.78rem' },
+            },
+            '& .MuiDataGrid-cell.celdaEditablePedido': {
+              bgcolor: '#f0f0f0',
+            },
+            '& .MuiDataGrid-cell.celdaEditablePedido.MuiDataGrid-cell--editing': {
+              bgcolor: '#ffffff',
+            },
+            '& .columna-fija-0': { position: 'sticky', left: 0, zIndex: 2 },
+            '& .columna-fija-1': { position: 'sticky', left: 90, zIndex: 2 },
+            '& .columna-fija-2': { position: 'sticky', left: 190, zIndex: 2 },
+            '& .columna-fija-3': { position: 'sticky', left: 360, zIndex: 2 },
+            '& .columna-fija-4': { position: 'sticky', left: 440, zIndex: 2 },
+            '& .columna-fija-5': { position: 'sticky', left: 515, zIndex: 2 },
+            '& .MuiDataGrid-cell.columna-fija-0, & .MuiDataGrid-cell.columna-fija-1, & .MuiDataGrid-cell.columna-fija-2, & .MuiDataGrid-cell.columna-fija-3, & .MuiDataGrid-cell.columna-fija-4, & .MuiDataGrid-cell.columna-fija-5': {
+              bgcolor: '#ffffff',
+            },
+            '& .MuiDataGrid-columnHeader.columna-fija-0, & .MuiDataGrid-columnHeader.columna-fija-1, & .MuiDataGrid-columnHeader.columna-fija-2, & .MuiDataGrid-columnHeader.columna-fija-3, & .MuiDataGrid-columnHeader.columna-fija-4, & .MuiDataGrid-columnHeader.columna-fija-5': {
+              bgcolor: '#b3d9ff',
+              zIndex: 3,
             },
           }}
         />

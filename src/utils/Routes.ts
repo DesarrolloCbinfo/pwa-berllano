@@ -75,12 +75,15 @@ export const routes = {
   reporteRecepcionMercancias: "/reportes/recepcion-mercancias-sucursales",
   reporteRaz: "/reportes/raz",
   reporteConteosMarca: "/reportes/conteos-marca",
+  reporteVisitasClientesPuestos: "/reportes/visitas-clientes-puestos",
+  reporteClientesResumen: "/reportes/clientes-resumen",
   traspasoMercancia: "/traspaso-mercancia",
   recepcionTraspasos: "/recepcion-traspasos",
   ajustesInventario: "/ajustes-inventario",
   NivelacionInventarioPage: "/nivelacion-inventario",
   pedidosProveedores: "/pedidos-proveedores",
   administracionErogaciones: "/administracion-erogaciones",
+  tesoreria: "/tesoreria",
   recepcionMercanciaAdministracion: "/recepcion-mercancia-administracion",
 
   //Conteos

@@ -73,12 +73,15 @@ import Reportes from './pages/Reportes/page';
 import ReporteRecepcionMercancias from './pages/ReporteRecepcionMercancias/page';
 import ReporteRaz from './pages/ReporteRaz/page';
 import ReporteConteosMarca from './pages/ReporteConteosMarca/page';
+import ReporteVisitasClientesPuestos from './pages/ReporteVisitasClientesPuestos/page';
+import ReporteClientesResumen from './pages/ReporteClientesResumen/page';
 import TraspasoMercancia from './pages/TraspasoMercancia/page';
 import RecepcionTraspasos from './pages/RecepcionTraspasos/page';
 import AjustesInventario from './pages/AjustesInventario/page';
 import NivelacionInventarioPage from './pages/NivelacionInventario/Page';
 import PedidosProveedores from './pages/PedidosProveedores/page';
 import AdministracionErogaciones from './pages/AdministracionErogaciones/page';
+import Tesoreria from './pages/Tesoreria/page';
 import ConteosPage from './pages/Conteos/page';
 import ConteosAdminPage from './pages/ConteosAdmin/page';
 import ConteosActivos from './pages/ConteosAdmin/ConteosActivos';
@@ -168,12 +171,15 @@ function App() {
            <Route path='/reportes/recepcion-mercancias-sucursales' element={<Layout><ReporteRecepcionMercancias /></Layout>} />
            <Route path='/reportes/raz' element={<Layout><ReporteRaz /></Layout>} />
            <Route path='/reportes/conteos-marca' element={<Layout><ReporteConteosMarca /></Layout>} />
+           <Route path='/reportes/visitas-clientes-puestos' element={<Layout><ReporteVisitasClientesPuestos /></Layout>} />
+           <Route path='/reportes/clientes-resumen' element={<Layout><ReporteClientesResumen /></Layout>} />
            <Route path='/traspaso-mercancia' element={<Layout><TraspasoMercancia /></Layout>} />
            <Route path='/recepcion-traspasos' element={<Layout><RecepcionTraspasos /></Layout>} />
            <Route path='/ajustes-inventario' element={<Layout><AjustesInventario /></Layout>} />
            <Route path='/nivelacion-inventario' element={<Layout><NivelacionInventarioPage /></Layout>} />
           <Route path='/pedidos-proveedores' element={<Layout><PedidosProveedores /></Layout>} />
           <Route path='/administracion-erogaciones' element={<Layout><AdministracionErogaciones /></Layout>} />
+          <Route path='/tesoreria' element={<Layout><Tesoreria /></Layout>} />
           <Route path='/conteos' element={<Layout><ConteosPage /></Layout>} />
           <Route path='/conteos/admin' element={<Layout><ConteosAdminPage /></Layout>} />
           <Route path='/conteos/admin/activos' element={<Layout><ConteosActivos /></Layout>} />

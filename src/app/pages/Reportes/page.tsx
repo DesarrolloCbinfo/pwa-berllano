@@ -283,6 +283,8 @@ const knownReportFilters: Record<string, FilterName[]> = {
   sp_repoComisionesHoja: ['fechaInicial', 'fechaFinal', 'sucursal', 'estilista'],
   ReporteSaldoCreditoClientes: ['fechaInicial', 'fechaFinal'],
   ReporteSaldoCreditoDetalle: ['fechaInicial', 'fechaFinal', 'cliente'],
+  sp_reporte_plasticos_asignados: ['fechaInicial', 'fechaFinal', 'sucursal'],
+  sp_reporte_visitas_clientes_puestos: ['fechaInicial', 'fechaFinal', 'sucursal'],
 };
 
 const metadataFilterAliases: Partial<Record<FilterName, string[]>> = {
@@ -800,6 +802,12 @@ export default function ReportesPage() {
   }, [reporteSolicitado, reports]);
 
   useEffect(() => {
+    if (selectedReportKey === 'sp_reporte_visitas_clientes_puestos') {
+      navigate(routes.reporteVisitasClientesPuestos, { replace: true });
+    }
+  }, [selectedReportKey, navigate]);
+
+  useEffect(() => {
     let active = true;
 
     const loadCatalog = async () => {
@@ -1307,7 +1315,11 @@ export default function ReportesPage() {
                                       ? ReportesApis.ingresosFacturas
                                       : selectedReport.metodoApi === 'sp_bw_reporte_conteos_marca'
                                         ? ReportesApis.conteosMarcaFamilia
-                                        : null;
+                                        : selectedReport.metodoApi === 'sp_reporte_plasticos_asignados'
+                                          ? ReportesApis.plasticosAsignados
+                                          : selectedReport.metodoApi === 'sp_reporte_visitas_clientes_puestos'
+                                            ? ReportesApis.visitasClientesPuestos
+                                            : null;
 
     if (!reportEndpoint) {
       setReportRows([]);
@@ -1444,6 +1456,21 @@ export default function ReportesPage() {
             marca: filters.marca.trim() || '%',
           }
         : {}),
+      ...(selectedReport.metodoApi === 'sp_reporte_visitas_clientes_puestos'
+        ? {
+            f1: filters.fechaInicial.replace(/-/g, ''),
+            f2: filters.fechaFinal.replace(/-/g, ''),
+            puesto1: 1,
+            puesto2: 99999,
+            s1: filters.sucursal ? Number(filters.sucursal) : 0,
+            s2: filters.sucursal ? Number(filters.sucursal) : 99999,
+            claveCliente: '',
+            estilista: '',
+            clave_prod: '',
+            genero: '',
+            nivel: 1,
+          }
+        : {}),
     };
 
     try {
@@ -1537,6 +1564,7 @@ export default function ReportesPage() {
           disabled={sucursalesLoading || metadataValue === false}
           error={Boolean(sucursalesError)}
           helperText={sucursalesError || (sucursalesLoading ? 'Cargando sucursales...' : undefined)}
+          InputLabelProps={{ shrink: true }}
           SelectProps={{
             displayEmpty: true,
             renderValue: (selected) => {
